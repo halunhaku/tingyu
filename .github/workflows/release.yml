@@ -202,4 +202,4 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ needs.build-android.outputs.release_tag }}
-        run: gh release upload "$RELEASE_TAG" android-release/*.apk --clobber
+        run: gh release upload "$RELEASE_TAG" android-release/*.apk --clobber --repo "$GITHUB_REPOSITORY"
