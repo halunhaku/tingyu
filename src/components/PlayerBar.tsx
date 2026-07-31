@@ -195,16 +195,16 @@ export function PlayerBar() {
   useEffect(() => {
     const href = track?.remotePath
     if (!href || (track.enrichmentVersion ?? 0) >= CURRENT_ENRICHMENT_VERSION) return
-    const scrapeKey = `${track.source}:${href}`
+    const scrapeKey = `${track.sourceId}:${href}`
     if (scrapedTracksRef.current.has(scrapeKey)) return
     scrapedTracksRef.current.add(scrapeKey)
     const scrape = track.source === 'local' ? scrapeLocalTrack : scrapeWebDavTrack
-    void scrape(href).then((scrapedTrack) => {
+    void scrape(track.sourceId, href).then((scrapedTrack) => {
       if (scrapedTrack) updateTrack(scrapedTrack)
     }).catch(() => {
       // A failed provider lookup is retried after the next app launch or library sync.
     })
-  }, [track?.enrichmentVersion, track?.remotePath, track?.source, updateTrack])
+  }, [track?.enrichmentVersion, track?.remotePath, track?.source, track?.sourceId, updateTrack])
 
   if (!track) return null
 
@@ -243,7 +243,7 @@ export function PlayerBar() {
             const loadedDuration = event.currentTarget.duration
             setTrackDuration(track.id, loadedDuration)
             if (track.source === 'webdav' && track.remotePath) {
-              void persistWebDavDuration(track.remotePath, loadedDuration)
+              void persistWebDavDuration(track.sourceId, track.remotePath, loadedDuration)
             }
           }
         }}

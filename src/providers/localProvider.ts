@@ -19,6 +19,7 @@ interface LocalEntry {
 }
 
 interface LocalScanResult {
+  sourceId: string
   sourceName: string
   folderPath: string
   folderName: string
@@ -30,11 +31,19 @@ interface AndroidFolder {
   name: string
 }
 
+export interface LocalLibrary {
+  sourceId: string
+  sourceName: string
+  folderPath: string
+  folderName: string
+  tracks: Track[]
+}
+
 const artworks: Track['artwork'][] = ['sunset', 'meadow', 'ember', 'mono', 'lagoon', 'blueprint']
 const supportedFormats: Track['format'][] = ['FLAC', 'MP3', 'M4A', 'AAC', 'WAV', 'OGG', 'OPUS']
 
 export async function chooseAndScanLocalFolder(name: string) {
-  if (!isTauri()) throw new Error('本地文件夹需要在听屿桌面应用中打开')
+  if (!isTauri()) throw new Error('本地文件夹需要在听屿应用中打开')
   if (/Android/i.test(navigator.userAgent)) {
     const picked = await invoke<AndroidFolder | null>('android_local_folder_pick')
     if (!picked) return null
@@ -54,47 +63,54 @@ export async function chooseAndScanLocalFolder(name: string) {
   return resultToLibrary(result)
 }
 
-export async function restoreLocalFolder() {
-  if (!isTauri()) return null
-  const result = await invoke<LocalScanResult | null>('local_library_restore')
-  return result ? resultToLibrary(result) : null
+export async function restoreLocalFolders() {
+  if (!isTauri()) return []
+  const results = await invoke<LocalScanResult[]>('local_library_restore')
+  return results.map(resultToLibrary)
 }
 
-export async function forgetLocalFolder() {
+export async function refreshLocalFolder(sourceId: string) {
+  const result = await invoke<LocalScanResult>('local_library_refresh', { sourceId })
+  return resultToLibrary(result)
+}
+
+export async function forgetLocalFolder(sourceId: string) {
   if (!isTauri()) return
-  await invoke('local_library_forget')
+  await invoke('local_library_forget', { sourceId })
 }
 
-export async function scrapeLocalTrack(path: string) {
+export async function scrapeLocalTrack(sourceId: string, path: string) {
   if (!isTauri()) return null
-  const entry = await invoke<LocalEntry>('local_library_scrape_track', { path })
-  return entryToTrack(entry)
+  const entry = await invoke<LocalEntry>('local_library_scrape_track', { sourceId, path })
+  return entryToTrack(entry, sourceId)
 }
 
-function resultToLibrary(result: LocalScanResult) {
+function resultToLibrary(result: LocalScanResult): LocalLibrary {
   return {
+    sourceId: result.sourceId,
     sourceName: result.sourceName,
     folderPath: result.folderPath,
     folderName: result.folderName,
-    tracks: result.tracks.map(entryToTrack),
+    tracks: result.tracks.map((entry) => entryToTrack(entry, result.sourceId)),
   }
 }
 
-function entryToTrack(entry: LocalEntry): Track {
+function entryToTrack(entry: LocalEntry, sourceId: string): Track {
   const extension = entry.name.split('.').pop()?.toLocaleUpperCase() ?? 'MP3'
   const format = supportedFormats.includes(extension as Track['format'])
     ? extension as Track['format']
     : 'MP3'
   return {
-    id: `local:${entry.path}`,
+    id: `local:${sourceId}:${entry.path}`,
     title: entry.title,
     artist: entry.artist,
     album: entry.album,
     duration: entry.duration || 0,
     format,
     source: 'local',
+    sourceId,
     year: entry.year || new Date().getFullYear(),
-    artwork: artworks[stableIndex(entry.path, artworks.length)],
+    artwork: artworks[stableIndex(`${sourceId}:${entry.path}`, artworks.length)],
     artworkUrl: entry.artworkUrl,
     plainLyrics: entry.plainLyrics,
     syncedLyrics: entry.syncedLyrics,

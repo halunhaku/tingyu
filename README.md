@@ -31,8 +31,8 @@
 GitHub Actions 会在推送 `v*` 标签时自动构建 macOS `.app`、`.dmg` 和已签名的 Android arm64 APK，并发布到同一个 GitHub Release：
 
 ```bash
-git tag v0.3.3
-git push origin v0.3.3
+git tag v0.4.0
+git push origin v0.4.0
 ```
 
 当前未配置 Apple Developer 签名。下载后首次打开需要在 Finder 中右键应用并选择“打开”。配置仓库中的 `APPLE_CERTIFICATE`、`APPLE_CERTIFICATE_PASSWORD`、`APPLE_SIGNING_IDENTITY`、`APPLE_ID`、`APPLE_PASSWORD` 和 `APPLE_TEAM_ID` Secrets 后，工作流会自动使用签名与公证凭据。
@@ -134,7 +134,7 @@ src-tauri/gen/android/
 
 ## 音乐源使用说明
 
-在侧栏“音乐源”旁点击 `+` 打开音乐源管理器。未添加来源时侧栏不会显示占位项；添加时需要设置一个名称，之后点击该名称即可只查看对应来源中的歌曲，也可以在管理器中删除来源。当前支持一个本地文件夹和一个 WebDAV 来源。
+在侧栏“音乐源”旁点击 `+` 打开音乐源管理器。未添加来源时侧栏不会显示占位项；添加时需要设置一个名称，之后点击该名称即可只查看对应来源中的歌曲，也可以在管理器中删除来源。可以同时添加多个本地文件夹和多个 WebDAV 来源，所有歌曲会合并到完整曲库中。
 
 添加本地来源后，选择包含音乐的目录。听屿会递归扫描最多 8 层、5,000 首歌曲，缓存标签并在下次启动时自动恢复；符号链接会被跳过，播放代理只允许访问已选择目录内的文件。
 

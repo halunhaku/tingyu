@@ -18,8 +18,14 @@ use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tokio_util::io::ReaderStream;
 use url::Url;
 use urlencoding::encode;
+use uuid::Uuid;
 
-use crate::{android_local, metadata, scraper, webdav::SharedWebDavState};
+use crate::{
+    android_local, metadata, scraper,
+    webdav::{
+        remove_source_cache, source_database_path, SharedWebDavState, LEGACY_LOCAL_SOURCE_ID,
+    },
+};
 
 const MAX_SCAN_DEPTH: usize = 8;
 const MAX_SCAN_ENTRIES: usize = 5_000;
@@ -70,21 +76,26 @@ pub struct LocalEntry {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LocalScanResult {
+    source_id: String,
     source_name: String,
     folder_path: String,
     folder_name: String,
     tracks: Vec<LocalEntry>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct SavedFolder {
+    #[serde(default = "legacy_local_source_id")]
+    source_id: String,
     #[serde(default = "default_source_name")]
     name: String,
     folder: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LocalStreamQuery {
+    source_id: String,
     path: String,
 }
 
@@ -94,7 +105,8 @@ pub async fn local_library_scan(
     folder: String,
     state: tauri::State<'_, SharedWebDavState>,
 ) -> Result<LocalScanResult, String> {
-    scan_folder(PathBuf::from(folder), name, &state, true).await
+    let source_id = Uuid::new_v4().to_string();
+    scan_folder(source_id, PathBuf::from(folder), name, &state, true).await
 }
 
 #[tauri::command]
@@ -104,58 +116,70 @@ pub async fn local_library_scan_android(
     app: tauri::AppHandle,
     state: tauri::State<'_, SharedWebDavState>,
 ) -> Result<LocalScanResult, String> {
-    scan_android_folder(folder, name, &app, &state, true).await
+    let source_id = Uuid::new_v4().to_string();
+    scan_android_folder(source_id, folder, name, &app, &state, true).await
 }
 
 #[tauri::command]
 pub async fn local_library_restore(
     app: tauri::AppHandle,
     state: tauri::State<'_, SharedWebDavState>,
-) -> Result<Option<LocalScanResult>, String> {
-    let content = match std::fs::read_to_string(&state.local_config_path) {
-        Ok(content) => content,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(error) => return Err(format!("无法读取本地音乐源配置：{error}")),
-    };
-    let saved: SavedFolder =
-        serde_json::from_str(&content).map_err(|error| format!("本地音乐源配置无效：{error}"))?;
-    let result = if saved.folder.starts_with("content://") {
-        scan_android_folder(saved.folder, saved.name, &app, &state, false).await
-    } else {
-        scan_folder(PathBuf::from(saved.folder), saved.name, &state, false).await
-    };
-    match result {
-        Ok(result) => Ok(Some(result)),
-        Err(error) => {
-            log::warn!("local library restore skipped: {error}");
-            Ok(None)
+) -> Result<Vec<LocalScanResult>, String> {
+    let mut restored = Vec::new();
+    for saved in load_folders(&state.local_config_path)? {
+        let result = scan_saved_folder(saved.clone(), &app, &state).await;
+        match result {
+            Ok(result) => restored.push(result),
+            Err(error) => log::warn!("local source {} restore skipped: {error}", saved.name),
         }
     }
+    Ok(restored)
+}
+
+#[tauri::command]
+pub async fn local_library_refresh(
+    source_id: String,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, SharedWebDavState>,
+) -> Result<LocalScanResult, String> {
+    let saved = load_folders(&state.local_config_path)?
+        .into_iter()
+        .find(|saved| saved.source_id == source_id)
+        .ok_or_else(|| "找不到这个本地音乐源".to_string())?;
+    scan_saved_folder(saved, &app, &state).await
 }
 
 #[tauri::command]
 pub async fn local_library_forget(
+    source_id: String,
     state: tauri::State<'_, SharedWebDavState>,
 ) -> Result<(), String> {
-    *state.local_root.write().await = None;
-    if state.local_config_path.exists() {
-        std::fs::remove_file(&state.local_config_path)
-            .map_err(|error| format!("无法删除本地音乐源配置：{error}"))?;
+    state.local_roots.write().await.remove(&source_id);
+    let mut folders = load_folders(&state.local_config_path)?;
+    folders.retain(|folder| folder.source_id != source_id);
+    save_folders(&state.local_config_path, &folders)?;
+    let database_path = source_database_path(&state, &source_id)?;
+    if source_id == LEGACY_LOCAL_SOURCE_ID {
+        clear_cache(&database_path)
+    } else {
+        remove_source_cache(&database_path)
     }
-    clear_cache(&state.database_path)
 }
 
 #[tauri::command]
 pub async fn local_library_scrape_track(
+    source_id: String,
     path: String,
     state: tauri::State<'_, SharedWebDavState>,
 ) -> Result<LocalEntry, String> {
     let root = state
-        .local_root
+        .local_roots
         .read()
         .await
-        .clone()
+        .get(&source_id)
+        .cloned()
         .ok_or_else(|| "请先选择本地音乐文件夹".to_string())?;
+    let database_path = source_database_path(&state, &source_id)?;
     match root {
         LocalRoot::Path(root) => {
             let canonical = std::fs::canonicalize(&path)
@@ -165,23 +189,43 @@ pub async fn local_library_scrape_track(
             }
         }
         LocalRoot::ContentUri(_) => {
-            if !load_cache(&state.database_path)?.contains_key(&path) {
+            if !load_cache(&database_path)?.contains_key(&path) {
                 return Err("音频不在已授权的 Android 本地曲库中".into());
             }
         }
     }
-    init_cache(&state.database_path)?;
-    let mut track = load_cache(&state.database_path)?
+    init_cache(&database_path)?;
+    let mut track = load_cache(&database_path)?
         .remove(&path)
         .ok_or_else(|| "本地曲库中找不到这首歌".to_string())?;
     if track.enrichment_version < scraper::ENRICHMENT_VERSION {
         enrich_track(&mut track, &state).await;
-        update_cached_track(&state.database_path, &track)?;
+        update_cached_track(&database_path, &track)?;
     }
-    Ok(to_entry(&track, &state))
+    Ok(to_entry(&track, &source_id, &state))
+}
+
+async fn scan_saved_folder(
+    saved: SavedFolder,
+    app: &tauri::AppHandle,
+    state: &SharedWebDavState,
+) -> Result<LocalScanResult, String> {
+    if saved.folder.starts_with("content://") {
+        scan_android_folder(saved.source_id, saved.folder, saved.name, app, state, false).await
+    } else {
+        scan_folder(
+            saved.source_id,
+            PathBuf::from(saved.folder),
+            saved.name,
+            state,
+            false,
+        )
+        .await
+    }
 }
 
 async fn scan_folder(
+    source_id: String,
     folder: PathBuf,
     name: String,
     state: &SharedWebDavState,
@@ -200,52 +244,41 @@ async fn scan_folder(
     if remember {
         save_folder(
             &state.local_config_path,
+            &source_id,
             &root.to_string_lossy(),
             &source_name,
         )?;
     }
-    *state.local_root.write().await = Some(LocalRoot::Path(root.clone()));
+    state
+        .local_roots
+        .write()
+        .await
+        .insert(source_id.clone(), LocalRoot::Path(root.clone()));
 
-    let database_path = state.database_path.clone();
+    let database_path = source_database_path(state, &source_id)?;
     let cover_directory = state.cover_directory.clone();
     let root_for_scan = root.clone();
+    let database_for_scan = database_path.clone();
     let mut tracks = tauri::async_runtime::spawn_blocking(move || {
-        build_local_library(&database_path, &cover_directory, &root_for_scan)
+        build_local_library(&database_for_scan, &cover_directory, &root_for_scan)
     })
     .await
     .map_err(|error| format!("本地曲库扫描任务失败：{error}"))??;
 
-    let candidates = tracks
-        .iter()
-        .enumerate()
-        .filter(|(_, track)| track.enrichment_version < scraper::ENRICHMENT_VERSION)
-        .map(|(index, _)| index)
-        .take(MAX_AUTO_SCRAPES)
-        .collect::<Vec<_>>();
-    let shared_state = state.clone();
-    let enriched = stream::iter(candidates.into_iter().map(|index| {
-        let shared_state = shared_state.clone();
-        let mut track = tracks[index].clone();
-        async move {
-            enrich_track(&mut track, &shared_state).await;
-            (index, track)
-        }
-    }))
-    .buffer_unordered(MAX_CONCURRENT_SCRAPES)
-    .collect::<Vec<_>>()
-    .await;
-    for (index, track) in enriched {
-        tracks[index] = track;
-    }
-    save_cache(&state.database_path, &tracks)?;
+    enrich_tracks(&mut tracks, state).await;
+    save_cache(&database_path, &tracks)?;
 
     let folder_name = root
         .file_name()
         .and_then(|name| name.to_str())
         .unwrap_or("本地音乐")
         .to_string();
-    let entries = tracks.iter().map(|track| to_entry(track, state)).collect();
+    let entries = tracks
+        .iter()
+        .map(|track| to_entry(track, &source_id, state))
+        .collect();
     Ok(LocalScanResult {
+        source_id,
         source_name,
         folder_path: root.to_string_lossy().into_owned(),
         folder_name,
@@ -254,6 +287,7 @@ async fn scan_folder(
 }
 
 async fn scan_android_folder(
+    source_id: String,
     root_uri: String,
     name: String,
     app: &tauri::AppHandle,
@@ -269,7 +303,12 @@ async fn scan_android_folder(
         name.trim().to_string()
     };
     if remember {
-        save_folder(&state.local_config_path, &root_uri, &source_name)?;
+        save_folder(
+            &state.local_config_path,
+            &source_id,
+            &root_uri,
+            &source_name,
+        )?;
     }
 
     let app_for_scan = app.clone();
@@ -280,14 +319,19 @@ async fn scan_android_folder(
     .await
     .map_err(|error| format!("Android 曲库扫描任务失败：{error}"))??;
 
-    *state.local_root.write().await = Some(LocalRoot::ContentUri(root_uri.clone()));
+    state
+        .local_roots
+        .write()
+        .await
+        .insert(source_id.clone(), LocalRoot::ContentUri(root_uri.clone()));
 
-    let database_path = state.database_path.clone();
+    let database_path = source_database_path(state, &source_id)?;
+    let database_for_scan = database_path.clone();
     let cover_directory = state.cover_directory.clone();
     let app_for_metadata = app.clone();
     let mut tracks = tauri::async_runtime::spawn_blocking(move || {
         build_android_library(
-            &database_path,
+            &database_for_scan,
             &cover_directory,
             &app_for_metadata,
             scanned.files,
@@ -296,6 +340,23 @@ async fn scan_android_folder(
     .await
     .map_err(|error| format!("Android 曲库标签读取任务失败：{error}"))??;
 
+    enrich_tracks(&mut tracks, state).await;
+    save_cache(&database_path, &tracks)?;
+
+    let entries = tracks
+        .iter()
+        .map(|track| to_entry(track, &source_id, state))
+        .collect();
+    Ok(LocalScanResult {
+        source_id,
+        source_name,
+        folder_path: root_uri,
+        folder_name: scanned.name,
+        tracks: entries,
+    })
+}
+
+async fn enrich_tracks(tracks: &mut [LocalTrack], state: &SharedWebDavState) {
     let candidates = tracks
         .iter()
         .enumerate()
@@ -318,15 +379,6 @@ async fn scan_android_folder(
     for (index, track) in enriched {
         tracks[index] = track;
     }
-    save_cache(&state.database_path, &tracks)?;
-
-    let entries = tracks.iter().map(|track| to_entry(track, state)).collect();
-    Ok(LocalScanResult {
-        source_name,
-        folder_path: root_uri,
-        folder_name: scanned.name,
-        tracks: entries,
-    })
 }
 
 fn build_android_library(
@@ -473,7 +525,7 @@ async fn enrich_track(track: &mut LocalTrack, state: &SharedWebDavState) {
     }
 }
 
-fn to_entry(track: &LocalTrack, state: &SharedWebDavState) -> LocalEntry {
+fn to_entry(track: &LocalTrack, source_id: &str, state: &SharedWebDavState) -> LocalEntry {
     LocalEntry {
         path: track.path.clone(),
         name: track.name.clone(),
@@ -484,9 +536,10 @@ fn to_entry(track: &LocalTrack, state: &SharedWebDavState) -> LocalEntry {
         duration: track.duration,
         size: track.size,
         stream_url: format!(
-            "{}/local/{}?path={}",
+            "{}/local/{}?sourceId={}&path={}",
             state.proxy_origin,
             state.proxy_token,
+            encode(source_id),
             encode(&track.path)
         ),
         artwork_url: track.cover_file.as_ref().map(|filename| {
@@ -551,17 +604,49 @@ fn title_from_filename(name: &str) -> (String, String) {
     }
 }
 
-fn save_folder(path: &FsPath, root: &str, name: &str) -> Result<(), String> {
+fn load_folders(path: &FsPath) -> Result<Vec<SavedFolder>, String> {
+    let content = match std::fs::read_to_string(path) {
+        Ok(content) => content,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(error) => return Err(format!("无法读取本地音乐源配置：{error}")),
+    };
+    if let Ok(folders) = serde_json::from_str::<Vec<SavedFolder>>(&content) {
+        return Ok(folders);
+    }
+    serde_json::from_str::<SavedFolder>(&content)
+        .map(|folder| vec![folder])
+        .map_err(|error| format!("本地音乐源配置无效：{error}"))
+}
+
+fn save_folders(path: &FsPath, folders: &[SavedFolder]) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
             .map_err(|error| format!("无法创建本地音乐源配置目录：{error}"))?;
     }
-    let content = serde_json::to_vec_pretty(&SavedFolder {
+    let content = serde_json::to_vec_pretty(folders)
+        .map_err(|error| format!("无法保存本地音乐源配置：{error}"))?;
+    let temporary = path.with_extension("json.tmp");
+    std::fs::write(&temporary, content)
+        .map_err(|error| format!("无法保存本地音乐源配置：{error}"))?;
+    std::fs::rename(temporary, path).map_err(|error| format!("无法保存本地音乐源配置：{error}"))
+}
+
+fn save_folder(path: &FsPath, source_id: &str, root: &str, name: &str) -> Result<(), String> {
+    let mut folders = load_folders(path)?;
+    let folder = SavedFolder {
+        source_id: source_id.to_string(),
         name: name.to_string(),
         folder: root.to_string(),
-    })
-    .map_err(|error| format!("无法保存本地音乐源配置：{error}"))?;
-    std::fs::write(path, content).map_err(|error| format!("无法保存本地音乐源配置：{error}"))
+    };
+    if let Some(existing) = folders
+        .iter_mut()
+        .find(|existing| existing.source_id == source_id)
+    {
+        *existing = folder;
+    } else {
+        folders.push(folder);
+    }
+    save_folders(path, &folders)
 }
 
 fn init_cache(path: &FsPath) -> Result<(), String> {
@@ -692,6 +777,10 @@ fn default_source_name() -> String {
     "本地音乐".into()
 }
 
+fn legacy_local_source_id() -> String {
+    LEGACY_LOCAL_SOURCE_ID.into()
+}
+
 fn cache_error(error: rusqlite::Error) -> String {
     format!("本地曲库缓存操作失败：{error}")
 }
@@ -706,12 +795,22 @@ pub async fn stream_local(
     if token != state.proxy_token {
         return StatusCode::NOT_FOUND.into_response();
     }
-    let Some(root) = state.local_root.read().await.clone() else {
+    let Some(root) = state
+        .local_roots
+        .read()
+        .await
+        .get(&query.source_id)
+        .cloned()
+    else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,
             "Local library is unavailable",
         )
             .into_response();
+    };
+    let database_path = match source_database_path(&state, &query.source_id) {
+        Ok(path) => path,
+        Err(_) => return StatusCode::FORBIDDEN.into_response(),
     };
     let (mut file, size, mime_name) = match root {
         LocalRoot::Path(root) => {
@@ -736,7 +835,7 @@ pub async fn stream_local(
             if !root_uri.starts_with("content://") {
                 return StatusCode::FORBIDDEN.into_response();
             }
-            let cached = match load_cache(&state.database_path)
+            let cached = match load_cache(&database_path)
                 .ok()
                 .and_then(|tracks| tracks.get(&query.path).cloned())
             {
@@ -826,5 +925,26 @@ mod tests {
         assert_eq!(parse_range("bytes=90-", 100), Some((90, 99)));
         assert_eq!(parse_range("bytes=-10", 100), Some((90, 99)));
         assert_eq!(parse_range("bytes=100-", 100), None);
+    }
+
+    #[test]
+    fn migrates_single_folder_config_and_keeps_multiple_sources() {
+        let path = std::env::temp_dir().join(format!("tingyu-folders-{}.json", Uuid::new_v4()));
+        std::fs::write(&path, r#"{"name":"旧曲库","folder":"/music/legacy"}"#).unwrap();
+
+        let legacy = load_folders(&path).unwrap();
+        assert_eq!(legacy.len(), 1);
+        assert_eq!(legacy[0].source_id, LEGACY_LOCAL_SOURCE_ID);
+
+        let source_id = Uuid::new_v4().to_string();
+        save_folder(&path, &source_id, "/music/new", "新曲库").unwrap();
+        let folders = load_folders(&path).unwrap();
+        assert_eq!(folders.len(), 2);
+        assert!(folders.iter().any(|folder| folder.source_id == source_id));
+        assert!(folders
+            .iter()
+            .any(|folder| folder.source_id == LEGACY_LOCAL_SOURCE_ID));
+
+        let _ = std::fs::remove_file(path);
     }
 }

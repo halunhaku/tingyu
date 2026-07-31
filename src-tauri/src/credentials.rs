@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(target_os = "macos")]
 const KEYCHAIN_SERVICE: &str = "com.halunhaku.tingyu.webdav";
 #[cfg(target_os = "macos")]
-const KEYCHAIN_ACCOUNT: &str = "default";
+const LEGACY_KEYCHAIN_ACCOUNT: &str = "default";
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -66,21 +66,33 @@ fn default_source_name() -> String {
 }
 
 #[cfg(target_os = "macos")]
-fn keychain_entry() -> Result<Entry, String> {
-    Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT)
+fn keychain_account(path: &Path) -> String {
+    match path.file_name().and_then(|value| value.to_str()) {
+        Some("webdav-connection.json") => LEGACY_KEYCHAIN_ACCOUNT.into(),
+        _ => path
+            .file_stem()
+            .and_then(|value| value.to_str())
+            .unwrap_or(LEGACY_KEYCHAIN_ACCOUNT)
+            .to_string(),
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn keychain_entry(path: &Path) -> Result<Entry, String> {
+    Entry::new(KEYCHAIN_SERVICE, &keychain_account(path))
         .map_err(|error| format!("无法访问系统 Keychain：{error}"))
 }
 
 #[cfg(target_os = "macos")]
-fn save_password(_path: &Path, password: &str) -> Result<(), String> {
-    keychain_entry()?
+fn save_password(path: &Path, password: &str) -> Result<(), String> {
+    keychain_entry(path)?
         .set_password(password)
         .map_err(|error| format!("无法写入系统 Keychain：{error}"))
 }
 
 #[cfg(target_os = "macos")]
-fn load_password(_path: &Path) -> Result<Option<String>, String> {
-    match keychain_entry()?.get_password() {
+fn load_password(path: &Path) -> Result<Option<String>, String> {
+    match keychain_entry(path)?.get_password() {
         Ok(password) => Ok(Some(password)),
         Err(KeyringError::NoEntry) => Ok(None),
         Err(error) => Err(format!("无法读取系统 Keychain：{error}")),
@@ -88,8 +100,8 @@ fn load_password(_path: &Path) -> Result<Option<String>, String> {
 }
 
 #[cfg(target_os = "macos")]
-fn forget_password(_path: &Path) -> Result<(), String> {
-    match keychain_entry()?.delete_credential() {
+fn forget_password(path: &Path) -> Result<(), String> {
+    match keychain_entry(path)?.delete_credential() {
         Ok(()) | Err(KeyringError::NoEntry) => Ok(()),
         Err(error) => Err(format!("无法删除系统 Keychain 凭据：{error}")),
     }

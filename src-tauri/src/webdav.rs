@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashSet, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     path::PathBuf,
     sync::Arc,
     time::Duration,
@@ -48,20 +48,90 @@ pub struct WebDavSession {
     password: String,
 }
 
+pub const LEGACY_WEBDAV_SOURCE_ID: &str = "legacy-webdav";
+pub const LEGACY_LOCAL_SOURCE_ID: &str = "legacy-local";
+
 pub struct WebDavState {
     pub app_handle: tauri::AppHandle,
-    pub session: RwLock<Option<WebDavSession>>,
+    pub sessions: RwLock<HashMap<String, WebDavSession>>,
     pub proxy_origin: String,
     pub proxy_token: String,
     pub database_path: PathBuf,
+    pub source_cache_directory: PathBuf,
     pub cover_directory: PathBuf,
     pub connection_path: PathBuf,
+    pub connection_directory: PathBuf,
     pub local_config_path: PathBuf,
-    pub local_root: RwLock<Option<local_library::LocalRoot>>,
+    pub local_roots: RwLock<HashMap<String, local_library::LocalRoot>>,
     pub scraper_client: Client,
 }
 
 pub type SharedWebDavState = Arc<WebDavState>;
+
+pub fn source_database_path(state: &WebDavState, source_id: &str) -> Result<PathBuf, String> {
+    if is_legacy_source(source_id) {
+        return Ok(state.database_path.clone());
+    }
+    Uuid::parse_str(source_id).map_err(|_| "音乐源 ID 无效".to_string())?;
+    Ok(state
+        .source_cache_directory
+        .join(format!("{source_id}.sqlite3")))
+}
+
+pub fn remove_source_cache(path: &std::path::Path) -> Result<(), String> {
+    for candidate in [
+        path.to_path_buf(),
+        PathBuf::from(format!("{}-wal", path.display())),
+        PathBuf::from(format!("{}-shm", path.display())),
+    ] {
+        match std::fs::remove_file(candidate) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(format!("无法删除音乐源缓存：{error}")),
+        }
+    }
+    Ok(())
+}
+
+fn is_legacy_source(source_id: &str) -> bool {
+    matches!(source_id, LEGACY_WEBDAV_SOURCE_ID | LEGACY_LOCAL_SOURCE_ID)
+}
+
+fn connection_path_for(state: &WebDavState, source_id: &str) -> PathBuf {
+    if source_id == LEGACY_WEBDAV_SOURCE_ID {
+        state.connection_path.clone()
+    } else {
+        state.connection_directory.join(format!("{source_id}.json"))
+    }
+}
+
+fn saved_connection_paths(state: &WebDavState) -> Result<Vec<(String, PathBuf)>, String> {
+    let mut paths = Vec::new();
+    if state.connection_path.exists() {
+        paths.push((
+            LEGACY_WEBDAV_SOURCE_ID.into(),
+            state.connection_path.clone(),
+        ));
+    }
+    let entries = std::fs::read_dir(&state.connection_directory)
+        .map_err(|error| format!("无法读取 WebDAV 音乐源配置：{error}"))?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|value| value.to_str()) != Some("json") {
+            continue;
+        }
+        let Some(source_id) = path
+            .file_stem()
+            .and_then(|value| value.to_str())
+            .filter(|value| Uuid::parse_str(value).is_ok())
+        else {
+            continue;
+        };
+        paths.push((source_id.to_string(), path));
+    }
+    paths.sort_by(|left, right| left.0.cmp(&right.0));
+    Ok(paths)
+}
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -80,6 +150,7 @@ pub struct WebDavConfig {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionInfo {
+    pub source_id: String,
     pub name: String,
     pub base_url: String,
     pub server_name: String,
@@ -119,7 +190,8 @@ pub struct ScanResult {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CachedLibrary {
-    pub name: Option<String>,
+    pub source_id: String,
+    pub name: String,
     pub tracks: Vec<WebDavEntry>,
 }
 
@@ -133,7 +205,9 @@ pub struct ScanStats {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct StreamQuery {
+    source_id: String,
     href: String,
 }
 
@@ -146,6 +220,15 @@ pub fn create_state(
     local_config_path: PathBuf,
 ) -> Result<SharedWebDavState, String> {
     library_cache::init(&database_path)?;
+    let app_data_directory = database_path
+        .parent()
+        .ok_or_else(|| "无法确定应用数据目录".to_string())?;
+    let source_cache_directory = app_data_directory.join("source-caches");
+    let connection_directory = app_data_directory.join("webdav-connections");
+    std::fs::create_dir_all(&source_cache_directory)
+        .map_err(|error| format!("无法创建音乐源缓存目录：{error}"))?;
+    std::fs::create_dir_all(&connection_directory)
+        .map_err(|error| format!("无法创建 WebDAV 配置目录：{error}"))?;
     let scraper_client = Client::builder()
         .user_agent("Tingyu/0.3 Music Metadata Scraper")
         .timeout(Duration::from_secs(4))
@@ -153,14 +236,16 @@ pub fn create_state(
         .map_err(|error| format!("无法创建元数据刮削客户端：{error}"))?;
     Ok(Arc::new(WebDavState {
         app_handle,
-        session: RwLock::new(None),
+        sessions: RwLock::new(HashMap::new()),
         proxy_origin: format!("http://127.0.0.1:{port}"),
         proxy_token: Uuid::new_v4().to_string(),
         database_path,
+        source_cache_directory,
         cover_directory,
         connection_path,
+        connection_directory,
         local_config_path,
-        local_root: RwLock::new(None),
+        local_roots: RwLock::new(HashMap::new()),
         scraper_client,
     }))
 }
@@ -216,10 +301,11 @@ pub async fn webdav_connect(
     config: WebDavConfig,
     state: tauri::State<'_, SharedWebDavState>,
 ) -> Result<ConnectionInfo, String> {
-    let (session, mut info) = establish_session(&config).await?;
+    let source_id = Uuid::new_v4().to_string();
+    let (session, mut info) = establish_session(&config, &source_id).await?;
     if config.remember {
         credentials::save(
-            &state.connection_path,
+            &connection_path_for(&state, &source_id),
             &credentials::SavedConnection {
                 name: config.name.clone(),
                 base_url: info.base_url.clone(),
@@ -228,10 +314,8 @@ pub async fn webdav_connect(
             },
             &config.password,
         )?;
-    } else {
-        credentials::forget(&state.connection_path)?;
     }
-    *state.session.write().await = Some(session);
+    state.sessions.write().await.insert(source_id, session);
     info.folder.clone_from(&config.folder);
     Ok(info)
 }
@@ -239,49 +323,94 @@ pub async fn webdav_connect(
 #[tauri::command]
 pub async fn webdav_restore(
     state: tauri::State<'_, SharedWebDavState>,
-) -> Result<Option<ConnectionInfo>, String> {
-    let Some((saved, password)) = credentials::load(&state.connection_path)? else {
-        return Ok(None);
-    };
-    let config = WebDavConfig {
-        name: saved.name,
-        base_url: saved.base_url,
-        username: saved.username,
-        password,
-        folder: saved.folder,
-        remember: false,
-    };
-    let (session, mut info) = establish_session(&config).await?;
-    info.folder.clone_from(&config.folder);
-    info.restored = true;
-    *state.session.write().await = Some(session);
-    Ok(Some(info))
+) -> Result<Vec<ConnectionInfo>, String> {
+    let mut restored = Vec::new();
+    for (source_id, path) in saved_connection_paths(&state)? {
+        let (saved, password) = match credentials::load(&path) {
+            Ok(Some(connection)) => connection,
+            Ok(None) => continue,
+            Err(error) => {
+                log::warn!("WebDAV credentials for {source_id} could not be loaded: {error}");
+                continue;
+            }
+        };
+        let config = WebDavConfig {
+            name: saved.name,
+            base_url: saved.base_url,
+            username: saved.username,
+            password,
+            folder: saved.folder,
+            remember: false,
+        };
+        match establish_session(&config, &source_id).await {
+            Ok((session, mut info)) => {
+                info.folder.clone_from(&config.folder);
+                info.restored = true;
+                state.sessions.write().await.insert(source_id, session);
+                restored.push(info);
+            }
+            Err(error) => log::warn!("WebDAV source {} restore skipped: {error}", config.name),
+        }
+    }
+    Ok(restored)
 }
 
 #[tauri::command]
-pub async fn webdav_forget(state: tauri::State<'_, SharedWebDavState>) -> Result<(), String> {
-    *state.session.write().await = None;
-    credentials::forget(&state.connection_path)?;
-    library_cache::clear_all(&state.database_path)
+pub async fn webdav_forget(
+    source_id: String,
+    state: tauri::State<'_, SharedWebDavState>,
+) -> Result<(), String> {
+    state.sessions.write().await.remove(&source_id);
+    credentials::forget(&connection_path_for(&state, &source_id))?;
+    let database_path = source_database_path(&state, &source_id)?;
+    if is_legacy_source(&source_id) {
+        library_cache::clear_all(&database_path)
+    } else {
+        remove_source_cache(&database_path)
+    }
 }
 
 #[tauri::command]
 pub async fn webdav_cached_library(
     state: tauri::State<'_, SharedWebDavState>,
-) -> Result<CachedLibrary, String> {
-    let cached = library_cache::load_all(&state.database_path)?;
-    let name = credentials::load_saved(&state.connection_path)?.map(|saved| saved.name);
-    Ok(CachedLibrary {
-        name,
-        tracks: cached
-            .iter()
-            .map(|track| cached_to_entry(track, &state))
-            .collect(),
-    })
+) -> Result<Vec<CachedLibrary>, String> {
+    let mut libraries = Vec::new();
+    for (source_id, path) in saved_connection_paths(&state)? {
+        let saved = match credentials::load_saved(&path) {
+            Ok(Some(saved)) => saved,
+            Ok(None) => continue,
+            Err(error) => {
+                log::warn!("WebDAV config for {source_id} could not be loaded: {error}");
+                continue;
+            }
+        };
+        let database_path = source_database_path(&state, &source_id)?;
+        if let Err(error) = library_cache::init(&database_path) {
+            log::warn!("WebDAV cache for {source_id} could not be opened: {error}");
+            continue;
+        }
+        let cached = match library_cache::load_all(&database_path) {
+            Ok(cached) => cached,
+            Err(error) => {
+                log::warn!("WebDAV cache for {source_id} could not be loaded: {error}");
+                continue;
+            }
+        };
+        libraries.push(CachedLibrary {
+            source_id: source_id.clone(),
+            name: saved.name,
+            tracks: cached
+                .iter()
+                .map(|track| cached_to_entry(track, &source_id, &state))
+                .collect(),
+        });
+    }
+    Ok(libraries)
 }
 
 #[tauri::command]
 pub async fn webdav_update_duration(
+    source_id: String,
     href: String,
     duration: f64,
     state: tauri::State<'_, SharedWebDavState>,
@@ -289,39 +418,45 @@ pub async fn webdav_update_duration(
     if !duration.is_finite() || duration <= 0.0 {
         return Ok(());
     }
-    library_cache::update_duration(&state.database_path, &href, duration)
+    library_cache::update_duration(&source_database_path(&state, &source_id)?, &href, duration)
 }
 
 #[tauri::command]
 pub async fn webdav_scrape_track(
+    source_id: String,
     href: String,
     state: tauri::State<'_, SharedWebDavState>,
 ) -> Result<WebDavEntry, String> {
-    let mut track = library_cache::load_map(&state.database_path)?
+    let database_path = source_database_path(&state, &source_id)?;
+    let mut track = library_cache::load_map(&database_path)?
         .remove(&href)
         .ok_or_else(|| "曲库中找不到这首歌".to_string())?;
     if track.enrichment_version < scraper::ENRICHMENT_VERSION {
         enrich_cached_track(&mut track, &state).await;
-        library_cache::update_enrichment(&state.database_path, &track)?;
+        library_cache::update_enrichment(&database_path, &track)?;
     }
-    Ok(cached_to_entry(&track, &state))
+    Ok(cached_to_entry(&track, &source_id, &state))
 }
 
 #[tauri::command]
 pub async fn webdav_scan(
+    source_id: String,
     folder: Option<String>,
     recursive: Option<bool>,
     state: tauri::State<'_, SharedWebDavState>,
 ) -> Result<ScanResult, String> {
     let session = state
-        .session
+        .sessions
         .read()
         .await
-        .clone()
-        .ok_or_else(|| "请先连接 WebDAV".to_string())?;
+        .get(&source_id)
+        .cloned()
+        .ok_or_else(|| "请先连接这个 WebDAV 音乐源".to_string())?;
+    let database_path = source_database_path(&state, &source_id)?;
+    library_cache::init(&database_path)?;
     let root = join_relative_path(&session.base_url, folder.as_deref().unwrap_or(""))?;
     let should_recurse = recursive.unwrap_or(true);
-    let existing = library_cache::load_map(&state.database_path)?;
+    let existing = library_cache::load_map(&database_path)?;
     let remote_files = collect_audio_files(&session, root, should_recurse).await?;
     let mut stats = ScanStats::default();
     let mut cached_tracks = Vec::with_capacity(remote_files.len());
@@ -341,7 +476,8 @@ pub async fn webdav_scan(
             }
             let remote_url = resolve_href(&session.base_url, &entry.href)?;
             let cache_key = format!(
-                "{}:{}",
+                "{}:{}:{}",
+                source_id,
                 entry.href,
                 entry
                     .etag
@@ -417,16 +553,17 @@ pub async fn webdav_scan(
     }
 
     let scan_id = Uuid::new_v4().to_string();
-    stats.removed = library_cache::save_scan(&state.database_path, &cached_tracks, &scan_id)?;
+    stats.removed = library_cache::save_scan(&database_path, &cached_tracks, &scan_id)?;
     let tracks = cached_tracks
         .iter()
-        .map(|track| cached_to_entry(track, &state))
+        .map(|track| cached_to_entry(track, &source_id, &state))
         .collect();
     Ok(ScanResult { tracks, stats })
 }
 
 async fn establish_session(
     config: &WebDavConfig,
+    source_id: &str,
 ) -> Result<(WebDavSession, ConnectionInfo), String> {
     let mut base_url =
         Url::parse(config.base_url.trim()).map_err(|_| "WebDAV 地址格式不正确".to_string())?;
@@ -451,6 +588,7 @@ async fn establish_session(
     };
     propfind(&session, base_url.clone(), "0").await?;
     let info = ConnectionInfo {
+        source_id: source_id.to_string(),
         name: config.name.trim().to_string(),
         server_name: base_url.host_str().unwrap_or("WebDAV").to_string(),
         base_url: base_url.to_string(),
@@ -572,7 +710,7 @@ fn parse_multistatus(xml: &str) -> Result<Vec<WebDavEntry>, String> {
     Ok(entries)
 }
 
-fn cached_to_entry(track: &CachedTrack, state: &WebDavState) -> WebDavEntry {
+fn cached_to_entry(track: &CachedTrack, source_id: &str, state: &WebDavState) -> WebDavEntry {
     WebDavEntry {
         name: track.name.clone(),
         href: track.href.clone(),
@@ -582,9 +720,10 @@ fn cached_to_entry(track: &CachedTrack, state: &WebDavState) -> WebDavEntry {
         etag: track.etag.clone(),
         is_directory: false,
         stream_url: Some(format!(
-            "{}/stream/{}?href={}",
+            "{}/stream/{}?sourceId={}&href={}",
             state.proxy_origin,
             state.proxy_token,
+            urlencoding::encode(source_id),
             urlencoding::encode(&track.href)
         )),
         artwork_url: track.cover_file.as_ref().map(|filename| {
@@ -794,10 +933,14 @@ async fn stream_audio(
     if token != state.proxy_token {
         return (StatusCode::NOT_FOUND, "Not found").into_response();
     }
-    let session = match state.session.read().await.clone() {
+    let session = match state.sessions.read().await.get(&query.source_id).cloned() {
         Some(session) => session,
         None => {
-            return (StatusCode::SERVICE_UNAVAILABLE, "WebDAV is not connected").into_response()
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "WebDAV source is not connected",
+            )
+                .into_response()
         }
     };
     let remote_url = match resolve_href(&session.base_url, &query.href)

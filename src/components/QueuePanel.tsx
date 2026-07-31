@@ -40,7 +40,7 @@ export function QueuePanel() {
         <span className="sync-card__icon"><RadioTower size={18} /></span>
         <div>
           <strong>曲库已同步</strong>
-          <span>来自云端音乐源的 {library.length} 首歌</span>
+          <span>所有音乐源共 {library.length} 首歌</span>
         </div>
         <span className="sync-card__pulse" />
       </div>

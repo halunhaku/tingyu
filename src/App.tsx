@@ -23,16 +23,18 @@ import {
   chooseAndScanLocalFolder,
   forgetLocalFolder,
   readableLocalError,
-  restoreLocalFolder,
+  refreshLocalFolder,
+  restoreLocalFolders,
 } from './providers/localProvider'
 import {
   forgetWebDav,
-  loadCachedWebDav,
-  restoreAndScanWebDav,
+  loadCachedWebDavs,
+  restoreAndScanWebDavs,
+  scanWebDav,
   type ScanStats,
 } from './providers/webdavProvider'
 import { usePlayerStore } from './stores/playerStore'
-import type { SourceKind } from './types/music'
+import type { MusicSource, Track } from './types/music'
 
 type View = 'library' | 'favorites'
 
@@ -62,11 +64,8 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [webdavSetupOpen, setWebdavSetupOpen] = useState(false)
   const [sourceManagerOpen, setSourceManagerOpen] = useState(false)
-  const [activeSource, setActiveSource] = useState<SourceKind | null>(null)
-  const [webdavName, setWebdavName] = useState('')
-  const [webdavStatus, setWebdavStatus] = useState('')
-  const [localName, setLocalName] = useState('')
-  const [localStatus, setLocalStatus] = useState('')
+  const [activeSourceId, setActiveSourceId] = useState<string | null>(null)
+  const [sources, setSources] = useState<MusicSource[]>([])
   const [syncMessage, setSyncMessage] = useState('本地曲库')
   const searchInputRef = useRef<HTMLInputElement>(null)
   const restoreStartedRef = useRef(false)
@@ -82,13 +81,22 @@ function App() {
   const replaceSourceTracks = usePlayerStore((state) => state.replaceSourceTracks)
   const removeSource = usePlayerStore((state) => state.removeSource)
 
+  const upsertSource = useCallback((source: MusicSource) => {
+    setSources((current) => {
+      const exists = current.some((item) => item.id === source.id)
+      return exists
+        ? current.map((item) => item.id === source.id ? { ...item, ...source } : item)
+        : [...current, source]
+    })
+  }, [])
+
   const currentTrack = library.find((track) => track.id === currentTrackId) ?? library[0]
-  const selectedSourceName = activeSource === 'webdav' ? webdavName : activeSource === 'local' ? localName : ''
-  const copy = selectedSourceName
+  const selectedSource = sources.find((source) => source.id === activeSourceId)
+  const copy = selectedSource
     ? {
-        eyebrow: activeSource === 'webdav' ? 'WEBDAV SOURCE' : 'LOCAL SOURCE',
-        title: selectedSourceName,
-        description: activeSource === 'webdav' ? webdavStatus : localStatus,
+        eyebrow: selectedSource.kind === 'webdav' ? 'WEBDAV SOURCE' : 'LOCAL SOURCE',
+        title: selectedSource.name,
+        description: selectedSource.status,
       }
     : viewCopy[activeView]
 
@@ -98,8 +106,8 @@ function App() {
       ? library.filter((track) => likedIds.includes(track.id))
       : library
 
-    if (activeSource) {
-      result = result.filter((track) => track.source === activeSource)
+    if (activeSourceId) {
+      result = result.filter((track) => track.sourceId === activeSourceId)
     }
     if (normalized) {
       result = result.filter((track) =>
@@ -109,9 +117,9 @@ function App() {
       )
     }
     return result
-  }, [activeSource, activeView, library, likedIds, query])
+  }, [activeSourceId, activeView, library, likedIds, query])
 
-  const spotlightTrack = currentTrack && (!activeSource || currentTrack.source === activeSource)
+  const spotlightTrack = currentTrack && (!activeSourceId || currentTrack.sourceId === activeSourceId)
     ? currentTrack
     : visibleTracks[0]
 
@@ -125,46 +133,61 @@ function App() {
     restoreStartedRef.current = true
     let cancelled = false
 
-    const restoreLocalLibrary = async () => {
+    const restoreLocalLibraries = async () => {
       try {
-        const restored = await restoreLocalFolder()
-        if (!restored || cancelled) return
-        replaceSourceTracks('local', restored.tracks)
-        setLocalName(restored.sourceName)
-        setLocalStatus(`${restored.tracks.length} 首 · ${restored.folderName}`)
-      } catch (error) {
-        if (!cancelled) setLocalStatus(readableLocalError(error))
-      }
-    }
-
-    const restoreLibrary = async () => {
-      void restoreLocalLibrary()
-      const cachedLibrary = await loadCachedWebDav()
-      if (cancelled) return
-      if (cachedLibrary.name) {
-        setWebdavName(cachedLibrary.name)
-        setWebdavStatus(`${cachedLibrary.tracks.length} 首 · 本地缓存`)
-        replaceSourceTracks('webdav', cachedLibrary.tracks)
-        setSyncMessage('正在增量同步')
-      }
-      try {
-        const restored = await restoreAndScanWebDav()
-        if (!restored || cancelled) {
-          setSyncMessage(cachedLibrary.tracks.length ? '使用本地缓存' : '本地曲库')
-          return
+        const restored = await restoreLocalFolders()
+        if (cancelled) return
+        for (const source of restored) {
+          replaceSourceTracks(source.sourceId, source.tracks)
+          upsertSource({
+            id: source.sourceId,
+            kind: 'local',
+            name: source.sourceName,
+            status: `${source.tracks.length} 首 · ${source.folderName}`,
+            folder: source.folderPath,
+          })
         }
-        replaceSourceTracks('webdav', restored.tracks)
-        setWebdavName(restored.connection.name)
-        setWebdavStatus(`${restored.tracks.length} 首 · ${restored.connection.serverName}`)
-        setSyncMessage(formatSyncStats(restored.stats))
-      } catch {
-        if (!cancelled) setSyncMessage(cachedLibrary.tracks.length ? '使用本地缓存' : '需要连接')
+      } catch (error) {
+        if (!cancelled) setSyncMessage(readableLocalError(error))
       }
     }
 
-    void restoreLibrary()
+    const restoreLibraries = async () => {
+      void restoreLocalLibraries()
+      const cachedLibraries = await loadCachedWebDavs()
+      if (cancelled) return
+      for (const cached of cachedLibraries) {
+        replaceSourceTracks(cached.sourceId, cached.tracks)
+        upsertSource({
+          id: cached.sourceId,
+          kind: 'webdav',
+          name: cached.name,
+          status: `${cached.tracks.length} 首 · 本地缓存`,
+        })
+      }
+      if (cachedLibraries.length) setSyncMessage('正在增量同步')
+      try {
+        const restored = await restoreAndScanWebDavs()
+        if (cancelled) return
+        for (const source of restored) {
+          replaceSourceTracks(source.connection.sourceId, source.tracks)
+          upsertSource({
+            id: source.connection.sourceId,
+            kind: 'webdav',
+            name: source.connection.name,
+            status: `${source.tracks.length} 首 · ${source.connection.serverName}`,
+            folder: source.connection.folder,
+          })
+        }
+        setSyncMessage(restored.length ? '曲库已同步' : cachedLibraries.length ? '使用本地缓存' : '本地曲库')
+      } catch {
+        if (!cancelled) setSyncMessage(cachedLibraries.length ? '使用本地缓存' : '需要连接')
+      }
+    }
+
+    void restoreLibraries()
     return () => { cancelled = true }
-  }, [replaceSourceTracks])
+  }, [replaceSourceTracks, upsertSource])
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
@@ -179,29 +202,36 @@ function App() {
 
   const handleViewChange = (view: View) => {
     setActiveView(view)
-    setActiveSource(null)
+    setActiveSourceId(null)
     setSidebarOpen(false)
   }
 
-  const handleSourceSelect = (source: SourceKind) => {
-    setActiveSource(source)
+  const handleSourceSelect = (sourceId: string) => {
+    setActiveSourceId(sourceId)
     setActiveView('library')
     setSidebarOpen(false)
   }
 
   const handleWebDavConnected = (
-    webdavTracks: typeof library,
+    sourceId: string,
+    webdavTracks: Track[],
     sourceName: string,
     serverName: string,
+    folder: string,
     stats: ScanStats,
   ) => {
-    replaceSourceTracks('webdav', webdavTracks)
-    setWebdavName(sourceName)
-    setWebdavStatus(`${webdavTracks.length} 首 · ${serverName}`)
+    replaceSourceTracks(sourceId, webdavTracks)
+    upsertSource({
+      id: sourceId,
+      kind: 'webdav',
+      name: sourceName,
+      status: `${webdavTracks.length} 首 · ${serverName}`,
+      folder,
+    })
     setSyncMessage(formatSyncStats(stats))
     setWebdavSetupOpen(false)
     setSourceManagerOpen(false)
-    setActiveSource('webdav')
+    setActiveSourceId(sourceId)
     setActiveView('library')
   }
 
@@ -209,70 +239,66 @@ function App() {
     try {
       const result = await chooseAndScanLocalFolder(name)
       if (!result) return
-      replaceSourceTracks('local', result.tracks)
-      setLocalName(result.sourceName)
-      setLocalStatus(`${result.tracks.length} 首 · ${result.folderName}`)
+      replaceSourceTracks(result.sourceId, result.tracks)
+      upsertSource({
+        id: result.sourceId,
+        kind: 'local',
+        name: result.sourceName,
+        status: `${result.tracks.length} 首 · ${result.folderName}`,
+        folder: result.folderPath,
+      })
       setSyncMessage(`已导入 ${result.tracks.length} 首本地歌曲`)
       setSourceManagerOpen(false)
-      setActiveSource('local')
+      setActiveSourceId(result.sourceId)
       setActiveView('library')
     } catch (error) {
       setSyncMessage(readableLocalError(error))
     }
   }
 
-  const handleRemoveWebDav = async () => {
+  const handleRemoveSource = async (source: MusicSource) => {
     try {
-      await forgetWebDav()
-      removeSource('webdav')
-      setWebdavName('')
-      setWebdavStatus('')
-      if (activeSource === 'webdav') setActiveSource(null)
+      if (source.kind === 'webdav') {
+        await forgetWebDav(source.id)
+      } else {
+        await forgetLocalFolder(source.id)
+      }
+      removeSource(source.id)
+      setSources((current) => current.filter((item) => item.id !== source.id))
+      if (activeSourceId === source.id) setActiveSourceId(null)
     } catch (error) {
-      setSyncMessage(typeof error === 'string' ? error : '无法删除 WebDAV 音乐源')
-    }
-  }
-
-  const handleRemoveLocal = async () => {
-    try {
-      await forgetLocalFolder()
-      removeSource('local')
-      setLocalName('')
-      setLocalStatus('')
-      if (activeSource === 'local') setActiveSource(null)
-    } catch (error) {
-      setSyncMessage(readableLocalError(error))
+      setSyncMessage(typeof error === 'string' ? error : `无法删除 ${source.name}`)
     }
   }
 
   const handleRefreshLibraries = useCallback(async () => {
     if (refreshInProgressRef.current) return
-    if (!webdavName && !localName) {
+    if (!sources.length) {
       setSyncMessage('请先添加音乐源')
       return
     }
     refreshInProgressRef.current = true
     setSyncMessage('正在刷新曲库')
-    const tasks: Promise<void>[] = []
-    if (localName) {
-      tasks.push(restoreLocalFolder().then((result) => {
-        if (!result) return
-        replaceSourceTracks('local', result.tracks)
-        setLocalStatus(`${result.tracks.length} 首 · ${result.folderName}`)
-      }))
-    }
-    if (webdavName) {
-      tasks.push(restoreAndScanWebDav().then((result) => {
-        if (!result) return
-        replaceSourceTracks('webdav', result.tracks)
-        setWebdavStatus(`${result.tracks.length} 首 · ${result.connection.serverName}`)
-      }))
-    }
+    const tasks = sources.map(async (source) => {
+      if (source.kind === 'local') {
+        const result = await refreshLocalFolder(source.id)
+        replaceSourceTracks(source.id, result.tracks)
+        upsertSource({
+          ...source,
+          status: `${result.tracks.length} 首 · ${result.folderName}`,
+          folder: result.folderPath,
+        })
+      } else {
+        const result = await scanWebDav(source.id, source.folder)
+        replaceSourceTracks(source.id, result.tracks)
+        upsertSource({ ...source, status: `${result.tracks.length} 首 · 已同步` })
+      }
+    })
     const results = await Promise.allSettled(tasks)
     const failed = results.filter((result) => result.status === 'rejected').length
     setSyncMessage(failed ? `${failed} 个音乐源刷新失败` : '曲库已刷新')
     refreshInProgressRef.current = false
-  }, [localName, replaceSourceTracks, webdavName])
+  }, [replaceSourceTracks, sources, upsertSource])
 
   useEffect(() => {
     if (!isTauri()) return
@@ -303,11 +329,11 @@ function App() {
           }
           break
         case 'view.library':
-          setActiveSource(null)
+          setActiveSourceId(null)
           setActiveView('library')
           break
         case 'view.favorites':
-          setActiveSource(null)
+          setActiveSourceId(null)
           setActiveView('favorites')
           break
         case 'view.search':
@@ -318,8 +344,8 @@ function App() {
     return () => { unlisten?.() }
   }, [handleRefreshLibraries])
 
-  const emptyTitle = selectedSourceName
-    ? `${selectedSourceName} 中没有歌曲`
+  const emptyTitle = selectedSource
+    ? `${selectedSource.name} 中没有歌曲`
     : activeView === 'favorites'
       ? '还没有喜欢的歌曲'
       : query.trim() ? '没有找到这段声音' : '曲库里还没有歌曲'
@@ -329,34 +355,27 @@ function App() {
       ? '试试搜索歌手、专辑或歌曲名'
       : '添加本地文件夹或 WebDAV 后，音乐会自动出现在这里'
 
+  const sidebarProps = {
+    activeView,
+    activeSourceId,
+    onViewChange: handleViewChange,
+    onManageSources: () => setSourceManagerOpen(true),
+    onSourceSelect: handleSourceSelect,
+    sources,
+  }
+
   return (
     <div className={currentTrack ? 'app-shell' : 'app-shell app-shell--empty'}>
       <div className={sidebarOpen ? 'mobile-sidebar is-open' : 'mobile-sidebar'}>
         <button className="mobile-sidebar__close" type="button" aria-label="关闭菜单" onClick={() => setSidebarOpen(false)}>
           <X size={19} />
         </button>
-        <Sidebar
-          activeView={activeView}
-          activeSource={activeSource}
-          onViewChange={handleViewChange}
-          onManageSources={() => setSourceManagerOpen(true)}
-          onSourceSelect={handleSourceSelect}
-          webdavSource={webdavName ? { name: webdavName, status: webdavStatus } : undefined}
-          localSource={localName ? { name: localName, status: localStatus } : undefined}
-        />
+        <Sidebar {...sidebarProps} />
       </div>
       {sidebarOpen && <button className="scrim" aria-label="关闭菜单" onClick={() => setSidebarOpen(false)} />}
 
       <div className="desktop-sidebar">
-        <Sidebar
-          activeView={activeView}
-          activeSource={activeSource}
-          onViewChange={handleViewChange}
-          onManageSources={() => setSourceManagerOpen(true)}
-          onSourceSelect={handleSourceSelect}
-          webdavSource={webdavName ? { name: webdavName, status: webdavStatus } : undefined}
-          localSource={localName ? { name: localName, status: localStatus } : undefined}
-        />
+        <Sidebar {...sidebarProps} />
       </div>
 
       <main className="main-content">
@@ -367,7 +386,7 @@ function App() {
           <div className="breadcrumb">
             <span>私人曲库</span>
             <ChevronRight size={13} />
-            <strong>{selectedSourceName || (activeView === 'library' ? '曲库' : '我喜欢的')}</strong>
+            <strong>{selectedSource?.name || (activeView === 'library' ? '曲库' : '我喜欢的')}</strong>
           </div>
           <label className="search-box">
             <Search size={16} />
@@ -397,78 +416,76 @@ function App() {
               </div>
             </div>
 
-            {(webdavName || localName) ? (
+            {sources.length ? (
               <>
-            {spotlightTrack && (
-            <section className="spotlight" aria-label="当前歌曲">
-              <div className="spotlight__art-wrap">
-                <span className="spotlight__disc" />
-                <AlbumArtwork track={spotlightTrack} size="large" />
-              </div>
-              <div className="spotlight__copy">
-                <span className="spotlight__label">CURRENT TRACK · 当前歌曲</span>
-                <div>
-                  <h2>{spotlightTrack.title}</h2>
-                  <p>{spotlightTrack.artist} · {spotlightTrack.album}</p>
-                </div>
-                <div className="spotlight__meta">
-                  <span>{spotlightTrack.format}</span>
-                  <span><Cloud size={12} /> {sourceLabel[spotlightTrack.source].toLocaleUpperCase()}</span>
-                </div>
-                <div className="spotlight__actions">
-                  <button
-                    className="primary-button"
-                    type="button"
-                    onClick={() => spotlightTrack.id === currentTrackId ? togglePlayback() : playTrack(spotlightTrack.id)}
-                  >
-                    {spotlightTrack.id === currentTrackId && isPlaying
-                      ? <Pause size={17} fill="currentColor" />
-                      : <Play size={17} fill="currentColor" />}
-                    {spotlightTrack.id === currentTrackId && isPlaying ? '暂停' : '播放'}
-                  </button>
-                  <button
-                    className="secondary-button"
-                    type="button"
-                    onClick={() => {
-                      if (!activeSource) {
-                        shuffle()
-                        return
-                      }
-                      const candidates = visibleTracks.filter((track) => track.id !== currentTrackId)
-                      const nextTrack = candidates[Math.floor(Math.random() * candidates.length)]
-                      if (nextTrack) playTrack(nextTrack.id)
-                    }}
-                  >
-                    随机来一首
-                  </button>
-                </div>
-              </div>
-              <span className="spotlight__number">01</span>
-            </section>
-            )}
+                {spotlightTrack && (
+                  <section className="spotlight" aria-label="当前歌曲">
+                    <div className="spotlight__art-wrap">
+                      <span className="spotlight__disc" />
+                      <AlbumArtwork track={spotlightTrack} size="large" />
+                    </div>
+                    <div className="spotlight__copy">
+                      <span className="spotlight__label">CURRENT TRACK · 当前歌曲</span>
+                      <div>
+                        <h2>{spotlightTrack.title}</h2>
+                        <p>{spotlightTrack.artist} · {spotlightTrack.album}</p>
+                      </div>
+                      <div className="spotlight__meta">
+                        <span>{spotlightTrack.format}</span>
+                        <span><Cloud size={12} /> {sourceLabel[spotlightTrack.source].toLocaleUpperCase()}</span>
+                      </div>
+                      <div className="spotlight__actions">
+                        <button
+                          className="primary-button"
+                          type="button"
+                          onClick={() => spotlightTrack.id === currentTrackId ? togglePlayback() : playTrack(spotlightTrack.id)}
+                        >
+                          {spotlightTrack.id === currentTrackId && isPlaying
+                            ? <Pause size={17} fill="currentColor" />
+                            : <Play size={17} fill="currentColor" />}
+                          {spotlightTrack.id === currentTrackId && isPlaying ? '暂停' : '播放'}
+                        </button>
+                        <button
+                          className="secondary-button"
+                          type="button"
+                          onClick={() => {
+                            if (!activeSourceId) {
+                              shuffle()
+                              return
+                            }
+                            const candidates = visibleTracks.filter((track) => track.id !== currentTrackId)
+                            const nextTrack = candidates[Math.floor(Math.random() * candidates.length)]
+                            if (nextTrack) playTrack(nextTrack.id)
+                          }}
+                        >
+                          随机来一首
+                        </button>
+                      </div>
+                    </div>
+                    <span className="spotlight__number">01</span>
+                  </section>
+                )}
 
-            <section className="library-section">
-              <div className="section-heading">
-                <div>
-                  <span className="eyebrow">TRACKS</span>
-                  <h2>{activeView === 'favorites' ? '喜欢的歌' : '全部歌曲'}</h2>
-                </div>
-              </div>
-              <TrackTable
-                tracks={visibleTracks}
-                emptyTitle={emptyTitle}
-                emptyDescription={emptyDescription}
-              />
-            </section>
+                <section className="library-section">
+                  <div className="section-heading">
+                    <div>
+                      <span className="eyebrow">TRACKS</span>
+                      <h2>{activeView === 'favorites' ? '喜欢的歌' : '全部歌曲'}</h2>
+                    </div>
+                  </div>
+                  <TrackTable
+                    tracks={visibleTracks}
+                    emptyTitle={emptyTitle}
+                    emptyDescription={emptyDescription}
+                  />
+                </section>
               </>
             ) : (
               <section className="empty-library">
                 <span className="empty-library__icon"><Cloud size={28} /></span>
                 <span className="eyebrow">YOUR PRIVATE LIBRARY</span>
                 <h2>加入你的音乐曲库</h2>
-                <p>
-                  选择设备上的音乐文件夹，或连接 WebDAV 私人曲库。
-                </p>
+                <p>选择设备上的音乐文件夹，或连接 WebDAV 私人曲库。</p>
                 <div className="empty-library__actions">
                   <button className="primary-button" type="button" onClick={() => setSourceManagerOpen(true)}>
                     添加音乐源
@@ -485,8 +502,7 @@ function App() {
       {currentTrack && <PlayerBar />}
       {sourceManagerOpen && (
         <SourceManager
-          webdav={webdavName ? { name: webdavName, detail: webdavStatus } : undefined}
-          local={localName ? { name: localName, detail: localStatus } : undefined}
+          sources={sources}
           supportsLocalFolders
           onClose={() => setSourceManagerOpen(false)}
           onAddWebDav={() => {
@@ -494,8 +510,7 @@ function App() {
             setWebdavSetupOpen(true)
           }}
           onAddLocal={handleAddLocal}
-          onRemoveWebDav={handleRemoveWebDav}
-          onRemoveLocal={handleRemoveLocal}
+          onRemove={handleRemoveSource}
         />
       )}
       {webdavSetupOpen && (

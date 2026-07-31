@@ -10,7 +10,7 @@ import type { Track } from '../types/music'
 
 interface WebDavSetupProps {
   onClose: () => void
-  onConnected: (tracks: Track[], sourceName: string, serverName: string, stats: ScanStats) => void
+  onConnected: (sourceId: string, tracks: Track[], sourceName: string, serverName: string, folder: string, stats: ScanStats) => void
 }
 
 export function WebDavSetup({ onClose, onConnected }: WebDavSetupProps) {
@@ -37,7 +37,14 @@ export function WebDavSetup({ onClose, onConnected }: WebDavSetupProps) {
     setIsConnecting(true)
     try {
       const result = await connectAndScanWebDav(config)
-      onConnected(result.tracks, result.connection.name, result.connection.serverName, result.stats)
+      onConnected(
+        result.connection.sourceId,
+        result.tracks,
+        result.connection.name,
+        result.connection.serverName,
+        result.connection.folder,
+        result.stats,
+      )
     } catch (connectionError) {
       setError(readableWebDavError(connectionError))
     } finally {

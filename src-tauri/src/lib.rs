@@ -82,6 +82,7 @@ pub fn run() {
             local_library::local_library_scan,
             local_library::local_library_scan_android,
             local_library::local_library_restore,
+            local_library::local_library_refresh,
             local_library::local_library_scrape_track,
             local_library::local_library_forget,
         ])

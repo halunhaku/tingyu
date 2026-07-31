@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { SourceKind, Track } from '../types/music'
+import type { Track } from '../types/music'
 
 interface PlayerState {
   library: Track[]
@@ -21,8 +21,8 @@ interface PlayerState {
   tick: () => void
   setVolume: (volume: number) => void
   toggleLike: (trackId: string) => void
-  replaceSourceTracks: (source: SourceKind, tracks: Track[]) => void
-  removeSource: (source: SourceKind) => void
+  replaceSourceTracks: (sourceId: string, tracks: Track[]) => void
+  removeSource: (sourceId: string) => void
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -105,9 +105,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         : [...state.likedIds, trackId],
     })),
 
-  replaceSourceTracks: (source, incomingTracks) =>
+  replaceSourceTracks: (sourceId, incomingTracks) =>
     set((state) => {
-      const retained = state.library.filter((track) => track.source !== source)
+      const retained = state.library.filter((track) => track.sourceId !== sourceId)
       const library = [...incomingTracks, ...retained]
       const queue = library.map((track) => track.id)
       const currentStillExists = library.some((track) => track.id === state.currentTrackId)
@@ -120,9 +120,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       }
     }),
 
-  removeSource: (source) =>
+  removeSource: (sourceId) =>
     set((state) => {
-      const library = state.library.filter((track) => track.source !== source)
+      const library = state.library.filter((track) => track.sourceId !== sourceId)
       const queue = library.map((track) => track.id)
       const currentStillExists = library.some((track) => track.id === state.currentTrackId)
       return {
