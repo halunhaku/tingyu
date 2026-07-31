@@ -6,6 +6,7 @@
 
 - 响应式桌面/移动端播放器界面
 - 原生 macOS 菜单栏，支持曲库、播放、歌词、搜索和音乐源快捷操作
+- macOS 控制中心、锁屏、媒体键与 AirPods 播放控制
 - 曲库搜索（支持 `⌘/Ctrl + K` 聚焦）、收藏与播放队列
 - 本地音乐文件夹选择、递归扫描与启动时自动恢复
 - 本地音频 Range 流式读取，并限制在用户选择的目录内
@@ -30,8 +31,8 @@
 GitHub Actions 会在推送 `v*` 标签时自动构建 macOS `.app`、`.dmg` 和已签名的 Android arm64 APK，并发布到同一个 GitHub Release：
 
 ```bash
-git tag v0.3.1
-git push origin v0.3.1
+git tag v0.3.2
+git push origin v0.3.2
 ```
 
 当前未配置 Apple Developer 签名。下载后首次打开需要在 Finder 中右键应用并选择“打开”。配置仓库中的 `APPLE_CERTIFICATE`、`APPLE_CERTIFICATE_PASSWORD`、`APPLE_SIGNING_IDENTITY`、`APPLE_ID`、`APPLE_PASSWORD` 和 `APPLE_TEAM_ID` Secrets 后，工作流会自动使用签名与公证凭据。
@@ -46,6 +47,8 @@ git push origin v0.3.1
 npm install
 npm run desktop:dev
 ```
+
+macOS 开始播放后会自动同步系统“正在播放”，在控制中心和锁屏显示歌曲、歌手、专辑封面及播放进度，并支持键盘媒体键、AirPods 和蓝牙耳机控制。
 
 仅运行浏览器界面：
 

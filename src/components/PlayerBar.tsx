@@ -11,11 +11,11 @@ import {
 } from 'lucide-react'
 import { formatTime } from '../data/library'
 import {
-  clearAndroidMediaSession,
-  listenToAndroidMediaControls,
-  type AndroidMediaControl,
-  updateAndroidMediaSession,
-} from '../providers/androidMediaSession'
+  clearSystemMediaSession,
+  listenToSystemMediaControls,
+  type SystemMediaControl,
+  updateSystemMediaSession,
+} from '../providers/systemMediaSession'
 import { scrapeLocalTrack } from '../providers/localProvider'
 import { persistWebDavDuration, scrapeWebDavTrack } from '../providers/webdavProvider'
 import { usePlayerStore } from '../stores/playerStore'
@@ -29,7 +29,7 @@ export function PlayerBar() {
   const scrapedTracksRef = useRef(new Set<string>())
   const mediaSessionStartedRef = useRef(false)
   const lastMediaPositionSyncRef = useRef(0)
-  const mediaControlHandlerRef = useRef<(control: AndroidMediaControl) => void>(() => undefined)
+  const mediaControlHandlerRef = useRef<(control: SystemMediaControl) => void>(() => undefined)
   const [lyricsOpen, setLyricsOpen] = useState(false)
   const library = usePlayerStore((state) => state.library)
   const currentTrackId = usePlayerStore((state) => state.currentTrackId)
@@ -52,14 +52,14 @@ export function PlayerBar() {
   const duration = track?.duration || 0
   const progressPercentage = duration > 0 ? (progress / duration) * 100 : 0
   const closeLyrics = useCallback(() => setLyricsOpen(false), [])
-  const syncAndroidMedia = useCallback((positionSeconds?: number, playingOverride?: boolean) => {
+  const syncSystemMedia = useCallback((positionSeconds?: number, playingOverride?: boolean) => {
     if (!track?.streamUrl) return
     const playing = playingOverride ?? usePlayerStore.getState().isPlaying
     if (playing) mediaSessionStartedRef.current = true
     if (!mediaSessionStartedRef.current) return
 
     const audioPosition = audioRef.current?.currentTime
-    void updateAndroidMediaSession({
+    void updateSystemMediaSession({
       title: track.title,
       artist: track.artist,
       album: track.album,
@@ -70,7 +70,7 @@ export function PlayerBar() {
           ? audioPosition
           : usePlayerStore.getState().progress),
       playing,
-    }).catch((error) => console.warn('Unable to update Android media controls', error))
+    }).catch((error) => console.warn('Unable to update system media controls', error))
   }, [track?.album, track?.artist, track?.artworkUrl, track?.duration, track?.streamUrl, track?.title])
 
   mediaControlHandlerRef.current = (control) => {
@@ -82,11 +82,14 @@ export function PlayerBar() {
       case 'pause':
         setPlaying(false)
         break
+      case 'toggle':
+        togglePlayback()
+        break
       case 'previous':
         if (audio && audio.currentTime > 5) {
           audio.currentTime = 0
           setProgress(0)
-          syncAndroidMedia(0)
+          syncSystemMedia(0)
         } else {
           previous()
         }
@@ -98,13 +101,22 @@ export function PlayerBar() {
         const seconds = Math.max(0, (control.positionMs ?? 0) / 1000)
         if (audio?.src) audio.currentTime = seconds
         setProgress(seconds)
-        syncAndroidMedia(seconds)
+        syncSystemMedia(seconds)
+        break
+      }
+      case 'seekRelative': {
+        const currentTime = audio?.currentTime ?? usePlayerStore.getState().progress
+        const target = currentTime + (control.offsetMs ?? 0) / 1000
+        const seconds = Math.max(0, duration > 0 ? Math.min(target, duration) : target)
+        if (audio?.src) audio.currentTime = seconds
+        setProgress(seconds)
+        syncSystemMedia(seconds)
         break
       }
       case 'stop':
         mediaSessionStartedRef.current = false
         setPlaying(false)
-        void clearAndroidMediaSession()
+        void clearSystemMediaSession()
         break
     }
   }
@@ -112,24 +124,24 @@ export function PlayerBar() {
   useEffect(() => {
     let cancelled = false
     let dispose: (() => Promise<void>) | undefined
-    void listenToAndroidMediaControls((control) => mediaControlHandlerRef.current(control))
+    void listenToSystemMediaControls((control) => mediaControlHandlerRef.current(control))
       .then((unlisten) => {
         if (cancelled) void unlisten()
         else dispose = unlisten
       })
-      .catch((error) => console.warn('Unable to listen for Android media controls', error))
+      .catch((error) => console.warn('Unable to listen for system media controls', error))
 
     return () => {
       cancelled = true
       void dispose?.()
       mediaSessionStartedRef.current = false
-      void clearAndroidMediaSession()
+      void clearSystemMediaSession()
     }
   }, [])
 
   useEffect(() => {
-    syncAndroidMedia(undefined, isPlaying)
-  }, [isPlaying, syncAndroidMedia])
+    syncSystemMedia(undefined, isPlaying)
+  }, [isPlaying, syncSystemMedia])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -199,7 +211,7 @@ export function PlayerBar() {
   const seek = (seconds: number) => {
     setProgress(seconds)
     if (audioRef.current && track.streamUrl) audioRef.current.currentTime = seconds
-    syncAndroidMedia(seconds)
+    syncSystemMedia(seconds)
   }
 
   const handlePrevious = () => {
@@ -223,7 +235,7 @@ export function PlayerBar() {
           const now = Date.now()
           if (mediaSessionStartedRef.current && now - lastMediaPositionSyncRef.current >= 5_000) {
             lastMediaPositionSyncRef.current = now
-            syncAndroidMedia(currentTime)
+            syncSystemMedia(currentTime)
           }
         }}
         onLoadedMetadata={(event) => {
