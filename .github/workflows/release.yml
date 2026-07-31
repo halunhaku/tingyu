@@ -94,6 +94,7 @@ jobs:
                 ;;
               *) continue ;;
             esac
+            gh release delete-asset "v${VERSION}" "$target" --yes 2>/dev/null || true
             gh api --method PATCH \
               "repos/${GITHUB_REPOSITORY}/releases/assets/${id}" \
               -f name="$target" --silent
