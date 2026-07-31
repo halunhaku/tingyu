@@ -17,7 +17,9 @@ android {
     compileSdk = 36
     namespace = "com.halunhaku.tingyu"
     defaultConfig {
-        manifestPlaceholders["usesCleartextTraffic"] = "false"
+        // Audio streams and cached artwork are served to the WebView by the
+        // authenticated loopback proxy started in src-tauri/src/lib.rs.
+        manifestPlaceholders["usesCleartextTraffic"] = "true"
         applicationId = "com.halunhaku.tingyu"
         minSdk = 24
         targetSdk = 36
