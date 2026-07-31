@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="100" y1="60" x2="900" y2="980" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#30342d"/><stop offset=".55" stop-color="#20231e"/><stop offset="1" stop-color="#171916"/>
+    </linearGradient>
+    <radialGradient id="record" cx="38%" cy="28%" r="78%">
+      <stop offset="0" stop-color="#ed936b"/><stop offset=".48" stop-color="#d86c46"/><stop offset="1" stop-color="#b94b30"/>
+    </radialGradient>
+    <linearGradient id="water" x1="190" y1="560" x2="830" y2="980" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#74877b"/><stop offset="1" stop-color="#40564f"/>
+    </linearGradient>
+    <filter id="discShadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="24" stdDeviation="25" flood-color="#090a08" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <ellipse cx="220" cy="120" rx="430" ry="350" fill="#df7953" opacity=".08"/>
+  <ellipse cx="830" cy="900" rx="420" ry="350" fill="#799385" opacity=".09"/>
+  <g filter="url(#discShadow)">
+    <circle cx="512" cy="420" r="306" fill="#11130f" opacity=".55"/>
+    <circle cx="512" cy="400" r="298" fill="url(#record)"/>
+  </g>
+  <g fill="none" stroke="#57281f" opacity=".25">
+    <circle cx="512" cy="400" r="254" stroke-width="5"/><circle cx="512" cy="400" r="218" stroke-width="3"/>
+    <circle cx="512" cy="400" r="182" stroke-width="4"/><circle cx="512" cy="400" r="146" stroke-width="3"/>
+    <circle cx="512" cy="400" r="110" stroke-width="4"/>
+  </g>
+  <path d="M315 240A264 264 0 0 1 604 160" fill="none" stroke="#ffd0ba" stroke-width="13" stroke-linecap="round" opacity=".42"/>
+  <circle cx="512" cy="400" r="68" fill="#252821"/><circle cx="512" cy="400" r="25" fill="#efe8d9"/><circle cx="504" cy="392" r="7" fill="#fff" opacity=".5"/>
+  <path d="M-30 664c121-47 213-47 305-10 91 37 144 98 252 94 117-5 177-101 298-99 91 2 157 41 229 88v317H-30Z" fill="#17201e" opacity=".55"/>
+  <path d="M-30 636c122-43 211-35 300 7 88 42 146 99 249 95 119-4 184-94 301-90 93 3 159 42 234 94v312H-30Z" fill="url(#water)"/>
+  <path d="M-20 671c120-45 207-37 294 5 88 42 148 96 248 92 119-4 184-91 298-87 95 3 162 42 238 96" fill="none" stroke="#afc0b1" stroke-width="12" stroke-linecap="round" opacity=".38"/>
+  <path d="M0 0h1024" stroke="#fff" stroke-width="8" opacity=".12"/>
+</svg>

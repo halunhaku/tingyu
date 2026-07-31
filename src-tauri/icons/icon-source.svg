@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="180" y1="120" x2="820" y2="900" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#30342d"/>
+      <stop offset="0.55" stop-color="#20231e"/>
+      <stop offset="1" stop-color="#171916"/>
+    </linearGradient>
+    <radialGradient id="record" cx="38%" cy="28%" r="78%">
+      <stop offset="0" stop-color="#ed936b"/>
+      <stop offset="0.48" stop-color="#d86c46"/>
+      <stop offset="1" stop-color="#b94b30"/>
+    </radialGradient>
+    <linearGradient id="water" x1="240" y1="560" x2="760" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#74877b"/>
+      <stop offset="1" stop-color="#40564f"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="200" y1="130" x2="780" y2="890" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff" stop-opacity=".26"/>
+      <stop offset=".28" stop-color="#ffffff" stop-opacity=".05"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="outerShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="24" stdDeviation="30" flood-color="#000000" flood-opacity=".34"/>
+    </filter>
+    <filter id="discShadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#090a08" flood-opacity=".42"/>
+    </filter>
+    <clipPath id="squircle">
+      <path d="M512 70C331 70 226 70 158 112C112 141 82 184 70 249C62 294 62 356 62 512s0 218 8 263c12 65 42 108 88 137 68 42 173 42 354 42s286 0 354-42c46-29 76-72 88-137 8-45 8-107 8-263s0-218-8-263c-12-65-42-108-88-137C798 70 693 70 512 70Z"/>
+    </clipPath>
+  </defs>
+
+  <g filter="url(#outerShadow)">
+    <path fill="url(#bg)" d="M512 70C331 70 226 70 158 112C112 141 82 184 70 249C62 294 62 356 62 512s0 218 8 263c12 65 42 108 88 137 68 42 173 42 354 42s286 0 354-42c46-29 76-72 88-137 8-45 8-107 8-263s0-218-8-263c-12-65-42-108-88-137C798 70 693 70 512 70Z"/>
+  </g>
+
+  <g clip-path="url(#squircle)">
+    <ellipse cx="310" cy="174" rx="370" ry="300" fill="#df7953" opacity=".08"/>
+    <ellipse cx="770" cy="820" rx="390" ry="320" fill="#799385" opacity=".08"/>
+
+    <g filter="url(#discShadow)">
+      <circle cx="512" cy="460" r="286" fill="#131512" opacity=".5"/>
+      <circle cx="512" cy="442" r="278" fill="url(#record)"/>
+    </g>
+
+    <g fill="none" stroke="#57281f" opacity=".25">
+      <circle cx="512" cy="442" r="238" stroke-width="5"/>
+      <circle cx="512" cy="442" r="205" stroke-width="3"/>
+      <circle cx="512" cy="442" r="171" stroke-width="4"/>
+      <circle cx="512" cy="442" r="137" stroke-width="3"/>
+      <circle cx="512" cy="442" r="103" stroke-width="4"/>
+    </g>
+    <path d="M329 293A245 245 0 0 1 596 217" fill="none" stroke="#ffd0ba" stroke-width="12" stroke-linecap="round" opacity=".42"/>
+    <circle cx="512" cy="442" r="65" fill="#252821"/>
+    <circle cx="512" cy="442" r="24" fill="#efe8d9"/>
+    <circle cx="504" cy="434" r="7" fill="#ffffff" opacity=".5"/>
+
+    <path d="M-18 681C93 620 172 608 258 630c84 22 133 80 229 75 106-5 155-95 269-105 96-9 174 39 286 99v325H-18Z" fill="#18211f" opacity=".5"/>
+    <path d="M-20 647c113-43 194-39 279-2 79 34 132 92 232 91 111-2 170-95 281-92 91 3 166 48 272 117v263H-20Z" fill="url(#water)"/>
+    <path d="M-10 679c112-44 191-36 273 3 82 39 137 90 230 87 111-4 172-87 278-83 91 3 164 42 266 104" fill="none" stroke="#afc0b1" stroke-width="11" stroke-linecap="round" opacity=".38"/>
+
+    <path d="M512 70C331 70 226 70 158 112C112 141 82 184 70 249C62 294 62 356 62 512s0 218 8 263c12 65 42 108 88 137 68 42 173 42 354 42s286 0 354-42c46-29 76-72 88-137 8-45 8-107 8-263s0-218-8-263c-12-65-42-108-88-137C798 70 693 70 512 70Z" fill="none" stroke="url(#rim)" stroke-width="6"/>
+  </g>
+</svg>

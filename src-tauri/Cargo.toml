@@ -1,0 +1,43 @@
+[package]
+name = "tingyu"
+version = "0.2.0"
+description = "A private cloud music player"
+authors = ["halunhaku"]
+license = ""
+repository = ""
+edition = "2021"
+rust-version = "1.77.2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "tingyu_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.3", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.11.3", features = [] }
+tauri-plugin-log = "2"
+axum = "0.8"
+futures-util = "0.3"
+hex = "0.4"
+keyring = { version = "3.6.3", features = ["apple-native"] }
+lofty = "0.24"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+roxmltree = "0.20"
+rusqlite = { version = "0.40", default-features = false, features = ["bundled"] }
+sha2 = "0.10"
+tokio = { version = "1", features = ["fs", "io-util", "net", "rt-multi-thread", "sync"] }
+tower-http = { version = "0.6", features = ["cors"] }
+url = "2"
+urlencoding = "2"
+uuid = { version = "1", features = ["v4"] }
+tauri-plugin-dialog = "2"
+tokio-util = { version = "0.7", features = ["io"] }
+mime_guess = "2"
+ferrous-opencc = { version = "0.4", default-features = false, features = ["t2s-conversion"] }

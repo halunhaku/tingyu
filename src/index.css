@@ -1,0 +1,41 @@
+@layer reset, base;
+
+@layer reset {
+  *, *::before, *::after { box-sizing: border-box; }
+  html { min-width: 320px; background: #141512; }
+  body { margin: 0; min-width: 320px; min-height: 100vh; }
+  button, input { font: inherit; }
+  button { border: 0; }
+  img, svg { display: block; }
+}
+
+@layer base {
+  :root {
+    font-family: "Avenir Next", Avenir, "PingFang SC", "Noto Sans SC", sans-serif;
+    color: #292b27;
+    background: #141512;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    --ink: #272925;
+    --muted: #777a72;
+    --subtle: #a1a49b;
+    --canvas: #f1f0e9;
+    --paper: #f8f7f1;
+    --line: rgba(39, 41, 37, 0.11);
+    --orange: #c95f3c;
+    --orange-dark: #a9472a;
+    --sidebar: #1d1f1b;
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  }
+
+  ::selection { color: #fff; background: var(--orange); }
+
+  :focus-visible {
+    outline: 2px solid var(--orange);
+    outline-offset: 3px;
+  }
+
+  button { color: inherit; cursor: pointer; }
+}
