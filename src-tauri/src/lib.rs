@@ -1,4 +1,5 @@
 mod android_local;
+mod android_media;
 mod credentials;
 mod library_cache;
 mod local_library;
@@ -17,6 +18,7 @@ use tauri::Manager;
 pub fn run() {
     tauri::Builder::default()
         .plugin(android_local::init())
+        .plugin(android_media::init())
         .setup(|app| {
             #[cfg(target_os = "macos")]
             {
@@ -68,6 +70,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             android_local::android_local_folder_pick,
+            android_media::android_media_update,
+            android_media::android_media_clear,
             webdav::webdav_connect,
             webdav::webdav_restore,
             webdav::webdav_forget,

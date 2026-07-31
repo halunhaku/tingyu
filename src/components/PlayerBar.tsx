@@ -10,6 +10,12 @@ import {
   Volume2,
 } from 'lucide-react'
 import { formatTime } from '../data/library'
+import {
+  clearAndroidMediaSession,
+  listenToAndroidMediaControls,
+  type AndroidMediaControl,
+  updateAndroidMediaSession,
+} from '../providers/androidMediaSession'
 import { scrapeLocalTrack } from '../providers/localProvider'
 import { persistWebDavDuration, scrapeWebDavTrack } from '../providers/webdavProvider'
 import { usePlayerStore } from '../stores/playerStore'
@@ -21,6 +27,9 @@ const CURRENT_ENRICHMENT_VERSION = 4
 export function PlayerBar() {
   const audioRef = useRef<HTMLAudioElement>(null)
   const scrapedTracksRef = useRef(new Set<string>())
+  const mediaSessionStartedRef = useRef(false)
+  const lastMediaPositionSyncRef = useRef(0)
+  const mediaControlHandlerRef = useRef<(control: AndroidMediaControl) => void>(() => undefined)
   const [lyricsOpen, setLyricsOpen] = useState(false)
   const library = usePlayerStore((state) => state.library)
   const currentTrackId = usePlayerStore((state) => state.currentTrackId)
@@ -43,6 +52,84 @@ export function PlayerBar() {
   const duration = track?.duration || 0
   const progressPercentage = duration > 0 ? (progress / duration) * 100 : 0
   const closeLyrics = useCallback(() => setLyricsOpen(false), [])
+  const syncAndroidMedia = useCallback((positionSeconds?: number, playingOverride?: boolean) => {
+    if (!track?.streamUrl) return
+    const playing = playingOverride ?? usePlayerStore.getState().isPlaying
+    if (playing) mediaSessionStartedRef.current = true
+    if (!mediaSessionStartedRef.current) return
+
+    const audioPosition = audioRef.current?.currentTime
+    void updateAndroidMediaSession({
+      title: track.title,
+      artist: track.artist,
+      album: track.album,
+      artworkUrl: track.artworkUrl,
+      durationSeconds: track.duration || 0,
+      positionSeconds: positionSeconds
+        ?? (typeof audioPosition === 'number' && Number.isFinite(audioPosition)
+          ? audioPosition
+          : usePlayerStore.getState().progress),
+      playing,
+    }).catch((error) => console.warn('Unable to update Android media controls', error))
+  }, [track?.album, track?.artist, track?.artworkUrl, track?.duration, track?.streamUrl, track?.title])
+
+  mediaControlHandlerRef.current = (control) => {
+    const audio = audioRef.current
+    switch (control.action) {
+      case 'play':
+        setPlaying(true)
+        break
+      case 'pause':
+        setPlaying(false)
+        break
+      case 'previous':
+        if (audio && audio.currentTime > 5) {
+          audio.currentTime = 0
+          setProgress(0)
+          syncAndroidMedia(0)
+        } else {
+          previous()
+        }
+        break
+      case 'next':
+        next()
+        break
+      case 'seek': {
+        const seconds = Math.max(0, (control.positionMs ?? 0) / 1000)
+        if (audio?.src) audio.currentTime = seconds
+        setProgress(seconds)
+        syncAndroidMedia(seconds)
+        break
+      }
+      case 'stop':
+        mediaSessionStartedRef.current = false
+        setPlaying(false)
+        void clearAndroidMediaSession()
+        break
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    let dispose: (() => Promise<void>) | undefined
+    void listenToAndroidMediaControls((control) => mediaControlHandlerRef.current(control))
+      .then((unlisten) => {
+        if (cancelled) void unlisten()
+        else dispose = unlisten
+      })
+      .catch((error) => console.warn('Unable to listen for Android media controls', error))
+
+    return () => {
+      cancelled = true
+      void dispose?.()
+      mediaSessionStartedRef.current = false
+      void clearAndroidMediaSession()
+    }
+  }, [])
+
+  useEffect(() => {
+    syncAndroidMedia(undefined, isPlaying)
+  }, [isPlaying, syncAndroidMedia])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -112,6 +199,7 @@ export function PlayerBar() {
   const seek = (seconds: number) => {
     setProgress(seconds)
     if (audioRef.current && track.streamUrl) audioRef.current.currentTime = seconds
+    syncAndroidMedia(seconds)
   }
 
   const handlePrevious = () => {
@@ -129,7 +217,15 @@ export function PlayerBar() {
         crossOrigin="anonymous"
         ref={audioRef}
         preload="none"
-        onTimeUpdate={(event) => setProgress(event.currentTarget.currentTime)}
+        onTimeUpdate={(event) => {
+          const currentTime = event.currentTarget.currentTime
+          setProgress(currentTime)
+          const now = Date.now()
+          if (mediaSessionStartedRef.current && now - lastMediaPositionSyncRef.current >= 5_000) {
+            lastMediaPositionSyncRef.current = now
+            syncAndroidMedia(currentTime)
+          }
+        }}
         onLoadedMetadata={(event) => {
           if (Number.isFinite(event.currentTarget.duration)) {
             const loadedDuration = event.currentTarget.duration

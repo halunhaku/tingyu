@@ -23,14 +23,15 @@
 - 通过 LRCLIB 自动匹配普通/时间轴歌词，中文歌词自动转为简体并同步高亮
 - 本地封面文件缓存与随机令牌图片代理
 - Android 原生 APK 工程、移动安全区适配与 WebDAV 播放
+- Android / 小米 HyperOS 后台播放、通知栏与锁屏媒体控制
 
 ## 下载与发布
 
 GitHub Actions 会在推送 `v*` 标签时自动构建 macOS `.app`、`.dmg` 和已签名的 Android arm64 APK，并发布到同一个 GitHub Release：
 
 ```bash
-git tag v0.3.0
-git push origin v0.3.0
+git tag v0.3.1
+git push origin v0.3.1
 ```
 
 当前未配置 Apple Developer 签名。下载后首次打开需要在 Finder 中右键应用并选择“打开”。配置仓库中的 `APPLE_CERTIFICATE`、`APPLE_CERTIFICATE_PASSWORD`、`APPLE_SIGNING_IDENTITY`、`APPLE_ID`、`APPLE_PASSWORD` 和 `APPLE_TEAM_ID` Secrets 后，工作流会自动使用签名与公证凭据。
@@ -89,7 +90,9 @@ npm run android:build
 
 APK 输出位于 `src-tauri/gen/android/app/build/outputs/apk/`。debug APK 使用 Android 调试证书签名；release APK 默认为 unsigned，发布前需在 Android Studio 中配置正式 keystore 并签名。
 
-Android 版支持 WebDAV、本地文件夹、曲库缓存、歌词、封面和前台播放。本地文件夹通过 Android Storage Access Framework 授权，应用会持久保留所选目录的只读权限，不复制音频文件，也不申请“所有文件访问”权限。Android 记住的 WebDAV 连接信息保存在应用私有沙盒；卸载应用会一并清除。
+Android 版支持 WebDAV、本地文件夹、曲库缓存、歌词、封面和后台播放。本地文件夹通过 Android Storage Access Framework 授权，应用会持久保留所选目录的只读权限，不复制音频文件，也不申请“所有文件访问”权限。Android 记住的 WebDAV 连接信息保存在应用私有沙盒；卸载应用会一并清除。
+
+开始播放时，应用会请求通知权限并启动媒体播放前台服务。Android 和小米 HyperOS 的通知栏、锁屏界面、蓝牙耳机按键可以显示歌曲信息、专辑封面和播放进度，并控制播放/暂停、上一首、下一首与拖动进度。若 HyperOS 仍隐藏媒体卡片，请在系统设置中允许听屿通知，并将电量策略设为“无限制”。
 
 ## 质量检查
 
