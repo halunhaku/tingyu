@@ -32,6 +32,14 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Remove stale generated release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          gh release delete-asset "v${VERSION}" "_${VERSION}_aarch64.dmg" --yes 2>/dev/null || true
+          gh release delete-asset "v${VERSION}" "_aarch64.app.tar.gz" --yes 2>/dev/null || true
+
       - name: Build and publish unsigned release
         if: env.HAS_APPLE_SIGNING != 'true'
         uses: tauri-apps/tauri-action@v0
