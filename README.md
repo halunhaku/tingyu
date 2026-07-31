@@ -26,11 +26,11 @@
 
 ## 下载与发布
 
-GitHub Actions 会在推送 `v*` 标签时自动构建 macOS `.app` 和 `.dmg`，并发布到 GitHub Releases：
+GitHub Actions 会在推送 `v*` 标签时自动构建 macOS `.app`、`.dmg` 和已签名的 Android arm64 APK，并发布到同一个 GitHub Release：
 
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 当前未配置 Apple Developer 签名。下载后首次打开需要在 Finder 中右键应用并选择“打开”。配置仓库中的 `APPLE_CERTIFICATE`、`APPLE_CERTIFICATE_PASSWORD`、`APPLE_SIGNING_IDENTITY`、`APPLE_ID`、`APPLE_PASSWORD` 和 `APPLE_TEAM_ID` Secrets 后，工作流会自动使用签名与公证凭据。

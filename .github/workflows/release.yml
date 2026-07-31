@@ -41,9 +41,12 @@ jobs:
           tagName: v__VERSION__
           releaseName: '听屿 v__VERSION__'
           releaseBody: |
-            听屿 macOS 桌面版。
+            听屿跨平台音乐播放器。
 
-            未签名版本首次打开时，请在 Finder 中右键应用并选择“打开”。
+            - macOS：`.app` / `.dmg`
+            - Android：arm64 APK
+
+            macOS 未签名版本首次打开时，请在 Finder 中右键应用并选择“打开”。
           releaseDraft: false
           prerelease: false
           args: --bundles app,dmg
@@ -62,7 +65,11 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: '听屿 v__VERSION__'
-          releaseBody: 听屿 macOS 桌面版。
+          releaseBody: |
+            听屿跨平台音乐播放器。
+
+            - macOS：`.app` / `.dmg`
+            - Android：arm64 APK
           releaseDraft: false
           prerelease: false
           args: --bundles app,dmg
@@ -91,3 +98,108 @@ jobs:
               "repos/${GITHUB_REPOSITORY}/releases/assets/${id}" \
               -f name="$target" --silent
           done
+
+  build-android:
+    name: Build signed Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      release_tag: ${{ steps.metadata.outputs.release_tag }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Read release metadata
+        id: metadata
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "release_tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Cache Rust build files
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build dependencies
+        env:
+          NDK_VERSION: 27.1.12297006
+        run: |
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' "ndk;${NDK_VERSION}"
+          echo "NDK_HOME=${ANDROID_HOME}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build release APK
+        run: npm run android:build -- --ci
+
+      - name: Sign release APK
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          VERSION: ${{ steps.metadata.outputs.version }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/tingyu-release.jks"
+          mkdir -p artifacts
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign \
+            --ks "$RUNNER_TEMP/tingyu-release.jks" \
+            --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
+            --key-pass env:ANDROID_KEY_PASSWORD \
+            --out "artifacts/Tingyu_${VERSION}_android_arm64.apk" \
+            src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose \
+            "artifacts/Tingyu_${VERSION}_android_arm64.apk"
+
+      - name: Store Android release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-apk
+          path: artifacts/*.apk
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-android:
+    name: Add Android APK to release
+    needs: [release-macos, build-android]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download signed APK
+        uses: actions/download-artifact@v4
+        with:
+          name: android-release-apk
+          path: android-release
+
+      - name: Upload APK to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.build-android.outputs.release_tag }}
+        run: gh release upload "$RELEASE_TAG" android-release/*.apk --clobber
