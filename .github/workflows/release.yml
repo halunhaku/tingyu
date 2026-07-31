@@ -13,6 +13,8 @@ jobs:
   release-macos:
     name: Build macOS app
     runs-on: macos-latest
+    env:
+      HAS_APPLE_SIGNING: ${{ secrets.APPLE_CERTIFICATE != '' }}
 
     steps:
       - name: Check out repository
@@ -30,7 +32,24 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build and publish Tauri release
+      - name: Build and publish unsigned release
+        if: env.HAS_APPLE_SIGNING != 'true'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: '听屿 v__VERSION__'
+          releaseBody: |
+            听屿 macOS 桌面版。
+
+            未签名版本首次打开时，请在 Finder 中右键应用并选择“打开”。
+          releaseDraft: false
+          prerelease: false
+          args: --bundles app,dmg
+
+      - name: Build, sign and publish release
+        if: env.HAS_APPLE_SIGNING == 'true'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -43,10 +62,7 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: '听屿 v__VERSION__'
-          releaseBody: |
-            听屿 macOS 桌面版。
-
-            未签名版本首次打开时，请在 Finder 中右键应用并选择“打开”。
+          releaseBody: 听屿 macOS 桌面版。
           releaseDraft: false
           prerelease: false
           args: --bundles app,dmg
