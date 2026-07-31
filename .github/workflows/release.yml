@@ -66,3 +66,28 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: --bundles app,dmg
+
+      - name: Give release files stable English names
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION}" \
+            --jq '.assets[] | [.id, .name] | @tsv' |
+          while IFS=$'\t' read -r id name; do
+            case "$name" in
+              Tingyu_*) continue ;;
+              *.dmg)
+                suffix=$(echo "$name" | sed -E 's/^_?([0-9.]+_)?//')
+                target="Tingyu_${VERSION}_${suffix}"
+                ;;
+              *.app.tar.gz)
+                target="Tingyu_${VERSION}_${name#_}"
+                ;;
+              *) continue ;;
+            esac
+            gh api --method PATCH \
+              "repos/${GITHUB_REPOSITORY}/releases/assets/${id}" \
+              -f name="$target" --silent
+          done
