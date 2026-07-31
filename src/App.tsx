@@ -325,7 +325,9 @@ function App() {
       : query.trim() ? '没有找到这段声音' : '曲库里还没有歌曲'
   const emptyDescription = activeView === 'favorites'
     ? '点击歌曲旁的爱心，它就会出现在这里'
-    : query.trim() ? '试试搜索歌手、专辑或歌曲名' : '添加本地文件夹或 WebDAV 后，音乐会自动出现在这里'
+    : query.trim()
+      ? '试试搜索歌手、专辑或歌曲名'
+      : '添加本地文件夹或 WebDAV 后，音乐会自动出现在这里'
 
   return (
     <div className={currentTrack ? 'app-shell' : 'app-shell app-shell--empty'}>
@@ -464,7 +466,9 @@ function App() {
                 <span className="empty-library__icon"><Cloud size={28} /></span>
                 <span className="eyebrow">YOUR PRIVATE LIBRARY</span>
                 <h2>加入你的音乐曲库</h2>
-                <p>选择电脑上的音乐文件夹，或连接 WebDAV 私人曲库。</p>
+                <p>
+                  选择设备上的音乐文件夹，或连接 WebDAV 私人曲库。
+                </p>
                 <div className="empty-library__actions">
                   <button className="primary-button" type="button" onClick={() => setSourceManagerOpen(true)}>
                     添加音乐源
@@ -483,6 +487,7 @@ function App() {
         <SourceManager
           webdav={webdavName ? { name: webdavName, detail: webdavStatus } : undefined}
           local={localName ? { name: localName, detail: localStatus } : undefined}
+          supportsLocalFolders
           onClose={() => setSourceManagerOpen(false)}
           onAddWebDav={() => {
             setSourceManagerOpen(false)

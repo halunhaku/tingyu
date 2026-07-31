@@ -13,16 +13,24 @@ use axum::{
 use futures_util::{stream, StreamExt};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
+use tauri_plugin_fs::{FilePath, FsExt, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tokio_util::io::ReaderStream;
+use url::Url;
 use urlencoding::encode;
 
-use crate::{metadata, scraper, webdav::SharedWebDavState};
+use crate::{android_local, metadata, scraper, webdav::SharedWebDavState};
 
 const MAX_SCAN_DEPTH: usize = 8;
 const MAX_SCAN_ENTRIES: usize = 5_000;
 const MAX_AUTO_SCRAPES: usize = 24;
 const MAX_CONCURRENT_SCRAPES: usize = 8;
+
+#[derive(Clone, Debug)]
+pub enum LocalRoot {
+    Path(PathBuf),
+    ContentUri(String),
+}
 
 #[derive(Clone, Debug)]
 struct LocalTrack {
@@ -90,7 +98,18 @@ pub async fn local_library_scan(
 }
 
 #[tauri::command]
+pub async fn local_library_scan_android(
+    name: String,
+    folder: String,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, SharedWebDavState>,
+) -> Result<LocalScanResult, String> {
+    scan_android_folder(folder, name, &app, &state, true).await
+}
+
+#[tauri::command]
 pub async fn local_library_restore(
+    app: tauri::AppHandle,
     state: tauri::State<'_, SharedWebDavState>,
 ) -> Result<Option<LocalScanResult>, String> {
     let content = match std::fs::read_to_string(&state.local_config_path) {
@@ -100,7 +119,12 @@ pub async fn local_library_restore(
     };
     let saved: SavedFolder =
         serde_json::from_str(&content).map_err(|error| format!("本地音乐源配置无效：{error}"))?;
-    match scan_folder(PathBuf::from(saved.folder), saved.name, &state, false).await {
+    let result = if saved.folder.starts_with("content://") {
+        scan_android_folder(saved.folder, saved.name, &app, &state, false).await
+    } else {
+        scan_folder(PathBuf::from(saved.folder), saved.name, &state, false).await
+    };
+    match result {
         Ok(result) => Ok(Some(result)),
         Err(error) => {
             log::warn!("local library restore skipped: {error}");
@@ -132,10 +156,19 @@ pub async fn local_library_scrape_track(
         .await
         .clone()
         .ok_or_else(|| "请先选择本地音乐文件夹".to_string())?;
-    let canonical =
-        std::fs::canonicalize(&path).map_err(|error| format!("无法打开本地音频：{error}"))?;
-    if !canonical.starts_with(&root) {
-        return Err("音频路径超出了已选择的文件夹".into());
+    match root {
+        LocalRoot::Path(root) => {
+            let canonical = std::fs::canonicalize(&path)
+                .map_err(|error| format!("无法打开本地音频：{error}"))?;
+            if !canonical.starts_with(root) {
+                return Err("音频路径超出了已选择的文件夹".into());
+            }
+        }
+        LocalRoot::ContentUri(_) => {
+            if !load_cache(&state.database_path)?.contains_key(&path) {
+                return Err("音频不在已授权的 Android 本地曲库中".into());
+            }
+        }
     }
     init_cache(&state.database_path)?;
     let mut track = load_cache(&state.database_path)?
@@ -165,9 +198,13 @@ async fn scan_folder(
         name.trim().to_string()
     };
     if remember {
-        save_folder(&state.local_config_path, &root, &source_name)?;
+        save_folder(
+            &state.local_config_path,
+            &root.to_string_lossy(),
+            &source_name,
+        )?;
     }
-    *state.local_root.write().await = Some(root.clone());
+    *state.local_root.write().await = Some(LocalRoot::Path(root.clone()));
 
     let database_path = state.database_path.clone();
     let cover_directory = state.cover_directory.clone();
@@ -214,6 +251,136 @@ async fn scan_folder(
         folder_name,
         tracks: entries,
     })
+}
+
+async fn scan_android_folder(
+    root_uri: String,
+    name: String,
+    app: &tauri::AppHandle,
+    state: &SharedWebDavState,
+    remember: bool,
+) -> Result<LocalScanResult, String> {
+    if !root_uri.starts_with("content://") {
+        return Err("Android 本地文件夹授权地址无效".into());
+    }
+    let source_name = if name.trim().is_empty() {
+        default_source_name()
+    } else {
+        name.trim().to_string()
+    };
+    if remember {
+        save_folder(&state.local_config_path, &root_uri, &source_name)?;
+    }
+
+    let app_for_scan = app.clone();
+    let root_for_scan = root_uri.clone();
+    let scanned = tauri::async_runtime::spawn_blocking(move || {
+        android_local::scan(&app_for_scan, &root_for_scan)
+    })
+    .await
+    .map_err(|error| format!("Android 曲库扫描任务失败：{error}"))??;
+
+    *state.local_root.write().await = Some(LocalRoot::ContentUri(root_uri.clone()));
+
+    let database_path = state.database_path.clone();
+    let cover_directory = state.cover_directory.clone();
+    let app_for_metadata = app.clone();
+    let mut tracks = tauri::async_runtime::spawn_blocking(move || {
+        build_android_library(
+            &database_path,
+            &cover_directory,
+            &app_for_metadata,
+            scanned.files,
+        )
+    })
+    .await
+    .map_err(|error| format!("Android 曲库标签读取任务失败：{error}"))??;
+
+    let candidates = tracks
+        .iter()
+        .enumerate()
+        .filter(|(_, track)| track.enrichment_version < scraper::ENRICHMENT_VERSION)
+        .map(|(index, _)| index)
+        .take(MAX_AUTO_SCRAPES)
+        .collect::<Vec<_>>();
+    let shared_state = state.clone();
+    let enriched = stream::iter(candidates.into_iter().map(|index| {
+        let shared_state = shared_state.clone();
+        let mut track = tracks[index].clone();
+        async move {
+            enrich_track(&mut track, &shared_state).await;
+            (index, track)
+        }
+    }))
+    .buffer_unordered(MAX_CONCURRENT_SCRAPES)
+    .collect::<Vec<_>>()
+    .await;
+    for (index, track) in enriched {
+        tracks[index] = track;
+    }
+    save_cache(&state.database_path, &tracks)?;
+
+    let entries = tracks.iter().map(|track| to_entry(track, state)).collect();
+    Ok(LocalScanResult {
+        source_name,
+        folder_path: root_uri,
+        folder_name: scanned.name,
+        tracks: entries,
+    })
+}
+
+fn build_android_library(
+    database_path: &FsPath,
+    cover_directory: &FsPath,
+    app: &tauri::AppHandle,
+    files: Vec<android_local::AndroidFile>,
+) -> Result<Vec<LocalTrack>, String> {
+    init_cache(database_path)?;
+    let existing = load_cache(database_path)?;
+    let mut tracks = Vec::with_capacity(files.len());
+    for entry in files {
+        if let Some(cached) = existing.get(&entry.uri) {
+            if cached.size == entry.size && cached.modified == entry.modified {
+                tracks.push(cached.clone());
+                continue;
+            }
+        }
+
+        let cache_key = format!("local:{}:{}", entry.uri, entry.modified);
+        let extracted = open_android_file(app, &entry.uri)
+            .and_then(|file| metadata::extract_local_reader(file, &cache_key, cover_directory))
+            .unwrap_or_else(|error| {
+                log::warn!(
+                    "Android local metadata extraction skipped for {}: {error}",
+                    entry.name
+                );
+                metadata::ExtractedMetadata::default()
+            });
+        let (fallback_artist, fallback_title) = title_from_filename(&entry.name);
+        tracks.push(LocalTrack {
+            path: entry.uri,
+            name: entry.name,
+            size: entry.size,
+            modified: entry.modified,
+            title: extracted.title.unwrap_or(fallback_title),
+            artist: extracted.artist.unwrap_or(fallback_artist),
+            album: extracted.album.unwrap_or(entry.album),
+            year: extracted.year,
+            duration: extracted.duration,
+            cover_file: extracted.cover_file,
+            plain_lyrics: extracted.plain_lyrics,
+            synced_lyrics: None,
+            enrichment_version: 0,
+        });
+    }
+    Ok(tracks)
+}
+
+fn open_android_file(app: &tauri::AppHandle, uri: &str) -> Result<std::fs::File, String> {
+    let url = Url::parse(uri).map_err(|error| format!("Android 音频 URI 无效：{error}"))?;
+    app.fs()
+        .open(FilePath::Url(url), OpenOptions::default())
+        .map_err(|error| format!("无法打开 Android 音频：{error}"))
 }
 
 fn build_local_library(
@@ -384,14 +551,14 @@ fn title_from_filename(name: &str) -> (String, String) {
     }
 }
 
-fn save_folder(path: &FsPath, root: &FsPath, name: &str) -> Result<(), String> {
+fn save_folder(path: &FsPath, root: &str, name: &str) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
             .map_err(|error| format!("无法创建本地音乐源配置目录：{error}"))?;
     }
     let content = serde_json::to_vec_pretty(&SavedFolder {
         name: name.to_string(),
-        folder: root.to_string_lossy().into_owned(),
+        folder: root.to_string(),
     })
     .map_err(|error| format!("无法保存本地音乐源配置：{error}"))?;
     std::fs::write(path, content).map_err(|error| format!("无法保存本地音乐源配置：{error}"))
@@ -546,17 +713,47 @@ pub async fn stream_local(
         )
             .into_response();
     };
-    let path = match tokio::fs::canonicalize(&query.path).await {
-        Ok(path) if path.starts_with(&root) => path,
-        _ => return (StatusCode::FORBIDDEN, "Path is outside the selected folder").into_response(),
-    };
-    let mut file = match tokio::fs::File::open(&path).await {
-        Ok(file) => file,
-        Err(_) => return StatusCode::NOT_FOUND.into_response(),
-    };
-    let size = match file.metadata().await {
-        Ok(metadata) => metadata.len(),
-        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+    let (mut file, size, mime_name) = match root {
+        LocalRoot::Path(root) => {
+            let path = match tokio::fs::canonicalize(&query.path).await {
+                Ok(path) if path.starts_with(&root) => path,
+                _ => {
+                    return (StatusCode::FORBIDDEN, "Path is outside the selected folder")
+                        .into_response();
+                }
+            };
+            let file = match tokio::fs::File::open(&path).await {
+                Ok(file) => file,
+                Err(_) => return StatusCode::NOT_FOUND.into_response(),
+            };
+            let size = match file.metadata().await {
+                Ok(metadata) => metadata.len(),
+                Err(_) => return StatusCode::NOT_FOUND.into_response(),
+            };
+            (file, size, path.to_string_lossy().into_owned())
+        }
+        LocalRoot::ContentUri(root_uri) => {
+            if !root_uri.starts_with("content://") {
+                return StatusCode::FORBIDDEN.into_response();
+            }
+            let cached = match load_cache(&state.database_path)
+                .ok()
+                .and_then(|tracks| tracks.get(&query.path).cloned())
+            {
+                Some(track) => track,
+                None => return StatusCode::FORBIDDEN.into_response(),
+            };
+            let file = match open_android_file(&state.app_handle, &query.path) {
+                Ok(file) => file,
+                Err(_) => return StatusCode::NOT_FOUND.into_response(),
+            };
+            let actual_size = file.metadata().map_or(0, |metadata| metadata.len());
+            (
+                tokio::fs::File::from_std(file),
+                actual_size.max(cached.size),
+                cached.name,
+            )
+        }
     };
     let range = headers
         .get(header::RANGE)
@@ -573,7 +770,7 @@ pub async fn stream_local(
         .status(status)
         .header(
             header::CONTENT_TYPE,
-            mime_guess::from_path(&path)
+            mime_guess::from_path(&mime_name)
                 .first_or_octet_stream()
                 .as_ref(),
         )

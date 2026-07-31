@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
+import { onBackButtonPress } from '@tauri-apps/api/app'
 import { Music2, X } from 'lucide-react'
 import type { Track } from '../types/music'
 import { AlbumArtwork } from './AlbumArtwork'
@@ -29,6 +30,26 @@ export function LyricsPanel({ track, progress, onClose }: LyricsPanelProps) {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  useEffect(() => {
+    let disposed = false
+    let stopListening: (() => Promise<void>) | undefined
+
+    void onBackButtonPress(onClose).then((listener) => {
+      if (disposed) {
+        void listener.unregister()
+      } else {
+        stopListening = () => listener.unregister()
+      }
+    }).catch(() => {
+      // Running in a browser without the Tauri event bridge.
+    })
+
+    return () => {
+      disposed = true
+      void stopListening?.()
+    }
   }, [onClose])
 
   useEffect(() => {

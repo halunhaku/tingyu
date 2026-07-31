@@ -9,6 +9,7 @@ interface SourceSummary {
 interface SourceManagerProps {
   webdav?: SourceSummary
   local?: SourceSummary
+  supportsLocalFolders?: boolean
   onClose: () => void
   onAddWebDav: () => void
   onAddLocal: (name: string) => Promise<void>
@@ -19,6 +20,7 @@ interface SourceManagerProps {
 export function SourceManager({
   webdav,
   local,
+  supportsLocalFolders = true,
   onClose,
   onAddWebDav,
   onAddLocal,
@@ -74,7 +76,7 @@ export function SourceManager({
           </div>
         )}
 
-        {(!webdav || !local) && (
+        {(!webdav || (supportsLocalFolders && !local)) && (
           <div className="source-dialog__section">
             <span className="source-dialog__label">添加音乐源</span>
             <div className="source-add-grid">
@@ -85,7 +87,7 @@ export function SourceManager({
                   <Plus size={16} />
                 </button>
               )}
-              {!local && (
+              {supportsLocalFolders && !local && (
                 <div className="source-add-local">
                   <span className="managed-source__icon is-local"><FolderOpen size={18} /></span>
                   <label>
@@ -110,7 +112,13 @@ export function SourceManager({
           </div>
         )}
 
-        {webdav && local && <p className="source-dialog__complete">当前支持一个 WebDAV 和一个本地文件夹音乐源。</p>}
+        {webdav && (!supportsLocalFolders || local) && (
+          <p className="source-dialog__complete">
+            {supportsLocalFolders
+              ? '当前支持一个 WebDAV 和一个本地文件夹音乐源。'
+              : 'Android 版当前支持一个 WebDAV 音乐源。'}
+          </p>
+        )}
       </section>
     </div>
   )

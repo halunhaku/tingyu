@@ -1,3 +1,4 @@
+mod android_local;
 mod credentials;
 mod library_cache;
 mod local_library;
@@ -15,6 +16,7 @@ use tauri::Manager;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(android_local::init())
         .setup(|app| {
             #[cfg(target_os = "macos")]
             {
@@ -38,6 +40,7 @@ pub fn run() {
             let app_data = app.path().app_data_dir()?;
             let app_cache = app.path().app_cache_dir()?;
             let webdav_state = webdav::create_state(
+                app.handle().clone(),
                 port,
                 app_data.join("library.sqlite3"),
                 app_cache.join("covers"),
@@ -64,6 +67,7 @@ pub fn run() {
         })
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
+            android_local::android_local_folder_pick,
             webdav::webdav_connect,
             webdav::webdav_restore,
             webdav::webdav_forget,
@@ -72,10 +76,12 @@ pub fn run() {
             webdav::webdav_scrape_track,
             webdav::webdav_scan,
             local_library::local_library_scan,
+            local_library::local_library_scan_android,
             local_library::local_library_restore,
             local_library::local_library_scrape_track,
             local_library::local_library_forget,
         ])
+        .plugin(tauri_plugin_fs::init())
         .run(tauri::generate_context!())
         .expect("error while running Tauri application");
 }

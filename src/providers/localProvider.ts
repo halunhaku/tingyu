@@ -25,11 +25,25 @@ interface LocalScanResult {
   tracks: LocalEntry[]
 }
 
+interface AndroidFolder {
+  uri: string
+  name: string
+}
+
 const artworks: Track['artwork'][] = ['sunset', 'meadow', 'ember', 'mono', 'lagoon', 'blueprint']
 const supportedFormats: Track['format'][] = ['FLAC', 'MP3', 'M4A', 'AAC', 'WAV', 'OGG', 'OPUS']
 
 export async function chooseAndScanLocalFolder(name: string) {
   if (!isTauri()) throw new Error('本地文件夹需要在听屿桌面应用中打开')
+  if (/Android/i.test(navigator.userAgent)) {
+    const picked = await invoke<AndroidFolder | null>('android_local_folder_pick')
+    if (!picked) return null
+    const result = await invoke<LocalScanResult>('local_library_scan_android', {
+      name,
+      folder: picked.uri,
+    })
+    return resultToLibrary(result)
+  }
   const folder = await open({
     directory: true,
     multiple: false,

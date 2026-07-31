@@ -1,9 +1,12 @@
 use std::path::Path;
 
+#[cfg(target_os = "macos")]
 use keyring::{Entry, Error as KeyringError};
 use serde::{Deserialize, Serialize};
 
+#[cfg(target_os = "macos")]
 const KEYCHAIN_SERVICE: &str = "com.halunhaku.tingyu.webdav";
+#[cfg(target_os = "macos")]
 const KEYCHAIN_ACCOUNT: &str = "default";
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -17,9 +20,7 @@ pub struct SavedConnection {
 }
 
 pub fn save(path: &Path, connection: &SavedConnection, password: &str) -> Result<(), String> {
-    keychain_entry()?
-        .set_password(password)
-        .map_err(|error| format!("无法写入系统 Keychain：{error}"))?;
+    save_password(path, password)?;
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
             .map_err(|error| format!("无法创建连接配置目录：{error}"))?;
@@ -46,19 +47,14 @@ pub fn load(path: &Path) -> Result<Option<(SavedConnection, String)>, String> {
     let Some(connection) = load_saved(path)? else {
         return Ok(None);
     };
-    let password = match keychain_entry()?.get_password() {
-        Ok(password) => password,
-        Err(KeyringError::NoEntry) => return Ok(None),
-        Err(error) => return Err(format!("无法读取系统 Keychain：{error}")),
+    let Some(password) = load_password(path)? else {
+        return Ok(None);
     };
     Ok(Some((connection, password)))
 }
 
 pub fn forget(path: &Path) -> Result<(), String> {
-    match keychain_entry()?.delete_credential() {
-        Ok(()) | Err(KeyringError::NoEntry) => {}
-        Err(error) => return Err(format!("无法删除系统 Keychain 凭据：{error}")),
-    }
+    forget_password(path)?;
     if path.exists() {
         std::fs::remove_file(path).map_err(|error| format!("无法删除连接配置：{error}"))?;
     }
@@ -69,7 +65,82 @@ fn default_source_name() -> String {
     "我的 WebDAV".into()
 }
 
+#[cfg(target_os = "macos")]
 fn keychain_entry() -> Result<Entry, String> {
     Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT)
         .map_err(|error| format!("无法访问系统 Keychain：{error}"))
+}
+
+#[cfg(target_os = "macos")]
+fn save_password(_path: &Path, password: &str) -> Result<(), String> {
+    keychain_entry()?
+        .set_password(password)
+        .map_err(|error| format!("无法写入系统 Keychain：{error}"))
+}
+
+#[cfg(target_os = "macos")]
+fn load_password(_path: &Path) -> Result<Option<String>, String> {
+    match keychain_entry()?.get_password() {
+        Ok(password) => Ok(Some(password)),
+        Err(KeyringError::NoEntry) => Ok(None),
+        Err(error) => Err(format!("无法读取系统 Keychain：{error}")),
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn forget_password(_path: &Path) -> Result<(), String> {
+    match keychain_entry()?.delete_credential() {
+        Ok(()) | Err(KeyringError::NoEntry) => Ok(()),
+        Err(error) => Err(format!("无法删除系统 Keychain 凭据：{error}")),
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn password_path(path: &Path) -> std::path::PathBuf {
+    path.with_extension("credential")
+}
+
+#[cfg(not(target_os = "macos"))]
+fn save_password(path: &Path, password: &str) -> Result<(), String> {
+    use std::io::Write;
+
+    let path = password_path(path);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| format!("无法创建凭据目录：{error}"))?;
+    }
+    let temporary = path.with_extension("credential.tmp");
+    let mut options = std::fs::OpenOptions::new();
+    options.create(true).write(true).truncate(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let mut file = options
+        .open(&temporary)
+        .map_err(|error| format!("无法写入应用私有凭据：{error}"))?;
+    file.write_all(password.as_bytes())
+        .map_err(|error| format!("无法写入应用私有凭据：{error}"))?;
+    file.sync_all()
+        .map_err(|error| format!("无法保存应用私有凭据：{error}"))?;
+    std::fs::rename(&temporary, &path).map_err(|error| format!("无法保存应用私有凭据：{error}"))
+}
+
+#[cfg(not(target_os = "macos"))]
+fn load_password(path: &Path) -> Result<Option<String>, String> {
+    match std::fs::read_to_string(password_path(path)) {
+        Ok(password) => Ok(Some(password)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(format!("无法读取应用私有凭据：{error}")),
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn forget_password(path: &Path) -> Result<(), String> {
+    let path = password_path(path);
+    match std::fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("无法删除应用私有凭据：{error}")),
+    }
 }

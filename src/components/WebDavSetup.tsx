@@ -14,6 +14,7 @@ interface WebDavSetupProps {
 }
 
 export function WebDavSetup({ onClose, onConnected }: WebDavSetupProps) {
+  const isAndroid = /Android/i.test(navigator.userAgent)
   const [config, setConfig] = useState<WebDavConfig>({
     name: '',
     baseUrl: '',
@@ -126,13 +127,21 @@ export function WebDavSetup({ onClose, onConnected }: WebDavSetupProps) {
             />
             <span>
               <strong>记住此连接</strong>
-              <small>密码安全保存在 macOS Keychain，地址和目录保存在本机</small>
+              <small>
+                {isAndroid
+                  ? '连接信息保存在 Android 应用私有目录'
+                  : '密码安全保存在 macOS Keychain，地址和目录保存在本机'}
+              </small>
             </span>
           </label>
 
           <div className="security-note">
             <LockKeyhole size={15} />
-            <span>密码不会写入配置文件，也不会发送到听屿服务器。建议使用坚果云提供的应用专用密码。</span>
+            <span>
+              {isAndroid
+                ? '连接信息仅保存在本应用沙盒中，不会发送到听屿服务器。建议使用 WebDAV 应用专用密码。'
+                : '密码不会写入配置文件，也不会发送到听屿服务器。建议使用坚果云提供的应用专用密码。'}
+            </span>
           </div>
 
           {error && <div className="connection-error" role="alert">{error}</div>}

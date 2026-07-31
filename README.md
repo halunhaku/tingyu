@@ -1,6 +1,6 @@
 # 听屿 TINGYU
 
-连接本地文件夹与 WebDAV 私人曲库的桌面音乐播放器。桌面端基于 Tauri 2，界面使用 React + TypeScript，文件扫描与音频流由本地 Rust 后端处理。
+连接本地文件夹与 WebDAV 私人曲库的跨平台音乐播放器。基于 Tauri 2、React + TypeScript，文件扫描与音频流由本地 Rust 后端处理。
 
 ## 已完成
 
@@ -22,6 +22,7 @@
 - 缺失封面自动通过 iTunes Search 匹配并缓存到本地
 - 通过 LRCLIB 自动匹配普通/时间轴歌词，中文歌词自动转为简体并同步高亮
 - 本地封面文件缓存与随机令牌图片代理
+- Android 原生 APK 工程、移动安全区适配与 WebDAV 播放
 
 ## 下载与发布
 
@@ -33,6 +34,8 @@ git push origin v0.2.0
 ```
 
 当前未配置 Apple Developer 签名。下载后首次打开需要在 Finder 中右键应用并选择“打开”。配置仓库中的 `APPLE_CERTIFICATE`、`APPLE_CERTIFICATE_PASSWORD`、`APPLE_SIGNING_IDENTITY`、`APPLE_ID`、`APPLE_PASSWORD` 和 `APPLE_TEAM_ID` Secrets 后，工作流会自动使用签名与公证凭据。
+
+推送 Android 相关代码到 `main` 时，`Build Android APK` 工作流会自动构建可安装的 arm64 debug APK，也可以在 GitHub Actions 页面手动运行。构建完成后可在对应任务的 Artifacts 中下载 `Tingyu-Android-arm64-*`，产物保留 14 天。
 
 ## 桌面端开发
 
@@ -50,6 +53,43 @@ npm run dev
 ```
 
 浏览器版本可以查看 UI，但真实 WebDAV 连接需要 Tauri 后端。
+
+## Android 开发
+
+需要 JDK 17、Android SDK、Android NDK 27。构建默认的 arm64 APK 至少需要：
+
+```bash
+rustup target add aarch64-linux-android
+```
+
+如需在 x86_64 模拟器中开发，再安装 `x86_64-linux-android`。
+首次生成 Android Studio 工程：
+
+```bash
+npm run android:init
+```
+
+连接真机或启动模拟器后运行：
+
+```bash
+npm run android:dev
+```
+
+构建可直接安装测试的 debug APK：
+
+```bash
+npm run android:build:debug
+```
+
+构建用于签名发布的 release APK：
+
+```bash
+npm run android:build
+```
+
+APK 输出位于 `src-tauri/gen/android/app/build/outputs/apk/`。debug APK 使用 Android 调试证书签名；release APK 默认为 unsigned，发布前需在 Android Studio 中配置正式 keystore 并签名。
+
+Android 版支持 WebDAV、本地文件夹、曲库缓存、歌词、封面和前台播放。本地文件夹通过 Android Storage Access Framework 授权，应用会持久保留所选目录的只读权限，不复制音频文件，也不申请“所有文件访问”权限。Android 记住的 WebDAV 连接信息保存在应用私有沙盒；卸载应用会一并清除。
 
 ## 质量检查
 
@@ -81,6 +121,9 @@ src-tauri/src/
 ├── scraper.rs        LRCLIB 歌词与 iTunes Search 封面刮削
 ├── lib.rs            Tauri 初始化与本地代理服务
 └── webdav.rs         WebDAV 扫描、校验和 Range 音频代理
+
+src-tauri/gen/android/
+└── app/               Android Gradle 工程、Manifest、图标和主题
 ```
 
 ## 音乐源使用说明

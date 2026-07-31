@@ -1,4 +1,7 @@
-use std::{io::Cursor, path::Path};
+use std::{
+    io::{BufReader, Cursor, Read, Seek},
+    path::Path,
+};
 
 use futures_util::StreamExt;
 use lofty::{
@@ -138,6 +141,31 @@ pub fn extract_local(
         .options(options)
         .read()
         .map_err(|error| format!("无法读取本地音频标签：{error}"))?;
+    extracted_from_tagged(tagged, cache_key, cover_dir)
+}
+
+pub fn extract_local_reader<R: Read + Seek>(
+    reader: R,
+    cache_key: &str,
+    cover_dir: &Path,
+) -> Result<ExtractedMetadata, String> {
+    let options = ParseOptions::new()
+        .read_properties(true)
+        .read_cover_art(true);
+    let tagged = Probe::new(BufReader::new(reader))
+        .guess_file_type()
+        .map_err(|error| format!("无法识别本地音频格式：{error}"))?
+        .options(options)
+        .read()
+        .map_err(|error| format!("无法读取本地音频标签：{error}"))?;
+    extracted_from_tagged(tagged, cache_key, cover_dir)
+}
+
+fn extracted_from_tagged(
+    tagged: lofty::file::TaggedFile,
+    cache_key: &str,
+    cover_dir: &Path,
+) -> Result<ExtractedMetadata, String> {
     let duration = tagged.properties().duration().as_secs_f64();
     let Some(tag) = tagged.primary_tag().or_else(|| tagged.first_tag()) else {
         return Ok(ExtractedMetadata {

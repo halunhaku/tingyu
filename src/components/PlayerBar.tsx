@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Heart,
-  Mic2,
   Pause,
   Play,
   Shuffle,
@@ -43,16 +42,46 @@ export function PlayerBar() {
   const track = library.find((item) => item.id === currentTrackId) ?? library[0]
   const duration = track?.duration || 0
   const progressPercentage = duration > 0 ? (progress / duration) * 100 : 0
+  const closeLyrics = useCallback(() => setLyricsOpen(false), [])
+
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    audio.pause()
+    audio.removeAttribute('src')
+    audio.load()
+    audio.crossOrigin = 'anonymous'
+    if (track?.streamUrl) {
+      audio.src = track.streamUrl
+      audio.load()
+    }
+  }, [track?.streamUrl])
 
   useEffect(() => {
     const audio = audioRef.current
     if (!audio || !track?.streamUrl) return
     if (isPlaying) {
-      void audio.play().catch(() => setPlaying(false))
+      if (audio.error || audio.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
+        audio.pause()
+        audio.removeAttribute('src')
+        audio.load()
+        audio.crossOrigin = 'anonymous'
+        audio.src = track.streamUrl
+        audio.load()
+      }
+      void audio.play().catch((error) => {
+        console.error('Audio playback failed', {
+          error,
+          source: track.source,
+          title: track.title,
+        })
+        setPlaying(false)
+      })
     } else {
       audio.pause()
     }
-  }, [isPlaying, setPlaying, track?.streamUrl])
+  }, [isPlaying, setPlaying, track?.source, track?.streamUrl, track?.title])
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume
@@ -97,9 +126,9 @@ export function PlayerBar() {
     <>
     <footer className="player-bar">
       <audio
+        crossOrigin="anonymous"
         ref={audioRef}
-        src={track.streamUrl}
-        preload="metadata"
+        preload="none"
         onTimeUpdate={(event) => setProgress(event.currentTarget.currentTime)}
         onLoadedMetadata={(event) => {
           if (Number.isFinite(event.currentTarget.duration)) {
@@ -111,14 +140,34 @@ export function PlayerBar() {
           }
         }}
         onEnded={next}
-        onError={() => track.streamUrl && setPlaying(false)}
+        onError={(event) => {
+          if (!track.streamUrl) return
+          console.error('Audio source failed', {
+            code: event.currentTarget.error?.code,
+            message: event.currentTarget.error?.message,
+            networkState: event.currentTarget.networkState,
+            readyState: event.currentTarget.readyState,
+            source: track.source,
+            title: track.title,
+          })
+          setPlaying(false)
+        }}
       />
       <div className="player-track">
-        <AlbumArtwork track={track} size="small" />
-        <div className="player-track__copy">
-          <strong>{track.title}</strong>
-          <span>{track.artist}</span>
-        </div>
+        <button
+          className="player-track__lyrics-trigger"
+          type="button"
+          aria-label={`查看 ${track.title} 的歌词`}
+          aria-expanded={lyricsOpen}
+          aria-haspopup="dialog"
+          onClick={() => setLyricsOpen(true)}
+        >
+          <AlbumArtwork track={track} size="small" />
+          <span className="player-track__copy">
+            <strong>{track.title}</strong>
+            <span>{track.artist}</span>
+          </span>
+        </button>
         <button
           className={likedIds.includes(track.id) ? 'is-liked' : ''}
           type="button"
@@ -126,15 +175,6 @@ export function PlayerBar() {
           onClick={() => toggleLike(track.id)}
         >
           <Heart size={16} fill={likedIds.includes(track.id) ? 'currentColor' : 'none'} />
-        </button>
-        <button
-          className="lyrics-toggle"
-          type="button"
-          aria-label="查看歌词"
-          onClick={() => setLyricsOpen(true)}
-        >
-          <Mic2 size={16} />
-          <span>歌词</span>
         </button>
       </div>
 
@@ -165,16 +205,6 @@ export function PlayerBar() {
       </div>
 
       <div className="player-options">
-        <button
-          className={lyricsOpen ? 'player-lyrics-button is-active' : 'player-lyrics-button'}
-          type="button"
-          aria-label="查看歌词"
-          aria-pressed={lyricsOpen}
-          onClick={() => setLyricsOpen((open) => !open)}
-        >
-          <Mic2 size={15} />
-          <span>歌词</span>
-        </button>
         <Volume1 size={16} aria-hidden="true" />
         <div className="range-wrap volume-range" style={{ '--range-progress': `${volume * 100}%` } as React.CSSProperties}>
           <input
@@ -190,7 +220,7 @@ export function PlayerBar() {
         <Volume2 size={16} aria-hidden="true" />
       </div>
     </footer>
-    {lyricsOpen && <LyricsPanel track={track} progress={progress} onClose={() => setLyricsOpen(false)} />}
+    {lyricsOpen && <LyricsPanel track={track} progress={progress} onClose={closeLyrics} />}
     </>
   )
 }

@@ -49,6 +49,7 @@ pub struct WebDavSession {
 }
 
 pub struct WebDavState {
+    pub app_handle: tauri::AppHandle,
     pub session: RwLock<Option<WebDavSession>>,
     pub proxy_origin: String,
     pub proxy_token: String,
@@ -56,7 +57,7 @@ pub struct WebDavState {
     pub cover_directory: PathBuf,
     pub connection_path: PathBuf,
     pub local_config_path: PathBuf,
-    pub local_root: RwLock<Option<PathBuf>>,
+    pub local_root: RwLock<Option<local_library::LocalRoot>>,
     pub scraper_client: Client,
 }
 
@@ -137,6 +138,7 @@ struct StreamQuery {
 }
 
 pub fn create_state(
+    app_handle: tauri::AppHandle,
     port: u16,
     database_path: PathBuf,
     cover_directory: PathBuf,
@@ -150,6 +152,7 @@ pub fn create_state(
         .build()
         .map_err(|error| format!("无法创建元数据刮削客户端：{error}"))?;
     Ok(Arc::new(WebDavState {
+        app_handle,
         session: RwLock::new(None),
         proxy_origin: format!("http://127.0.0.1:{port}"),
         proxy_token: Uuid::new_v4().to_string(),
@@ -828,11 +831,26 @@ async fn stream_audio(
     let status = StatusCode::from_u16(remote.status().as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
     let remote_headers = remote.headers().clone();
     let mut builder = Response::builder().status(status);
+    let remote_content_type = remote_headers
+        .get(header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok());
+    let content_type = match remote_content_type {
+        Some(value)
+            if !value.eq_ignore_ascii_case("application/octet-stream")
+                && !value.eq_ignore_ascii_case("binary/octet-stream") =>
+        {
+            value.to_owned()
+        }
+        _ => mime_guess::from_path(&query.href)
+            .first_or_octet_stream()
+            .to_string(),
+    };
+    builder = builder
+        .header(header::CONTENT_TYPE, content_type)
+        .header(header::ACCEPT_RANGES, "bytes");
     for name in [
-        header::CONTENT_TYPE,
         header::CONTENT_LENGTH,
         header::CONTENT_RANGE,
-        header::ACCEPT_RANGES,
         header::LAST_MODIFIED,
         header::ETAG,
     ] {
