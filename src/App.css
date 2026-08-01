@@ -591,7 +591,7 @@ kbd { padding: 2px 5px; color: #999c93; background: #ecebe4; border: 1px solid r
   .player-track .player-track__lyrics-trigger { display: flex; }
   .player-center { flex-direction: row; }
   .transport-controls { gap: 6px; }
-  .transport-controls > button:first-child, .transport-controls > button:nth-child(2), .transport-controls > button:nth-child(4), .transport-controls > button:last-child { display: none; }
+  .transport-controls > button:first-child { display: none; }
   .transport-controls .play-button { width: 36px; height: 36px; }
   .progress-row { position: absolute; right: 0; bottom: calc(74px + env(safe-area-inset-bottom)); left: 0; display: block; height: 2px; }
   .progress-row > span { display: none; }
