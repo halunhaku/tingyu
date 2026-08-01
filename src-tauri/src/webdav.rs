@@ -39,6 +39,8 @@ const MAX_SCAN_DEPTH: usize = 8;
 const MAX_SCAN_ENTRIES: usize = 5_000;
 const MAX_AUTO_SCRAPES_PER_SCAN: usize = 24;
 const MAX_CONCURRENT_SCRAPES: usize = 8;
+const MAX_CONCURRENT_EXTRACTIONS: usize = 8;
+const MAX_CONCURRENT_PROPFINDS: usize = 8;
 
 #[derive(Clone)]
 pub struct WebDavSession {
@@ -251,35 +253,58 @@ pub fn create_state(
 }
 
 pub async fn enrich_cached_library(state: SharedWebDavState) {
-    let tracks = match library_cache::load_all(&state.database_path) {
-        Ok(tracks) => tracks,
-        Err(error) => {
-            log::warn!("cached metadata enrichment skipped: {error}");
-            return;
-        }
-    };
-    let enriched = stream::iter(
-        tracks
-            .into_iter()
-            .filter(|track| track.enrichment_version < scraper::ENRICHMENT_VERSION)
-            .take(MAX_AUTO_SCRAPES_PER_SCAN)
-            .map(|mut track| {
-                let state = state.clone();
-                async move {
-                    enrich_cached_track(&mut track, &state).await;
-                    track
+    let mut source_ids = vec![LEGACY_WEBDAV_SOURCE_ID.to_string()];
+    match saved_connection_paths(&state) {
+        Ok(paths) => {
+            for (source_id, _) in paths {
+                if source_ids.iter().all(|existing| existing != &source_id) {
+                    source_ids.push(source_id);
                 }
-            }),
-    )
-    .buffer_unordered(MAX_CONCURRENT_SCRAPES)
-    .collect::<Vec<_>>()
-    .await;
-    for track in enriched {
-        if let Err(error) = library_cache::update_enrichment(&state.database_path, &track) {
-            log::warn!(
-                "failed to save scraped metadata for {}: {error}",
-                track.name
-            );
+            }
+        }
+        Err(error) => {
+            log::warn!("cached metadata enrichment source list skipped: {error}");
+        }
+    }
+
+    for source_id in source_ids {
+        let database_path = match source_database_path(&state, &source_id) {
+            Ok(path) => path,
+            Err(error) => {
+                log::warn!("cached metadata enrichment skipped for {source_id}: {error}");
+                continue;
+            }
+        };
+        let tracks = match library_cache::load_all(&database_path) {
+            Ok(tracks) => tracks,
+            Err(error) => {
+                log::warn!("cached metadata enrichment skipped for {source_id}: {error}");
+                continue;
+            }
+        };
+        let enriched = stream::iter(
+            tracks
+                .into_iter()
+                .filter(|track| track.enrichment_version < scraper::ENRICHMENT_VERSION)
+                .take(MAX_AUTO_SCRAPES_PER_SCAN)
+                .map(|mut track| {
+                    let state = state.clone();
+                    async move {
+                        enrich_cached_track(&mut track, &state).await;
+                        track
+                    }
+                }),
+        )
+        .buffer_unordered(MAX_CONCURRENT_SCRAPES)
+        .collect::<Vec<_>>()
+        .await;
+        for track in enriched {
+            if let Err(error) = library_cache::update_enrichment(&database_path, &track) {
+                log::warn!(
+                    "failed to save scraped metadata for {}: {error}",
+                    track.name
+                );
+            }
         }
     }
 }
@@ -459,81 +484,113 @@ pub async fn webdav_scan(
     let existing = library_cache::load_map(&database_path)?;
     let remote_files = collect_audio_files(&session, root, should_recurse).await?;
     let mut stats = ScanStats::default();
-    let mut cached_tracks = Vec::with_capacity(remote_files.len());
-    let mut scrape_candidates = Vec::new();
+    let mut cached_tracks: Vec<Option<CachedTrack>> = Vec::with_capacity(remote_files.len());
+    let mut extract_tasks = Vec::new();
 
-    for entry in remote_files {
+    for (index, entry) in remote_files.iter().enumerate() {
         let previous = existing.get(&entry.href);
-        let is_unchanged = previous.is_some_and(|cached| fingerprint_matches(cached, &entry));
-        let cached = if is_unchanged {
+        let is_unchanged = previous.is_some_and(|cached| fingerprint_matches(cached, entry));
+        if is_unchanged {
             stats.unchanged += 1;
-            previous.expect("checked above").clone()
+            cached_tracks.push(Some(previous.expect("checked above").clone()));
+            continue;
+        }
+        if previous.is_some() {
+            stats.updated += 1;
         } else {
-            if previous.is_some() {
-                stats.updated += 1;
-            } else {
-                stats.added += 1;
-            }
-            let remote_url = resolve_href(&session.base_url, &entry.href)?;
-            let cache_key = format!(
-                "{}:{}:{}",
-                source_id,
-                entry.href,
-                entry
-                    .etag
-                    .as_deref()
-                    .or(entry.modified.as_deref())
-                    .unwrap_or("")
-            );
+            stats.added += 1;
+        }
+        let remote_url = resolve_href(&session.base_url, &entry.href)?;
+        let cache_key = format!(
+            "{}:{}:{}",
+            source_id,
+            entry.href,
+            entry
+                .etag
+                .as_deref()
+                .or(entry.modified.as_deref())
+                .unwrap_or("")
+        );
+        let previous_duration = previous.map_or(0.0, |track| track.duration);
+        let client = session.client.clone();
+        let username = session.username.clone();
+        let password = session.password.clone();
+        let cover_directory = state.cover_directory.clone();
+        let name = entry.name.clone();
+        let href = entry.href.clone();
+        let size = entry.size;
+        let modified = entry.modified.clone();
+        let etag = entry.etag.clone();
+        let content_type = entry.content_type.clone();
+        cached_tracks.push(None);
+        extract_tasks.push(async move {
             let extracted = metadata::extract(
-                &session.client,
+                &client,
                 &remote_url,
-                &session.username,
-                &session.password,
-                &entry.name,
+                &username,
+                &password,
+                &name,
                 &cache_key,
-                &state.cover_directory,
+                &cover_directory,
             )
             .await
             .unwrap_or_else(|error| {
-                log::warn!("metadata extraction skipped for {}: {error}", entry.name);
+                log::warn!("metadata extraction skipped for {name}: {error}");
                 metadata::ExtractedMetadata::default()
             });
-            let (fallback_artist, fallback_title) = title_from_filename(&entry.name);
+            let (fallback_artist, fallback_title) = title_from_filename(&name);
             let title = extracted.title.unwrap_or(fallback_title);
             let artist = extracted.artist.unwrap_or(fallback_artist);
             let album = extracted
                 .album
-                .unwrap_or_else(|| parent_name_from_href(&entry.href));
-            CachedTrack {
-                href: entry.href.clone(),
-                name: entry.name.clone(),
-                size: entry.size,
-                modified: entry.modified.clone(),
-                etag: entry.etag.clone(),
-                content_type: entry.content_type.clone(),
-                title,
-                artist,
-                album,
-                year: extracted.year,
-                duration: if extracted.duration > 0.0 {
-                    extracted.duration
-                } else {
-                    previous.map_or(0.0, |track| track.duration)
+                .unwrap_or_else(|| parent_name_from_href(&href));
+            let duration = if extracted.duration > 0.0 {
+                extracted.duration
+            } else {
+                previous_duration
+            };
+            (
+                index,
+                CachedTrack {
+                    href,
+                    name,
+                    size,
+                    modified,
+                    etag,
+                    content_type,
+                    title,
+                    artist,
+                    album,
+                    year: extracted.year,
+                    duration,
+                    cover_file: extracted.cover_file,
+                    plain_lyrics: extracted.plain_lyrics,
+                    synced_lyrics: None,
+                    enrichment_version: 0,
                 },
-                cover_file: extracted.cover_file,
-                plain_lyrics: extracted.plain_lyrics,
-                synced_lyrics: None,
-                enrichment_version: 0,
-            }
-        };
-        let index = cached_tracks.len();
+            )
+        });
+    }
+
+    let extracted = stream::iter(extract_tasks)
+        .buffer_unordered(MAX_CONCURRENT_EXTRACTIONS)
+        .collect::<Vec<_>>()
+        .await;
+    for (index, track) in extracted {
+        cached_tracks[index] = Some(track);
+    }
+    let mut cached_tracks: Vec<CachedTrack> = cached_tracks
+        .into_iter()
+        .map(|track| track.expect("every scanned position is filled"))
+        .collect();
+
+    let mut scrape_candidates = Vec::new();
+    for (index, cached) in cached_tracks.iter().enumerate() {
         if cached.enrichment_version < scraper::ENRICHMENT_VERSION
             && scrape_candidates.len() < MAX_AUTO_SCRAPES_PER_SCAN
         {
             scrape_candidates.push(index);
         }
-        cached_tracks.push(cached);
     }
 
     let shared_state = state.inner().clone();
@@ -607,27 +664,51 @@ async fn collect_audio_files(
     let mut visited = HashSet::new();
     let mut audio_files = Vec::new();
 
-    while let Some((folder_url, depth)) = queue.pop_front() {
-        if !visited.insert(folder_url.to_string()) {
+    while !queue.is_empty() {
+        let batch: Vec<(Url, usize)> = {
+            let mut pending = Vec::new();
+            while pending.len() < MAX_CONCURRENT_PROPFINDS {
+                let Some((folder_url, depth)) = queue.pop_front() else {
+                    break;
+                };
+                if visited.insert(folder_url.to_string()) {
+                    pending.push((folder_url, depth));
+                }
+            }
+            pending
+        };
+        if batch.is_empty() {
             continue;
         }
-        for mut entry in propfind(session, folder_url.clone(), "1").await? {
-            let entry_url = resolve_href(&session.base_url, &entry.href)?;
-            ensure_allowed_url(session, &entry_url)?;
-            if normalize_path(entry_url.path()) == normalize_path(folder_url.path()) {
-                continue;
-            }
-            if entry.is_directory {
-                if recursive && depth < MAX_SCAN_DEPTH {
-                    queue.push_back((entry_url, depth + 1));
+
+        let listed = stream::iter(batch.into_iter().map(|(folder_url, depth)| async move {
+            let entries = propfind(session, folder_url.clone(), "1").await?;
+            Ok::<_, String>((folder_url, depth, entries))
+        }))
+        .buffer_unordered(MAX_CONCURRENT_PROPFINDS)
+        .collect::<Vec<_>>()
+        .await;
+
+        for result in listed {
+            let (folder_url, depth, entries) = result?;
+            for mut entry in entries {
+                let entry_url = resolve_href(&session.base_url, &entry.href)?;
+                ensure_allowed_url(session, &entry_url)?;
+                if normalize_path(entry_url.path()) == normalize_path(folder_url.path()) {
+                    continue;
                 }
-            } else if is_audio_file(&entry.name, entry.content_type.as_deref()) {
-                entry.href = entry_url.to_string();
-                audio_files.push(entry);
-                if audio_files.len() >= MAX_SCAN_ENTRIES {
-                    return Err(format!(
-                        "曲库超过 {MAX_SCAN_ENTRIES} 首，暂时无法完成安全的增量扫描"
-                    ));
+                if entry.is_directory {
+                    if recursive && depth < MAX_SCAN_DEPTH {
+                        queue.push_back((entry_url, depth + 1));
+                    }
+                } else if is_audio_file(&entry.name, entry.content_type.as_deref()) {
+                    entry.href = entry_url.to_string();
+                    audio_files.push(entry);
+                    if audio_files.len() >= MAX_SCAN_ENTRIES {
+                        return Err(format!(
+                            "曲库超过 {MAX_SCAN_ENTRIES} 首，暂时无法完成安全的增量扫描"
+                        ));
+                    }
                 }
             }
         }

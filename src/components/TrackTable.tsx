@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, Cloud, FolderOpen, Heart, MoreHorizontal, Pause, Play } from 'lucide-react'
+import { Check, Cloud, FolderOpen, Heart, ListEnd, ListStart, MoreHorizontal, Pause, Play } from 'lucide-react'
 import { formatTime, sourceLabel } from '../data/library'
 import { usePlayerStore } from '../stores/playerStore'
 import type { Track } from '../types/music'
@@ -29,6 +29,8 @@ export function TrackTable({
   const togglePlayback = usePlayerStore((state) => state.togglePlayback)
   const likedIds = usePlayerStore((state) => state.likedIds)
   const toggleLike = usePlayerStore((state) => state.toggleLike)
+  const playNext = usePlayerStore((state) => state.playNext)
+  const addToQueue = usePlayerStore((state) => state.addToQueue)
 
   useEffect(() => {
     if (!menu) return
@@ -169,6 +171,28 @@ export function TrackTable({
           >
             {likedIds.includes(menu.track.id) ? <Check size={14} /> : <Heart size={14} />}
             {likedIds.includes(menu.track.id) ? '取消喜欢' : '添加喜欢'}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              playNext(menu.track.id)
+              setMenu(null)
+            }}
+          >
+            <ListStart size={14} />
+            下一首播放
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              addToQueue(menu.track.id)
+              setMenu(null)
+            }}
+          >
+            <ListEnd size={14} />
+            添加到队列末尾
           </button>
         </div>
       )}

@@ -268,6 +268,7 @@ kbd { padding: 2px 5px; color: #999c93; background: #ecebe4; border: 1px solid r
 .player-track button:active, .player-options button:active, .transport-controls button:active { transform: scale(.94); }
 .player-center { display: flex; align-items: center; flex-direction: column; gap: 6px; }
 .transport-controls { display: flex; align-items: center; gap: 17px; }
+.transport-controls button.is-active { color: #db724e; }
 .transport-controls .play-button { width: 32px; height: 32px; padding: 0; color: #171815; background: #e9e7dc; }
 .progress-row { display: grid; grid-template-columns: 31px minmax(120px, 400px) 31px; align-items: center; gap: 8px; width: 100%; color: #64675f; font-size: 7px; font-variant-numeric: tabular-nums; }
 .progress-row > span:last-child { text-align: right; }

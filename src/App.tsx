@@ -303,6 +303,13 @@ function App() {
     })
     const results = await Promise.allSettled(tasks)
     const failed = results.filter((result) => result.status === 'rejected').length
+    if (failed) {
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          upsertSource({ ...sources[index], status: '刷新失败' })
+        }
+      })
+    }
     setSyncMessage(failed ? `${failed} 个音乐源刷新失败` : '曲库已刷新')
     refreshInProgressRef.current = false
   }, [replaceSourceTracks, sources, upsertSource])

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "听屿",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "identifier": "com.halunhaku.tingyu",
   "build": {
     "frontendDist": "../dist",

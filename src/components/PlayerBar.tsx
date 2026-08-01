@@ -5,6 +5,7 @@ import {
   MoreHorizontal,
   Pause,
   Play,
+  Repeat1,
   Repeat2,
   Shuffle,
   SkipBack,
@@ -25,6 +26,8 @@ import { AlbumArtwork } from './AlbumArtwork'
 import { LyricsPanel } from './LyricsPanel'
 
 const CURRENT_ENRICHMENT_VERSION = 4
+// 连续音频加载失败达到该次数时停止自动跳歌，避免来源断连时疯狂切歌
+const MAX_CONSECUTIVE_AUDIO_FAILURES = 2
 
 interface PlayerBarProps {
   queueOpen: boolean
@@ -36,6 +39,7 @@ export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
   const scrapedTracksRef = useRef(new Set<string>())
   const mediaSessionStartedRef = useRef(false)
   const lastMediaPositionSyncRef = useRef(0)
+  const consecutiveFailuresRef = useRef(0)
   const mediaControlHandlerRef = useRef<(control: SystemMediaControl) => void>(() => undefined)
   const [lyricsOpen, setLyricsOpen] = useState(false)
   const library = usePlayerStore((state) => state.library)
@@ -54,6 +58,8 @@ export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
   const updateTrack = usePlayerStore((state) => state.updateTrack)
   const setVolume = usePlayerStore((state) => state.setVolume)
   const toggleLike = usePlayerStore((state) => state.toggleLike)
+  const repeatMode = usePlayerStore((state) => state.repeatMode)
+  const cycleRepeatMode = usePlayerStore((state) => state.cycleRepeatMode)
 
   const track = library.find((item) => item.id === currentTrackId) ?? library[0]
   const duration = track?.duration || 0
@@ -93,13 +99,7 @@ export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
         togglePlayback()
         break
       case 'previous':
-        if (audio && audio.currentTime > 5) {
-          audio.currentTime = 0
-          setProgress(0)
-          syncSystemMedia(0)
-        } else {
-          previous()
-        }
+        previous()
         break
       case 'next':
         next()
@@ -200,6 +200,16 @@ export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
   }, [])
 
   useEffect(() => {
+    const seekToStart = () => {
+      const audio = audioRef.current
+      if (audio?.src) audio.currentTime = 0
+      syncSystemMedia(0)
+    }
+    window.addEventListener('tingyu:seek-to-start', seekToStart)
+    return () => window.removeEventListener('tingyu:seek-to-start', seekToStart)
+  }, [syncSystemMedia])
+
+  useEffect(() => {
     const href = track?.remotePath
     if (!href || (track.enrichmentVersion ?? 0) >= CURRENT_ENRICHMENT_VERSION) return
     const scrapeKey = `${track.sourceId}:${href}`
@@ -219,14 +229,6 @@ export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
     setProgress(seconds)
     if (audioRef.current && track.streamUrl) audioRef.current.currentTime = seconds
     syncSystemMedia(seconds)
-  }
-
-  const handlePrevious = () => {
-    if (progress > 5) {
-      seek(0)
-    } else {
-      previous()
-    }
   }
 
   return (
@@ -254,7 +256,18 @@ export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
             }
           }
         }}
-        onEnded={next}
+        onEnded={() => {
+          if (repeatMode === 'one') {
+            const audio = audioRef.current
+            if (audio) {
+              audio.currentTime = 0
+              void audio.play().catch(() => setPlaying(false))
+            }
+            setProgress(0)
+          } else {
+            next()
+          }
+        }}
         onError={(event) => {
           if (!track.streamUrl) return
           console.error('Audio source failed', {
@@ -265,7 +278,16 @@ export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
             source: track.source,
             title: track.title,
           })
-          setPlaying(false)
+          consecutiveFailuresRef.current += 1
+          if (consecutiveFailuresRef.current >= MAX_CONSECUTIVE_AUDIO_FAILURES) {
+            consecutiveFailuresRef.current = 0
+            setPlaying(false)
+          } else {
+            next()
+          }
+        }}
+        onPlaying={() => {
+          consecutiveFailuresRef.current = 0
         }}
       />
       <div className="player-track">
@@ -299,12 +321,20 @@ export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
       <div className="player-center">
         <div className="transport-controls">
           <button type="button" aria-label="随机播放" onClick={shuffle}><Shuffle size={15} /></button>
-          <button type="button" aria-label="上一首" onClick={handlePrevious}><SkipBack size={18} fill="currentColor" /></button>
+          <button type="button" aria-label="上一首" onClick={previous}><SkipBack size={18} fill="currentColor" /></button>
           <button className="play-button" type="button" aria-label={isPlaying ? '暂停' : '播放'} onClick={togglePlayback}>
             {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
           </button>
           <button type="button" aria-label="下一首" onClick={next}><SkipForward size={18} fill="currentColor" /></button>
-          <button type="button" aria-label="循环模式暂未启用" title="循环模式暂未启用" disabled><Repeat2 size={15} /></button>
+          <button
+            className={repeatMode === 'off' ? '' : 'is-active'}
+            type="button"
+            aria-label={repeatMode === 'off' ? '循环关闭' : repeatMode === 'all' ? '循环全部' : '单曲循环'}
+            title={repeatMode === 'off' ? '循环：关闭' : repeatMode === 'all' ? '循环：全部' : '循环：单曲'}
+            onClick={cycleRepeatMode}
+          >
+            {repeatMode === 'one' ? <Repeat1 size={15} /> : <Repeat2 size={15} />}
+          </button>
         </div>
         <div className="progress-row">
           <span>{formatTime(progress)}</span>
