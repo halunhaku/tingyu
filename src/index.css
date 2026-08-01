@@ -11,21 +11,33 @@
 
 @layer base {
   :root {
-    font-family: "Avenir Next", Avenir, "PingFang SC", "Noto Sans SC", sans-serif;
-    color: #292b27;
-    background: #141512;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+    color: #24251f;
+    background: #181916;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
-    --ink: #272925;
-    --muted: #777a72;
-    --subtle: #a1a49b;
-    --canvas: #f1f0e9;
-    --paper: #f8f7f1;
-    --line: rgba(39, 41, 37, 0.11);
-    --orange: #c95f3c;
-    --orange-dark: #a9472a;
-    --sidebar: #1d1f1b;
+
+    /* Tingyu design tokens */
+    --ink: #24251f;
+    --muted: #74776e;
+    --subtle: #95978e;
+    --canvas: #f4f1e9;
+    --paper: #fbf9f3;
+    --line: rgba(60, 60, 50, 0.1);
+    --orange: #e06d45;
+    --orange-dark: #bd5331;
+    --orange-soft: rgba(224, 109, 69, 0.14);
+    --sidebar: #181916;
+    --card-dark: #242620;
+    --success: #78a276;
+    --warning: #d39455;
+    --radius-control: 10px;
+    --radius-card: 16px;
+    --space-page: clamp(24px, 3vw, 40px);
+    --sidebar-width: 272px;
+    --queue-width: 304px;
+    --player-height: 92px;
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
     --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   }

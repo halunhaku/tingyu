@@ -1,4 +1,4 @@
-import { Cloud, Disc3, FolderHeart, FolderOpen, Library, Plus } from 'lucide-react'
+import { Cloud, Disc3, FolderHeart, FolderOpen, Library, Plus, Settings } from 'lucide-react'
 import type { MusicSource } from '../types/music'
 
 type View = 'library' | 'favorites'
@@ -9,6 +9,7 @@ interface SidebarProps {
   onViewChange: (view: View) => void
   onManageSources: () => void
   onSourceSelect: (sourceId: string) => void
+  onOpenSettings: () => void
   sources: MusicSource[]
 }
 
@@ -23,6 +24,7 @@ export function Sidebar({
   onViewChange,
   onManageSources,
   onSourceSelect,
+  onOpenSettings,
   sources,
 }: SidebarProps) {
   return (
@@ -65,6 +67,7 @@ export function Sidebar({
           <div className="source-list">
             {sources.map((source) => {
               const Icon = source.kind === 'webdav' ? Cloud : FolderOpen
+              const needsAttention = /失败|断开|需要连接|本地缓存/.test(source.status)
               return (
                 <button
                   className={activeSourceId === source.id ? 'source-item is-active' : 'source-item'}
@@ -82,7 +85,10 @@ export function Sidebar({
                     <strong>{source.name}</strong>
                     <small>{source.status}</small>
                   </span>
-                  <span className="source-item__status" />
+                  <span
+                    className={`source-item__status ${needsAttention ? 'needs-attention' : ''}`}
+                    title={needsAttention ? '连接需要检查' : '连接正常'}
+                  />
                 </button>
               )
             })}
@@ -90,7 +96,13 @@ export function Sidebar({
         )}
       </div>
 
-      <span className="sidebar-footnote">LOCAL + WEBDAV · PRIVATE LIBRARY</span>
+      <div className="sidebar-footer">
+        <span className="sidebar-footnote">LOCAL · WEBDAV · PRIVATE LIBRARY</span>
+        <button className="settings-button" type="button" onClick={onOpenSettings}>
+          <Settings size={16} />
+          <span>设置</span>
+        </button>
+      </div>
     </aside>
   )
 }

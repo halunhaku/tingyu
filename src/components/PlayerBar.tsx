@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Heart,
+  ListMusic,
+  MoreHorizontal,
   Pause,
   Play,
+  Repeat2,
   Shuffle,
   SkipBack,
   SkipForward,
-  Volume1,
   Volume2,
 } from 'lucide-react'
 import { formatTime } from '../data/library'
@@ -24,7 +26,12 @@ import { LyricsPanel } from './LyricsPanel'
 
 const CURRENT_ENRICHMENT_VERSION = 4
 
-export function PlayerBar() {
+interface PlayerBarProps {
+  queueOpen: boolean
+  onToggleQueue: () => void
+}
+
+export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const scrapedTracksRef = useRef(new Set<string>())
   const mediaSessionStartedRef = useRef(false)
@@ -273,16 +280,19 @@ export function PlayerBar() {
           <AlbumArtwork track={track} size="small" />
           <span className="player-track__copy">
             <strong>{track.title}</strong>
-            <span>{track.artist}</span>
+            <span>{track.artist} · {track.album}</span>
           </span>
         </button>
         <button
           className={likedIds.includes(track.id) ? 'is-liked' : ''}
           type="button"
-          aria-label="喜欢"
+          aria-label={likedIds.includes(track.id) ? '取消喜欢' : '添加喜欢'}
           onClick={() => toggleLike(track.id)}
         >
           <Heart size={16} fill={likedIds.includes(track.id) ? 'currentColor' : 'none'} />
+        </button>
+        <button type="button" aria-label="查看歌词与更多信息" onClick={() => setLyricsOpen(true)}>
+          <MoreHorizontal size={17} />
         </button>
       </div>
 
@@ -294,6 +304,7 @@ export function PlayerBar() {
             {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
           </button>
           <button type="button" aria-label="下一首" onClick={next}><SkipForward size={18} fill="currentColor" /></button>
+          <button type="button" aria-label="循环模式暂未启用" title="循环模式暂未启用" disabled><Repeat2 size={15} /></button>
         </div>
         <div className="progress-row">
           <span>{formatTime(progress)}</span>
@@ -308,12 +319,21 @@ export function PlayerBar() {
               value={Math.min(progress, duration || 1)}
             />
           </div>
-          <span>{duration > 0 ? `-${formatTime(Math.max(0, duration - progress))}` : '--:--'}</span>
+          <span>{duration > 0 ? formatTime(duration) : '--:--'}</span>
         </div>
       </div>
 
       <div className="player-options">
-        <Volume1 size={16} aria-hidden="true" />
+        <button
+          className={queueOpen ? 'is-active' : ''}
+          type="button"
+          aria-label={queueOpen ? '隐藏播放队列' : '显示播放队列'}
+          aria-pressed={queueOpen}
+          onClick={onToggleQueue}
+        >
+          <ListMusic size={17} />
+        </button>
+        <Volume2 size={16} aria-hidden="true" />
         <div className="range-wrap volume-range" style={{ '--range-progress': `${volume * 100}%` } as React.CSSProperties}>
           <input
             aria-label="音量"
@@ -325,7 +345,6 @@ export function PlayerBar() {
             value={volume}
           />
         </div>
-        <Volume2 size={16} aria-hidden="true" />
       </div>
     </footer>
     {lyricsOpen && <LyricsPanel track={track} progress={progress} onClose={closeLyrics} />}

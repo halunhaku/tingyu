@@ -1,24 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import {
-  ChevronRight,
-  Cloud,
-  Menu,
-  Pause,
-  Play,
-  Search,
-  X,
-} from 'lucide-react'
+import { Cloud, X } from 'lucide-react'
 import './App.css'
-import { AlbumArtwork } from './components/AlbumArtwork'
+import { NowPlayingHero } from './components/NowPlayingHero'
 import { PlayerBar } from './components/PlayerBar'
 import { QueuePanel } from './components/QueuePanel'
 import { Sidebar } from './components/Sidebar'
 import { SourceManager } from './components/SourceManager'
+import { TopToolbar } from './components/TopToolbar'
 import { TrackTable } from './components/TrackTable'
 import { WebDavSetup } from './components/WebDavSetup'
-import { sourceLabel } from './data/library'
 import {
   chooseAndScanLocalFolder,
   forgetLocalFolder,
@@ -62,6 +54,7 @@ function App() {
   const [activeView, setActiveView] = useState<View>('library')
   const [query, setQuery] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [queueOpen, setQueueOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 1040)
   const [webdavSetupOpen, setWebdavSetupOpen] = useState(false)
   const [sourceManagerOpen, setSourceManagerOpen] = useState(false)
   const [activeSourceId, setActiveSourceId] = useState<string | null>(null)
@@ -119,9 +112,7 @@ function App() {
     return result
   }, [activeSourceId, activeView, library, likedIds, query])
 
-  const spotlightTrack = currentTrack && (!activeSourceId || currentTrack.sourceId === activeSourceId)
-    ? currentTrack
-    : visibleTracks[0]
+  const spotlightTrack = currentTrack
 
   useEffect(() => {
     const timer = window.setInterval(tick, 1000)
@@ -188,6 +179,22 @@ function App() {
     void restoreLibraries()
     return () => { cancelled = true }
   }, [replaceSourceTracks, upsertSource])
+
+  useEffect(() => {
+    const narrowWindow = window.matchMedia('(max-width: 1040px)')
+    const handleWindowChange = (event: MediaQueryListEvent) => {
+      if (event.matches) setQueueOpen(false)
+    }
+    const handleResize = () => {
+      if (window.innerWidth <= 1040) setQueueOpen(false)
+    }
+    narrowWindow.addEventListener('change', handleWindowChange)
+    window.addEventListener('resize', handleResize)
+    return () => {
+      narrowWindow.removeEventListener('change', handleWindowChange)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
@@ -361,6 +368,7 @@ function App() {
     onViewChange: handleViewChange,
     onManageSources: () => setSourceManagerOpen(true),
     onSourceSelect: handleSourceSelect,
+    onOpenSettings: () => setSourceManagerOpen(true),
     sources,
   }
 
@@ -379,34 +387,16 @@ function App() {
       </div>
 
       <main className="main-content">
-        <header className="topbar">
-          <button className="mobile-menu" type="button" aria-label="打开菜单" onClick={() => setSidebarOpen(true)}>
-            <Menu size={19} />
-          </button>
-          <div className="breadcrumb">
-            <span>私人曲库</span>
-            <ChevronRight size={13} />
-            <strong>{selectedSource?.name || (activeView === 'library' ? '曲库' : '我喜欢的')}</strong>
-          </div>
-          <label className="search-box">
-            <Search size={16} />
-            <input
-              ref={searchInputRef}
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="搜索歌曲、歌手或专辑"
-              aria-label="搜索曲库"
-            />
-            <kbd>⌘ K</kbd>
-          </label>
-          <div className="sync-status" role="status">
-            <span />
-            {syncMessage}
-          </div>
-        </header>
+        <TopToolbar
+          currentLocation={selectedSource?.name || (activeView === 'library' ? '曲库' : '我喜欢的')}
+          query={query}
+          searchInputRef={searchInputRef}
+          syncMessage={syncMessage}
+          onOpenSidebar={() => setSidebarOpen(true)}
+          onQueryChange={setQuery}
+        />
 
-        <div className="content-grid">
+        <div className={`content-grid ${currentTrack && queueOpen ? 'has-queue' : ''}`}>
           <section className="page-content">
             <div className="intro-row">
               <div>
@@ -419,58 +409,32 @@ function App() {
             {sources.length ? (
               <>
                 {spotlightTrack && (
-                  <section className="spotlight" aria-label="当前歌曲">
-                    <div className="spotlight__art-wrap">
-                      <span className="spotlight__disc" />
-                      <AlbumArtwork track={spotlightTrack} size="large" />
-                    </div>
-                    <div className="spotlight__copy">
-                      <span className="spotlight__label">CURRENT TRACK · 当前歌曲</span>
-                      <div>
-                        <h2>{spotlightTrack.title}</h2>
-                        <p>{spotlightTrack.artist} · {spotlightTrack.album}</p>
-                      </div>
-                      <div className="spotlight__meta">
-                        <span>{spotlightTrack.format}</span>
-                        <span><Cloud size={12} /> {sourceLabel[spotlightTrack.source].toLocaleUpperCase()}</span>
-                      </div>
-                      <div className="spotlight__actions">
-                        <button
-                          className="primary-button"
-                          type="button"
-                          onClick={() => spotlightTrack.id === currentTrackId ? togglePlayback() : playTrack(spotlightTrack.id)}
-                        >
-                          {spotlightTrack.id === currentTrackId && isPlaying
-                            ? <Pause size={17} fill="currentColor" />
-                            : <Play size={17} fill="currentColor" />}
-                          {spotlightTrack.id === currentTrackId && isPlaying ? '暂停' : '播放'}
-                        </button>
-                        <button
-                          className="secondary-button"
-                          type="button"
-                          onClick={() => {
-                            if (!activeSourceId) {
-                              shuffle()
-                              return
-                            }
-                            const candidates = visibleTracks.filter((track) => track.id !== currentTrackId)
-                            const nextTrack = candidates[Math.floor(Math.random() * candidates.length)]
-                            if (nextTrack) playTrack(nextTrack.id)
-                          }}
-                        >
-                          随机来一首
-                        </button>
-                      </div>
-                    </div>
-                    <span className="spotlight__number">01</span>
-                  </section>
+                  <NowPlayingHero
+                    track={spotlightTrack}
+                    isCurrent={spotlightTrack.id === currentTrackId}
+                    isPlaying={isPlaying}
+                    canShuffle={visibleTracks.length > 1}
+                    onPlay={() => spotlightTrack.id === currentTrackId ? togglePlayback() : playTrack(spotlightTrack.id)}
+                    onShuffle={() => {
+                      if (!activeSourceId) {
+                        shuffle()
+                        return
+                      }
+                      const candidates = visibleTracks.filter((track) => track.id !== currentTrackId)
+                      const nextTrack = candidates[Math.floor(Math.random() * candidates.length)]
+                      if (nextTrack) playTrack(nextTrack.id)
+                    }}
+                  />
                 )}
 
                 <section className="library-section">
                   <div className="section-heading">
                     <div>
                       <span className="eyebrow">TRACKS</span>
-                      <h2>{activeView === 'favorites' ? '喜欢的歌' : '全部歌曲'}</h2>
+                      <span className="section-heading__title-row">
+                        <h2>{activeView === 'favorites' ? '喜欢的歌' : '全部歌曲'}</h2>
+                        <small>{visibleTracks.length} 首歌曲</small>
+                      </span>
                     </div>
                   </div>
                   <TrackTable
@@ -495,11 +459,11 @@ function App() {
             )}
           </section>
 
-          {currentTrack && <QueuePanel />}
+          {currentTrack && <QueuePanel isOpen={queueOpen} onClose={() => setQueueOpen(false)} />}
         </div>
       </main>
 
-      {currentTrack && <PlayerBar />}
+      {currentTrack && <PlayerBar queueOpen={queueOpen} onToggleQueue={() => setQueueOpen((open) => !open)} />}
       {sourceManagerOpen && (
         <SourceManager
           sources={sources}
