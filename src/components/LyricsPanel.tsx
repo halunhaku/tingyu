@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { onBackButtonPress } from '@tauri-apps/api/app'
-import { Music2, X } from 'lucide-react'
+import { Music2, Repeat1, Repeat2, Shuffle, X } from 'lucide-react'
 import type { Track } from '../types/music'
+import { usePlayerStore } from '../stores/playerStore'
 import { AlbumArtwork } from './AlbumArtwork'
 
 interface LyricsPanelProps {
@@ -17,6 +18,9 @@ interface LyricLine {
 
 export function LyricsPanel({ track, progress, onClose }: LyricsPanelProps) {
   const activeLineRef = useRef<HTMLParagraphElement>(null)
+  const shuffle = usePlayerStore((state) => state.shuffle)
+  const repeatMode = usePlayerStore((state) => state.repeatMode)
+  const cycleRepeatMode = usePlayerStore((state) => state.cycleRepeatMode)
   const syncedLines = useMemo(() => parseLrc(track.syncedLyrics), [track.syncedLyrics])
   const plainLines = useMemo(
     () => track.plainLyrics?.split(/\r?\n/).map((line) => line.trim()).filter(Boolean) ?? [],
@@ -79,6 +83,20 @@ export function LyricsPanel({ track, progress, onClose }: LyricsPanelProps) {
             <span className="eyebrow">{track.album}</span>
             <h2>{track.title}</h2>
             <p>{track.artist}</p>
+            <div className="lyrics-panel__mode">
+              <button type="button" aria-label="随机播放" onClick={shuffle}>
+                <Shuffle size={15} />
+              </button>
+              <button
+                className={repeatMode === 'off' ? '' : 'is-active'}
+                type="button"
+                aria-label={repeatMode === 'off' ? '循环关闭' : repeatMode === 'all' ? '循环全部' : '单曲循环'}
+                title={repeatMode === 'off' ? '循环：关闭' : repeatMode === 'all' ? '循环：全部' : '循环：单曲'}
+                onClick={cycleRepeatMode}
+              >
+                {repeatMode === 'one' ? <Repeat1 size={15} /> : <Repeat2 size={15} />}
+              </button>
+            </div>
           </div>
         </div>
 

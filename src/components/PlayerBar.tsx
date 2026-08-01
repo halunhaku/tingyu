@@ -320,14 +320,14 @@ export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
 
       <div className="player-center">
         <div className="transport-controls">
-          <button type="button" aria-label="随机播放" onClick={shuffle}><Shuffle size={15} /></button>
-          <button type="button" aria-label="上一首" onClick={previous}><SkipBack size={18} fill="currentColor" /></button>
-          <button className="play-button" type="button" aria-label={isPlaying ? '暂停' : '播放'} onClick={togglePlayback}>
+          <button className="player-control--shuffle" type="button" aria-label="随机播放" onClick={shuffle}><Shuffle size={15} /></button>
+          <button className="player-control--previous" type="button" aria-label="上一首" onClick={previous}><SkipBack size={18} fill="currentColor" /></button>
+          <button className="play-button player-control--play" type="button" aria-label={isPlaying ? '暂停' : '播放'} onClick={togglePlayback}>
             {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
           </button>
-          <button type="button" aria-label="下一首" onClick={next}><SkipForward size={18} fill="currentColor" /></button>
+          <button className="player-control--next" type="button" aria-label="下一首" onClick={next}><SkipForward size={18} fill="currentColor" /></button>
           <button
-            className={repeatMode === 'off' ? '' : 'is-active'}
+            className={`player-control--repeat ${repeatMode === 'off' ? '' : 'is-active'}`}
             type="button"
             aria-label={repeatMode === 'off' ? '循环关闭' : repeatMode === 'all' ? '循环全部' : '单曲循环'}
             title={repeatMode === 'off' ? '循环：关闭' : repeatMode === 'all' ? '循环：全部' : '循环：单曲'}
@@ -355,7 +355,7 @@ export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
 
       <div className="player-options">
         <button
-          className={queueOpen ? 'is-active' : ''}
+          className={`player-control--queue ${queueOpen ? 'is-active' : ''}`}
           type="button"
           aria-label={queueOpen ? '隐藏播放队列' : '显示播放队列'}
           aria-pressed={queueOpen}
