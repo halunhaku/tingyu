@@ -1,214 +1,136 @@
-name: Build and publish release
+name: Sign and publish local release
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Draft Release tag produced by the local release script
+        required: true
+        type: string
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
 jobs:
-  release-macos:
-    name: Build macOS app
-    runs-on: macos-latest
-    env:
-      HAS_APPLE_SIGNING: ${{ secrets.APPLE_CERTIFICATE != '' }}
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install frontend dependencies
-        run: npm ci
-
-      - name: Remove stale generated release assets
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          gh release delete-asset "v${VERSION}" "_${VERSION}_aarch64.dmg" --yes 2>/dev/null || true
-          gh release delete-asset "v${VERSION}" "_aarch64.app.tar.gz" --yes 2>/dev/null || true
-
-      - name: Build and publish unsigned release
-        if: env.HAS_APPLE_SIGNING != 'true'
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: v__VERSION__
-          releaseName: '听屿 v__VERSION__'
-          releaseBody: |
-            听屿跨平台音乐播放器。
-
-            - macOS：`.app` / `.dmg`
-            - Android：arm64 APK
-
-            macOS 未签名版本首次打开时，请在 Finder 中右键应用并选择“打开”。
-          releaseDraft: false
-          prerelease: false
-          args: --bundles app,dmg
-
-      - name: Build, sign and publish release
-        if: env.HAS_APPLE_SIGNING == 'true'
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        with:
-          tagName: v__VERSION__
-          releaseName: '听屿 v__VERSION__'
-          releaseBody: |
-            听屿跨平台音乐播放器。
-
-            - macOS：`.app` / `.dmg`
-            - Android：arm64 APK
-          releaseDraft: false
-          prerelease: false
-          args: --bundles app,dmg
-
-      - name: Give release files stable English names
-        if: success()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION}" \
-            --jq '.assets[] | [.id, .name] | @tsv' |
-          while IFS=$'\t' read -r id name; do
-            case "$name" in
-              Tingyu_*) continue ;;
-              *.dmg)
-                suffix=$(echo "$name" | sed -E 's/^_?([0-9.]+_)?//')
-                target="Tingyu_${VERSION}_${suffix}"
-                ;;
-              *.app.tar.gz)
-                target="Tingyu_${VERSION}_${name#_}"
-                ;;
-              *) continue ;;
-            esac
-            gh release delete-asset "v${VERSION}" "$target" --yes 2>/dev/null || true
-            gh api --method PATCH \
-              "repos/${GITHUB_REPOSITORY}/releases/assets/${id}" \
-              -f name="$target" --silent
-          done
-
-  build-android:
-    name: Build signed Android APK
+  sign-and-publish:
+    name: Sign Android APK and publish Release
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    outputs:
-      release_tag: ${{ steps.metadata.outputs.release_tag }}
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Read release metadata
+      - name: Validate draft release assets
         id: metadata
+        shell: bash
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "release_tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release tag: $RELEASE_TAG" >&2
+            exit 1
+          fi
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
+          VERSION="${RELEASE_TAG#v}"
+          IS_DRAFT="$(gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft')"
+          if [[ "$IS_DRAFT" != "true" ]]; then
+            echo "Release $RELEASE_TAG must exist and remain a draft" >&2
+            exit 1
+          fi
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-          cache: gradle
+          UNSIGNED_APK="Tingyu_${VERSION}_android_arm64_unsigned.apk"
+          SIGNED_APK="Tingyu_${VERSION}_android_arm64.apk"
+          APP_ARCHIVE="Tingyu_${VERSION}_aarch64.app.tar.gz"
+          DMG="Tingyu_${VERSION}_aarch64.dmg"
+          ASSETS="$(gh release view "$RELEASE_TAG" --json assets --jq '[.assets[].name]')"
 
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-linux-android
+          if jq -e --arg name "$UNSIGNED_APK" 'index($name) != null' <<<"$ASSETS" >/dev/null; then
+            echo "needs_signing=true" >> "$GITHUB_OUTPUT"
+          elif jq -e --arg name "$SIGNED_APK" 'index($name) != null' <<<"$ASSETS" >/dev/null; then
+            echo "needs_signing=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Neither unsigned nor signed Android APK exists in $RELEASE_TAG" >&2
+            exit 1
+          fi
 
-      - name: Cache Rust build files
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "unsigned_apk=$UNSIGNED_APK" >> "$GITHUB_OUTPUT"
+          echo "signed_apk=$SIGNED_APK" >> "$GITHUB_OUTPUT"
+          echo "app_archive=$APP_ARCHIVE" >> "$GITHUB_OUTPUT"
+          echo "dmg=$DMG" >> "$GITHUB_OUTPUT"
 
       - name: Set up Android SDK
+        if: steps.metadata.outputs.needs_signing == 'true'
         uses: android-actions/setup-android@v3
 
-      - name: Install Android build dependencies
+      - name: Install Android signing tools
+        if: steps.metadata.outputs.needs_signing == 'true'
+        run: sdkmanager 'build-tools;36.0.0' >/dev/null
+
+      - name: Download unsigned Android APK
+        if: steps.metadata.outputs.needs_signing == 'true'
         env:
-          NDK_VERSION: 27.1.12297006
+          UNSIGNED_APK: ${{ steps.metadata.outputs.unsigned_apk }}
         run: |
-          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' "ndk;${NDK_VERSION}"
-          echo "NDK_HOME=${ANDROID_HOME}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
-          echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+          mkdir -p android-release
+          gh release download "$RELEASE_TAG" \
+            --pattern "$UNSIGNED_APK" \
+            --dir android-release
 
-      - name: Install frontend dependencies
-        run: npm ci
-
-      - name: Build release APK
-        run: npm run android:build -- --ci
-
-      - name: Sign release APK
+      - name: Sign Android APK
+        if: steps.metadata.outputs.needs_signing == 'true'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          VERSION: ${{ steps.metadata.outputs.version }}
+          UNSIGNED_APK: ${{ steps.metadata.outputs.unsigned_apk }}
+          SIGNED_APK: ${{ steps.metadata.outputs.signed_apk }}
         run: |
+          set -euo pipefail
           test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/tingyu-release.jks"
-          mkdir -p artifacts
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign \
             --ks "$RUNNER_TEMP/tingyu-release.jks" \
             --ks-key-alias "$ANDROID_KEY_ALIAS" \
             --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
             --key-pass env:ANDROID_KEY_PASSWORD \
-            --out "artifacts/Tingyu_${VERSION}_android_arm64.apk" \
-            src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
+            --out "android-release/$SIGNED_APK" \
+            "android-release/$UNSIGNED_APK"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose \
-            "artifacts/Tingyu_${VERSION}_android_arm64.apk"
+            "android-release/$SIGNED_APK"
 
-      - name: Store Android release artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-release-apk
-          path: artifacts/*.apk
-          if-no-files-found: error
-          retention-days: 1
-
-  publish-android:
-    name: Add Android APK to release
-    needs: [release-macos, build-android]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download signed APK
-        uses: actions/download-artifact@v4
-        with:
-          name: android-release-apk
-          path: android-release
-
-      - name: Upload APK to GitHub Release
+      - name: Upload signed Android APK
+        if: steps.metadata.outputs.needs_signing == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ needs.build-android.outputs.release_tag }}
-        run: gh release upload "$RELEASE_TAG" android-release/*.apk --clobber --repo "$GITHUB_REPOSITORY"
+          SIGNED_APK: ${{ steps.metadata.outputs.signed_apk }}
+        run: gh release upload "$RELEASE_TAG" "android-release/$SIGNED_APK" --clobber
+
+      - name: Verify assets and publish Release
+        env:
+          UNSIGNED_APK: ${{ steps.metadata.outputs.unsigned_apk }}
+          SIGNED_APK: ${{ steps.metadata.outputs.signed_apk }}
+          APP_ARCHIVE: ${{ steps.metadata.outputs.app_archive }}
+          DMG: ${{ steps.metadata.outputs.dmg }}
+        run: |
+          set -euo pipefail
+          ASSETS="$(gh release view "$RELEASE_TAG" --json assets --jq '[.assets[].name]')"
+          for REQUIRED_ASSET in "$APP_ARCHIVE" "$DMG" "$SIGNED_APK"; do
+            if ! jq -e --arg name "$REQUIRED_ASSET" 'index($name) != null' <<<"$ASSETS" >/dev/null; then
+              echo "Missing required release asset: $REQUIRED_ASSET" >&2
+              exit 1
+            fi
+          done
+
+          if jq -e --arg name "$UNSIGNED_APK" 'index($name) != null' <<<"$ASSETS" >/dev/null; then
+            gh release delete-asset "$RELEASE_TAG" "$UNSIGNED_APK" --yes
+          fi
+          gh release edit "$RELEASE_TAG" --draft=false

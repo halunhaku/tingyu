@@ -1,7 +1,7 @@
 {
   "name": "tingyu",
   "private": true,
-  "version": "0.5.5",
+  "version": "0.5.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,7 +14,8 @@
     "android:init": "tauri android init",
     "android:dev": "tauri android dev",
     "android:build": "tauri android build --apk --target aarch64",
-    "android:build:debug": "tauri android build --apk --target aarch64 --debug"
+    "android:build:debug": "tauri android build --apk --target aarch64 --debug",
+    "release:local": "node scripts/release-local.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",
