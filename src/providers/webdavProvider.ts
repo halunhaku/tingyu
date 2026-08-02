@@ -57,6 +57,12 @@ interface ScanResult {
   stats: ScanStats
 }
 
+interface ConnectResult {
+  connection: ConnectionInfo
+  tracks: WebDavEntry[]
+  stats: ScanStats
+}
+
 export interface WebDavLibrary {
   connection: ConnectionInfo
   tracks: Track[]
@@ -68,9 +74,12 @@ const supportedFormats: Track['format'][] = ['FLAC', 'MP3', 'M4A', 'AAC', 'WAV',
 
 export async function connectAndScanWebDav(config: WebDavConfig) {
   assertDesktop()
-  const connection = await invoke<ConnectionInfo>('webdav_connect', { config })
-  const scan = await scanWebDav(connection.sourceId, config.folder)
-  return { connection, ...scan }
+  const result = await invoke<ConnectResult>('webdav_connect', { config })
+  return {
+    connection: result.connection,
+    tracks: result.tracks.map((entry) => entryToTrack(entry, result.connection.sourceId)),
+    stats: result.stats,
+  }
 }
 
 export async function loadCachedWebDavs() {

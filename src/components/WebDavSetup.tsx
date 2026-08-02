@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Check, Cloud, Eye, EyeOff, LoaderCircle, LockKeyhole, X } from 'lucide-react'
 import {
   connectAndScanWebDav,
@@ -6,6 +6,7 @@ import {
   type ScanStats,
   type WebDavConfig,
 } from '../providers/webdavProvider'
+import { useDialogFocus } from '../hooks/useDialogFocus'
 import type { Track } from '../types/music'
 
 interface WebDavSetupProps {
@@ -14,6 +15,9 @@ interface WebDavSetupProps {
 }
 
 export function WebDavSetup({ onClose, onConnected }: WebDavSetupProps) {
+  const dialogRef = useRef<HTMLElement>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
+  useDialogFocus(dialogRef, onClose, nameInputRef)
   const isAndroid = /Android/i.test(navigator.userAgent)
   const [config, setConfig] = useState<WebDavConfig>({
     name: '',
@@ -54,7 +58,14 @@ export function WebDavSetup({ onClose, onConnected }: WebDavSetupProps) {
 
   return (
     <div className="dialog-layer" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section className="webdav-dialog" role="dialog" aria-modal="true" aria-labelledby="webdav-title">
+      <section
+        ref={dialogRef}
+        className="webdav-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="webdav-title"
+        tabIndex={-1}
+      >
         <header className="webdav-dialog__header">
           <span className="webdav-dialog__icon"><Cloud size={20} /></span>
           <div>
@@ -68,6 +79,7 @@ export function WebDavSetup({ onClose, onConnected }: WebDavSetupProps) {
           <label className="field">
             <span>音乐源名称</span>
             <input
+              ref={nameInputRef}
               autoFocus
               type="text"
               required
@@ -137,7 +149,7 @@ export function WebDavSetup({ onClose, onConnected }: WebDavSetupProps) {
               <small>
                 {isAndroid
                   ? '连接信息保存在 Android 应用私有目录'
-                  : '密码安全保存在 macOS Keychain，地址和目录保存在本机'}
+                  : '密码安全保存在系统凭据库，地址和目录保存在本机'}
               </small>
             </span>
           </label>
@@ -147,7 +159,7 @@ export function WebDavSetup({ onClose, onConnected }: WebDavSetupProps) {
             <span>
               {isAndroid
                 ? '连接信息仅保存在本应用沙盒中，不会发送到听屿服务器。建议使用 WebDAV 应用专用密码。'
-                : '密码不会写入配置文件，也不会发送到听屿服务器。建议使用坚果云提供的应用专用密码。'}
+                : '密码保存在操作系统凭据库，不会写入配置文件。建议使用 WebDAV 应用专用密码。'}
             </span>
           </div>
 

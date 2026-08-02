@@ -117,7 +117,16 @@ pub async fn local_library_scan_android(
     state: tauri::State<'_, SharedWebDavState>,
 ) -> Result<LocalScanResult, String> {
     let source_id = Uuid::new_v4().to_string();
-    scan_android_folder(source_id, folder, name, &app, &state, true).await
+    let result = scan_android_folder(source_id, folder.clone(), name, &app, &state, true).await;
+    if result.is_err()
+        && load_folders(&state.local_config_path)
+            .is_ok_and(|folders| folders.iter().all(|saved| saved.folder != folder))
+    {
+        if let Err(error) = android_local::release(&app, &folder) {
+            log::warn!("failed to release uncommitted Android folder permission: {error}");
+        }
+    }
+    result
 }
 
 #[tauri::command]
@@ -152,18 +161,26 @@ pub async fn local_library_refresh(
 #[tauri::command]
 pub async fn local_library_forget(
     source_id: String,
+    app: tauri::AppHandle,
     state: tauri::State<'_, SharedWebDavState>,
 ) -> Result<(), String> {
-    state.local_roots.write().await.remove(&source_id);
-    let mut folders = load_folders(&state.local_config_path)?;
-    folders.retain(|folder| folder.source_id != source_id);
-    save_folders(&state.local_config_path, &folders)?;
     let database_path = source_database_path(&state, &source_id)?;
-    if source_id == LEGACY_LOCAL_SOURCE_ID {
+    let (removed, still_referenced) = remove_folder(&state.local_config_path, &source_id)?;
+    state.local_roots.write().await.remove(&source_id);
+    if removed.folder.starts_with("content://") && !still_referenced {
+        if let Err(error) = android_local::release(&app, &removed.folder) {
+            log::warn!("local source {source_id} was removed but SAF cleanup failed: {error}");
+        }
+    }
+    let cleanup = if source_id == LEGACY_LOCAL_SOURCE_ID {
         clear_cache(&database_path)
     } else {
         remove_source_cache(&database_path)
+    };
+    if let Err(error) = cleanup {
+        log::warn!("local source {source_id} was removed but cache cleanup failed: {error}");
     }
+    Ok(())
 }
 
 #[tauri::command]
@@ -241,32 +258,45 @@ async fn scan_folder(
     } else {
         name.trim().to_string()
     };
+    let database_path = source_database_path(state, &source_id)?;
+    let cover_directory = state.cover_directory.clone();
+    let root_for_scan = root.clone();
+    let database_for_scan = database_path.clone();
+    let build_result = tauri::async_runtime::spawn_blocking(move || {
+        build_local_library(&database_for_scan, &cover_directory, &root_for_scan)
+    })
+    .await
+    .map_err(|error| format!("本地曲库扫描任务失败：{error}"))
+    .and_then(|result| result);
+    let mut tracks = match build_result {
+        Ok(tracks) => tracks,
+        Err(error) => {
+            discard_new_source_cache(&database_path, remember);
+            return Err(error);
+        }
+    };
+
+    enrich_tracks(&mut tracks, state).await;
+    if let Err(error) = save_cache(&database_path, &tracks) {
+        discard_new_source_cache(&database_path, remember);
+        return Err(error);
+    }
     if remember {
-        save_folder(
+        if let Err(error) = save_folder(
             &state.local_config_path,
             &source_id,
             &root.to_string_lossy(),
             &source_name,
-        )?;
+        ) {
+            discard_new_source_cache(&database_path, true);
+            return Err(error);
+        }
     }
     state
         .local_roots
         .write()
         .await
         .insert(source_id.clone(), LocalRoot::Path(root.clone()));
-
-    let database_path = source_database_path(state, &source_id)?;
-    let cover_directory = state.cover_directory.clone();
-    let root_for_scan = root.clone();
-    let database_for_scan = database_path.clone();
-    let mut tracks = tauri::async_runtime::spawn_blocking(move || {
-        build_local_library(&database_for_scan, &cover_directory, &root_for_scan)
-    })
-    .await
-    .map_err(|error| format!("本地曲库扫描任务失败：{error}"))??;
-
-    enrich_tracks(&mut tracks, state).await;
-    save_cache(&database_path, &tracks)?;
 
     let folder_name = root
         .file_name()
@@ -302,15 +332,6 @@ async fn scan_android_folder(
     } else {
         name.trim().to_string()
     };
-    if remember {
-        save_folder(
-            &state.local_config_path,
-            &source_id,
-            &root_uri,
-            &source_name,
-        )?;
-    }
-
     let app_for_scan = app.clone();
     let root_for_scan = root_uri.clone();
     let scanned = tauri::async_runtime::spawn_blocking(move || {
@@ -319,17 +340,11 @@ async fn scan_android_folder(
     .await
     .map_err(|error| format!("Android 曲库扫描任务失败：{error}"))??;
 
-    state
-        .local_roots
-        .write()
-        .await
-        .insert(source_id.clone(), LocalRoot::ContentUri(root_uri.clone()));
-
     let database_path = source_database_path(state, &source_id)?;
     let database_for_scan = database_path.clone();
     let cover_directory = state.cover_directory.clone();
     let app_for_metadata = app.clone();
-    let mut tracks = tauri::async_runtime::spawn_blocking(move || {
+    let build_result = tauri::async_runtime::spawn_blocking(move || {
         build_android_library(
             &database_for_scan,
             &cover_directory,
@@ -338,10 +353,37 @@ async fn scan_android_folder(
         )
     })
     .await
-    .map_err(|error| format!("Android 曲库标签读取任务失败：{error}"))??;
+    .map_err(|error| format!("Android 曲库标签读取任务失败：{error}"))
+    .and_then(|result| result);
+    let mut tracks = match build_result {
+        Ok(tracks) => tracks,
+        Err(error) => {
+            discard_new_source_cache(&database_path, remember);
+            return Err(error);
+        }
+    };
 
     enrich_tracks(&mut tracks, state).await;
-    save_cache(&database_path, &tracks)?;
+    if let Err(error) = save_cache(&database_path, &tracks) {
+        discard_new_source_cache(&database_path, remember);
+        return Err(error);
+    }
+    if remember {
+        if let Err(error) = save_folder(
+            &state.local_config_path,
+            &source_id,
+            &root_uri,
+            &source_name,
+        ) {
+            discard_new_source_cache(&database_path, true);
+            return Err(error);
+        }
+    }
+    state
+        .local_roots
+        .write()
+        .await
+        .insert(source_id.clone(), LocalRoot::ContentUri(root_uri.clone()));
 
     let entries = tracks
         .iter()
@@ -354,6 +396,14 @@ async fn scan_android_folder(
         folder_name: scanned.name,
         tracks: entries,
     })
+}
+
+fn discard_new_source_cache(database_path: &FsPath, remember: bool) {
+    if remember {
+        if let Err(error) = remove_source_cache(database_path) {
+            log::warn!("failed to discard uncommitted local source cache: {error}");
+        }
+    }
 }
 
 async fn enrich_tracks(tracks: &mut [LocalTrack], state: &SharedWebDavState) {
@@ -649,6 +699,18 @@ fn save_folder(path: &FsPath, source_id: &str, root: &str, name: &str) -> Result
     save_folders(path, &folders)
 }
 
+fn remove_folder(path: &FsPath, source_id: &str) -> Result<(SavedFolder, bool), String> {
+    let mut folders = load_folders(path)?;
+    let index = folders
+        .iter()
+        .position(|folder| folder.source_id == source_id)
+        .ok_or_else(|| "找不到这个本地音乐源".to_string())?;
+    let removed = folders.remove(index);
+    let still_referenced = folders.iter().any(|folder| folder.folder == removed.folder);
+    save_folders(path, &folders)?;
+    Ok((removed, still_referenced))
+}
+
 fn init_cache(path: &FsPath) -> Result<(), String> {
     let connection = Connection::open(path).map_err(cache_error)?;
     connection
@@ -854,10 +916,10 @@ pub async fn stream_local(
             )
         }
     };
-    let range = headers
-        .get(header::RANGE)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| parse_range(value, size));
+    let range = match requested_range(&headers, size) {
+        Ok(range) => range,
+        Err(()) => return range_not_satisfiable(size),
+    };
     let (status, start, end) = range
         .map(|(start, end)| (StatusCode::PARTIAL_CONTENT, start, end))
         .unwrap_or((StatusCode::OK, 0, size.saturating_sub(1)));
@@ -887,6 +949,25 @@ pub async fn stream_local(
     let stream = ReaderStream::new(file.take(length));
     builder
         .body(Body::from_stream(stream))
+        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+}
+
+fn requested_range(headers: &HeaderMap, size: u64) -> Result<Option<(u64, u64)>, ()> {
+    let Some(value) = headers.get(header::RANGE) else {
+        return Ok(None);
+    };
+    let value = value.to_str().map_err(|_| ())?;
+    parse_range(value, size).map(Some).ok_or(())
+}
+
+fn range_not_satisfiable(size: u64) -> Response {
+    Response::builder()
+        .status(StatusCode::RANGE_NOT_SATISFIABLE)
+        .header(header::CONTENT_RANGE, format!("bytes */{size}"))
+        .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::CONTENT_LENGTH, 0)
+        .header(header::CACHE_CONTROL, "private, no-store")
+        .body(Body::empty())
         .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
 }
 
@@ -928,6 +1009,17 @@ mod tests {
     }
 
     #[test]
+    fn rejects_unsatisfiable_range_requests_with_416() {
+        let mut headers = HeaderMap::new();
+        headers.insert(header::RANGE, "bytes=100-".parse().unwrap());
+        assert_eq!(requested_range(&headers, 100), Err(()));
+
+        let response = range_not_satisfiable(100);
+        assert_eq!(response.status(), StatusCode::RANGE_NOT_SATISFIABLE);
+        assert_eq!(response.headers()[header::CONTENT_RANGE], "bytes */100");
+    }
+
+    #[test]
     fn migrates_single_folder_config_and_keeps_multiple_sources() {
         let path = std::env::temp_dir().join(format!("tingyu-folders-{}.json", Uuid::new_v4()));
         std::fs::write(&path, r#"{"name":"旧曲库","folder":"/music/legacy"}"#).unwrap();
@@ -944,6 +1036,21 @@ mod tests {
         assert!(folders
             .iter()
             .any(|folder| folder.source_id == LEGACY_LOCAL_SOURCE_ID));
+        let (removed, still_referenced) = remove_folder(&path, &source_id).unwrap();
+        assert_eq!(removed.folder, "/music/new");
+        assert!(!still_referenced);
+        let folders = load_folders(&path).unwrap();
+        assert!(!folders.iter().any(|folder| folder.source_id == source_id));
+        assert!(remove_folder(&path, &source_id).is_err());
+
+        let first_id = Uuid::new_v4().to_string();
+        let second_id = Uuid::new_v4().to_string();
+        save_folder(&path, &first_id, "content://music", "首个授权").unwrap();
+        save_folder(&path, &second_id, "content://music", "重复授权").unwrap();
+        let (_, still_referenced) = remove_folder(&path, &first_id).unwrap();
+        assert!(still_referenced);
+        let (_, still_referenced) = remove_folder(&path, &second_id).unwrap();
+        assert!(!still_referenced);
 
         let _ = std::fs::remove_file(path);
     }

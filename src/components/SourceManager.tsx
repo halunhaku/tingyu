@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Cloud, FolderOpen, Plus, Trash2, X } from 'lucide-react'
+import { useDialogFocus } from '../hooks/useDialogFocus'
 import type { MusicSource } from '../types/music'
 
 interface SourceManagerProps {
@@ -11,6 +12,52 @@ interface SourceManagerProps {
   onRemove: (source: MusicSource) => Promise<void>
 }
 
+interface RemoveSourceDialogProps {
+  source: MusicSource
+  busy: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}
+
+function RemoveSourceDialog({
+  source,
+  busy,
+  onCancel,
+  onConfirm,
+}: RemoveSourceDialogProps) {
+  const dialogRef = useRef<HTMLElement>(null)
+  useDialogFocus(dialogRef, onCancel)
+
+  return (
+    <div className="dialog-layer" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && !busy && onCancel()}>
+      <section
+        ref={dialogRef}
+        className="confirm-dialog"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="remove-source-title"
+        aria-describedby="remove-source-description"
+        tabIndex={-1}
+      >
+        <span className="confirm-dialog__icon"><Trash2 size={19} /></span>
+        <div>
+          <span className="eyebrow">REMOVE MUSIC SOURCE</span>
+          <h2 id="remove-source-title">删除“{source.name}”？</h2>
+          <p id="remove-source-description">
+            将移除此连接、凭据和本地缓存，不会删除原始音乐文件。
+          </p>
+        </div>
+        <footer className="confirm-dialog__actions">
+          <button type="button" disabled={busy} onClick={onCancel}>取消</button>
+          <button className="is-destructive" type="button" disabled={busy} onClick={onConfirm}>
+            {busy ? '正在删除…' : '删除音乐源'}
+          </button>
+        </footer>
+      </section>
+    </div>
+  )
+}
+
 export function SourceManager({
   sources,
   supportsLocalFolders = true,
@@ -19,13 +66,17 @@ export function SourceManager({
   onAddLocal,
   onRemove,
 }: SourceManagerProps) {
+  const dialogRef = useRef<HTMLElement>(null)
+  useDialogFocus(dialogRef, onClose)
   const [localName, setLocalName] = useState('')
   const [busy, setBusy] = useState('')
+  const [pendingRemoval, setPendingRemoval] = useState<MusicSource | null>(null)
 
   const remove = async (source: MusicSource) => {
     setBusy(source.id)
     try {
       await onRemove(source)
+      setPendingRemoval(null)
     } finally {
       setBusy('')
     }
@@ -44,8 +95,16 @@ export function SourceManager({
   }
 
   return (
+    <>
     <div className="dialog-layer" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section className="source-dialog" role="dialog" aria-modal="true" aria-labelledby="source-manager-title">
+      <section
+        ref={dialogRef}
+        className="source-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="source-manager-title"
+        tabIndex={-1}
+      >
         <header className="source-dialog__header">
           <div>
             <span className="eyebrow">MUSIC SOURCES</span>
@@ -68,7 +127,7 @@ export function SourceManager({
                       disabled={Boolean(busy)}
                       type="button"
                       aria-label={`删除 ${source.name}`}
-                      onClick={() => { void remove(source) }}
+                      onClick={() => setPendingRemoval(source)}
                     >
                       <Trash2 size={15} />
                     </button>
@@ -114,5 +173,16 @@ export function SourceManager({
         <p className="source-dialog__complete">可以添加多个 WebDAV 和本地文件夹，它们会合并到完整曲库中。</p>
       </section>
     </div>
+    {pendingRemoval && (
+      <RemoveSourceDialog
+        source={pendingRemoval}
+        busy={busy === pendingRemoval.id}
+        onCancel={() => {
+          if (!busy) setPendingRemoval(null)
+        }}
+        onConfirm={() => { void remove(pendingRemoval) }}
+      />
+    )}
+    </>
   )
 }

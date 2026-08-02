@@ -21,6 +21,11 @@ class ScanFolderArgs {
   lateinit var rootUri: String
 }
 
+@InvokeArg
+class ReleaseFolderArgs {
+  lateinit var rootUri: String
+}
+
 data class PickedFolder(
   val uri: String,
   val name: String,
@@ -156,6 +161,30 @@ class LocalFolderPlugin(private val activity: Activity) : Plugin(activity) {
         invoke.reject(error.message ?: "扫描 Android 本地曲库失败")
       }
     }.start()
+  }
+
+  @Command
+  fun releaseFolder(invoke: Invoke) {
+    val args = try {
+      invoke.parseArgs(ReleaseFolderArgs::class.java)
+    } catch (error: Exception) {
+      invoke.reject(error.message ?: "文件夹授权参数无效")
+      return
+    }
+    val uri = Uri.parse(args.rootUri)
+    try {
+      val permission = activity.contentResolver.persistedUriPermissions
+        .firstOrNull { persisted -> persisted.uri == uri }
+      if (permission?.isReadPermission == true) {
+        activity.contentResolver.releasePersistableUriPermission(
+          uri,
+          Intent.FLAG_GRANT_READ_URI_PERMISSION,
+        )
+      }
+      invoke.resolve()
+    } catch (error: Exception) {
+      invoke.reject(error.message ?: "无法释放文件夹访问权限")
+    }
   }
 
   private fun folderName(uri: Uri): String {

@@ -94,3 +94,24 @@ pub fn scan(app: &AppHandle, uri: &str) -> Result<AndroidScanResult, String> {
         Err("Android 本地曲库仅在 Android 端可用".into())
     }
 }
+
+pub fn release(app: &AppHandle, uri: &str) -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        #[derive(Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Payload<'a> {
+            root_uri: &'a str,
+        }
+
+        app.state::<AndroidLocalFolder<tauri::Wry>>()
+            .0
+            .run_mobile_plugin("releaseFolder", Payload { root_uri: uri })
+            .map_err(|error| format!("无法释放 Android 文件夹访问权限：{error}"))
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, uri);
+        Ok(())
+    }
+}
