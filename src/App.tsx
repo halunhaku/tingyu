@@ -3,6 +3,7 @@ import { isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { Cloud, X } from 'lucide-react'
 import './App.css'
+import { gsap, useGSAP } from './gsap'
 import { NowPlayingHero } from './components/NowPlayingHero'
 import { PlayerBar } from './components/PlayerBar'
 import { QueuePanel } from './components/QueuePanel'
@@ -60,6 +61,7 @@ function App() {
   const [activeSourceId, setActiveSourceId] = useState<string | null>(null)
   const [sources, setSources] = useState<MusicSource[]>([])
   const [syncMessage, setSyncMessage] = useState('本地曲库')
+  const appShellRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const restoreStartedRef = useRef(false)
   const refreshInProgressRef = useRef(false)
@@ -69,7 +71,8 @@ function App() {
   const likedIds = usePlayerStore((state) => state.likedIds)
   const playTrack = usePlayerStore((state) => state.playTrack)
   const togglePlayback = usePlayerStore((state) => state.togglePlayback)
-  const shuffle = usePlayerStore((state) => state.shuffle)
+  const playOrder = usePlayerStore((state) => state.playOrder)
+  const togglePlayOrder = usePlayerStore((state) => state.togglePlayOrder)
   const tick = usePlayerStore((state) => state.tick)
   const replaceSourceTracks = usePlayerStore((state) => state.replaceSourceTracks)
   const removeSource = usePlayerStore((state) => state.removeSource)
@@ -335,7 +338,7 @@ function App() {
           usePlayerStore.getState().next()
           break
         case 'playback.shuffle':
-          usePlayerStore.getState().shuffle()
+          usePlayerStore.getState().togglePlayOrder()
           break
         case 'lyrics.toggle':
           if (usePlayerStore.getState().library.length) {
@@ -357,6 +360,104 @@ function App() {
     }).then((dispose) => { unlisten = dispose })
     return () => { unlisten?.() }
   }, [handleRefreshLibraries])
+
+  useGSAP(() => {
+    const media = gsap.matchMedia()
+    media.add(
+      {
+        motion: '(prefers-reduced-motion: no-preference)',
+        reducedMotion: '(prefers-reduced-motion: reduce)',
+      },
+      (context) => {
+        const { reducedMotion } = context.conditions as { reducedMotion: boolean }
+        const targets = gsap.utils.toArray<HTMLElement>(
+          '.desktop-sidebar .brand, .desktop-sidebar .primary-nav > *, .desktop-sidebar .sidebar-section, .desktop-sidebar .sidebar-footer, .topbar > *',
+        )
+
+        if (reducedMotion) {
+          gsap.set(targets, { clearProps: 'all' })
+          return
+        }
+
+        gsap.timeline({ defaults: { ease: 'power3.out' } })
+          .from('.desktop-sidebar .brand', {
+            autoAlpha: 0,
+            x: -16,
+            duration: 0.42,
+            clearProps: 'transform,opacity,visibility',
+          })
+          .from('.desktop-sidebar .primary-nav > *', {
+            autoAlpha: 0,
+            x: -10,
+            duration: 0.32,
+            stagger: 0.045,
+            clearProps: 'transform,opacity,visibility',
+          }, '<0.08')
+          .from('.desktop-sidebar .sidebar-section, .desktop-sidebar .sidebar-footer', {
+            autoAlpha: 0,
+            y: 10,
+            duration: 0.34,
+            stagger: 0.06,
+            clearProps: 'transform,opacity,visibility',
+          }, '<0.08')
+          .from('.topbar > *', {
+            autoAlpha: 0,
+            y: -8,
+            duration: 0.38,
+            stagger: 0.05,
+            clearProps: 'transform,opacity,visibility',
+          }, 0.08)
+      },
+      appShellRef,
+    )
+
+    return () => media.revert()
+  }, { scope: appShellRef })
+
+  useGSAP(() => {
+    const media = gsap.matchMedia()
+    media.add(
+      {
+        motion: '(prefers-reduced-motion: no-preference)',
+        reducedMotion: '(prefers-reduced-motion: reduce)',
+      },
+      (context) => {
+        const { reducedMotion } = context.conditions as { reducedMotion: boolean }
+        const targets = gsap.utils.toArray<HTMLElement>(
+          '.intro-row > div, .spotlight, .library-section, .empty-library',
+        )
+        if (!targets.length) return
+
+        gsap.fromTo(
+          targets,
+          reducedMotion ? { autoAlpha: 0.72 } : { autoAlpha: 0, y: 14 },
+          reducedMotion
+            ? {
+                autoAlpha: 1,
+                duration: 0.18,
+                stagger: 0.02,
+                ease: 'power1.out',
+                clearProps: 'opacity,visibility',
+              }
+            : {
+                autoAlpha: 1,
+                y: 0,
+                duration: 0.46,
+                stagger: 0.06,
+                ease: 'power3.out',
+                clearProps: 'transform,opacity,visibility',
+              },
+        )
+      },
+      appShellRef,
+    )
+
+    return () => media.revert()
+  }, {
+    scope: appShellRef,
+    dependencies: [activeView, activeSourceId, sources.length === 0],
+    revertOnUpdate: true,
+  })
 
   const emptyTitle = selectedSource
     ? `${selectedSource.name} 中没有歌曲`
@@ -380,7 +481,7 @@ function App() {
   }
 
   return (
-    <div className={currentTrack ? 'app-shell' : 'app-shell app-shell--empty'}>
+    <div ref={appShellRef} className={currentTrack ? 'app-shell' : 'app-shell app-shell--empty'}>
       <div className={sidebarOpen ? 'mobile-sidebar is-open' : 'mobile-sidebar'}>
         <button className="mobile-sidebar__close" type="button" aria-label="关闭菜单" onClick={() => setSidebarOpen(false)}>
           <X size={19} />
@@ -420,17 +521,9 @@ function App() {
                     track={spotlightTrack}
                     isCurrent={spotlightTrack.id === currentTrackId}
                     isPlaying={isPlaying}
-                    canShuffle={visibleTracks.length > 1}
+                    playOrder={playOrder}
                     onPlay={() => spotlightTrack.id === currentTrackId ? togglePlayback() : playTrack(spotlightTrack.id)}
-                    onShuffle={() => {
-                      if (!activeSourceId) {
-                        shuffle()
-                        return
-                      }
-                      const candidates = visibleTracks.filter((track) => track.id !== currentTrackId)
-                      const nextTrack = candidates[Math.floor(Math.random() * candidates.length)]
-                      if (nextTrack) playTrack(nextTrack.id)
-                    }}
+                    onTogglePlayOrder={togglePlayOrder}
                   />
                 )}
 

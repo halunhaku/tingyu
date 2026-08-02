@@ -803,6 +803,8 @@ kbd { padding: 2px 5px; color: #999c93; background: #ecebe4; border: 1px solid r
 .primary-button, .secondary-button { height: 36px; padding: 0 16px; border-radius: 9px; font-size: 11px; }
 .primary-button { background: var(--orange); box-shadow: inset 0 1px rgba(255,255,255,.16); }
 .secondary-button { color: #bdc0b6; }
+.spotlight__mode-button { white-space: nowrap; }
+.spotlight__mode-button.is-active { color: #f19a79; background: rgba(224,109,69,.12); border-color: rgba(224,109,69,.32); }
 .secondary-button:disabled { cursor: not-allowed; opacity: .38; }
 .spotlight__number { right: 19px; bottom: 10px; font-size: 58px; }
 .album-art--small { width: 40px; height: 40px; border-radius: 7px; }
@@ -975,6 +977,7 @@ kbd { padding: 2px 5px; color: #999c93; background: #ecebe4; border: 1px solid r
   .spotlight__meta span:nth-child(3) { display: none; }
   .spotlight__number { display: none; }
   .secondary-button { display: none; }
+  .spotlight__mode-button { display: inline-flex; padding-inline: 10px; }
   .track-table__header { display: none; }
   .track-row { grid-template-columns: 28px minmax(0,1fr) 42px 60px; gap: 7px; padding-inline: 3px; }
   .track-album, .track-source { display: none; }

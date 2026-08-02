@@ -3,6 +3,18 @@ import { persist } from 'zustand/middleware'
 import type { Track } from '../types/music'
 
 export type RepeatMode = 'off' | 'all' | 'one'
+export type PlayOrder = 'sequential' | 'shuffle'
+
+function shuffledQueue(queue: string[], currentTrackId: string) {
+  const shuffled = [...queue]
+  const currentIndex = shuffled.indexOf(currentTrackId)
+  if (currentIndex >= 0) shuffled.splice(currentIndex, 1)
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1))
+    ;[shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]]
+  }
+  return currentIndex >= 0 ? [currentTrackId, ...shuffled] : shuffled
+}
 
 interface PlayerState {
   library: Track[]
@@ -13,12 +25,13 @@ interface PlayerState {
   likedIds: string[]
   queue: string[]
   repeatMode: RepeatMode
+  playOrder: PlayOrder
   playTrack: (trackId: string) => void
   setPlaying: (isPlaying: boolean) => void
   togglePlayback: () => void
   next: () => void
   previous: () => void
-  shuffle: () => void
+  togglePlayOrder: () => void
   cycleRepeatMode: () => void
   playNext: (trackId: string) => void
   addToQueue: (trackId: string) => void
@@ -43,6 +56,7 @@ export const usePlayerStore = create<PlayerState>()(
       likedIds: [],
       queue: [],
       repeatMode: 'off',
+      playOrder: 'sequential',
 
       playTrack: (trackId) =>
         set({ currentTrackId: trackId, progress: 0, isPlaying: true }),
@@ -75,13 +89,18 @@ export const usePlayerStore = create<PlayerState>()(
         set({ currentTrackId: queue[previousIndex], progress: 0, isPlaying: true })
       },
 
-      shuffle: () => {
-        const { currentTrackId, queue } = get()
-        const candidates = queue.filter((id) => id !== currentTrackId)
-        if (!candidates.length) return
-        const nextId = candidates[Math.floor(Math.random() * candidates.length)]
-        set({ currentTrackId: nextId, progress: 0, isPlaying: true })
-      },
+      togglePlayOrder: () =>
+        set((state) => {
+          const playOrder: PlayOrder =
+            state.playOrder === 'sequential' ? 'shuffle' : 'sequential'
+          return {
+            playOrder,
+            queue:
+              playOrder === 'shuffle'
+                ? shuffledQueue(state.queue, state.currentTrackId)
+                : state.library.map((track) => track.id),
+          }
+        }),
 
       cycleRepeatMode: () =>
         set((state) => {
@@ -146,8 +165,12 @@ export const usePlayerStore = create<PlayerState>()(
         set((state) => {
           const retained = state.library.filter((track) => track.sourceId !== sourceId)
           const library = [...incomingTracks, ...retained]
-          const queue = library.map((track) => track.id)
-          const currentStillExists = library.some((track) => track.id === state.currentTrackId)
+          const orderedQueue = library.map((track) => track.id)
+          const currentStillExists = orderedQueue.includes(state.currentTrackId)
+          const queue =
+            state.playOrder === 'shuffle'
+              ? shuffledQueue(orderedQueue, currentStillExists ? state.currentTrackId : '')
+              : orderedQueue
           return {
             library,
             queue,
@@ -160,8 +183,12 @@ export const usePlayerStore = create<PlayerState>()(
       removeSource: (sourceId) =>
         set((state) => {
           const library = state.library.filter((track) => track.sourceId !== sourceId)
-          const queue = library.map((track) => track.id)
-          const currentStillExists = library.some((track) => track.id === state.currentTrackId)
+          const orderedQueue = library.map((track) => track.id)
+          const currentStillExists = orderedQueue.includes(state.currentTrackId)
+          const queue =
+            state.playOrder === 'shuffle'
+              ? shuffledQueue(orderedQueue, currentStillExists ? state.currentTrackId : '')
+              : orderedQueue
           return {
             library,
             queue,
@@ -178,6 +205,7 @@ export const usePlayerStore = create<PlayerState>()(
         likedIds: state.likedIds,
         volume: state.volume,
         repeatMode: state.repeatMode,
+        playOrder: state.playOrder,
       }),
     },
   ),

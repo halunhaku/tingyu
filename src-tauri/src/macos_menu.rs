@@ -55,7 +55,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .build(app)?;
     let previous = MenuItemBuilder::with_id("playback.previous", "上一首").build(app)?;
     let next = MenuItemBuilder::with_id("playback.next", "下一首").build(app)?;
-    let shuffle = MenuItemBuilder::with_id("playback.shuffle", "随机播放")
+    let shuffle = MenuItemBuilder::with_id("playback.shuffle", "切换随机/顺序播放")
         .accelerator("CmdOrCtrl+Shift+S")
         .build(app)?;
     let lyrics = MenuItemBuilder::with_id("lyrics.toggle", "显示歌词")

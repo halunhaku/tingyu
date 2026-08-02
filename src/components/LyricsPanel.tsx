@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { onBackButtonPress } from '@tauri-apps/api/app'
-import { Music2, Repeat1, Repeat2, Shuffle, X } from 'lucide-react'
+import { ListOrdered, Music2, Repeat1, Repeat2, Shuffle, X } from 'lucide-react'
 import type { Track } from '../types/music'
 import { usePlayerStore } from '../stores/playerStore'
 import { AlbumArtwork } from './AlbumArtwork'
@@ -18,7 +18,8 @@ interface LyricLine {
 
 export function LyricsPanel({ track, progress, onClose }: LyricsPanelProps) {
   const activeLineRef = useRef<HTMLParagraphElement>(null)
-  const shuffle = usePlayerStore((state) => state.shuffle)
+  const playOrder = usePlayerStore((state) => state.playOrder)
+  const togglePlayOrder = usePlayerStore((state) => state.togglePlayOrder)
   const repeatMode = usePlayerStore((state) => state.repeatMode)
   const cycleRepeatMode = usePlayerStore((state) => state.cycleRepeatMode)
   const syncedLines = useMemo(() => parseLrc(track.syncedLyrics), [track.syncedLyrics])
@@ -84,8 +85,15 @@ export function LyricsPanel({ track, progress, onClose }: LyricsPanelProps) {
             <h2>{track.title}</h2>
             <p>{track.artist}</p>
             <div className="lyrics-panel__mode">
-              <button type="button" aria-label="随机播放" onClick={shuffle}>
-                <Shuffle size={15} />
+              <button
+                className={playOrder === 'shuffle' ? 'is-active' : ''}
+                type="button"
+                aria-label={playOrder === 'shuffle' ? '切换为顺序播放' : '切换为随机播放'}
+                aria-pressed={playOrder === 'shuffle'}
+                title={playOrder === 'shuffle' ? '当前：随机播放' : '当前：顺序播放'}
+                onClick={togglePlayOrder}
+              >
+                {playOrder === 'shuffle' ? <Shuffle size={15} /> : <ListOrdered size={15} />}
               </button>
               <button
                 className={repeatMode === 'off' ? '' : 'is-active'}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Heart,
   ListMusic,
+  ListOrdered,
   MoreHorizontal,
   Pause,
   Play,
@@ -52,7 +53,8 @@ export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
   const togglePlayback = usePlayerStore((state) => state.togglePlayback)
   const previous = usePlayerStore((state) => state.previous)
   const next = usePlayerStore((state) => state.next)
-  const shuffle = usePlayerStore((state) => state.shuffle)
+  const playOrder = usePlayerStore((state) => state.playOrder)
+  const togglePlayOrder = usePlayerStore((state) => state.togglePlayOrder)
   const setProgress = usePlayerStore((state) => state.setProgress)
   const setTrackDuration = usePlayerStore((state) => state.setTrackDuration)
   const updateTrack = usePlayerStore((state) => state.updateTrack)
@@ -320,7 +322,16 @@ export function PlayerBar({ queueOpen, onToggleQueue }: PlayerBarProps) {
 
       <div className="player-center">
         <div className="transport-controls">
-          <button className="player-control--shuffle" type="button" aria-label="随机播放" onClick={shuffle}><Shuffle size={15} /></button>
+          <button
+            className={`player-control--shuffle ${playOrder === 'shuffle' ? 'is-active' : ''}`}
+            type="button"
+            aria-label={playOrder === 'shuffle' ? '切换为顺序播放' : '切换为随机播放'}
+            aria-pressed={playOrder === 'shuffle'}
+            title={playOrder === 'shuffle' ? '当前：随机播放' : '当前：顺序播放'}
+            onClick={togglePlayOrder}
+          >
+            {playOrder === 'shuffle' ? <Shuffle size={15} /> : <ListOrdered size={15} />}
+          </button>
           <button className="player-control--previous" type="button" aria-label="上一首" onClick={previous}><SkipBack size={18} fill="currentColor" /></button>
           <button className="play-button player-control--play" type="button" aria-label={isPlaying ? '暂停' : '播放'} onClick={togglePlayback}>
             {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
