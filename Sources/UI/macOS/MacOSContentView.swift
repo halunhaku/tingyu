@@ -25,6 +25,8 @@ public struct MacOSContentView: View {
     private enum SidebarItem: Hashable {
         case library
         case favorites
+        case artists
+        case albums
         case source(String)
         case playlist(String)
     }
@@ -168,6 +170,14 @@ public struct MacOSContentView: View {
                 NavigationLink(value: SidebarItem.favorites) {
                     Label("我的收藏", systemImage: "heart.fill")
                 }
+
+                NavigationLink(value: SidebarItem.artists) {
+                    Label("歌手", systemImage: "person.2")
+                }
+
+                NavigationLink(value: SidebarItem.albums) {
+                    Label("专辑", systemImage: "square.stack")
+                }
             }
 
             Section {
@@ -241,30 +251,35 @@ public struct MacOSContentView: View {
         HStack(spacing: 0) {
             // Track List
             VStack(spacing: 0) {
-                headerView
+                if isBrowseMode {
+                    NavigationStack {
+                        browseRoot
+                    }
+                } else {
+                    headerView
 
-                List {
-                    ForEach(filteredTracks) { track in
-                        TrackRowView(
-                            track: track,
-                            isCurrent: player.currentTrack?.id == track.id,
-                            playlists: playlists,
-                            currentPlaylist: currentPlaylist
-                        ) {
-                            player.setQueue(filteredTracks, startingAt: filteredTracks.firstIndex(where: { $0.id == track.id }) ?? 0)
-                            Task {
-                                await MetadataEnricher.shared.enrichTrackIfNeeded(track)
+                    List {
+                        ForEach(filteredTracks) { track in
+                            TrackRowView(
+                                track: track,
+                                isCurrent: player.currentTrack?.id == track.id,
+                                playlists: playlists,
+                                currentPlaylist: currentPlaylist
+                            ) {
+                                player.setQueue(filteredTracks, startingAt: filteredTracks.firstIndex(where: { $0.id == track.id }) ?? 0)
+                                Task {
+                                    await MetadataEnricher.shared.enrichTrackIfNeeded(track)
+                                }
                             }
                         }
-                    }
 
-                    // Bottom padding spacer so the last song scrolls completely above the floating player bar
-                    Color.clear
-                        .frame(height: 76)
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
+                        Color.clear
+                            .frame(height: 76)
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                    }
+                    .listStyle(.inset)
                 }
-                .listStyle(.inset)
             }
             .frame(maxWidth: .infinity)
 
@@ -312,6 +327,22 @@ public struct MacOSContentView: View {
         .padding(.bottom, 12)
     }
 
+    private var isBrowseMode: Bool {
+        selectedSidebarItem == .artists || selectedSidebarItem == .albums
+    }
+
+    @ViewBuilder
+    private var browseRoot: some View {
+        switch selectedSidebarItem {
+        case .artists:
+            ArtistListView(tracks: allTracks, playlists: playlists)
+        case .albums:
+            AlbumGridView(tracks: allTracks, playlists: playlists)
+        default:
+            EmptyView()
+        }
+    }
+
     private var currentPlaylist: Playlist? {
         guard case .playlist(let id) = selectedSidebarItem else { return nil }
         return playlists.first(where: { $0.id == id })
@@ -323,6 +354,10 @@ public struct MacOSContentView: View {
             return "全部曲目"
         case .favorites:
             return "我的收藏"
+        case .artists:
+            return "歌手"
+        case .albums:
+            return "专辑"
         case .source(let sourceId):
             return sources.first(where: { $0.id == sourceId })?.name ?? "音乐来源"
         case .playlist:

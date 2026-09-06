@@ -92,6 +92,21 @@ public struct IOSContentView: View {
 
     private var libraryList: some View {
         List {
+            if searchText.isEmpty, libraryFilter == .all {
+                Section("浏览") {
+                    NavigationLink {
+                        ArtistListView(tracks: allTracks, playlists: playlists)
+                    } label: {
+                        Label("歌手", systemImage: "person.2")
+                    }
+                    NavigationLink {
+                        AlbumGridView(tracks: allTracks, playlists: playlists)
+                    } label: {
+                        Label("专辑", systemImage: "square.stack")
+                    }
+                }
+            }
+
             ForEach(libraryTracks) { track in
                 trackRow(track, queue: libraryTracks)
             }
