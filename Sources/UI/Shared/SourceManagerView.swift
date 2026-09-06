@@ -23,133 +23,84 @@ public struct SourceManagerView: View {
 
     public var body: some View {
         NavigationStack {
-            List {
-                Section("已添加的音乐来源") {
+            Form {
+                Section {
                     if sources.isEmpty {
-                        Text("暂未添加音乐来源")
+                        Text("还没有音乐来源。从下面选一种添加。")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(sources) { source in
-                            HStack(spacing: 12) {
-                                Image(systemName: source.kind == .quark ? "bolt.cloud.fill" : (source.kind == .webdav ? "cloud.fill" : "folder.fill"))
-                                    .font(.title3)
-                                    .foregroundStyle(source.kind == .quark ? Color.green : (source.kind == .webdav ? Color.blue : Color.orange))
-
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(source.name)
-                                        .font(.headline)
-                                    Text(source.syncStatus)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-
-                                Spacer()
-
-                                HStack(spacing: 16) {
-                                    Button {
-                                        Task {
-                                            await rescanSource(source)
-                                        }
-                                    } label: {
-                                        Image(systemName: "arrow.clockwise")
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .help("重新扫描曲库")
-
-                                    Button(role: .destructive) {
-                                        sourceToDelete = source
-                                        showingDeleteConfirm = true
-                                    } label: {
-                                        Image(systemName: "trash")
-                                            .foregroundStyle(Color.red.opacity(0.85))
-                                    }
-                                    .buttonStyle(.plain)
-                                    .help("删除此音乐来源")
-                                }
-                            }
+                            sourceRow(source)
                         }
                         .onDelete(perform: deleteSources)
                     }
+
+                    if isScanning {
+                        HStack(spacing: 10) {
+                            ProgressView()
+                            Text(scanStatusMessage)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                } header: {
+                    Text("已添加")
                 }
 
-                Section("添加新来源") {
-                    Button {
+                Section {
+                    addSourceRow(
+                        title: "本地文件夹",
+                        subtitle: "选择电脑上的音乐目录",
+                        systemImage: "folder.fill",
+                        tint: .orange
+                    ) {
                         #if os(macOS)
                         selectLocalFolderMacOS()
                         #else
                         showingLocalFolderImporter = true
                         #endif
-                    } label: {
-                        Label("添加本地音乐文件夹", systemImage: "folder.badge.plus")
                     }
 
-                    Button {
+                    addSourceRow(
+                        title: "WebDAV",
+                        subtitle: "群晖、坚果云、Nextcloud",
+                        systemImage: "cloud.fill",
+                        tint: .blue
+                    ) {
                         showingAddWebDAV = true
-                    } label: {
-                        Label("添加 WebDAV 私人云", systemImage: "cloud.badge.plus")
                     }
 
-                    Button {
+                    addSourceRow(
+                        title: "夸克网盘",
+                        subtitle: "扫码登录，边下边播",
+                        systemImage: "bolt.horizontal.circle.fill",
+                        tint: .green
+                    ) {
                         showingAddQuark = true
-                    } label: {
-                        Label("添加夸克网盘（支持扫码）", systemImage: "bolt.cloud.fill")
-                            .foregroundStyle(Color.green)
                     }
+                } header: {
+                    Text("添加来源")
+                } footer: {
+                    Text("本地目录使用系统授权，关闭应用后仍可读取。")
                 }
 
-                Section("iCloud 云同步与多端互通") {
-                    Toggle("启用 iCloud 曲库同步", isOn: $cloudSync.isCloudSyncEnabled)
-
-                    HStack(spacing: 8) {
-                        Image(systemName: cloudSync.isCloudSyncEnabled ? "icloud.fill" : "icloud.slash")
-                            .foregroundStyle(cloudSync.isCloudSyncEnabled ? Color.blue : Color.secondary)
+                Section {
+                    Toggle("iCloud 曲库同步", isOn: $cloudSync.isCloudSyncEnabled)
+                    LabeledContent("状态") {
                         Text(cloudSync.statusMessage)
-                            .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-
-                    Text("开启后，您在 macOS 与 iOS 设备上的曲库索引、收藏标记和播放列表将自动在您的私人 iCloud 容器间同步。")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                Section("AI 智能大模型识别") {
-                    Button {
-                        showingAISettings = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "sparkles")
-                                .foregroundStyle(Color.purple)
-                            Text(AIService.shared.isEnabled ? "AI 智能识别已启用 (点击管理)" : "配置 AI 大模型识别")
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                if isScanning {
-                    Section {
-                        HStack(spacing: 12) {
-                            ProgressView()
-                            Text(scanStatusMessage)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                            Spacer()
-                            Button("停止") {
-                                isScanning = false
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                        }
-                    }
+                } header: {
+                    Text("iCloud")
+                } footer: {
+                    Text("同步曲库索引、收藏和播放列表，音频文件仍留在各自来源中。")
                 }
             }
-            .navigationTitle("音乐来源管理")
+            #if os(macOS)
+            .formStyle(.grouped)
+            .frame(minWidth: 440, idealWidth: 480, minHeight: 380)
+            #endif
+            .navigationTitle("音乐来源")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -204,6 +155,85 @@ public struct SourceManagerView: View {
             } message: {
                 Text("删除后，该来源在本地的所有曲目索引与已保存的密码凭据将被彻底移除。")
             }
+        }
+    }
+
+    private func sourceRow(_ source: MusicSource) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: sourceIcon(source.kind))
+                .font(.title3)
+                .foregroundStyle(sourceColor(source.kind))
+                .frame(width: 28)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(source.name)
+                Text(source.syncStatus)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Text("\(source.trackCount) 首")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+
+            Button {
+                Task { await rescanSource(source) }
+            } label: {
+                Image(systemName: "arrow.clockwise")
+            }
+            .buttonStyle(.borderless)
+            .help("重新扫描")
+
+            Button(role: .destructive) {
+                sourceToDelete = source
+                showingDeleteConfirm = true
+            } label: {
+                Image(systemName: "trash")
+            }
+            .buttonStyle(.borderless)
+            .help("删除此来源")
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func addSourceRow(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } icon: {
+                Image(systemName: systemImage)
+                    .foregroundStyle(tint)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func sourceIcon(_ kind: SourceKind) -> String {
+        switch kind {
+        case .quark: return "bolt.horizontal.circle.fill"
+        case .webdav: return "cloud.fill"
+        case .local: return "folder.fill"
+        }
+    }
+
+    private func sourceColor(_ kind: SourceKind) -> Color {
+        switch kind {
+        case .quark: return .green
+        case .webdav: return .blue
+        case .local: return .orange
         }
     }
 
@@ -389,9 +419,9 @@ public struct AddWebDAVSheet: View {
     public var body: some View {
         NavigationStack {
             Form {
-                Section("连接信息") {
-                    TextField("来源名称（如：家里群晖 NAS）", text: $name)
-                    TextField("WebDAV 根地址 (URL)", text: $serverUrl)
+                Section {
+                    TextField("名称", text: $name, prompt: Text("例如：家里的群晖"))
+                    TextField("服务器", text: $serverUrl, prompt: Text("https://"))
                         #if os(iOS)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
@@ -400,7 +430,11 @@ public struct AddWebDAVSheet: View {
                         #if os(iOS)
                         .textInputAutocapitalization(.never)
                         #endif
-                    SecureField("应用专用密码", text: $password)
+                    SecureField("密码", text: $password)
+                } header: {
+                    Text("连接")
+                } footer: {
+                    Text("密码保存在钥匙串。推荐使用应用专用密码。")
                 }
 
                 if let error = errorMessage {
@@ -410,26 +444,12 @@ public struct AddWebDAVSheet: View {
                             .font(.caption)
                     }
                 }
-
-                Section {
-                    Button {
-                        testAndSave()
-                    } label: {
-                        HStack {
-                            Spacer()
-                            if isTesting {
-                                ProgressView()
-                                    .padding(.trailing, 8)
-                            }
-                            Text("测试连接并添加")
-                                .fontWeight(.semibold)
-                            Spacer()
-                        }
-                    }
-                    .disabled(name.isEmpty || serverUrl.isEmpty || username.isEmpty || isTesting)
-                }
             }
-            .navigationTitle("添加 WebDAV 来源")
+            #if os(macOS)
+            .formStyle(.grouped)
+            .frame(minWidth: 380, idealWidth: 420, minHeight: 280)
+            #endif
+            .navigationTitle("添加 WebDAV")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -438,6 +458,19 @@ public struct AddWebDAVSheet: View {
                     Button("取消") {
                         dismiss()
                     }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("添加") {
+                        testAndSave()
+                    }
+                    .disabled(name.isEmpty || serverUrl.isEmpty || username.isEmpty || isTesting)
+                }
+            }
+            .overlay {
+                if isTesting {
+                    ProgressView("正在测试连接…")
+                        .padding()
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
             }
         }

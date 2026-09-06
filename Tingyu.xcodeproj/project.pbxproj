@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		02B9CD9C1DF3B6BA973A9990 /* AddQuarkSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F52A5E215D1AA8A63FAF55E /* AddQuarkSheet.swift */; };
+		04C995D010B58FA90EDC4724 /* MacOSNowPlayingToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3760058CD360D5ED0338F6D /* MacOSNowPlayingToolbar.swift */; };
 		0704C81B1A11F4025B7C4A5B /* SharedPlaybackState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952E6CC48BF90A2F26651703 /* SharedPlaybackState.swift */; };
 		0794204ACB859E1C4B60E78C /* LyricLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B60B67CE16AF86A1A750587 /* LyricLine.swift */; };
 		0A09F5428D721E41A8BE4D56 /* IOSMiniPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10DC0601B7129C34331E7789 /* IOSMiniPlayer.swift */; };
@@ -67,12 +68,12 @@
 		83B8223C29139815BF07DA8F /* AudioPlayerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C9AA34B202F3646789E58F /* AudioPlayerService.swift */; };
 		87BEF3E7B0A6BCE723547086 /* QuarkDriveClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 547697EDE854F971C2CE282E /* QuarkDriveClient.swift */; };
 		8816306788973BD4AE2BE5A3 /* LyricLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B60B67CE16AF86A1A750587 /* LyricLine.swift */; };
-		8A041DC7A3A69D6F38090730 /* MacOSPlayerBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1727C2E920B547CDAF0771F /* MacOSPlayerBar.swift */; };
 		8B68F08BB76BB397126D5AED /* NowPlayingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0362E6C9AA30B750805631E /* NowPlayingManager.swift */; };
 		8F4032AFAAAAC167B64F8FFC /* SharedPlaybackState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952E6CC48BF90A2F26651703 /* SharedPlaybackState.swift */; };
 		8F9DA046E9DD53F97C3443B3 /* Info-macOS-Widget.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5D4EF8A56DA2756DED4FA256 /* Info-macOS-Widget.plist */; };
 		9086F9DEF1A3F7563DF1B12F /* ChineseConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0E1D5D2EA32AF4BD1FBAB2 /* ChineseConverter.swift */; };
 		90ED0B10C2F2E655D7948EE7 /* LocalAudioResourceLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB57B2554E3D5DB8C4C05F2E /* LocalAudioResourceLoader.swift */; };
+		93A14214D16C44897D84F0A8 /* MacOSTrackTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72A28CBBD8BBCF11D7ADF26A /* MacOSTrackTable.swift */; };
 		970E0FA379C94B313BF6621E /* CoverArtView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5DF6E4AE93B5671EFB77AB9 /* CoverArtView.swift */; };
 		98082C510C2CD81E27FB7C26 /* MacOSContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29C2540918BF6D537084544B /* MacOSContentView.swift */; };
 		9882D8589AB3B359A4AE0ECF /* NetEaseScraper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98F3923ABD38F427EF37E24F /* NetEaseScraper.swift */; };
@@ -91,11 +92,13 @@
 		B1D16125A93EFCB847F24022 /* MusicSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CC12F62478CD62B17C6600 /* MusicSource.swift */; };
 		B36483BD84FC17DDACD4C683 /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1EB879B24E7FC805C81403 /* AIService.swift */; };
 		B570F103C656F37E75206165 /* LRCLIBScraper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE49B31D53EEB0C0F526E4A9 /* LRCLIBScraper.swift */; };
+		BCB3FE8C8D667DCBBD4295AB /* MacOSNowPlayingToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3760058CD360D5ED0338F6D /* MacOSNowPlayingToolbar.swift */; };
 		BE2FE866A074FD37D895C5F6 /* IOSContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2233F18CC92165BB40159B5 /* IOSContentView.swift */; };
 		BE612508BE58BC4CD500E457 /* PlaybackControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0693F7FE6BEA9E62D97409AE /* PlaybackControls.swift */; };
 		C260312516B48CBF81F6E556 /* AudioPlayerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C9AA34B202F3646789E58F /* AudioPlayerService.swift */; };
 		C2A58E0C920B0ABACF29BBA7 /* TingyuApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F17ABD7D0B1E00371B83AF19 /* TingyuApp.swift */; };
 		C52D64C33FA52A9EED582035 /* ChineseConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0E1D5D2EA32AF4BD1FBAB2 /* ChineseConverter.swift */; };
+		C60AFBBA081F457103058A9A /* MacOSTrackTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72A28CBBD8BBCF11D7ADF26A /* MacOSTrackTable.swift */; };
 		C720CC6E5A7D2ACCC57A7729 /* LegacyCacheMigrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A849E3BD00DF58D87CA96A35 /* LegacyCacheMigrator.swift */; };
 		C87CBD32DF9A655F7B672155 /* TingyuWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60916047622E2359AB570500 /* TingyuWidgetBundle.swift */; };
 		CCD0800678CB7E7BBD912B6E /* AIMetadataParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 807601AE83A6C418ACCFC34F /* AIMetadataParser.swift */; };
@@ -111,7 +114,6 @@
 		E7C42DB8E30B378FB1D59B7A /* LibrarySync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9168E088F752B49427638F8B /* LibrarySync.swift */; };
 		EBDDFC6677359DB20BF4F7B9 /* FluidBackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CE2EB680D9800F9FBD8E06 /* FluidBackgroundView.swift */; };
 		EBE085FDAB6FA73EE5DD5AD0 /* SourceManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28175C042DD1D016C5C2CE7 /* SourceManagerView.swift */; };
-		ED52184AFB6DC4221EF1F280 /* MacOSPlayerBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1727C2E920B547CDAF0771F /* MacOSPlayerBar.swift */; };
 		EEB8431189F9892F80C347F0 /* CloudSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CFE3F1F5822FA2E71D9325E /* CloudSyncManager.swift */; };
 		F21CB7C3D079718794B1F2C6 /* SmartTitleParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B65BE8E1205E114ED9AC05A /* SmartTitleParser.swift */; };
 		F23BA7FE517CBA93CE29EBA1 /* QuarkCookieStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6A6B81878D6E6B5BC9064FA /* QuarkCookieStore.swift */; };
@@ -176,6 +178,7 @@
 		671479270EF0F712F701CDE4 /* Track.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Track.swift; sourceTree = "<group>"; };
 		6B2D99D064384ABFFF9F22DB /* MetadataEnricher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataEnricher.swift; sourceTree = "<group>"; };
 		729EDA727D7F90685BD0FB2B /* WebDAVXMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebDAVXMLParser.swift; sourceTree = "<group>"; };
+		72A28CBBD8BBCF11D7ADF26A /* MacOSTrackTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacOSTrackTable.swift; sourceTree = "<group>"; };
 		807601AE83A6C418ACCFC34F /* AIMetadataParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIMetadataParser.swift; sourceTree = "<group>"; };
 		9168E088F752B49427638F8B /* LibrarySync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySync.swift; sourceTree = "<group>"; };
 		952E6CC48BF90A2F26651703 /* SharedPlaybackState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedPlaybackState.swift; sourceTree = "<group>"; };
@@ -194,7 +197,6 @@
 		B7A7B8A579D4E2F7B9CA577D /* iTunesCoverScraper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iTunesCoverScraper.swift; sourceTree = "<group>"; };
 		BCF3FA6DF360978A352145D4 /* Playlist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Playlist.swift; sourceTree = "<group>"; };
 		BD0E1D5D2EA32AF4BD1FBAB2 /* ChineseConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChineseConverter.swift; sourceTree = "<group>"; };
-		C1727C2E920B547CDAF0771F /* MacOSPlayerBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacOSPlayerBar.swift; sourceTree = "<group>"; };
 		C2233F18CC92165BB40159B5 /* IOSContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSContentView.swift; sourceTree = "<group>"; };
 		C4891BA4A48D054B272FC338 /* Info-iOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Info-iOS.plist"; sourceTree = "<group>"; };
 		C7845E18698C08AA9F17E88C /* StreamingResourceLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingResourceLoader.swift; sourceTree = "<group>"; };
@@ -213,6 +215,7 @@
 		F17ABD7D0B1E00371B83AF19 /* TingyuApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TingyuApp.swift; sourceTree = "<group>"; };
 		F28175C042DD1D016C5C2CE7 /* SourceManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceManagerView.swift; sourceTree = "<group>"; };
 		F2BDD27522D56162D1F3A43C /* LocalLibraryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalLibraryScanner.swift; sourceTree = "<group>"; };
+		F3760058CD360D5ED0338F6D /* MacOSNowPlayingToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacOSNowPlayingToolbar.swift; sourceTree = "<group>"; };
 		FA368C7F7BAEA6986A9E4F40 /* MacOSMenuBarExtra.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacOSMenuBarExtra.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -243,7 +246,8 @@
 			children = (
 				29C2540918BF6D537084544B /* MacOSContentView.swift */,
 				FA368C7F7BAEA6986A9E4F40 /* MacOSMenuBarExtra.swift */,
-				C1727C2E920B547CDAF0771F /* MacOSPlayerBar.swift */,
+				F3760058CD360D5ED0338F6D /* MacOSNowPlayingToolbar.swift */,
+				72A28CBBD8BBCF11D7ADF26A /* MacOSTrackTable.swift */,
 			);
 			path = macOS;
 			sourceTree = "<group>";
@@ -594,7 +598,8 @@
 				8816306788973BD4AE2BE5A3 /* LyricLine.swift in Sources */,
 				720E94DE2676465CBBC50158 /* MacOSContentView.swift in Sources */,
 				3B924C3E94F8E81E55E7E2C5 /* MacOSMenuBarExtra.swift in Sources */,
-				8A041DC7A3A69D6F38090730 /* MacOSPlayerBar.swift in Sources */,
+				BCB3FE8C8D667DCBBD4295AB /* MacOSNowPlayingToolbar.swift in Sources */,
+				C60AFBBA081F457103058A9A /* MacOSTrackTable.swift in Sources */,
 				9B8AFB27B33F3F8D718A35CE /* ManualMatchSheet.swift in Sources */,
 				9B4CE2D054E43A5BB4AD4CA0 /* MetadataEnricher.swift in Sources */,
 				B1D16125A93EFCB847F24022 /* MusicSource.swift in Sources */,
@@ -653,7 +658,8 @@
 				0794204ACB859E1C4B60E78C /* LyricLine.swift in Sources */,
 				98082C510C2CD81E27FB7C26 /* MacOSContentView.swift in Sources */,
 				50CBF30DE8D0D2A24E0AB4C7 /* MacOSMenuBarExtra.swift in Sources */,
-				ED52184AFB6DC4221EF1F280 /* MacOSPlayerBar.swift in Sources */,
+				04C995D010B58FA90EDC4724 /* MacOSNowPlayingToolbar.swift in Sources */,
+				93A14214D16C44897D84F0A8 /* MacOSTrackTable.swift in Sources */,
 				52B9A7EF5C68DDD5E5341BF4 /* ManualMatchSheet.swift in Sources */,
 				65E691D653B7EF3DED95559F /* MetadataEnricher.swift in Sources */,
 				F645CDA069C363BC194C9C9C /* MusicSource.swift in Sources */,

@@ -10,8 +10,10 @@ public struct MacOSContentView: View {
 
     @State private var selectedSidebarItem: SidebarItem? = .library
     @State private var searchText: String = ""
+    @State private var isSearchPresented = false
     @State private var showingSourceManager = false
     @State private var showingLyricsInspector = false
+    @State private var showingNowPlaying = false
     @FocusState private var isSearchFocused: Bool
 
     @State private var showingAISettings = false
@@ -34,46 +36,67 @@ public struct MacOSContentView: View {
     public init() {}
 
     public var body: some View {
-        VStack(spacing: 0) {
+        ZStack {
             NavigationSplitView {
                 sidebar
             } detail: {
                 detailView
+                    .overlay(alignment: .bottom) {
+                        if !showingNowPlaying {
+                            playerBar
+                                .padding(.horizontal, 24)
+                                .padding(.bottom, 14)
+                        }
+                    }
             }
-            .searchable(text: $searchText, placement: .toolbar, prompt: "搜索歌曲、艺术家或专辑 (⌘K)")
-        .focused($isSearchFocused)
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button {
-                    showingLyricsInspector.toggle()
-                } label: {
-                    Image(systemName: "quote.bubble")
-                        .foregroundStyle(showingLyricsInspector ? Color.accentColor : Color.secondary)
-                }
-                .help("歌词面板 (⌘L)")
+            .searchable(
+                text: $searchText,
+                isPresented: $isSearchPresented,
+                placement: .sidebar,
+                prompt: "搜索歌曲、艺术家或专辑"
+            )
+            .toolbar(showingNowPlaying ? .hidden : .automatic, for: .windowToolbar)
 
-                Button {
-                    showingAISettings = true
-                } label: {
-                    Image(systemName: "sparkles")
-                        .foregroundStyle(Color.purple)
+            if showingNowPlaying {
+                MacOSNowPlayingStage {
+                    showingNowPlaying = false
                 }
-                .help("AI 智能识别与洗库")
-
-                Button {
-                    showingSourceManager = true
-                } label: {
-                    Image(systemName: "folder.badge.gearshape")
+                .background(.background)
+                .ignoresSafeArea()
+                .overlay(alignment: .bottom) {
+                    playerBar
+                        .frame(maxWidth: 840)
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, 16)
                 }
-                .help("管理音乐来源")
             }
         }
+        .focused($isSearchFocused)
+        .background {
+            Button("歌词") { showingLyricsInspector.toggle() }
+                .keyboardShortcut("l", modifiers: .command)
+                .hidden()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .tingyuFocusSearch)) { _ in
+            showingNowPlaying = false
+            isSearchPresented = true
+        }
+        .onChange(of: searchText) { _, query in
+            if !query.isEmpty {
+                showingNowPlaying = false
+                if selectedSidebarItem != .library {
+                    selectedSidebarItem = .library
+                }
+            }
+        }
+        .toolbar { windowToolbar }
         .sheet(isPresented: $showingSourceManager) {
             SourceManagerView()
-                .frame(minWidth: 500, minHeight: 400)
+                .frame(width: 480, height: 500)
         }
         .sheet(isPresented: $showingAISettings) {
             AISettingsView()
+                .frame(width: 460, height: 480)
         }
         .alert("新建播放列表", isPresented: $showingCreatePlaylist) {
             TextField("名称", text: $playlistNameDraft)
@@ -116,8 +139,6 @@ public struct MacOSContentView: View {
                 playlistPendingDelete = nil
             }
         }
-            MacOSPlayerBar(showingLyrics: $showingLyricsInspector)
-        }
         .onAppear {
             AudioPlayerService.shared.configure(container: modelContext.container)
             LegacyCacheMigrator.migrateIfNeeded(modelContext: modelContext, sources: sources)
@@ -156,6 +177,34 @@ public struct MacOSContentView: View {
         } catch {
             print("Quark auto-repair error: \(error)")
         }
+    }
+
+    @ToolbarContentBuilder
+    private var windowToolbar: some ToolbarContent {
+        ToolbarItemGroup(placement: .primaryAction) {
+            Button {
+                showingAISettings = true
+            } label: {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(Color.purple)
+            }
+            .help("AI 智能识别与洗库")
+
+            Button {
+                showingSourceManager = true
+            } label: {
+                Image(systemName: "folder.badge.gearshape")
+            }
+            .help("管理音乐来源")
+        }
+    }
+
+    private var playerBar: some View {
+        MacOSFloatingPlayerBar(
+            showingLyrics: $showingLyricsInspector,
+            showingNowPlaying: showingNowPlaying,
+            onToggleNowPlaying: { showingNowPlaying.toggle() }
+        )
     }
 
     // MARK: - Sidebar
@@ -206,7 +255,7 @@ public struct MacOSContentView: View {
                     }
                 }
             } header: {
-                HStack {
+                HStack(spacing: 4) {
                     Text("播放列表")
                     Spacer()
                     Button {
@@ -214,9 +263,9 @@ public struct MacOSContentView: View {
                         showingCreatePlaylist = true
                     } label: {
                         Image(systemName: "plus")
-                            .font(.caption)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.secondary)
                     .help("新建播放列表")
                 }
             }
@@ -228,16 +277,17 @@ public struct MacOSContentView: View {
                     }
                 }
             } header: {
-                HStack {
+                HStack(spacing: 4) {
                     Text("音乐来源")
                     Spacer()
                     Button {
                         showingSourceManager = true
                     } label: {
                         Image(systemName: "plus")
-                            .font(.caption)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.secondary)
+                    .help("添加音乐来源")
                 }
             }
         }
@@ -249,39 +299,24 @@ public struct MacOSContentView: View {
 
     private var detailView: some View {
         HStack(spacing: 0) {
-            // Track List
-            VStack(spacing: 0) {
+            Group {
                 if isBrowseMode {
                     NavigationStack {
                         browseRoot
                     }
                 } else {
-                    headerView
-
-                    List {
-                        ForEach(filteredTracks) { track in
-                            TrackRowView(
-                                track: track,
-                                isCurrent: player.currentTrack?.id == track.id,
-                                playlists: playlists,
-                                currentPlaylist: currentPlaylist
-                            ) {
-                                player.setQueue(filteredTracks, startingAt: filteredTracks.firstIndex(where: { $0.id == track.id }) ?? 0)
-                                Task {
-                                    await MetadataEnricher.shared.enrichTrackIfNeeded(track)
-                                }
-                            }
-                        }
-
-                    }
-                    .listStyle(.inset)
-                    .avoidsBottomPlayerBar()
+                    MacOSTrackTable(
+                        tracks: filteredTracks,
+                        playlists: playlists,
+                        currentPlaylist: currentPlaylist
+                    )
+                    .navigationTitle(currentViewTitle)
+                    .navigationSubtitle("\(filteredTracks.count) 首歌曲")
                 }
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // Collapsible Lyrics Inspector
-            if showingLyricsInspector {
+            if showingLyricsInspector && !showingNowPlaying {
                 Divider()
                 ZStack {
                     FluidBackgroundView(coverData: player.currentCoverData)
@@ -297,32 +332,6 @@ public struct MacOSContentView: View {
                 .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
-    }
-
-    private var headerView: some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(currentViewTitle)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                Text("\(filteredTracks.count) 首歌曲")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            if case .playlist = selectedSidebarItem, !filteredTracks.isEmpty {
-                Button {
-                    player.setQueue(filteredTracks, startingAt: 0)
-                } label: {
-                    Label("播放", systemImage: "play.fill")
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 24)
-        .padding(.top, 20)
-        .padding(.bottom, 12)
     }
 
     private var isBrowseMode: Bool {

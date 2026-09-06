@@ -9,27 +9,29 @@ struct LibraryTrackListView: View {
     @Bindable private var player = AudioPlayerService.shared
 
     var body: some View {
-        List {
-            if tracks.isEmpty {
-                ContentUnavailableView("没有歌曲", systemImage: "music.note")
-            } else {
-                ForEach(tracks) { track in
-                    TrackRowView(
-                        track: track,
-                        isCurrent: player.currentTrack?.id == track.id,
-                        playlists: playlists
-                    ) {
-                        player.setQueue(tracks, startingAt: tracks.firstIndex(where: { $0.id == track.id }) ?? 0)
+        Group {
+            #if os(macOS)
+            MacOSTrackTable(tracks: tracks, playlists: playlists)
+            #else
+            List {
+                if tracks.isEmpty {
+                    ContentUnavailableView("没有歌曲", systemImage: "music.note")
+                } else {
+                    ForEach(tracks) { track in
+                        TrackRowView(
+                            track: track,
+                            isCurrent: player.currentTrack?.id == track.id,
+                            playlists: playlists
+                        ) {
+                            player.setQueue(tracks, startingAt: tracks.firstIndex(where: { $0.id == track.id }) ?? 0)
+                        }
                     }
                 }
             }
+            .listStyle(.plain)
+            .avoidsBottomPlayerBar()
+            #endif
         }
-        #if os(macOS)
-        .listStyle(.inset)
-        #else
-        .listStyle(.plain)
-        #endif
-        .avoidsBottomPlayerBar()
         .navigationTitle(title)
         #if os(macOS)
         .navigationSubtitle(subtitle ?? "\(tracks.count) 首")

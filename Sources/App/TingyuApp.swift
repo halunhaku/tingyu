@@ -1,6 +1,10 @@
 import SwiftUI
 import SwiftData
 
+extension Notification.Name {
+    static let tingyuFocusSearch = Notification.Name("tingyu.focusSearch")
+}
+
 @main
 struct TingyuApp: App {
     let container: ModelContainer
@@ -20,6 +24,7 @@ struct TingyuApp: App {
                 }
         }
         .windowStyle(.titleBar)
+        .windowToolbarStyle(.unified(showsTitle: false))
         .commands {
             CommandMenu("播放控制") {
                 Button("播放 / 暂停") {
@@ -48,6 +53,13 @@ struct TingyuApp: App {
                     AudioPlayerService.shared.cycleRepeatMode()
                 }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
+            }
+
+            CommandGroup(after: .toolbar) {
+                Button("搜索") {
+                    NotificationCenter.default.post(name: .tingyuFocusSearch, object: nil)
+                }
+                .keyboardShortcut("k", modifiers: .command)
             }
         }
 

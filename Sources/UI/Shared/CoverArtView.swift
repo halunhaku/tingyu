@@ -4,11 +4,13 @@ public struct CoverArtView: View {
     public let data: Data?
     public let size: CGFloat
     public let cornerRadius: CGFloat
+    public var showsShadow: Bool = true
 
-    public init(data: Data?, size: CGFloat = 48, cornerRadius: CGFloat = 8) {
+    public init(data: Data?, size: CGFloat = 48, cornerRadius: CGFloat = 8, showsShadow: Bool = true) {
         self.data = data
         self.size = size
         self.cornerRadius = cornerRadius
+        self.showsShadow = showsShadow
     }
 
     public var body: some View {
@@ -33,7 +35,12 @@ public struct CoverArtView: View {
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        .shadow(color: Color.black.opacity(0.18), radius: size * 0.08, x: 0, y: size * 0.04)
+        .shadow(
+            color: showsShadow ? Color.black.opacity(0.18) : .clear,
+            radius: showsShadow ? size * 0.08 : 0,
+            x: 0,
+            y: showsShadow ? size * 0.04 : 0
+        )
     }
 
     private var placeholder: some View {

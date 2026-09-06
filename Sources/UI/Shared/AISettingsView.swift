@@ -21,20 +21,20 @@ public struct AISettingsView: View {
     public var body: some View {
         NavigationStack {
             Form {
-                Section("AI 智能识别设置") {
-                    Toggle("启用 AI 智能识别与洗库", isOn: $isEnabled)
+                Section {
+                    Toggle("启用智能识别", isOn: $isEnabled)
                         .onChange(of: isEnabled) { _, newValue in
                             AIService.shared.isEnabled = newValue
                         }
-
-                    Text("开启后，听屿将使用大模型在扫描时自动理解疑难杂症文件名，智能还原标准歌名、歌手与专辑。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                } header: {
+                    Text("识别")
+                } footer: {
+                    Text("扫描时用大模型理解乱码或复杂文件名，还原歌名、歌手和专辑。")
                 }
 
                 if isEnabled {
-                    Section("大模型服务商预设") {
-                        Picker("服务商预设", selection: $selectedPreset) {
+                    Section {
+                        Picker("服务商", selection: $selectedPreset) {
                             ForEach(AIProviderPreset.allCases) { preset in
                                 Text(preset.rawValue).tag(preset)
                             }
@@ -45,23 +45,22 @@ public struct AISettingsView: View {
                             saveSettings()
                         }
 
-                        TextField("API 端点 (Base URL)", text: $baseURL)
-                            .font(.system(size: 13, design: .monospaced))
+                        TextField("端点", text: $baseURL, prompt: Text("https://"))
+                            .font(.body.monospaced())
                             #if os(iOS)
                             .textInputAutocapitalization(.never)
                             .keyboardType(.URL)
                             #endif
                             .onChange(of: baseURL) { _, _ in saveSettings() }
 
-                        TextField("模型名称 (Model)", text: $model)
-                            .font(.system(size: 13, design: .monospaced))
+                        TextField("模型", text: $model)
+                            .font(.body.monospaced())
                             #if os(iOS)
                             .textInputAutocapitalization(.never)
                             #endif
                             .onChange(of: model) { _, _ in saveSettings() }
 
-                        SecureField("API Key 密钥", text: $apiKey)
-                            .font(.system(size: 13, design: .monospaced))
+                        SecureField("密钥", text: $apiKey)
                             .onChange(of: apiKey) { _, _ in saveSettings() }
 
                         HStack {
@@ -72,45 +71,42 @@ public struct AISettingsView: View {
 
                             if isTesting {
                                 ProgressView()
-                                    .padding(.leading, 8)
+                                    .controlSize(.small)
                             }
 
                             if let msg = testResultMessage {
                                 Text(msg)
                                     .font(.caption)
                                     .foregroundStyle(msg.contains("成功") ? Color.green : Color.red)
-                                    .padding(.leading, 8)
                             }
                         }
+                    } header: {
+                        Text("服务商")
                     }
 
-                    Section("曲库深度清洗") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("如果您的曲库中存在较多历史遗留的乱码、带有拼音或复杂后缀的歌曲，可以点击下方按钮进行全库深度识别。")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-
-                            Button {
-                                runAIDeepRefactor()
-                            } label: {
-                                HStack {
-                                    Image(systemName: "sparkles")
-                                    Text(isRefactoring ? refactorProgress : "一键 AI 深度重构曲库")
-                                        .fontWeight(.semibold)
-                                }
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(apiKey.isEmpty || isRefactoring)
-
+                    Section {
+                        Button {
+                            runAIDeepRefactor()
+                        } label: {
                             if isRefactoring {
-                                ProgressView()
+                                Text(refactorProgress)
+                            } else {
+                                Label("清洗整库", systemImage: "sparkles")
                             }
                         }
-                        .padding(.vertical, 4)
+                        .disabled(apiKey.isEmpty || isRefactoring)
+                    } header: {
+                        Text("曲库")
+                    } footer: {
+                        Text("按当前配置批量识别已有曲目的歌名、歌手和专辑。")
                     }
                 }
             }
-            .navigationTitle("AI 智能识别配置")
+            #if os(macOS)
+            .formStyle(.grouped)
+            .frame(minWidth: 420, idealWidth: 460, minHeight: 360)
+            #endif
+            .navigationTitle("AI 识别")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -122,7 +118,6 @@ public struct AISettingsView: View {
                 }
             }
         }
-        .frame(minWidth: 500, minHeight: 450)
     }
 
     private func saveSettings() {
@@ -140,12 +135,12 @@ public struct AISettingsView: View {
             do {
                 let ok = try await AIService.shared.testConnection()
                 await MainActor.run {
-                    self.testResultMessage = ok ? "连接成功！大模型正常响应" : "未收到有效回复"
+                    self.testResultMessage = ok ? "连接成功" : "未收到有效回复"
                     self.isTesting = false
                 }
             } catch {
                 await MainActor.run {
-                    self.testResultMessage = "连接失败: \(error.localizedDescription)"
+                    self.testResultMessage = "连接失败：\(error.localizedDescription)"
                     self.isTesting = false
                 }
             }
@@ -159,7 +154,6 @@ public struct AISettingsView: View {
         Task {
             let tracks = allTracks
             let batchSize = 25
-            var processed = 0
 
             for i in stride(from: 0, to: tracks.count, by: batchSize) {
                 let end = min(i + batchSize, tracks.count)
@@ -168,7 +162,7 @@ public struct AISettingsView: View {
                 let inputs = slice.map { AIInputItem(id: $0.id, filename: "\($0.title) \($0.filePathOrUrl)") }
 
                 await MainActor.run {
-                    self.refactorProgress = "正在 AI 识别曲目 (\(i)/\(tracks.count))..."
+                    self.refactorProgress = "识别中 (\(i)/\(tracks.count))"
                 }
 
                 if let map = try? await AIMetadataParser.parseBatch(items: inputs) {
@@ -189,20 +183,18 @@ public struct AISettingsView: View {
                     }
                 }
 
-                processed += slice.count
                 try? await Task.sleep(nanoseconds: 300_000_000)
             }
 
             await MainActor.run {
                 try? modelContext.save()
                 self.isRefactoring = false
-                self.refactorProgress = "AI 深度重构完成！"
+                self.refactorProgress = "完成"
+            }
 
-                // Trigger background cover and lyrics scraper on the newly clean names
-                Task {
-                    for track in tracks {
-                        await MetadataEnricher.shared.enrichTrackIfNeeded(track)
-                    }
+            Task {
+                for track in tracks {
+                    await MetadataEnricher.shared.enrichTrackIfNeeded(track)
                 }
             }
         }
