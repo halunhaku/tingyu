@@ -1,25 +1,28 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
-release-artifacts
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# macOS Finder
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+.AppleDouble
+.LSOverride
+Icon
+
+# Xcode
+build/
+DerivedData/
+*.moved-builder
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Xcode User Data & State
+*.xcuserstate
+project.xcworkspace
+xcuserdata/
+
+# Backup & temporary files
+*.bak
+*.swp
+*~
+
+# Local build artifacts and agent notes
+dist/
+.grok/

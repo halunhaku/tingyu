@@ -1,0 +1,45 @@
+name: Tingyu
+options:
+  bundleIdPrefix: com.halunhaku
+  deploymentTarget:
+    macOS: "15.0"
+    iOS: "18.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    PRODUCT_NAME: 听屿
+
+targets:
+  Tingyu-macOS:
+    type: application
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.halunhaku.tingyu
+        INFOPLIST_FILE: Sources/Resources/Info-macOS.plist
+        CODE_SIGN_ENTITLEMENTS: Sources/Resources/Tingyu-macOS.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        COMBINE_HIDPI_IMAGES: YES
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
+        GENERATE_INFOPLIST_FILE: NO
+
+  Tingyu-iOS:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.halunhaku.tingyu.ios
+        INFOPLIST_FILE: Sources/Resources/Info-iOS.plist
+        CODE_SIGN_ENTITLEMENTS: Sources/Resources/Tingyu-iOS.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1,2"
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        GENERATE_INFOPLIST_FILE: NO
