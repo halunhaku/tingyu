@@ -48,7 +48,7 @@ public struct IOSContentView: View {
                             ContentUnavailableView("还没有收藏", systemImage: "heart")
                         }
                     }
-                    .safeAreaPadding(.bottom, 72)
+                    .avoidsBottomPlayerBar()
                 }
                 .tabItem {
                     Label("收藏", systemImage: "heart.fill")
@@ -154,7 +154,7 @@ public struct IOSContentView: View {
                 }
             }
         }
-        .safeAreaPadding(.bottom, 72)
+        .avoidsBottomPlayerBar()
     }
 
     private func trackRow(_ track: Track, queue: [Track]) -> some View {

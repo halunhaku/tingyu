@@ -42,8 +42,8 @@ struct ArtistListView: View {
         .listStyle(.inset)
         #else
         .listStyle(.plain)
-        .safeAreaPadding(.bottom, 72)
         #endif
+        .avoidsBottomPlayerBar()
         .navigationTitle("歌手")
     }
 }

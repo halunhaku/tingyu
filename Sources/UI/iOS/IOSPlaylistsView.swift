@@ -67,7 +67,7 @@ public struct IOSPlaylistsView: View {
                 }
             }
         }
-        .safeAreaPadding(.bottom, 72)
+        .avoidsBottomPlayerBar()
         .navigationTitle("播放列表")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -118,7 +118,7 @@ public struct IOSPlaylistsView: View {
                 }
             }
         }
-        .safeAreaPadding(.bottom, 72)
+        .avoidsBottomPlayerBar()
         .navigationTitle(playlist.name)
         .toolbar {
             if !tracks.isEmpty {

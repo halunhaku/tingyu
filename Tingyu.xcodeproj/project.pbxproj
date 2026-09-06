@@ -28,6 +28,7 @@
 		32CA3E592CA2F6B75D1EA4D4 /* Info-macOS.plist in Resources */ = {isa = PBXBuildFile; fileRef = D649BDE7D38A6474DDDED9F6 /* Info-macOS.plist */; };
 		36135229A7927BCB764BCE31 /* AnimatedLyricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC2B07B904861A63998F1B /* AnimatedLyricsView.swift */; };
 		36E9C7070EA7623DF1157D34 /* Tingyu-macOS-Widget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 31E9A9D12DE949AE625E3227 /* Tingyu-macOS-Widget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3866EC7CE903DBA794A89669 /* PlayerBarScrollInset.swift in Sources */ = {isa = PBXBuildFile; fileRef = E827DFCBB013A6096816AD3E /* PlayerBarScrollInset.swift */; };
 		3922BA6519703D813AAE9830 /* LegacyCacheMigrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A849E3BD00DF58D87CA96A35 /* LegacyCacheMigrator.swift */; };
 		3A1D51F9C1CD0326073FCD6D /* WebDAVClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AA2AE9D98E2124CD00143B9 /* WebDAVClient.swift */; };
 		3B77073EBE4BAD2F4F2CEE90 /* AlbumGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D968703980AEBE322B925DB4 /* AlbumGridView.swift */; };
@@ -104,6 +105,7 @@
 		D8E20A06C01E870DE164D37E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 17201DADAC858585E0C06B23 /* Assets.xcassets */; };
 		DC1B92B33BF4E6DFF23770B7 /* LibrarySync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9168E088F752B49427638F8B /* LibrarySync.swift */; };
 		DE6CCBDE1A6C3559FB9AACEE /* SharedPlaybackState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952E6CC48BF90A2F26651703 /* SharedPlaybackState.swift */; };
+		E01066670E7CF01E69CE1152 /* PlayerBarScrollInset.swift in Sources */ = {isa = PBXBuildFile; fileRef = E827DFCBB013A6096816AD3E /* PlayerBarScrollInset.swift */; };
 		E0F666BD9DF420215813B579 /* PlaybackControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0693F7FE6BEA9E62D97409AE /* PlaybackControls.swift */; };
 		E19CE8F4BB5AF3A115AE4253 /* PlaylistActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13EF9D25E07D7CF2CBD8F805 /* PlaylistActions.swift */; };
 		E7C42DB8E30B378FB1D59B7A /* LibrarySync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9168E088F752B49427638F8B /* LibrarySync.swift */; };
@@ -205,6 +207,7 @@
 		D968703980AEBE322B925DB4 /* AlbumGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumGridView.swift; sourceTree = "<group>"; };
 		DD9724B7D02D1601E2764706 /* Tingyu-macOS-Widget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Tingyu-macOS-Widget.entitlements"; sourceTree = "<group>"; };
 		DDE9CEF30348488144729117 /* TrackRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackRowView.swift; sourceTree = "<group>"; };
+		E827DFCBB013A6096816AD3E /* PlayerBarScrollInset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerBarScrollInset.swift; sourceTree = "<group>"; };
 		E83A580BC0F442E757661046 /* WidgetTrackInfo+Track.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WidgetTrackInfo+Track.swift"; sourceTree = "<group>"; };
 		F0CC12F62478CD62B17C6600 /* MusicSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicSource.swift; sourceTree = "<group>"; };
 		F17ABD7D0B1E00371B83AF19 /* TingyuApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TingyuApp.swift; sourceTree = "<group>"; };
@@ -275,6 +278,7 @@
 				0B508F98EAC4507A43CEACF5 /* LibraryTrackListView.swift */,
 				9AA41D0B54D696F4D83BC8B2 /* ManualMatchSheet.swift */,
 				0693F7FE6BEA9E62D97409AE /* PlaybackControls.swift */,
+				E827DFCBB013A6096816AD3E /* PlayerBarScrollInset.swift */,
 				F28175C042DD1D016C5C2CE7 /* SourceManagerView.swift */,
 				DDE9CEF30348488144729117 /* TrackRowView.swift */,
 			);
@@ -597,6 +601,7 @@
 				9882D8589AB3B359A4AE0ECF /* NetEaseScraper.swift in Sources */,
 				2F6636192143249321354736 /* NowPlayingManager.swift in Sources */,
 				BE612508BE58BC4CD500E457 /* PlaybackControls.swift in Sources */,
+				3866EC7CE903DBA794A89669 /* PlayerBarScrollInset.swift in Sources */,
 				A89EE582A54DA8B08BFC17EA /* Playlist.swift in Sources */,
 				E19CE8F4BB5AF3A115AE4253 /* PlaylistActions.swift in Sources */,
 				8243F1E1D95D7779399A4516 /* QQMusicScraper.swift in Sources */,
@@ -655,6 +660,7 @@
 				472900C5A684888C2C00A922 /* NetEaseScraper.swift in Sources */,
 				8B68F08BB76BB397126D5AED /* NowPlayingManager.swift in Sources */,
 				E0F666BD9DF420215813B579 /* PlaybackControls.swift in Sources */,
+				E01066670E7CF01E69CE1152 /* PlayerBarScrollInset.swift in Sources */,
 				D2EF4DCB654B6410C4716CCF /* Playlist.swift in Sources */,
 				415A575BF7C19B6EB7832A68 /* PlaylistActions.swift in Sources */,
 				50F22AA48E0B1329DBF15ED8 /* QQMusicScraper.swift in Sources */,

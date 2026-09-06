@@ -28,8 +28,8 @@ struct LibraryTrackListView: View {
         .listStyle(.inset)
         #else
         .listStyle(.plain)
-        .safeAreaPadding(.bottom, 72)
         #endif
+        .avoidsBottomPlayerBar()
         .navigationTitle(title)
         #if os(macOS)
         .navigationSubtitle(subtitle ?? "\(tracks.count) 首")

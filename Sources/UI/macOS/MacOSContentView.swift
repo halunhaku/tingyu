@@ -34,12 +34,13 @@ public struct MacOSContentView: View {
     public init() {}
 
     public var body: some View {
-        NavigationSplitView {
-            sidebar
-        } detail: {
-            detailView
-        }
-        .searchable(text: $searchText, placement: .toolbar, prompt: "搜索歌曲、艺术家或专辑 (⌘K)")
+        VStack(spacing: 0) {
+            NavigationSplitView {
+                sidebar
+            } detail: {
+                detailView
+            }
+            .searchable(text: $searchText, placement: .toolbar, prompt: "搜索歌曲、艺术家或专辑 (⌘K)")
         .focused($isSearchFocused)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
@@ -115,7 +116,6 @@ public struct MacOSContentView: View {
                 playlistPendingDelete = nil
             }
         }
-        .safeAreaInset(edge: .bottom) {
             MacOSPlayerBar(showingLyrics: $showingLyricsInspector)
         }
         .onAppear {
@@ -273,12 +273,9 @@ public struct MacOSContentView: View {
                             }
                         }
 
-                        Color.clear
-                            .frame(height: 76)
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
                     }
                     .listStyle(.inset)
+                    .avoidsBottomPlayerBar()
                 }
             }
             .frame(maxWidth: .infinity)
@@ -294,6 +291,7 @@ public struct MacOSContentView: View {
                     ) { seekTime in
                         player.seek(to: seekTime)
                     }
+                    .avoidsBottomPlayerBar()
                 }
                 .frame(width: 320)
                 .transition(.move(edge: .trailing).combined(with: .opacity))

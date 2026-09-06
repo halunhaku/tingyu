@@ -36,9 +36,7 @@ struct AlbumGridView: View {
                 .padding(20)
             }
         }
-        #if os(iOS)
-        .safeAreaPadding(.bottom, 72)
-        #endif
+        .avoidsBottomPlayerBar()
         .navigationTitle("专辑")
     }
 
