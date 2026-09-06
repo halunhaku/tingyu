@@ -11,10 +11,10 @@ enum QuarkCookieStore {
     }
 
     static func load(sourceId: String) -> String? {
-        if let cookie = KeychainService.shared.get(for: account(for: sourceId)), !cookie.isEmpty {
+        if let cookie = readFallback(sourceId: sourceId), !cookie.isEmpty {
             return cookie
         }
-        return readFallback(sourceId: sourceId)
+        return KeychainService.shared.get(for: account(for: sourceId))
     }
 
     static func delete(sourceId: String) {

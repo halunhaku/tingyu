@@ -32,16 +32,9 @@ public final class KeychainService: Sendable {
             throw KeychainError.invalidData
         }
 
-        // Check if item exists first
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
-        ]
-
+        let query = baseQuery(account: account, service: service)
         let status = SecItemCopyMatching(query as CFDictionary, nil)
         if status == errSecSuccess {
-            // Update
             let attributesToUpdate: [String: Any] = [
                 kSecValueData as String: data
             ]
@@ -49,29 +42,21 @@ public final class KeychainService: Sendable {
             guard updateStatus == errSecSuccess else {
                 throw KeychainError.unexpectedStatus(updateStatus)
             }
-        } else if status == errSecItemNotFound {
-            // Add new
+        } else {
             var newQuery = query
             newQuery[kSecValueData as String] = data
-            newQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-
+            newQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
             let addStatus = SecItemAdd(newQuery as CFDictionary, nil)
-            guard addStatus == errSecSuccess else {
+            if addStatus != errSecSuccess && addStatus != errSecDuplicateItem {
                 throw KeychainError.unexpectedStatus(addStatus)
             }
-        } else {
-            throw KeychainError.unexpectedStatus(status)
         }
     }
 
     public func get(for account: String, service: String = defaultService) -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
+        var query = baseQuery(account: account, service: service)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
 
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
@@ -82,15 +67,21 @@ public final class KeychainService: Sendable {
     }
 
     public func delete(for account: String, service: String = defaultService) throws {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
-        ]
-
+        let query = baseQuery(account: account, service: service)
         let status = SecItemDelete(query as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else {
+        guard status == errSecSuccess || status == errSecItemNotFound || status == errSecInteractionNotAllowed else {
             throw KeychainError.unexpectedStatus(status)
         }
+    }
+
+    private func baseQuery(account: String, service: String) -> [String: Any] {
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail
+        ]
+        query[kSecUseDataProtectionKeychain as String] = true
+        return query
     }
 }

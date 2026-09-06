@@ -6,6 +6,7 @@ public struct MacOSContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var allTracks: [Track]
     @Query private var sources: [MusicSource]
+    @Query(sort: \Playlist.createdAt) private var playlists: [Playlist]
 
     @State private var selectedSidebarItem: SidebarItem? = .library
     @State private var searchText: String = ""
@@ -14,12 +15,18 @@ public struct MacOSContentView: View {
     @FocusState private var isSearchFocused: Bool
 
     @State private var showingAISettings = false
+    @State private var showingCreatePlaylist = false
+    @State private var showingRenamePlaylist = false
+    @State private var playlistNameDraft = ""
+    @State private var playlistPendingRename: Playlist?
+    @State private var playlistPendingDelete: Playlist?
     @Bindable var player = AudioPlayerService.shared
 
     private enum SidebarItem: Hashable {
         case library
         case favorites
         case source(String)
+        case playlist(String)
     }
 
     public init() {}
@@ -65,6 +72,47 @@ public struct MacOSContentView: View {
         .sheet(isPresented: $showingAISettings) {
             AISettingsView()
         }
+        .alert("新建播放列表", isPresented: $showingCreatePlaylist) {
+            TextField("名称", text: $playlistNameDraft)
+            Button("创建") {
+                let playlist = PlaylistActions.create(name: playlistNameDraft, context: modelContext)
+                selectedSidebarItem = .playlist(playlist.id)
+            }
+            Button("取消", role: .cancel) {}
+        }
+        .alert("重命名播放列表", isPresented: $showingRenamePlaylist) {
+            TextField("名称", text: $playlistNameDraft)
+            Button("保存") {
+                if let playlist = playlistPendingRename {
+                    PlaylistActions.rename(playlist, to: playlistNameDraft, context: modelContext)
+                }
+                playlistPendingRename = nil
+            }
+            Button("取消", role: .cancel) {
+                playlistPendingRename = nil
+            }
+        }
+        .confirmationDialog(
+            "删除播放列表「\(playlistPendingDelete?.name ?? "")」？",
+            isPresented: Binding(
+                get: { playlistPendingDelete != nil },
+                set: { if !$0 { playlistPendingDelete = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("删除", role: .destructive) {
+                if let playlist = playlistPendingDelete {
+                    if case .playlist(let id) = selectedSidebarItem, id == playlist.id {
+                        selectedSidebarItem = .library
+                    }
+                    PlaylistActions.delete(playlist, context: modelContext)
+                }
+                playlistPendingDelete = nil
+            }
+            Button("取消", role: .cancel) {
+                playlistPendingDelete = nil
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             MacOSPlayerBar(showingLyrics: $showingLyricsInspector)
         }
@@ -98,16 +146,7 @@ public struct MacOSContentView: View {
                 cookie: cookie
             )
             if !tracks.isEmpty {
-                let sourceId = source.id
-                let descriptor = FetchDescriptor<Track>(predicate: #Predicate { $0.sourceId == sourceId })
-                if let existing = try? modelContext.fetch(descriptor) {
-                    for old in existing {
-                        modelContext.delete(old)
-                    }
-                }
-                for track in tracks {
-                    modelContext.insert(track)
-                }
+                LibrarySync.merge(scanned: tracks, sourceId: source.id, context: modelContext)
                 source.trackCount = tracks.count
                 source.syncStatus = "已同步 \(tracks.count) 首"
                 try? modelContext.save()
@@ -128,6 +167,47 @@ public struct MacOSContentView: View {
 
                 NavigationLink(value: SidebarItem.favorites) {
                     Label("我的收藏", systemImage: "heart.fill")
+                }
+            }
+
+            Section {
+                ForEach(playlists) { playlist in
+                    NavigationLink(value: SidebarItem.playlist(playlist.id)) {
+                        Label(playlist.name, systemImage: "music.note.list")
+                    }
+                    .contextMenu {
+                        Button {
+                            player.setQueue(PlaylistActions.tracks(in: playlist, from: allTracks), startingAt: 0)
+                        } label: {
+                            Label("播放", systemImage: "play.fill")
+                        }
+                        Button {
+                            playlistNameDraft = playlist.name
+                            playlistPendingRename = playlist
+                            showingRenamePlaylist = true
+                        } label: {
+                            Label("重命名", systemImage: "pencil")
+                        }
+                        Button(role: .destructive) {
+                            playlistPendingDelete = playlist
+                        } label: {
+                            Label("删除", systemImage: "trash")
+                        }
+                    }
+                }
+            } header: {
+                HStack {
+                    Text("播放列表")
+                    Spacer()
+                    Button {
+                        playlistNameDraft = ""
+                        showingCreatePlaylist = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                    .help("新建播放列表")
                 }
             }
 
@@ -167,7 +247,9 @@ public struct MacOSContentView: View {
                     ForEach(filteredTracks) { track in
                         TrackRowView(
                             track: track,
-                            isCurrent: player.currentTrack?.id == track.id
+                            isCurrent: player.currentTrack?.id == track.id,
+                            playlists: playlists,
+                            currentPlaylist: currentPlaylist
                         ) {
                             player.setQueue(filteredTracks, startingAt: filteredTracks.firstIndex(where: { $0.id == track.id }) ?? 0)
                             Task {
@@ -205,17 +287,34 @@ public struct MacOSContentView: View {
     }
 
     private var headerView: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(currentViewTitle)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-            Text("\(filteredTracks.count) 首歌曲")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(currentViewTitle)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                Text("\(filteredTracks.count) 首歌曲")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            if case .playlist = selectedSidebarItem, !filteredTracks.isEmpty {
+                Button {
+                    player.setQueue(filteredTracks, startingAt: 0)
+                } label: {
+                    Label("播放", systemImage: "play.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 24)
         .padding(.top, 20)
         .padding(.bottom, 12)
+    }
+
+    private var currentPlaylist: Playlist? {
+        guard case .playlist(let id) = selectedSidebarItem else { return nil }
+        return playlists.first(where: { $0.id == id })
     }
 
     private var currentViewTitle: String {
@@ -226,6 +325,8 @@ public struct MacOSContentView: View {
             return "我的收藏"
         case .source(let sourceId):
             return sources.first(where: { $0.id == sourceId })?.name ?? "音乐来源"
+        case .playlist:
+            return currentPlaylist?.name ?? "播放列表"
         }
     }
 
@@ -237,6 +338,10 @@ public struct MacOSContentView: View {
             result = result.filter { $0.isFavorite }
         case .source(let id):
             result = result.filter { $0.sourceId == id }
+        case .playlist:
+            if let currentPlaylist {
+                result = PlaylistActions.tracks(in: currentPlaylist, from: allTracks)
+            }
         default:
             break
         }

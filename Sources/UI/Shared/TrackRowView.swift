@@ -1,16 +1,30 @@
 import SwiftUI
+import SwiftData
 
 public struct TrackRowView: View {
     public let track: Track
     public let isCurrent: Bool
+    public let playlists: [Playlist]
+    public let currentPlaylist: Playlist?
     public let onPlay: () -> Void
 
+    @Environment(\.modelContext) private var modelContext
     @Bindable var player = AudioPlayerService.shared
     @State private var showingManualMatch = false
+    @State private var showingNewPlaylist = false
+    @State private var newPlaylistName = ""
 
-    public init(track: Track, isCurrent: Bool, onPlay: @escaping () -> Void) {
+    public init(
+        track: Track,
+        isCurrent: Bool,
+        playlists: [Playlist] = [],
+        currentPlaylist: Playlist? = nil,
+        onPlay: @escaping () -> Void
+    ) {
         self.track = track
         self.isCurrent = isCurrent
+        self.playlists = playlists
+        self.currentPlaylist = currentPlaylist
         self.onPlay = onPlay
     }
 
@@ -80,7 +94,32 @@ public struct TrackRowView: View {
             Button {
                 player.queue.append(track)
             } label: {
-                Label("添加到播放列表", systemImage: "text.append")
+                Label("添加到队列", systemImage: "text.append")
+            }
+
+            Menu {
+                ForEach(playlists, id: \.id) { playlist in
+                    Button(playlist.name) {
+                        PlaylistActions.add(track: track, to: playlist, context: modelContext)
+                    }
+                }
+                if !playlists.isEmpty {
+                    Divider()
+                }
+                Button("新播放列表…") {
+                    newPlaylistName = ""
+                    showingNewPlaylist = true
+                }
+            } label: {
+                Label("加入播放列表", systemImage: "text.badge.plus")
+            }
+
+            if let currentPlaylist {
+                Button(role: .destructive) {
+                    PlaylistActions.remove(track: track, from: currentPlaylist, context: modelContext)
+                } label: {
+                    Label("从「\(currentPlaylist.name)」移除", systemImage: "minus.circle")
+                }
             }
 
             Divider()
@@ -101,6 +140,13 @@ public struct TrackRowView: View {
         }
         .sheet(isPresented: $showingManualMatch) {
             ManualMatchSheet(track: track)
+        }
+        .alert("新播放列表", isPresented: $showingNewPlaylist) {
+            TextField("名称", text: $newPlaylistName)
+            Button("创建") {
+                PlaylistActions.create(name: newPlaylistName, context: modelContext, firstTrack: track)
+            }
+            Button("取消", role: .cancel) {}
         }
     }
 

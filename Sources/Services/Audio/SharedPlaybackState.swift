@@ -32,33 +32,33 @@ public struct WidgetTrackInfo: Codable, Sendable {
     }
 }
 
-public final class SharedPlaybackState: Sendable {
+public enum PlaybackWidgetCommand: String, Sendable {
+    case playPause
+    case next
+    case previous
+}
+
+public final class SharedPlaybackState: @unchecked Sendable {
     public static let shared = SharedPlaybackState()
+    public static let appGroupId = "group.com.halunhaku.tingyu"
+    public static let playbackCommandNotification = Notification.Name("com.halunhaku.tingyu.playbackCommand")
+
     private let key = "tingyu_widget_track_info"
+    private let defaults: UserDefaults
 
-    public func save(track: Track?, isPlaying: Bool, currentTime: Double, duration: Double) {
-        let info = WidgetTrackInfo(
-            id: track?.id ?? "",
-            title: track?.title ?? "听屿",
-            artist: track?.artist ?? "暂未播放音乐",
-            album: track?.album ?? "",
-            isPlaying: isPlaying,
-            duration: duration,
-            currentTime: currentTime,
-            coverData: track?.coverArtData
-        )
+    public init() {
+        defaults = UserDefaults(suiteName: Self.appGroupId) ?? .standard
+    }
 
+    public func save(_ info: WidgetTrackInfo) {
         if let data = try? JSONEncoder().encode(info) {
-            UserDefaults.standard.set(data, forKey: key)
+            defaults.set(data, forKey: key)
         }
-
-        #if canImport(WidgetKit)
         WidgetCenter.shared.reloadAllTimelines()
-        #endif
     }
 
     public func load() -> WidgetTrackInfo {
-        guard let data = UserDefaults.standard.data(forKey: key),
+        guard let data = defaults.data(forKey: key),
               let info = try? JSONDecoder().decode(WidgetTrackInfo.self, from: data) else {
             return WidgetTrackInfo()
         }

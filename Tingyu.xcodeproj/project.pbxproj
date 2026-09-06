@@ -12,6 +12,7 @@
 		0794204ACB859E1C4B60E78C /* LyricLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B60B67CE16AF86A1A750587 /* LyricLine.swift */; };
 		0A09F5428D721E41A8BE4D56 /* IOSMiniPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10DC0601B7129C34331E7789 /* IOSMiniPlayer.swift */; };
 		0BC6F9ED20B7297BB7684350 /* SmartTitleParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B65BE8E1205E114ED9AC05A /* SmartTitleParser.swift */; };
+		0C5C2C24AF50D5E65C74D5C8 /* Info-macOS-Widget.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5D4EF8A56DA2756DED4FA256 /* Info-macOS-Widget.plist */; };
 		0E7784D54A2075840C319084 /* SourceManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28175C042DD1D016C5C2CE7 /* SourceManagerView.swift */; };
 		1664360AA7D647DB3F675F22 /* AIMetadataParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 807601AE83A6C418ACCFC34F /* AIMetadataParser.swift */; };
 		16FCEAAD8BBEB96E13658A7E /* CoverArtView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5DF6E4AE93B5671EFB77AB9 /* CoverArtView.swift */; };
@@ -19,15 +20,18 @@
 		1C16A04E65E1F9CD734BC562 /* IOSContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2233F18CC92165BB40159B5 /* IOSContentView.swift */; };
 		26A0535FFCA6CE6E9E91DFC6 /* WebDAVXMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 729EDA727D7F90685BD0FB2B /* WebDAVXMLParser.swift */; };
 		277DEECD6C57862053B3CC78 /* iTunesCoverScraper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7A7B8A579D4E2F7B9CA577D /* iTunesCoverScraper.swift */; };
+		2C50A74176438E4B3BF1C5F8 /* WidgetPlaybackIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33DE4BCAF4BC7F6983CA0877 /* WidgetPlaybackIntents.swift */; };
 		2DC599B97FBCBE148FD5B101 /* IOSMiniPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10DC0601B7129C34331E7789 /* IOSMiniPlayer.swift */; };
 		2F6636192143249321354736 /* NowPlayingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0362E6C9AA30B750805631E /* NowPlayingManager.swift */; };
 		32CA3E592CA2F6B75D1EA4D4 /* Info-macOS.plist in Resources */ = {isa = PBXBuildFile; fileRef = D649BDE7D38A6474DDDED9F6 /* Info-macOS.plist */; };
 		36135229A7927BCB764BCE31 /* AnimatedLyricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FCC2B07B904861A63998F1B /* AnimatedLyricsView.swift */; };
+		36E9C7070EA7623DF1157D34 /* Tingyu-macOS-Widget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 31E9A9D12DE949AE625E3227 /* Tingyu-macOS-Widget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		3922BA6519703D813AAE9830 /* LegacyCacheMigrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A849E3BD00DF58D87CA96A35 /* LegacyCacheMigrator.swift */; };
 		3A1D51F9C1CD0326073FCD6D /* WebDAVClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AA2AE9D98E2124CD00143B9 /* WebDAVClient.swift */; };
 		3B924C3E94F8E81E55E7E2C5 /* MacOSMenuBarExtra.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA368C7F7BAEA6986A9E4F40 /* MacOSMenuBarExtra.swift */; };
 		3D0733C95CF7B71D680D28AC /* QuarkDriveClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 547697EDE854F971C2CE282E /* QuarkDriveClient.swift */; };
 		3E85C71133E64686C3088B5A /* Track.swift in Sources */ = {isa = PBXBuildFile; fileRef = 671479270EF0F712F701CDE4 /* Track.swift */; };
+		415A575BF7C19B6EB7832A68 /* PlaylistActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13EF9D25E07D7CF2CBD8F805 /* PlaylistActions.swift */; };
 		457CEFB7C5CD949BEC0C117B /* TrackRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDE9CEF30348488144729117 /* TrackRowView.swift */; };
 		472900C5A684888C2C00A922 /* NetEaseScraper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98F3923ABD38F427EF37E24F /* NetEaseScraper.swift */; };
 		49AF0C2D0B146F14EA387A31 /* LocalAudioResourceLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB57B2554E3D5DB8C4C05F2E /* LocalAudioResourceLoader.swift */; };
@@ -39,12 +43,15 @@
 		579E94E3B67A48FB5C05EFAE /* IOSNowPlayingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 291C399712865B35E1FC383B /* IOSNowPlayingSheet.swift */; };
 		5A8AC5000EC1D517B8717EF0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 17201DADAC858585E0C06B23 /* Assets.xcassets */; };
 		5B750083C5CAB0F2C4DACF57 /* TrackRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDE9CEF30348488144729117 /* TrackRowView.swift */; };
+		60F587F8E0D055729181AFA7 /* IOSPlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8BC48281C4A5FC56EC4836 /* IOSPlaylistsView.swift */; };
 		65E691D653B7EF3DED95559F /* MetadataEnricher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B2D99D064384ABFFF9F22DB /* MetadataEnricher.swift */; };
 		67024DEF86EA0BDF956511FC /* FluidBackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CE2EB680D9800F9FBD8E06 /* FluidBackgroundView.swift */; };
 		67C6995B908BE9AB45B04B5A /* WebDAVXMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 729EDA727D7F90685BD0FB2B /* WebDAVXMLParser.swift */; };
+		6B97D7F72D939C992D10A05A /* WidgetTrackInfo+Track.swift in Sources */ = {isa = PBXBuildFile; fileRef = E83A580BC0F442E757661046 /* WidgetTrackInfo+Track.swift */; };
 		6D4A1FA563DA399F4166D90A /* LRCLIBScraper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE49B31D53EEB0C0F526E4A9 /* LRCLIBScraper.swift */; };
 		720E94DE2676465CBBC50158 /* MacOSContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29C2540918BF6D537084544B /* MacOSContentView.swift */; };
 		739E5F55B9535757F6AA4B03 /* iTunesCoverScraper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7A7B8A579D4E2F7B9CA577D /* iTunesCoverScraper.swift */; };
+		7437EF53015F1CAF7E429CBA /* IOSPlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8BC48281C4A5FC56EC4836 /* IOSPlaylistsView.swift */; };
 		797C100003D567724F3F957A /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 257806382E36E639155E96BE /* KeychainService.swift */; };
 		8010D20C90F185D3B717A668 /* IOSNowPlayingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 291C399712865B35E1FC383B /* IOSNowPlayingSheet.swift */; };
 		80C38C6860C0560C327B89E4 /* TingyuIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62FEA1D8A9D46E0C9A3B0799 /* TingyuIntents.swift */; };
@@ -57,6 +64,7 @@
 		8A041DC7A3A69D6F38090730 /* MacOSPlayerBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1727C2E920B547CDAF0771F /* MacOSPlayerBar.swift */; };
 		8B68F08BB76BB397126D5AED /* NowPlayingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0362E6C9AA30B750805631E /* NowPlayingManager.swift */; };
 		8F4032AFAAAAC167B64F8FFC /* SharedPlaybackState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952E6CC48BF90A2F26651703 /* SharedPlaybackState.swift */; };
+		8F9DA046E9DD53F97C3443B3 /* Info-macOS-Widget.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5D4EF8A56DA2756DED4FA256 /* Info-macOS-Widget.plist */; };
 		9086F9DEF1A3F7563DF1B12F /* ChineseConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0E1D5D2EA32AF4BD1FBAB2 /* ChineseConverter.swift */; };
 		90ED0B10C2F2E655D7948EE7 /* LocalAudioResourceLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB57B2554E3D5DB8C4C05F2E /* LocalAudioResourceLoader.swift */; };
 		970E0FA379C94B313BF6621E /* CoverArtView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5DF6E4AE93B5671EFB77AB9 /* CoverArtView.swift */; };
@@ -72,21 +80,26 @@
 		A709F5BAEF47DCCB41883769 /* StreamingResourceLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7845E18698C08AA9F17E88C /* StreamingResourceLoader.swift */; };
 		A89EE582A54DA8B08BFC17EA /* Playlist.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCF3FA6DF360978A352145D4 /* Playlist.swift */; };
 		ADF6B683F1DFFDA5422B9AD0 /* AISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4194232B75E0E3236E293417 /* AISettingsView.swift */; };
+		AE9341938AE60E6004FF6DFC /* TingyuWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE06BCA958A127D9A11130A5 /* TingyuWidget.swift */; };
 		B1D16125A93EFCB847F24022 /* MusicSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CC12F62478CD62B17C6600 /* MusicSource.swift */; };
 		B36483BD84FC17DDACD4C683 /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1EB879B24E7FC805C81403 /* AIService.swift */; };
 		B570F103C656F37E75206165 /* LRCLIBScraper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE49B31D53EEB0C0F526E4A9 /* LRCLIBScraper.swift */; };
-		B900C095425DB2C51D74D10A /* TingyuWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B84D134247DEAEE01169B50D /* TingyuWidget.swift */; };
 		BE2FE866A074FD37D895C5F6 /* IOSContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2233F18CC92165BB40159B5 /* IOSContentView.swift */; };
 		BE612508BE58BC4CD500E457 /* PlaybackControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0693F7FE6BEA9E62D97409AE /* PlaybackControls.swift */; };
 		C260312516B48CBF81F6E556 /* AudioPlayerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C9AA34B202F3646789E58F /* AudioPlayerService.swift */; };
 		C2A58E0C920B0ABACF29BBA7 /* TingyuApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F17ABD7D0B1E00371B83AF19 /* TingyuApp.swift */; };
 		C52D64C33FA52A9EED582035 /* ChineseConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0E1D5D2EA32AF4BD1FBAB2 /* ChineseConverter.swift */; };
 		C720CC6E5A7D2ACCC57A7729 /* LegacyCacheMigrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A849E3BD00DF58D87CA96A35 /* LegacyCacheMigrator.swift */; };
+		C87CBD32DF9A655F7B672155 /* TingyuWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60916047622E2359AB570500 /* TingyuWidgetBundle.swift */; };
 		CCD0800678CB7E7BBD912B6E /* AIMetadataParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 807601AE83A6C418ACCFC34F /* AIMetadataParser.swift */; };
-		D20A32F04F19234CCAE51CD4 /* TingyuWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B84D134247DEAEE01169B50D /* TingyuWidget.swift */; };
+		CD76C340932022C07C308370 /* WidgetTrackInfo+Track.swift in Sources */ = {isa = PBXBuildFile; fileRef = E83A580BC0F442E757661046 /* WidgetTrackInfo+Track.swift */; };
 		D2EF4DCB654B6410C4716CCF /* Playlist.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCF3FA6DF360978A352145D4 /* Playlist.swift */; };
 		D8E20A06C01E870DE164D37E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 17201DADAC858585E0C06B23 /* Assets.xcassets */; };
+		DC1B92B33BF4E6DFF23770B7 /* LibrarySync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9168E088F752B49427638F8B /* LibrarySync.swift */; };
+		DE6CCBDE1A6C3559FB9AACEE /* SharedPlaybackState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952E6CC48BF90A2F26651703 /* SharedPlaybackState.swift */; };
 		E0F666BD9DF420215813B579 /* PlaybackControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0693F7FE6BEA9E62D97409AE /* PlaybackControls.swift */; };
+		E19CE8F4BB5AF3A115AE4253 /* PlaylistActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13EF9D25E07D7CF2CBD8F805 /* PlaylistActions.swift */; };
+		E7C42DB8E30B378FB1D59B7A /* LibrarySync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9168E088F752B49427638F8B /* LibrarySync.swift */; };
 		EBDDFC6677359DB20BF4F7B9 /* FluidBackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CE2EB680D9800F9FBD8E06 /* FluidBackgroundView.swift */; };
 		EBE085FDAB6FA73EE5DD5AD0 /* SourceManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28175C042DD1D016C5C2CE7 /* SourceManagerView.swift */; };
 		ED52184AFB6DC4221EF1F280 /* MacOSPlayerBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1727C2E920B547CDAF0771F /* MacOSPlayerBar.swift */; };
@@ -101,40 +114,71 @@
 		FC52AE3F118F663B5CD5B9A7 /* CloudSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CFE3F1F5822FA2E71D9325E /* CloudSyncManager.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		907CC3B015F97DCD0F025BED /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 082FD4E3F489F2685F6C102C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 98A83C3CF979BF2F58A37199;
+			remoteInfo = "Tingyu-macOS-Widget";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		AFF6F4D68B52B554D4EAB8BA /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				36E9C7070EA7623DF1157D34 /* Tingyu-macOS-Widget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		0693F7FE6BEA9E62D97409AE /* PlaybackControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackControls.swift; sourceTree = "<group>"; };
 		090D151823704ED19E6C1E3C /* Tingyu-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Tingyu-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		0AA2AE9D98E2124CD00143B9 /* WebDAVClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebDAVClient.swift; sourceTree = "<group>"; };
 		10DC0601B7129C34331E7789 /* IOSMiniPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSMiniPlayer.swift; sourceTree = "<group>"; };
+		13EF9D25E07D7CF2CBD8F805 /* PlaylistActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistActions.swift; sourceTree = "<group>"; };
 		17201DADAC858585E0C06B23 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1E2C89D68D9225014821F30E /* Tingyu-macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Tingyu-macOS.entitlements"; sourceTree = "<group>"; };
 		257806382E36E639155E96BE /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		291C399712865B35E1FC383B /* IOSNowPlayingSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSNowPlayingSheet.swift; sourceTree = "<group>"; };
 		29C2540918BF6D537084544B /* MacOSContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacOSContentView.swift; sourceTree = "<group>"; };
 		31CE2EB680D9800F9FBD8E06 /* FluidBackgroundView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluidBackgroundView.swift; sourceTree = "<group>"; };
+		31E9A9D12DE949AE625E3227 /* Tingyu-macOS-Widget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Tingyu-macOS-Widget.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		33DE4BCAF4BC7F6983CA0877 /* WidgetPlaybackIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetPlaybackIntents.swift; sourceTree = "<group>"; };
 		3B612441236E138249AB98F1 /* Tingyu-iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Tingyu-iOS.entitlements"; sourceTree = "<group>"; };
 		3B65BE8E1205E114ED9AC05A /* SmartTitleParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartTitleParser.swift; sourceTree = "<group>"; };
 		4194232B75E0E3236E293417 /* AISettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISettingsView.swift; sourceTree = "<group>"; };
 		4F52A5E215D1AA8A63FAF55E /* AddQuarkSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddQuarkSheet.swift; sourceTree = "<group>"; };
 		547697EDE854F971C2CE282E /* QuarkDriveClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuarkDriveClient.swift; sourceTree = "<group>"; };
+		5D4EF8A56DA2756DED4FA256 /* Info-macOS-Widget.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Info-macOS-Widget.plist"; sourceTree = "<group>"; };
 		5FCC2B07B904861A63998F1B /* AnimatedLyricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedLyricsView.swift; sourceTree = "<group>"; };
+		60916047622E2359AB570500 /* TingyuWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TingyuWidgetBundle.swift; sourceTree = "<group>"; };
 		62FEA1D8A9D46E0C9A3B0799 /* TingyuIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TingyuIntents.swift; sourceTree = "<group>"; };
 		671479270EF0F712F701CDE4 /* Track.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Track.swift; sourceTree = "<group>"; };
 		6B2D99D064384ABFFF9F22DB /* MetadataEnricher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataEnricher.swift; sourceTree = "<group>"; };
 		729EDA727D7F90685BD0FB2B /* WebDAVXMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebDAVXMLParser.swift; sourceTree = "<group>"; };
 		807601AE83A6C418ACCFC34F /* AIMetadataParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIMetadataParser.swift; sourceTree = "<group>"; };
+		9168E088F752B49427638F8B /* LibrarySync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySync.swift; sourceTree = "<group>"; };
 		952E6CC48BF90A2F26651703 /* SharedPlaybackState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedPlaybackState.swift; sourceTree = "<group>"; };
 		98F3923ABD38F427EF37E24F /* NetEaseScraper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetEaseScraper.swift; sourceTree = "<group>"; };
 		9AA41D0B54D696F4D83BC8B2 /* ManualMatchSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualMatchSheet.swift; sourceTree = "<group>"; };
 		9B60B67CE16AF86A1A750587 /* LyricLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricLine.swift; sourceTree = "<group>"; };
 		9CFE3F1F5822FA2E71D9325E /* CloudSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSyncManager.swift; sourceTree = "<group>"; };
+		9D8BC48281C4A5FC56EC4836 /* IOSPlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSPlaylistsView.swift; sourceTree = "<group>"; };
 		A5DF6E4AE93B5671EFB77AB9 /* CoverArtView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverArtView.swift; sourceTree = "<group>"; };
 		A6A6B81878D6E6B5BC9064FA /* QuarkCookieStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuarkCookieStore.swift; sourceTree = "<group>"; };
 		A849E3BD00DF58D87CA96A35 /* LegacyCacheMigrator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyCacheMigrator.swift; sourceTree = "<group>"; };
 		A9C9AA34B202F3646789E58F /* AudioPlayerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayerService.swift; sourceTree = "<group>"; };
+		AE06BCA958A127D9A11130A5 /* TingyuWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TingyuWidget.swift; sourceTree = "<group>"; };
 		AE49B31D53EEB0C0F526E4A9 /* LRCLIBScraper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LRCLIBScraper.swift; sourceTree = "<group>"; };
 		B7A7B8A579D4E2F7B9CA577D /* iTunesCoverScraper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iTunesCoverScraper.swift; sourceTree = "<group>"; };
-		B84D134247DEAEE01169B50D /* TingyuWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TingyuWidget.swift; sourceTree = "<group>"; };
 		BCF3FA6DF360978A352145D4 /* Playlist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Playlist.swift; sourceTree = "<group>"; };
 		BD0E1D5D2EA32AF4BD1FBAB2 /* ChineseConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChineseConverter.swift; sourceTree = "<group>"; };
 		C1727C2E920B547CDAF0771F /* MacOSPlayerBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacOSPlayerBar.swift; sourceTree = "<group>"; };
@@ -147,7 +191,9 @@
 		D0362E6C9AA30B750805631E /* NowPlayingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingManager.swift; sourceTree = "<group>"; };
 		D649BDE7D38A6474DDDED9F6 /* Info-macOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Info-macOS.plist"; sourceTree = "<group>"; };
 		D74106F40A6614825F36676C /* QQMusicScraper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QQMusicScraper.swift; sourceTree = "<group>"; };
+		DD9724B7D02D1601E2764706 /* Tingyu-macOS-Widget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Tingyu-macOS-Widget.entitlements"; sourceTree = "<group>"; };
 		DDE9CEF30348488144729117 /* TrackRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackRowView.swift; sourceTree = "<group>"; };
+		E83A580BC0F442E757661046 /* WidgetTrackInfo+Track.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WidgetTrackInfo+Track.swift"; sourceTree = "<group>"; };
 		F0CC12F62478CD62B17C6600 /* MusicSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicSource.swift; sourceTree = "<group>"; };
 		F17ABD7D0B1E00371B83AF19 /* TingyuApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TingyuApp.swift; sourceTree = "<group>"; };
 		F28175C042DD1D016C5C2CE7 /* SourceManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceManagerView.swift; sourceTree = "<group>"; };
@@ -160,6 +206,7 @@
 			isa = PBXGroup;
 			children = (
 				CC40680A0760214B03BFDCFE /* Tingyu-iOS.app */,
+				31E9A9D12DE949AE625E3227 /* Tingyu-macOS-Widget.appex */,
 				090D151823704ED19E6C1E3C /* Tingyu-macOS.app */,
 			);
 			name = Products;
@@ -198,6 +245,7 @@
 			isa = PBXGroup;
 			children = (
 				B24E021841DF15EE196BC641 /* Sources */,
+				C657BA1A14D10452FE7BD858 /* Widgets */,
 				0A919989EB0F4B70B7DDC5B5 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -232,14 +280,6 @@
 			path = Scraper;
 			sourceTree = "<group>";
 		};
-		5CC645E36CB9E0080158DF9E /* Widgets */ = {
-			isa = PBXGroup;
-			children = (
-				B84D134247DEAEE01169B50D /* TingyuWidget.swift */,
-			);
-			path = Widgets;
-			sourceTree = "<group>";
-		};
 		613F5F70CE3A14EF55122224 /* WebDAV */ = {
 			isa = PBXGroup;
 			children = (
@@ -255,6 +295,7 @@
 				C2233F18CC92165BB40159B5 /* IOSContentView.swift */,
 				10DC0601B7129C34331E7789 /* IOSMiniPlayer.swift */,
 				291C399712865B35E1FC383B /* IOSNowPlayingSheet.swift */,
+				9D8BC48281C4A5FC56EC4836 /* IOSPlaylistsView.swift */,
 			);
 			path = iOS;
 			sourceTree = "<group>";
@@ -271,7 +312,9 @@
 			isa = PBXGroup;
 			children = (
 				A849E3BD00DF58D87CA96A35 /* LegacyCacheMigrator.swift */,
+				9168E088F752B49427638F8B /* LibrarySync.swift */,
 				F2BDD27522D56162D1F3A43C /* LocalLibraryScanner.swift */,
+				13EF9D25E07D7CF2CBD8F805 /* PlaylistActions.swift */,
 			);
 			path = Library;
 			sourceTree = "<group>";
@@ -281,8 +324,10 @@
 			children = (
 				17201DADAC858585E0C06B23 /* Assets.xcassets */,
 				C4891BA4A48D054B272FC338 /* Info-iOS.plist */,
+				5D4EF8A56DA2756DED4FA256 /* Info-macOS-Widget.plist */,
 				D649BDE7D38A6474DDDED9F6 /* Info-macOS.plist */,
 				3B612441236E138249AB98F1 /* Tingyu-iOS.entitlements */,
+				DD9724B7D02D1601E2764706 /* Tingyu-macOS-Widget.entitlements */,
 				1E2C89D68D9225014821F30E /* Tingyu-macOS.entitlements */,
 			);
 			path = Resources;
@@ -317,6 +362,7 @@
 				D0362E6C9AA30B750805631E /* NowPlayingManager.swift */,
 				952E6CC48BF90A2F26651703 /* SharedPlaybackState.swift */,
 				C7845E18698C08AA9F17E88C /* StreamingResourceLoader.swift */,
+				E83A580BC0F442E757661046 /* WidgetTrackInfo+Track.swift */,
 			);
 			path = Audio;
 			sourceTree = "<group>";
@@ -328,6 +374,17 @@
 				CA1EB879B24E7FC805C81403 /* AIService.swift */,
 			);
 			path = AI;
+			sourceTree = "<group>";
+		};
+		C657BA1A14D10452FE7BD858 /* Widgets */ = {
+			isa = PBXGroup;
+			children = (
+				AE06BCA958A127D9A11130A5 /* TingyuWidget.swift */,
+				60916047622E2359AB570500 /* TingyuWidgetBundle.swift */,
+				33DE4BCAF4BC7F6983CA0877 /* WidgetPlaybackIntents.swift */,
+			);
+			name = Widgets;
+			path = Sources/UI/Widgets;
 			sourceTree = "<group>";
 		};
 		C9545C87341DCE6365916993 /* Services */ = {
@@ -360,7 +417,6 @@
 				66F27D4DFF9CE399037FEB36 /* iOS */,
 				17A6994FA0C61E3B4E13F75C /* macOS */,
 				59D0D2E92A59E271B46E22FE /* Shared */,
-				5CC645E36CB9E0080158DF9E /* Widgets */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -382,10 +438,12 @@
 			buildPhases = (
 				2FC3874D0252FA04F4684E9E /* Sources */,
 				60E1B0088F12EFC9EFF54C2F /* Resources */,
+				AFF6F4D68B52B554D4EAB8BA /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7FD2093CC6A7D9D2FD125131 /* PBXTargetDependency */,
 			);
 			name = "Tingyu-macOS";
 			packageProductDependencies = (
@@ -393,6 +451,23 @@
 			productName = "Tingyu-macOS";
 			productReference = 090D151823704ED19E6C1E3C /* Tingyu-macOS.app */;
 			productType = "com.apple.product-type.application";
+		};
+		98A83C3CF979BF2F58A37199 /* Tingyu-macOS-Widget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A3471A1BC8975F061A5DC7ED /* Build configuration list for PBXNativeTarget "Tingyu-macOS-Widget" */;
+			buildPhases = (
+				C9EB06BBB335E107D230AA08 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Tingyu-macOS-Widget";
+			packageProductDependencies = (
+			);
+			productName = "Tingyu-macOS-Widget";
+			productReference = 31E9A9D12DE949AE625E3227 /* Tingyu-macOS-Widget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		CB417DFB1566A1FD2EF0538D /* Tingyu-iOS */ = {
 			isa = PBXNativeTarget;
@@ -438,6 +513,7 @@
 			projectRoot = "";
 			targets = (
 				24509855954A99B7FDA9D018 /* Tingyu-macOS */,
+				98A83C3CF979BF2F58A37199 /* Tingyu-macOS-Widget */,
 				CB417DFB1566A1FD2EF0538D /* Tingyu-iOS */,
 			);
 		};
@@ -450,6 +526,7 @@
 			files = (
 				D8E20A06C01E870DE164D37E /* Assets.xcassets in Resources */,
 				80F4154EEE571BA610FABDA1 /* Info-iOS.plist in Resources */,
+				0C5C2C24AF50D5E65C74D5C8 /* Info-macOS-Widget.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -458,6 +535,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5A8AC5000EC1D517B8717EF0 /* Assets.xcassets in Resources */,
+				8F9DA046E9DD53F97C3443B3 /* Info-macOS-Widget.plist in Resources */,
 				32CA3E592CA2F6B75D1EA4D4 /* Info-macOS.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -482,9 +560,11 @@
 				1C16A04E65E1F9CD734BC562 /* IOSContentView.swift in Sources */,
 				2DC599B97FBCBE148FD5B101 /* IOSMiniPlayer.swift in Sources */,
 				8010D20C90F185D3B717A668 /* IOSNowPlayingSheet.swift in Sources */,
+				7437EF53015F1CAF7E429CBA /* IOSPlaylistsView.swift in Sources */,
 				4EF212188CF69EFA96C8A6E1 /* KeychainService.swift in Sources */,
 				B570F103C656F37E75206165 /* LRCLIBScraper.swift in Sources */,
 				C720CC6E5A7D2ACCC57A7729 /* LegacyCacheMigrator.swift in Sources */,
+				DC1B92B33BF4E6DFF23770B7 /* LibrarySync.swift in Sources */,
 				90ED0B10C2F2E655D7948EE7 /* LocalAudioResourceLoader.swift in Sources */,
 				A2A7AD4B35B3395E0F9AAC71 /* LocalLibraryScanner.swift in Sources */,
 				8816306788973BD4AE2BE5A3 /* LyricLine.swift in Sources */,
@@ -498,6 +578,7 @@
 				2F6636192143249321354736 /* NowPlayingManager.swift in Sources */,
 				BE612508BE58BC4CD500E457 /* PlaybackControls.swift in Sources */,
 				A89EE582A54DA8B08BFC17EA /* Playlist.swift in Sources */,
+				E19CE8F4BB5AF3A115AE4253 /* PlaylistActions.swift in Sources */,
 				8243F1E1D95D7779399A4516 /* QQMusicScraper.swift in Sources */,
 				A3D97C75A48488C57B10A723 /* QuarkCookieStore.swift in Sources */,
 				87BEF3E7B0A6BCE723547086 /* QuarkDriveClient.swift in Sources */,
@@ -507,11 +588,11 @@
 				F6EF2DCA822D29449A07A029 /* StreamingResourceLoader.swift in Sources */,
 				C2A58E0C920B0ABACF29BBA7 /* TingyuApp.swift in Sources */,
 				80C38C6860C0560C327B89E4 /* TingyuIntents.swift in Sources */,
-				D20A32F04F19234CCAE51CD4 /* TingyuWidget.swift in Sources */,
 				3E85C71133E64686C3088B5A /* Track.swift in Sources */,
 				457CEFB7C5CD949BEC0C117B /* TrackRowView.swift in Sources */,
 				9AE3B7AFE9EA95C49A3EE6E8 /* WebDAVClient.swift in Sources */,
 				26A0535FFCA6CE6E9E91DFC6 /* WebDAVXMLParser.swift in Sources */,
+				CD76C340932022C07C308370 /* WidgetTrackInfo+Track.swift in Sources */,
 				739E5F55B9535757F6AA4B03 /* iTunesCoverScraper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -533,9 +614,11 @@
 				BE2FE866A074FD37D895C5F6 /* IOSContentView.swift in Sources */,
 				0A09F5428D721E41A8BE4D56 /* IOSMiniPlayer.swift in Sources */,
 				579E94E3B67A48FB5C05EFAE /* IOSNowPlayingSheet.swift in Sources */,
+				60F587F8E0D055729181AFA7 /* IOSPlaylistsView.swift in Sources */,
 				797C100003D567724F3F957A /* KeychainService.swift in Sources */,
 				6D4A1FA563DA399F4166D90A /* LRCLIBScraper.swift in Sources */,
 				3922BA6519703D813AAE9830 /* LegacyCacheMigrator.swift in Sources */,
+				E7C42DB8E30B378FB1D59B7A /* LibrarySync.swift in Sources */,
 				49AF0C2D0B146F14EA387A31 /* LocalAudioResourceLoader.swift in Sources */,
 				836BF3383FB48B04496F16CE /* LocalLibraryScanner.swift in Sources */,
 				0794204ACB859E1C4B60E78C /* LyricLine.swift in Sources */,
@@ -549,6 +632,7 @@
 				8B68F08BB76BB397126D5AED /* NowPlayingManager.swift in Sources */,
 				E0F666BD9DF420215813B579 /* PlaybackControls.swift in Sources */,
 				D2EF4DCB654B6410C4716CCF /* Playlist.swift in Sources */,
+				415A575BF7C19B6EB7832A68 /* PlaylistActions.swift in Sources */,
 				50F22AA48E0B1329DBF15ED8 /* QQMusicScraper.swift in Sources */,
 				F23BA7FE517CBA93CE29EBA1 /* QuarkCookieStore.swift in Sources */,
 				3D0733C95CF7B71D680D28AC /* QuarkDriveClient.swift in Sources */,
@@ -558,18 +642,53 @@
 				A709F5BAEF47DCCB41883769 /* StreamingResourceLoader.swift in Sources */,
 				F53B00E3AAE2AC733302D0C9 /* TingyuApp.swift in Sources */,
 				A0E7581DE2847C1D7BC19308 /* TingyuIntents.swift in Sources */,
-				B900C095425DB2C51D74D10A /* TingyuWidget.swift in Sources */,
 				FC143454F3712542C2F222BF /* Track.swift in Sources */,
 				5B750083C5CAB0F2C4DACF57 /* TrackRowView.swift in Sources */,
 				3A1D51F9C1CD0326073FCD6D /* WebDAVClient.swift in Sources */,
 				67C6995B908BE9AB45B04B5A /* WebDAVXMLParser.swift in Sources */,
+				6B97D7F72D939C992D10A05A /* WidgetTrackInfo+Track.swift in Sources */,
 				277DEECD6C57862053B3CC78 /* iTunesCoverScraper.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C9EB06BBB335E107D230AA08 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DE6CCBDE1A6C3559FB9AACEE /* SharedPlaybackState.swift in Sources */,
+				AE9341938AE60E6004FF6DFC /* TingyuWidget.swift in Sources */,
+				C87CBD32DF9A655F7B672155 /* TingyuWidgetBundle.swift in Sources */,
+				2C50A74176438E4B3BF1C5F8 /* WidgetPlaybackIntents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		7FD2093CC6A7D9D2FD125131 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 98A83C3CF979BF2F58A37199 /* Tingyu-macOS-Widget */;
+			targetProxy = 907CC3B015F97DCD0F025BED /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		02261BFB23788CDBE34D2E59 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "Sources/Resources/Tingyu-macOS-Widget.entitlements";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Sources/Resources/Info-macOS-Widget.plist";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.halunhaku.tingyu.widget;
+				PRODUCT_NAME = TingyuWidget;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
 		13C630312BAEE203BF2AE686 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -708,6 +827,22 @@
 			};
 			name = Debug;
 		};
+		B6D279B2F2B32823F291A52E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "Sources/Resources/Tingyu-macOS-Widget.entitlements";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Sources/Resources/Info-macOS-Widget.plist";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.halunhaku.tingyu.widget;
+				PRODUCT_NAME = TingyuWidget;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
 		D5F628AB08106F79AA9BF924 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -773,6 +908,15 @@
 			buildConfigurations = (
 				13C630312BAEE203BF2AE686 /* Debug */,
 				D5F628AB08106F79AA9BF924 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A3471A1BC8975F061A5DC7ED /* Build configuration list for PBXNativeTarget "Tingyu-macOS-Widget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				02261BFB23788CDBE34D2E59 /* Debug */,
+				B6D279B2F2B32823F291A52E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

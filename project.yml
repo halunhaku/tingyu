@@ -18,6 +18,8 @@ targets:
     deploymentTarget: "15.0"
     sources:
       - path: Sources
+        excludes:
+          - UI/Widgets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.halunhaku.tingyu
@@ -27,6 +29,27 @@ targets:
         COMBINE_HIDPI_IMAGES: YES
         MACOSX_DEPLOYMENT_TARGET: "15.0"
         GENERATE_INFOPLIST_FILE: NO
+    dependencies:
+      - target: Tingyu-macOS-Widget
+        embed: true
+
+  Tingyu-macOS-Widget:
+    type: app-extension
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: Sources/UI/Widgets
+      - path: Sources/Services/Audio/SharedPlaybackState.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.halunhaku.tingyu.widget
+        PRODUCT_NAME: TingyuWidget
+        INFOPLIST_FILE: Sources/Resources/Info-macOS-Widget.plist
+        CODE_SIGN_ENTITLEMENTS: Sources/Resources/Tingyu-macOS-Widget.entitlements
+        SKIP_INSTALL: YES
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
+        GENERATE_INFOPLIST_FILE: NO
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks"
 
   Tingyu-iOS:
     type: application
@@ -34,6 +57,8 @@ targets:
     deploymentTarget: "18.0"
     sources:
       - path: Sources
+        excludes:
+          - UI/Widgets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.halunhaku.tingyu.ios

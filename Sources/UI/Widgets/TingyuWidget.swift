@@ -116,7 +116,7 @@ public struct TingyuWidgetEntryView: View {
 
                 Spacer()
 
-                Button(intent: PlayPauseIntent()) {
+                Button(intent: WidgetPlayPauseIntent()) {
                     Image(systemName: entry.info.isPlaying ? "pause.fill" : "play.fill")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(.white)
@@ -183,21 +183,21 @@ public struct TingyuWidgetEntryView: View {
 
                 // Interactive Intent Buttons
                 HStack(spacing: 20) {
-                    Button(intent: PreviousTrackIntent()) {
+                    Button(intent: WidgetPreviousIntent()) {
                         Image(systemName: "backward.fill")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(.primary)
                     }
                     .buttonStyle(.plain)
 
-                    Button(intent: PlayPauseIntent()) {
+                    Button(intent: WidgetPlayPauseIntent()) {
                         Image(systemName: entry.info.isPlaying ? "pause.fill" : "play.fill")
                             .font(.system(size: 18, weight: .bold))
                             .foregroundStyle(.primary)
                     }
                     .buttonStyle(.plain)
 
-                    Button(intent: NextTrackIntent()) {
+                    Button(intent: WidgetNextIntent()) {
                         Image(systemName: "forward.fill")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(.primary)
@@ -213,7 +213,7 @@ public struct TingyuWidgetEntryView: View {
 
     #if os(iOS)
     private var accessoryCircularView: some View {
-        Button(intent: PlayPauseIntent()) {
+        Button(intent: WidgetPlayPauseIntent()) {
             ZStack {
                 AccessoryWidgetBackground()
                 Image(systemName: entry.info.isPlaying ? "pause.fill" : "play.fill")

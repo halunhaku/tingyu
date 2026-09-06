@@ -59,6 +59,7 @@ public final class AudioPlayerService {
         setupTimeObserver()
         setupEndObserver()
         setupFailedObserver()
+        setupWidgetCommandObserver()
     }
 
     public func configure(container: ModelContainer) {
@@ -99,6 +100,28 @@ public final class AudioPlayerService {
         ) { [weak self] _ in
             Task { @MainActor in
                 self?.handleTrackDidEnd()
+            }
+        }
+    }
+
+    private func setupWidgetCommandObserver() {
+        DistributedNotificationCenter.default().addObserver(
+            forName: SharedPlaybackState.playbackCommandNotification,
+            object: nil,
+            queue: .main
+        ) { notification in
+            let command = notification.object as? String
+            Task { @MainActor in
+                switch command {
+                case PlaybackWidgetCommand.playPause.rawValue:
+                    AudioPlayerService.shared.togglePlayPause()
+                case PlaybackWidgetCommand.next.rawValue:
+                    AudioPlayerService.shared.next()
+                case PlaybackWidgetCommand.previous.rawValue:
+                    AudioPlayerService.shared.previous()
+                default:
+                    break
+                }
             }
         }
     }

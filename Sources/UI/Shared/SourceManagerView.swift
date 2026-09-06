@@ -272,18 +272,7 @@ public struct SourceManagerView: View {
                 }
             }
 
-            // Clear previous tracks for this source to avoid duplicates
-            let sourceId = source.id
-            let descriptor = FetchDescriptor<Track>(predicate: #Predicate { $0.sourceId == sourceId })
-            if let existing = try? modelContext.fetch(descriptor) {
-                for old in existing {
-                    modelContext.delete(old)
-                }
-            }
-
-            for track in tracks {
-                modelContext.insert(track)
-            }
+            LibrarySync.merge(scanned: tracks, sourceId: source.id, context: modelContext)
             source.trackCount = tracks.count
             source.syncStatus = "已同步 \(tracks.count) 首"
             source.lastSyncedAt = Date()
@@ -304,18 +293,7 @@ public struct SourceManagerView: View {
                 }
 
                 if !tracks.isEmpty {
-                    // Clear previous tracks for this source to avoid duplicates
-                    let sourceId = source.id
-                    let descriptor = FetchDescriptor<Track>(predicate: #Predicate { $0.sourceId == sourceId })
-                    if let existing = try? modelContext.fetch(descriptor) {
-                        for old in existing {
-                            modelContext.delete(old)
-                        }
-                    }
-
-                    for track in tracks {
-                        modelContext.insert(track)
-                    }
+                    LibrarySync.merge(scanned: tracks, sourceId: source.id, context: modelContext)
                     source.trackCount = tracks.count
                     source.syncStatus = "已同步 \(tracks.count) 首"
                 } else {
@@ -344,17 +322,7 @@ public struct SourceManagerView: View {
                 }
 
                 if !tracks.isEmpty {
-                    let sourceId = source.id
-                    let descriptor = FetchDescriptor<Track>(predicate: #Predicate { $0.sourceId == sourceId })
-                    if let existing = try? modelContext.fetch(descriptor) {
-                        for old in existing {
-                            modelContext.delete(old)
-                        }
-                    }
-
-                    for track in tracks {
-                        modelContext.insert(track)
-                    }
+                    LibrarySync.merge(scanned: tracks, sourceId: source.id, context: modelContext)
                     source.trackCount = tracks.count
                     source.syncStatus = "已同步 \(tracks.count) 首"
                 } else {

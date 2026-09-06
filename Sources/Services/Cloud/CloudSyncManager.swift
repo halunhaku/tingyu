@@ -83,27 +83,57 @@ public final class CloudSyncManager {
             }
         }
 
-        // Standard high-performance local SwiftData storage
+        // Pin the store to the app container. With an App Group entitlement, SwiftData's
+        // default URL moves into the group container, which is unwritable without a Team ID.
+        let supportDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support", isDirectory: true)
+        try? FileManager.default.createDirectory(at: supportDir, withIntermediateDirectories: true)
+        let storeURL = supportDir.appendingPathComponent("default.store")
         let localConfig = ModelConfiguration(
+            "library",
             schema: schema,
-            isStoredInMemoryOnly: false,
+            url: storeURL,
             cloudKitDatabase: .none
         )
+        Self.writeStoreDebug("opening \(localConfig.url.path)")
 
         do {
-            return try ModelContainer(for: schema, configurations: [localConfig])
+            let container = try ModelContainer(for: schema, configurations: [localConfig])
+            Self.writeStoreDebug("opened \(localConfig.url.path)")
+            return container
         } catch {
-            print("Failed to initialize ModelContainer: \(error). Cleaning up incompatible store...")
-            let storeUrl = localConfig.url
-            try? FileManager.default.removeItem(at: storeUrl)
-            try? FileManager.default.removeItem(at: storeUrl.appendingPathExtension("shm"))
-            try? FileManager.default.removeItem(at: storeUrl.appendingPathExtension("wal"))
-
-            if let fallbackContainer = try? ModelContainer(for: schema, configurations: [localConfig]) {
-                return fallbackContainer
+            Self.writeStoreDebug("Failed to initialize local ModelContainer: \(error)\nurl=\(localConfig.url.path)")
+            print("Failed to initialize local ModelContainer: \(error)")
+            // Never delete the user's library. Retry once, then empty in-memory so the app still launches.
+            if let retry = try? ModelContainer(for: schema, configurations: [localConfig]) {
+                return retry
             }
+            print("Falling back to in-memory SwiftData store.")
+            let memoryConfig = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: true,
+                cloudKitDatabase: .none
+            )
+            return try! ModelContainer(for: schema, configurations: [memoryConfig])
+        }
+    }
 
-            fatalError("Failed to initialize SwiftData container: \(error)")
+    private static func writeStoreDebug(_ message: String) {
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        let url = dir.appendingPathComponent("tingyu").appendingPathComponent("store-debug.log")
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let line = "\(Date()) \(message)\n"
+        if let data = line.data(using: .utf8) {
+            if FileManager.default.fileExists(atPath: url.path) {
+                if let handle = try? FileHandle(forWritingTo: url) {
+                    defer { try? handle.close() }
+                    try? handle.seekToEnd()
+                    try? handle.write(contentsOf: data)
+                }
+            } else {
+                try? data.write(to: url)
+            }
         }
     }
 }
