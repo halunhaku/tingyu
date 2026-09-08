@@ -3,6 +3,8 @@
 > **连接本地文件夹、WebDAV 私人云与夸克网盘的 100% 纯原生 Apple 音乐播放器。**  
 > 深度还原官方 **Apple Music** 优雅设计与交互质感，专为 **macOS 15+ (Sequoia)** 与 **iOS 18+** 打造，采用 Swift 6、SwiftUI、SwiftData、AVFoundation、AppIntents 与 WidgetKit 深度构建。
 
+> [!NOTE]
+> **平台验证状态说明**：本项目目前主要在 **macOS 15+ (Sequoia)** 环境上完成了全功能的深度实机验证与持续打磨。代码仓库中已完整包含 **iOS 18+** 的全套原生界面与组件支持，但因作者目前手头暂无可用 iOS 实机测试设备，真机实测仍在推进中，十分欢迎拥有 iOS 设备的开发者与朋友一同体验与反馈！
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-macOS%2015%2B%20%7C%20iOS%2018%2B-blue?logo=apple" alt="Platform" />
   <img src="https://img.shields.io/badge/Language-Swift%206-orange?logo=swift" alt="Language" />
@@ -171,11 +173,11 @@
 ## 开发与构建
 
 ### 运行环境要求
-- macOS 15.0+
+- **macOS 15.0+**（当前主力深度实机验证平台）
+- **iOS 18.0+**（代码与组件已齐备，实机测试推进中）
 - Xcode 16.0+
 - Command Line Tools (`xcode-select --install`)
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
-
 ### 快速开始
 
 1. **生成或更新 Xcode 工程**：
