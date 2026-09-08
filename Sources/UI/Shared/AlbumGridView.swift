@@ -4,14 +4,16 @@ struct AlbumGridView: View {
     let tracks: [Track]
     let playlists: [Playlist]
 
+    @Bindable private var player = AudioPlayerService.shared
+    @State private var hoveredAlbumId: String?
+
     private var albums: [AlbumSummary] {
         LibraryGrouping.albums(from: tracks)
     }
 
     private let columns = [
-        GridItem(.adaptive(minimum: 140, maximum: 180), spacing: 16)
+        GridItem(.adaptive(minimum: 150, maximum: 190), spacing: 20)
     ]
-
     var body: some View {
         ScrollView {
             if albums.isEmpty {
@@ -21,12 +23,7 @@ struct AlbumGridView: View {
                 LazyVGrid(columns: columns, spacing: 20) {
                     ForEach(albums) { album in
                         NavigationLink {
-                            LibraryTrackListView(
-                                title: album.album,
-                                subtitle: album.artist,
-                                tracks: album.tracks,
-                                playlists: playlists
-                            )
+                            AlbumDetailView(album: album, playlists: playlists)
                         } label: {
                             albumCell(album)
                         }
@@ -41,8 +38,38 @@ struct AlbumGridView: View {
     }
 
     private func albumCell(_ album: AlbumSummary) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            CoverArtView(data: album.coverArtData, size: 140, cornerRadius: 10)
+        let isHovered = hoveredAlbumId == album.id
+        let isCurrentAlbum = album.tracks.contains(where: { $0.id == player.currentTrack?.id })
+
+        return VStack(alignment: .leading, spacing: 8) {
+            ZStack(alignment: .bottomTrailing) {
+                CoverArtView(data: album.coverArtData, size: 160, cornerRadius: 10)
+
+                // Floating Play Button on Hover / Playing
+                if isHovered || (isCurrentAlbum && player.isPlaying) {
+                    Button {
+                        if isCurrentAlbum && player.isPlaying {
+                            player.togglePlayPause()
+                        } else {
+                            player.setQueue(album.tracks, startingAt: 0)
+                        }
+                    } label: {
+                        Image(systemName: (isCurrentAlbum && player.isPlaying) ? "pause.fill" : "play.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 32, height: 32)
+                            .background(Color.appleMusicRed)
+                            .clipShape(Circle())
+                            .shadow(color: .black.opacity(0.3), radius: 6, y: 3)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(8)
+                    .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .onHover { hovering in
+                hoveredAlbumId = hovering ? album.id : nil
+            }
 
             Text(album.album)
                 .font(.system(size: 13, weight: .semibold))

@@ -3,6 +3,11 @@ import SwiftData
 
 extension Notification.Name {
     static let tingyuFocusSearch = Notification.Name("tingyu.focusSearch")
+    static let tingyuSearchQuery = Notification.Name("tingyu.searchQuery")
+}
+
+extension Color {
+    public static let appleMusicRed = Color(red: 0.98, green: 0.14, blue: 0.24)
 }
 
 @main
@@ -18,6 +23,7 @@ struct TingyuApp: App {
         WindowGroup {
             MacOSContentView()
                 .modelContainer(container)
+                .tint(Color.appleMusicRed)
                 .frame(minWidth: 900, minHeight: 600)
                 .onAppear {
                     AudioPlayerService.shared.configure(container: container)

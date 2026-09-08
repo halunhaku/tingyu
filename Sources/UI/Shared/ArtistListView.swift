@@ -13,18 +13,17 @@ struct ArtistListView: View {
             ForEach(artists, id: \.self) { artist in
                 let artistTracks = LibraryGrouping.tracks(forArtist: artist, in: tracks)
                 NavigationLink {
-                    LibraryTrackListView(
-                        title: artist,
-                        subtitle: "\(artistTracks.count) 首",
-                        tracks: artistTracks,
+                    ArtistDetailView(
+                        artist: artist,
+                        artistTracks: artistTracks,
                         playlists: playlists
                     )
                 } label: {
                     HStack(spacing: 12) {
-                        CoverArtView(
-                            data: artistTracks.first(where: { $0.coverArtData != nil })?.coverArtData,
-                            size: 44,
-                            cornerRadius: 22
+                        ArtistAvatarView(
+                            artist: artist,
+                            fallbackData: artistTracks.first(where: { $0.coverArtData != nil })?.coverArtData,
+                            size: 44
                         )
                         VStack(alignment: .leading, spacing: 2) {
                             Text(artist)
@@ -44,6 +43,6 @@ struct ArtistListView: View {
         .listStyle(.plain)
         #endif
         .avoidsBottomPlayerBar()
-        .navigationTitle("歌手")
+        .navigationTitle("艺人")
     }
 }

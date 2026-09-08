@@ -6,17 +6,19 @@ enum QuarkCookieStore {
     }
 
     static func save(cookie: String, sourceId: String) throws {
-        try KeychainService.shared.save(password: cookie, for: account(for: sourceId))
-        try writeFallback(cookie: cookie, sourceId: sourceId)
+        try? writeFallback(cookie: cookie, sourceId: sourceId)
+        try? KeychainService.shared.save(password: cookie, for: account(for: sourceId))
     }
 
     static func load(sourceId: String) -> String? {
         if let cookie = readFallback(sourceId: sourceId), !cookie.isEmpty {
             return cookie
         }
-        return KeychainService.shared.get(for: account(for: sourceId))
+        if let cookie = KeychainService.shared.get(for: account(for: sourceId)), !cookie.isEmpty {
+            return cookie
+        }
+        return nil
     }
-
     static func delete(sourceId: String) {
         try? KeychainService.shared.delete(for: account(for: sourceId))
         try? FileManager.default.removeItem(at: fallbackURL(sourceId: sourceId))

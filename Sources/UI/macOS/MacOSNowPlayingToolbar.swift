@@ -1,67 +1,153 @@
 import SwiftUI
-
+import AppKit
 #if os(macOS)
 struct MacOSNowPlayingStage: View {
     var onClose: () -> Void
     @Bindable private var player = AudioPlayerService.shared
 
+    @State private var isShowingLyrics: Bool = true
+    @State private var isHovering: Bool = false
+    @State private var hideControlsTimer: Task<Void, Never>?
+
+    private var hasLyrics: Bool {
+        guard let lyrics = player.currentLyrics else { return false }
+        return !lyrics.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var shouldShowLyricsColumn: Bool {
+        hasLyrics && isShowingLyrics
+    }
+
     var body: some View {
-        HStack(spacing: 0) {
-            VStack(spacing: 20) {
-                HStack {
-                    Button(action: onClose) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .semibold))
-                            .frame(width: 28, height: 28)
+        ZStack {
+            NowPlayingBackdrop(coverData: player.currentCoverData)
+
+            HStack(alignment: .center, spacing: 56) {
+                if !shouldShowLyricsColumn {
+                    Spacer(minLength: 0)
+                }
+
+                VStack(spacing: 18) {
+                    CoverArtView(
+                        data: player.currentCoverData,
+                        size: 320,
+                        cornerRadius: 14
+                    )
+                    .shadow(color: .black.opacity(0.4), radius: 28, y: 16)
+
+                    VStack(spacing: 8) {
+                        HStack {
+                            Text(formatTime(player.currentTime))
+                                .font(.system(size: 11).monospacedDigit())
+                                .foregroundStyle(.white.opacity(0.65))
+
+                            Spacer()
+
+                            Text("-\(formatTime(remaining))")
+                                .font(.system(size: 11).monospacedDigit())
+                                .foregroundStyle(.white.opacity(0.65))
+                        }
+
+                        MiniSeekBar(
+                            current: player.currentTime,
+                            duration: max(player.duration, 1)
+                        ) { player.seek(to: $0) }
                     }
-                    .buttonStyle(.plain)
-                    .help("返回曲库")
-                    Spacer()
-                }
-                .padding(.leading, 8)
+                    .frame(width: 320)
 
-                Spacer(minLength: 12)
-                CoverArtView(
-                    data: player.currentCoverData,
-                    size: 280,
-                    cornerRadius: 12
-                )
-                VStack(spacing: 6) {
-                    Text(player.currentTrack?.title ?? "未在播放")
-                        .font(.title2.weight(.semibold))
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                    Text(player.currentTrack?.artist ?? "")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    HStack(alignment: .center) {
+                        if let track = player.currentTrack {
+                            Button {
+                                track.isFavorite.toggle()
+                            } label: {
+                                Image(systemName: track.isFavorite ? "heart.fill" : "heart")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundStyle(track.isFavorite ? Color.appleMusicRed : .white.opacity(0.7))
+                                    .frame(width: 28, height: 28)
+                            }
+                            .buttonStyle(.plain)
+                            .help(track.isFavorite ? "取消喜爱" : "喜爱")
+                        } else {
+                            Color.clear.frame(width: 28, height: 28)
+                        }
+
+                        Spacer()
+
+                        HStack(spacing: 28) {
+                            Button {
+                                player.previous()
+                            } label: {
+                                Image(systemName: "backward.fill")
+                                    .font(.system(size: 15, weight: .semibold))
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                player.togglePlayPause()
+                            } label: {
+                                Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                                    .font(.system(size: 24, weight: .semibold))
+                                    .frame(width: 28)
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                player.next()
+                            } label: {
+                                Image(systemName: "forward.fill")
+                                    .font(.system(size: 15, weight: .semibold))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .foregroundStyle(.white)
+
+                        Spacer()
+                        HStack(spacing: 12) {
+                            Button {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                    isShowingLyrics.toggle()
+                                }
+                            } label: {
+                                Image(systemName: isShowingLyrics ? "quote.bubble.fill" : "quote.bubble")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(isShowingLyrics ? .white : .white.opacity(0.45))
+                                    .frame(width: 28, height: 28)
+                            }
+                            .buttonStyle(.plain)
+                            .help("歌词")
+
+                            Button(action: onClose) {
+                                Image(systemName: "arrow.down.right.and.arrow.up.left")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(.white.opacity(0.75))
+                                    .frame(width: 28, height: 28)
+                            }
+                            .buttonStyle(.plain)
+                            .help("退出全屏 (Esc)")
+                        }
+                    }
+                    .frame(width: 320)
                 }
-                .frame(maxWidth: 320)
-                HStack(spacing: 8) {
-                    Text(formatTime(player.currentTime))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                    MiniSeekBar(
-                        current: player.currentTime,
-                        duration: max(player.duration, 1)
+                .frame(width: 320)
+
+                if shouldShowLyricsColumn {
+                    AnimatedLyricsView(
+                        lyricsText: player.currentLyrics,
+                        currentTime: player.currentTime
                     ) { player.seek(to: $0) }
-                    Text(formatTime(player.duration))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    Spacer(minLength: 0)
                 }
-                .frame(maxWidth: 320)
-                Spacer(minLength: 80)
             }
-            .frame(maxWidth: .infinity)
-
-            AnimatedLyricsView(
-                lyricsText: player.currentLyrics,
-                currentTime: player.currentTime
-            ) { player.seek(to: $0) }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, shouldShowLyricsColumn ? 64 : 32)
+            .padding(.vertical, 36)
         }
-        .padding(.horizontal, 32)
-        .padding(.top, 12)
+    }
+
+    private var remaining: Double {
+        max(player.duration - player.currentTime, 0)
     }
 
     private func formatTime(_ seconds: Double) -> String {
@@ -71,11 +157,42 @@ struct MacOSNowPlayingStage: View {
     }
 }
 
+private struct NowPlayingBackdrop: View {
+    let coverData: Data?
+
+    var body: some View {
+        ZStack {
+            Color.black
+            if let coverData, let nsImage = NSImage(data: coverData) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .scaleEffect(1.45)
+                    .blur(radius: 80)
+                    .saturation(1.35)
+                    .overlay {
+                        LinearGradient(
+                            colors: [
+                                Color.black.opacity(0.16),
+                                Color.black.opacity(0.4)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    }
+            }
+        }
+        .clipped()
+        .ignoresSafeArea()
+    }
+}
+
 struct MacOSFloatingPlayerBar: View {
     @Binding var showingLyrics: Bool
     var showingNowPlaying: Bool = false
     var onToggleNowPlaying: (() -> Void)? = nil
     @Bindable private var player = AudioPlayerService.shared
+    @State private var showingQueue: Bool = false
 
     var body: some View {
         HStack(spacing: 16) {
@@ -125,10 +242,17 @@ struct MacOSFloatingPlayerBar: View {
                         Text(player.currentTrack?.title ?? "听屿")
                             .font(.system(size: 12, weight: .semibold))
                             .lineLimit(1)
-                        Text(player.playbackError ?? player.currentTrack?.artist ?? "选择一首歌曲")
-                            .font(.system(size: 11))
-                            .foregroundStyle(player.playbackError == nil ? Color.secondary : Color.red.opacity(0.85))
-                            .lineLimit(1)
+                        if let artist = player.currentTrack?.artist {
+                            Text(artist)
+                                .font(.system(size: 11))
+                                .foregroundStyle(Color.secondary)
+                                .lineLimit(1)
+                        } else {
+                            Text(player.playbackError ?? "选择一首歌曲")
+                                .font(.system(size: 11))
+                                .foregroundStyle(player.playbackError == nil ? Color.secondary : Color.red.opacity(0.85))
+                                .lineLimit(1)
+                        }
                     }
                     .frame(maxWidth: 180, alignment: .leading)
                 }
@@ -167,10 +291,22 @@ struct MacOSFloatingPlayerBar: View {
                 showingLyrics.toggle()
             } label: {
                 Image(systemName: "quote.bubble")
-                    .foregroundStyle(showingLyrics ? Color.accentColor : Color.primary)
+                    .foregroundStyle(showingLyrics ? Color.appleMusicRed : Color.primary)
             }
             .buttonStyle(.plain)
             .help("歌词面板 (⌘L)")
+
+            Button {
+                showingQueue.toggle()
+            } label: {
+                Image(systemName: "list.bullet")
+                    .foregroundStyle(showingQueue ? Color.appleMusicRed : Color.primary)
+            }
+            .buttonStyle(.plain)
+            .help("待播清单")
+            .popover(isPresented: $showingQueue, arrowEdge: .top) {
+                UpNextQueueView()
+            }
 
             MacOSVolumeToolbarItem()
         }
@@ -188,7 +324,7 @@ struct MacOSFloatingPlayerBar: View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(accent ? Color.accentColor : Color.primary)
+                .foregroundStyle(accent ? Color.appleMusicRed : Color.primary)
                 .frame(width: 20, height: 20)
                 .contentShape(Rectangle())
         }
@@ -223,7 +359,7 @@ private struct MiniSeekBar: View {
                 Capsule()
                     .fill(.primary.opacity(0.12))
                 Capsule()
-                    .fill(.primary.opacity(isDragging ? 0.7 : 0.5))
+                    .fill(Color.appleMusicRed.opacity(isDragging ? 0.95 : 0.8))
                     .frame(width: max(3, geo.size.width * fraction))
             }
             .frame(height: 4)

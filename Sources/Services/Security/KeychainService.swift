@@ -81,7 +81,9 @@ public final class KeychainService: Sendable {
             kSecAttrAccount as String: account,
             kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail
         ]
+#if os(iOS)
         query[kSecUseDataProtectionKeychain as String] = true
+#endif
         return query
     }
 }

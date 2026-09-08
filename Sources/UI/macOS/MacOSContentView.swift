@@ -9,6 +9,7 @@ public struct MacOSContentView: View {
     @Query(sort: \Playlist.createdAt) private var playlists: [Playlist]
 
     @State private var selectedSidebarItem: SidebarItem? = .library
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var searchText: String = ""
     @State private var isSearchPresented = false
     @State private var showingSourceManager = false
@@ -23,12 +24,13 @@ public struct MacOSContentView: View {
     @State private var playlistPendingRename: Playlist?
     @State private var playlistPendingDelete: Playlist?
     @Bindable var player = AudioPlayerService.shared
-
+    @State private var eventMonitor: Any? = nil
     private enum SidebarItem: Hashable {
         case library
-        case favorites
+        case recentlyAdded
         case artists
         case albums
+        case favorites
         case source(String)
         case playlist(String)
     }
@@ -36,50 +38,63 @@ public struct MacOSContentView: View {
     public init() {}
 
     public var body: some View {
-        ZStack {
-            NavigationSplitView {
-                sidebar
-            } detail: {
-                detailView
-                    .overlay(alignment: .bottom) {
-                        if !showingNowPlaying {
+        Group {
+            if !showingNowPlaying {
+                NavigationSplitView(columnVisibility: $columnVisibility) {
+                    sidebar
+                        .toolbar(removing: .sidebarToggle)
+                        .toolbar { sidebarToolbar }
+                } detail: {
+                    detailView
+                        .safeAreaInset(edge: .bottom) {
+                            Color.clear.frame(height: 80)
+                        }
+                        .contentMargins(.bottom, 84, for: .scrollIndicators)
+                        .overlay(alignment: .bottom) {
                             playerBar
                                 .padding(.horizontal, 24)
                                 .padding(.bottom, 14)
                         }
-                    }
-            }
-            .searchable(
-                text: $searchText,
-                isPresented: $isSearchPresented,
-                placement: .sidebar,
-                prompt: "搜索歌曲、艺术家或专辑"
-            )
-            .toolbar(showingNowPlaying ? .hidden : .automatic, for: .windowToolbar)
-
-            if showingNowPlaying {
+                }
+                .searchable(
+                    text: $searchText,
+                    isPresented: $isSearchPresented,
+                    placement: .sidebar,
+                    prompt: "搜索歌曲、艺术家或专辑"
+                )
+                .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+            } else {
                 MacOSNowPlayingStage {
                     showingNowPlaying = false
                 }
-                .background(.background)
+                .transition(.opacity)
                 .ignoresSafeArea()
-                .overlay(alignment: .bottom) {
-                    playerBar
-                        .frame(maxWidth: 840)
-                        .frame(maxWidth: .infinity)
-                        .padding(.bottom, 16)
-                }
             }
         }
         .focused($isSearchFocused)
         .background {
-            Button("歌词") { showingLyricsInspector.toggle() }
-                .keyboardShortcut("l", modifiers: .command)
-                .hidden()
+            Group {
+                Button("歌词") { showingLyricsInspector.toggle() }
+                    .keyboardShortcut("l", modifiers: .command)
+                Button("切换全屏") { showingNowPlaying.toggle() }
+                    .keyboardShortcut("f", modifiers: [.command, .shift])
+                if showingNowPlaying {
+                    Button("退出全屏") { showingNowPlaying = false }
+                        .keyboardShortcut(.escape, modifiers: [])
+                }
+            }
+            .hidden()
         }
         .onReceive(NotificationCenter.default.publisher(for: .tingyuFocusSearch)) { _ in
             showingNowPlaying = false
             isSearchPresented = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .tingyuSearchQuery)) { notification in
+            showingNowPlaying = false
+            if let query = notification.object as? String {
+                searchText = query
+                isSearchPresented = true
+            }
         }
         .onChange(of: searchText) { _, query in
             if !query.isEmpty {
@@ -89,7 +104,12 @@ public struct MacOSContentView: View {
                 }
             }
         }
-        .toolbar { windowToolbar }
+        .onChange(of: selectedSidebarItem) { _, _ in
+            if searchText.isEmpty {
+                isSearchPresented = false
+            }
+            NSApp.keyWindow?.makeFirstResponder(nil)
+        }
         .sheet(isPresented: $showingSourceManager) {
             SourceManagerView()
                 .frame(width: 480, height: 500)
@@ -155,9 +175,40 @@ public struct MacOSContentView: View {
                 }
                 try? modelContext.save()
             }
+            setupEventMonitor()
+        }
+        .onDisappear {
+            if let eventMonitor {
+                NSEvent.removeMonitor(eventMonitor)
+            }
         }
     }
 
+    private func setupEventMonitor() {
+        guard eventMonitor == nil else { return }
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { event in
+            guard let window = event.window ?? NSApp.keyWindow else { return event }
+            if let responder = window.firstResponder as? NSView {
+                var activeSearchField: NSSearchField? = nil
+                if let sf = responder as? NSSearchField {
+                    activeSearchField = sf
+                } else if let textView = responder as? NSTextView, let sf = textView.delegate as? NSSearchField {
+                    activeSearchField = sf
+                }
+
+                if let sf = activeSearchField {
+                    let pointInSearch = sf.convert(event.locationInWindow, from: nil)
+                    if !sf.bounds.contains(pointInSearch) {
+                        window.makeFirstResponder(nil)
+                        if searchText.isEmpty {
+                            isSearchPresented = false
+                        }
+                    }
+                }
+            }
+            return event
+        }
+    }
     private func repairQuarkSource(_ source: MusicSource) async {
         guard let folderFid = source.quarkFolderFid,
               let cookie = QuarkCookieStore.load(sourceId: source.id) else { return }
@@ -180,23 +231,31 @@ public struct MacOSContentView: View {
     }
 
     @ToolbarContentBuilder
-    private var windowToolbar: some ToolbarContent {
-        ToolbarItemGroup(placement: .primaryAction) {
-            Button {
-                showingAISettings = true
-            } label: {
-                Image(systemName: "sparkles")
-                    .foregroundStyle(Color.purple)
+    private var sidebarToolbar: some ToolbarContent {
+        if #available(macOS 26.0, *) {
+            ToolbarItem(placement: .navigation) {
+                sidebarToggle
             }
-            .help("AI 智能识别与洗库")
-
-            Button {
-                showingSourceManager = true
-            } label: {
-                Image(systemName: "folder.badge.gearshape")
+            .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: .navigation) {
+                sidebarToggle
             }
-            .help("管理音乐来源")
         }
+    }
+
+    private var sidebarToggle: some View {
+        Button {
+            withAnimation {
+                columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
+            }
+        } label: {
+            Label("切换侧边栏", systemImage: "sidebar.left")
+                .labelStyle(.iconOnly)
+        }
+        .buttonStyle(.plain)
+        .help("显示或隐藏侧边栏")
+        .keyboardShortcut("s", modifiers: [.command, .control])
     }
 
     private var playerBar: some View {
@@ -211,21 +270,25 @@ public struct MacOSContentView: View {
 
     private var sidebar: some View {
         List(selection: $selectedSidebarItem) {
-            Section("我的音乐") {
+            Section("资料库") {
                 NavigationLink(value: SidebarItem.library) {
-                    Label("全部曲目", systemImage: "music.note.list")
+                    Label("歌曲", systemImage: "music.note")
                 }
 
-                NavigationLink(value: SidebarItem.favorites) {
-                    Label("我的收藏", systemImage: "heart.fill")
+                NavigationLink(value: SidebarItem.recentlyAdded) {
+                    Label("最近添加", systemImage: "clock")
                 }
 
                 NavigationLink(value: SidebarItem.artists) {
-                    Label("歌手", systemImage: "person.2")
+                    Label("艺人", systemImage: "music.mic")
                 }
 
                 NavigationLink(value: SidebarItem.albums) {
                     Label("专辑", systemImage: "square.stack")
+                }
+
+                NavigationLink(value: SidebarItem.favorites) {
+                    Label("喜爱歌曲", systemImage: "heart.fill")
                 }
             }
 
@@ -273,12 +336,28 @@ public struct MacOSContentView: View {
             Section {
                 ForEach(sources) { source in
                     NavigationLink(value: SidebarItem.source(source.id)) {
-                        Label(source.name, systemImage: source.kind == .webdav ? "cloud" : "folder")
+                        Label(source.name, systemImage: source.kind == .webdav ? "externaldrive.connected.to.line.below" : (source.kind == .quark ? "cloud.fill" : "folder.fill"))
                     }
                 }
+
+                Button {
+                    showingSourceManager = true
+                } label: {
+                    Label("管理音乐来源...", systemImage: "folder.badge.gearshape")
+                        .foregroundStyle(.primary)
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    showingAISettings = true
+                } label: {
+                    Label("AI 智能洗库...", systemImage: "sparkles")
+                        .foregroundStyle(.primary)
+                }
+                .buttonStyle(.plain)
             } header: {
                 HStack(spacing: 4) {
-                    Text("音乐来源")
+                    Text("云端与存储")
                     Spacer()
                     Button {
                         showingSourceManager = true
@@ -311,7 +390,6 @@ public struct MacOSContentView: View {
                         currentPlaylist: currentPlaylist
                     )
                     .navigationTitle(currentViewTitle)
-                    .navigationSubtitle("\(filteredTracks.count) 首歌曲")
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -358,11 +436,13 @@ public struct MacOSContentView: View {
     private var currentViewTitle: String {
         switch selectedSidebarItem {
         case .library, .none:
-            return "全部曲目"
+            return "歌曲"
+        case .recentlyAdded:
+            return "最近添加"
         case .favorites:
-            return "我的收藏"
+            return "喜爱歌曲"
         case .artists:
-            return "歌手"
+            return "艺人"
         case .albums:
             return "专辑"
         case .source(let sourceId):
@@ -371,11 +451,12 @@ public struct MacOSContentView: View {
             return currentPlaylist?.name ?? "播放列表"
         }
     }
-
     private var filteredTracks: [Track] {
         var result = allTracks
 
         switch selectedSidebarItem {
+        case .recentlyAdded:
+            result = result.sorted { $0.dateAdded > $1.dateAdded }
         case .favorites:
             result = result.filter { $0.isFavorite }
         case .source(let id):
