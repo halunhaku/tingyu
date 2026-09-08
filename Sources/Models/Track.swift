@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 
 @Model
-public final class Track {
+public final class Track: Identifiable {
     public var id: String = UUID().uuidString
     public var sourceId: String = ""
     public var title: String = ""

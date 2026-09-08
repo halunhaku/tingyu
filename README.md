@@ -77,7 +77,6 @@
 
 ### 5. Apple 系统级生态深度打通
 - **系统媒体中心**：`MPNowPlayingInfoCenter` 与 `MPRemoteCommandCenter`，打通锁屏媒体卡片、控制中心、触控栏与 AirPods 耳机手势；
-- **菜单栏常驻控制器 (`MacOSMenuBarExtra`)**：顶部状态栏一键弹窗，支持封面预览、进度条、爱心收藏与切歌控制；
 - **Siri 快捷指令与 App Intents**：原生注入“在听屿中播放”、“听屿切歌”等语音动作；
 - **桌面与锁屏小组件 (`WidgetKit`)**：提供小号、中号及锁屏胶囊小组件，支持直接点击交互切歌；
 - **iCloud (CloudKit) 多端云同步**：SwiftData 私有数据库跨端自动同步，离线自适应降级。
@@ -92,7 +91,7 @@
 ├── Tingyu.xcodeproj                 # Xcode 项目工程
 ├── Sources/
 │   ├── App/
-│   │   └── TingyuApp.swift           # App 入口、全局 Apple Music 红色主题、WindowGroup 与 MenuBarExtra
+│   │   └── TingyuApp.swift           # App 入口、全局 Apple Music 红色主题、WindowGroup 与全局快捷键
 │   ├── Models/
 │   │   ├── Track.swift               # SwiftData 曲目持久化实体
 │   │   ├── MusicSource.swift         # 音乐来源实体 (本地文件夹 / WebDAV / 夸克网盘)
@@ -148,7 +147,6 @@
 │   │   │   ├── MacOSContentView.swift   # macOS NavigationSplitView 主界面与顶层导航
 │   │   │   ├── MacOSTrackTable.swift    # 歌曲列表表格（悬浮播放、波形、爱心列、右键直达）
 │   │   │   ├── MacOSNowPlayingToolbar.swift # 悬浮磨砂玻璃底栏与 1:1 全屏流体播放器
-│   │   │   └── MacOSMenuBarExtra.swift  # 顶部状态栏迷你控制器
 │   │   ├── iOS/
 │   │   │   ├── IOSContentView.swift     # iOS TabView 导航界面
 │   │   │   ├── IOSMiniPlayer.swift      # 悬浮 MiniPlayer 胶囊

@@ -69,12 +69,6 @@ struct TingyuApp: App {
             }
         }
 
-        MenuBarExtra("听屿", systemImage: "music.note") {
-            MacOSMenuBarExtra()
-                .modelContainer(container)
-        }
-        .menuBarExtraStyle(.window)
-
         #elseif os(iOS)
         WindowGroup {
             IOSContentView()

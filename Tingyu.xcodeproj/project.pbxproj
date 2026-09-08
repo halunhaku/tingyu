@@ -34,7 +34,6 @@
 		3A1D51F9C1CD0326073FCD6D /* WebDAVClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AA2AE9D98E2124CD00143B9 /* WebDAVClient.swift */; };
 		3B41F7DA423156AD3F04B0AD /* ArtistAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6346C06CD7115BD7F55E36CA /* ArtistAvatarView.swift */; };
 		3B77073EBE4BAD2F4F2CEE90 /* AlbumGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D968703980AEBE322B925DB4 /* AlbumGridView.swift */; };
-		3B924C3E94F8E81E55E7E2C5 /* MacOSMenuBarExtra.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA368C7F7BAEA6986A9E4F40 /* MacOSMenuBarExtra.swift */; };
 		3D0733C95CF7B71D680D28AC /* QuarkDriveClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 547697EDE854F971C2CE282E /* QuarkDriveClient.swift */; };
 		3E85C71133E64686C3088B5A /* Track.swift in Sources */ = {isa = PBXBuildFile; fileRef = 671479270EF0F712F701CDE4 /* Track.swift */; };
 		415A575BF7C19B6EB7832A68 /* PlaylistActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13EF9D25E07D7CF2CBD8F805 /* PlaylistActions.swift */; };
@@ -42,7 +41,6 @@
 		472900C5A684888C2C00A922 /* NetEaseScraper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98F3923ABD38F427EF37E24F /* NetEaseScraper.swift */; };
 		49AF0C2D0B146F14EA387A31 /* LocalAudioResourceLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB57B2554E3D5DB8C4C05F2E /* LocalAudioResourceLoader.swift */; };
 		4EF212188CF69EFA96C8A6E1 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 257806382E36E639155E96BE /* KeychainService.swift */; };
-		50CBF30DE8D0D2A24E0AB4C7 /* MacOSMenuBarExtra.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA368C7F7BAEA6986A9E4F40 /* MacOSMenuBarExtra.swift */; };
 		50F22AA48E0B1329DBF15ED8 /* QQMusicScraper.swift in Sources */ = {isa = PBXBuildFile; fileRef = D74106F40A6614825F36676C /* QQMusicScraper.swift */; };
 		521C92A4DE7B5C608278D413 /* AddQuarkSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F52A5E215D1AA8A63FAF55E /* AddQuarkSheet.swift */; };
 		52B9A7EF5C68DDD5E5341BF4 /* ManualMatchSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AA41D0B54D696F4D83BC8B2 /* ManualMatchSheet.swift */; };
@@ -231,7 +229,6 @@
 		F28175C042DD1D016C5C2CE7 /* SourceManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceManagerView.swift; sourceTree = "<group>"; };
 		F2BDD27522D56162D1F3A43C /* LocalLibraryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalLibraryScanner.swift; sourceTree = "<group>"; };
 		F3760058CD360D5ED0338F6D /* MacOSNowPlayingToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacOSNowPlayingToolbar.swift; sourceTree = "<group>"; };
-		FA368C7F7BAEA6986A9E4F40 /* MacOSMenuBarExtra.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacOSMenuBarExtra.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -260,7 +257,6 @@
 			isa = PBXGroup;
 			children = (
 				29C2540918BF6D537084544B /* MacOSContentView.swift */,
-				FA368C7F7BAEA6986A9E4F40 /* MacOSMenuBarExtra.swift */,
 				F3760058CD360D5ED0338F6D /* MacOSNowPlayingToolbar.swift */,
 				72A28CBBD8BBCF11D7ADF26A /* MacOSTrackTable.swift */,
 			);
@@ -621,7 +617,6 @@
 				A2A7AD4B35B3395E0F9AAC71 /* LocalLibraryScanner.swift in Sources */,
 				8816306788973BD4AE2BE5A3 /* LyricLine.swift in Sources */,
 				720E94DE2676465CBBC50158 /* MacOSContentView.swift in Sources */,
-				3B924C3E94F8E81E55E7E2C5 /* MacOSMenuBarExtra.swift in Sources */,
 				BCB3FE8C8D667DCBBD4295AB /* MacOSNowPlayingToolbar.swift in Sources */,
 				C60AFBBA081F457103058A9A /* MacOSTrackTable.swift in Sources */,
 				9B8AFB27B33F3F8D718A35CE /* ManualMatchSheet.swift in Sources */,
@@ -686,7 +681,6 @@
 				836BF3383FB48B04496F16CE /* LocalLibraryScanner.swift in Sources */,
 				0794204ACB859E1C4B60E78C /* LyricLine.swift in Sources */,
 				98082C510C2CD81E27FB7C26 /* MacOSContentView.swift in Sources */,
-				50CBF30DE8D0D2A24E0AB4C7 /* MacOSMenuBarExtra.swift in Sources */,
 				04C995D010B58FA90EDC4724 /* MacOSNowPlayingToolbar.swift in Sources */,
 				93A14214D16C44897D84F0A8 /* MacOSTrackTable.swift in Sources */,
 				52B9A7EF5C68DDD5E5341BF4 /* ManualMatchSheet.swift in Sources */,
