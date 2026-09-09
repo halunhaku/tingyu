@@ -98,6 +98,17 @@ public struct IOSNowPlayingSheet: View {
 
                     // Scrubber & Buttons
                     PlaybackControls()
+
+                    // AirPlay route picker
+                    HStack {
+                        Spacer()
+                        AirPlayPickerView(
+                            tintColor: UIColor.white.withAlphaComponent(0.7),
+                            activeTintColor: UIColor.white
+                        )
+                        .frame(width: 44, height: 44)
+                        Spacer()
+                    }
                 }
                 .padding(.horizontal, 32)
                 .padding(.bottom, 48)

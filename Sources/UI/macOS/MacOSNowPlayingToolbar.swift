@@ -103,6 +103,13 @@ struct MacOSNowPlayingStage: View {
 
                         Spacer()
                         HStack(spacing: 12) {
+                            AirPlayPickerView(
+                                normalColor: NSColor.white.withAlphaComponent(0.65),
+                                activeColor: NSColor.white
+                            )
+                            .frame(width: 24, height: 24)
+                            .help("隔空播放 (AirPlay)")
+
                             Button {
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                                     isShowingLyrics.toggle()
@@ -307,6 +314,10 @@ struct MacOSFloatingPlayerBar: View {
             .popover(isPresented: $showingQueue, arrowEdge: .top) {
                 UpNextQueueView()
             }
+
+            AirPlayPickerView()
+                .frame(width: 20, height: 20)
+                .help("隔空播放 (AirPlay)")
 
             MacOSVolumeToolbarItem()
         }

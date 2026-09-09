@@ -88,6 +88,7 @@
 		A03BEB8CFB7079E7785EA92F /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1EB879B24E7FC805C81403 /* AIService.swift */; };
 		A0E7581DE2847C1D7BC19308 /* TingyuIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62FEA1D8A9D46E0C9A3B0799 /* TingyuIntents.swift */; };
 		A2A7AD4B35B3395E0F9AAC71 /* LocalLibraryScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BDD27522D56162D1F3A43C /* LocalLibraryScanner.swift */; };
+		A345B65F661C2A3E667D15C8 /* AirPlayPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AEF8FEA2010F7972417090B /* AirPlayPickerView.swift */; };
 		A3D97C75A48488C57B10A723 /* QuarkCookieStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6A6B81878D6E6B5BC9064FA /* QuarkCookieStore.swift */; };
 		A709F5BAEF47DCCB41883769 /* StreamingResourceLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7845E18698C08AA9F17E88C /* StreamingResourceLoader.swift */; };
 		A89EE582A54DA8B08BFC17EA /* Playlist.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCF3FA6DF360978A352145D4 /* Playlist.swift */; };
@@ -118,6 +119,7 @@
 		E0F666BD9DF420215813B579 /* PlaybackControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0693F7FE6BEA9E62D97409AE /* PlaybackControls.swift */; };
 		E19CE8F4BB5AF3A115AE4253 /* PlaylistActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13EF9D25E07D7CF2CBD8F805 /* PlaylistActions.swift */; };
 		E27B14FD39D37BE7371EA10F /* AlbumDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AACE85B8A69B80D6195D1109 /* AlbumDetailView.swift */; };
+		E29C497DFB09CD634AECF759 /* AirPlayPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AEF8FEA2010F7972417090B /* AirPlayPickerView.swift */; };
 		E7C42DB8E30B378FB1D59B7A /* LibrarySync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9168E088F752B49427638F8B /* LibrarySync.swift */; };
 		EA8337BE7F6F16E5C559869D /* AlbumDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AACE85B8A69B80D6195D1109 /* AlbumDetailView.swift */; };
 		EBDDFC6677359DB20BF4F7B9 /* FluidBackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CE2EB680D9800F9FBD8E06 /* FluidBackgroundView.swift */; };
@@ -194,6 +196,7 @@
 		952E6CC48BF90A2F26651703 /* SharedPlaybackState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedPlaybackState.swift; sourceTree = "<group>"; };
 		98F3923ABD38F427EF37E24F /* NetEaseScraper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetEaseScraper.swift; sourceTree = "<group>"; };
 		9AA41D0B54D696F4D83BC8B2 /* ManualMatchSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualMatchSheet.swift; sourceTree = "<group>"; };
+		9AEF8FEA2010F7972417090B /* AirPlayPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirPlayPickerView.swift; sourceTree = "<group>"; };
 		9B60B67CE16AF86A1A750587 /* LyricLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricLine.swift; sourceTree = "<group>"; };
 		9CFE3F1F5822FA2E71D9325E /* CloudSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSyncManager.swift; sourceTree = "<group>"; };
 		9D8BC48281C4A5FC56EC4836 /* IOSPlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSPlaylistsView.swift; sourceTree = "<group>"; };
@@ -284,6 +287,7 @@
 			isa = PBXGroup;
 			children = (
 				4F52A5E215D1AA8A63FAF55E /* AddQuarkSheet.swift */,
+				9AEF8FEA2010F7972417090B /* AirPlayPickerView.swift */,
 				4194232B75E0E3236E293417 /* AISettingsView.swift */,
 				AACE85B8A69B80D6195D1109 /* AlbumDetailView.swift */,
 				D968703980AEBE322B925DB4 /* AlbumGridView.swift */,
@@ -591,6 +595,7 @@
 				A03BEB8CFB7079E7785EA92F /* AIService.swift in Sources */,
 				ADF6B683F1DFFDA5422B9AD0 /* AISettingsView.swift in Sources */,
 				521C92A4DE7B5C608278D413 /* AddQuarkSheet.swift in Sources */,
+				A345B65F661C2A3E667D15C8 /* AirPlayPickerView.swift in Sources */,
 				E27B14FD39D37BE7371EA10F /* AlbumDetailView.swift in Sources */,
 				64ABB467F094D47F0E5C7213 /* AlbumGridView.swift in Sources */,
 				F486206245BABFA26B1F3FD1 /* AnimatedLyricsView.swift in Sources */,
@@ -655,6 +660,7 @@
 				B36483BD84FC17DDACD4C683 /* AIService.swift in Sources */,
 				195C5C5207794484FEE2FAE9 /* AISettingsView.swift in Sources */,
 				02B9CD9C1DF3B6BA973A9990 /* AddQuarkSheet.swift in Sources */,
+				E29C497DFB09CD634AECF759 /* AirPlayPickerView.swift in Sources */,
 				EA8337BE7F6F16E5C559869D /* AlbumDetailView.swift in Sources */,
 				3B77073EBE4BAD2F4F2CEE90 /* AlbumGridView.swift in Sources */,
 				36135229A7927BCB764BCE31 /* AnimatedLyricsView.swift in Sources */,

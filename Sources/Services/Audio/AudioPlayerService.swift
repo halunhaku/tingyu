@@ -43,6 +43,7 @@ public final class AudioPlayerService {
     public var playbackError: String? = nil
 
     private var player: AVPlayer
+    public var avPlayer: AVPlayer { player }
     private var timeObserverToken: Any?
     private var itemEndObserver: (any NSObjectProtocol)?
     private var itemFailedObserver: (any NSObjectProtocol)?
