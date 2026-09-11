@@ -1,6 +1,6 @@
 # 听屿 跨平台迁移方案 v1（Flutter）
 
-> 状态：**已批准**（2026-09-11）。执行中：M0 骨架 + M1 技术验证闸门。
+> 状态：**已批准**（2026-09-11）。M0（骨架 + CI）与 M1（技术验证闸门）已完成并通过，结论见 §13。
 > 日期：2026-09-11
 > 依据：仓库实测（`Sources/` 61 个 Swift 文件 / 8837 行）、`project.yml`、以及公开生态现状核查。
 
@@ -290,10 +290,54 @@ jobs:
 | 项 | 状态 |
 |---|---|
 | Xcode | 已安装 `/Applications/Xcode.app`；但 `xcode-select -p` 仍指向 `/Library/Developer/CommandLineTools`，构建脚本需 `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` 或执行 `sudo xcode-select -s` |
-| CocoaPods | **未安装**，macOS/iOS 插件构建必需（`brew install cocoapods`） |
-| Flutter SDK | **未安装**（`brew install --cask flutter`） |
-| Android SDK | 已安装 `~/Library/Android/sdk` |
+| CocoaPods | 已安装 1.17.0（`brew install cocoapods`），macOS/iOS 插件构建必需 |
+| Flutter SDK | 已安装 3.47.2 / Dart 3.13.2，位于 `~/development/flutter`（tag 浅克隆），`/opt/homebrew/bin/flutter` 为符号链接；`flutter doctor` 对本机 SDK 报 `[user-branch]` 通道警告（tag 检出所致，不影响构建） |
+| Android SDK | 已安装 `~/Library/Android/sdk`，但缺 `cmdline-tools` 且未接受 license，**Android 本地构建暂不可用**（M5 前补齐） |
 | Homebrew / ffmpeg | 已安装 |
-| 磁盘可用 | 约 15 GiB |
+| 磁盘可用 | 约 4 GiB（Flutter SDK 约 1.8 GiB + 构建产物；安装 SDK 时磁盘曾耗尽，已清理临时 zip 与 Homebrew 缓存） |
 
 **本地验证边界**：Flutter 不支持从 macOS 交叉构建 Windows/Linux 桌面目标，因此本机只能验证 macOS（及 Android/iOS 需对应 SDK/模拟器）；**Windows/Linux 的构建与运行验证必须由 CI 承担**。
+
+---
+
+## 13. M1 技术验证结论（2026-09-11）
+
+分支 `ci/flutter-bootstrap` · PR [#1](https://github.com/halunhaku/tingyu/pull/1) · 提交 `416a994`
+
+| 平台 | 构建 | 运行时（播放 + 系统媒体会话） |
+|---|---|---|
+| macOS | ✅ 本地 Debug 构建 + CI Release 构建 | ✅ **已验证**（见下方证据） |
+| Windows | ✅ CI Release 构建 | ⚠️ 未验证：SMTC 需 Windows 实机 |
+| Linux | ✅ CI Release 构建 | ⚠️ 未验证：MPRIS2 需 Linux 桌面实机（DBus） |
+| Android / iOS | 未纳入 M1 范围（依赖移动端构建环境） | — |
+
+**CI**：`analyze + test` 通过（4 个 handler 契约测试），三平台 release 构建全部绿灯。
+
+**macOS 运行时证据**
+
+1. 播放链路（3 个 5 秒测试音轨，经 `TINGYU_DEBUG_SOURCES` 注入）：
+
+   ```
+   engine=media_kit (libmpv) processing=ready playing=true position=2671ms duration=5000ms index=0
+   … index 0 → 1 → 2 → completed，全程 0 error
+   ```
+
+2. 系统媒体会话（`nowplaying-cli` 独立复核，非应用自述）：
+
+   ```
+   $ nowplaying-cli get title duration playbackRate
+   tone-440.wav / 5 / 1          # bundle id: com.halunhaku.tingyu
+
+   $ nowplaying-cli pause   → 引擎 playing=false
+   $ nowplaying-cli play    → 引擎 playing=true
+   $ nowplaying-cli next    → 系统标题 tone-880.wav，引擎 index=2
+   ```
+
+   即"引擎 → 系统面板"与"系统指令 → 引擎"双向打通。
+
+**闸门结论**：**继续**。播放引擎抽象与系统媒体会话桥在 macOS 上成立，无阻塞性发现。遗留项（不阻塞后续里程碑）：
+
+- R2（双引擎状态一致性）仅在 macOS 侧观察到正确行为，移动端需在 M5 复核。
+- 系统面板实测中出现过 `duration=0`，已定位为"时长在引擎加载完成前不可知"并在 `_syncMediaItem` 中修复（时长可知后补发媒体元数据并去重），测试覆盖。
+- Windows/Linux 的运行时验证需要对应实机，建议在 M3 之前安排一次人工确认。
+
