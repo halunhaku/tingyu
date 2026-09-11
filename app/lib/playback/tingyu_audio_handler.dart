@@ -16,14 +16,17 @@ import 'playback_snapshot.dart';
 /// Android → MediaSession，Windows → SMTC（`audio_service_win`），
 /// Linux → MPRIS2（`audio_service_mpris`）。
 final class TingyuAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
-  TingyuAudioHandler(this._engine) {
+  TingyuAudioHandler(
+    this._engine, {
+    this.statePushInterval = const Duration(milliseconds: 500),
+  }) {
     _subscription = _engine.snapshots.listen(_broadcast);
   }
 
   final PlaybackEngine _engine;
 
   /// 纯进度更新推送到系统媒体会话的最小间隔。
-  static const Duration statePushInterval = Duration(milliseconds: 500);
+  final Duration statePushInterval;
 
   late final StreamSubscription<PlaybackSnapshot> _subscription;
 
