@@ -1,6 +1,6 @@
 # 听屿 跨平台迁移方案 v1（Flutter）
 
-> 状态：**已批准**（2026-09-11）。M0（骨架 + CI）、M1（播放闸门）、M2（数据层）已完成，结论见 §13 / §14。
+> 状态：**已批准**（2026-09-11）。M0（骨架 + CI）、M1（播放闸门）、M2（数据层）、M3（来源层）已完成，结论见 §13–§15；本机音频异常见 §16。
 > 日期：2026-09-11
 > 依据：仓库实测（`Sources/` 61 个 Swift 文件 / 8837 行）、`project.yml`、以及公开生态现状核查。
 
@@ -68,8 +68,10 @@
 | 状态管理 | Riverpod（`flutter_riverpod`） | 编译期安全、可测试、无 BuildContext 依赖，适合"播放状态 + 曲库状态"两个独立全局源 |
 | 路由 | `go_router` | 声明式、深链（`tingyu://`）与 App Intents 触发路由都走它 |
 | 本地库 | `drift` + `sqlite3` 3.x（Dart hooks 自带 SQLite，已废弃 `sqlite3_flutter_libs`） | 类型安全 schema、可写迁移；替代 SwiftData |
-| 网络 | `dio` + `cookie_jar` | 抓取需要 cookie/重定向控制；Quark 会话保持 |
-| HTML 解析 | `html`（package:html）+ 正则兜底 | 替代 Swift 侧的抓取解析 |
+| 网络 | `dio` | 抓取需要自定义头/超时/重定向控制；上游 Content-Type 五花八门，统一按文本取回后自行 `jsonDecode` |
+| 音频标签 | `audio_metadata_reader` | 纯 Dart 读取 mp3/flac/m4a/ogg/opus/wav/aiff 的标签与时长（扫描器用） |
+| 繁简转换 | 内置 OpenCC 字表（Apache-2.0） | Flutter 无 ICU 变换 API；逐字转换，接口预留词组级消歧 |
+| HTML 解析 | `html`（package:html）+ 正则兜底 | 替代 Swift 侧的抓取解析（M4 起按需引入） |
 | XML | `xml` | WebDAV 的 PROPFIND 解析（替代 `WebDAVXMLParser`） |
 | 桌面播放 | `media_kit` + `media_kit_libs_*` | libmpv 统一解码、gapless、缓冲可控、支持任意 URL + headers |
 | 移动播放 | `just_audio` | ExoPlayer / AVPlayer，功耗与系统集成优于 libmpv |
@@ -169,18 +171,37 @@ final class TingyuAudioHandler extends BaseAudioHandler with QueueHandler, SeekH
 
 **流式来源**：`StreamingResourceLoader`(215) 的能力改为 `platform/stream_proxy`：本地 `shelf` 起最小 HTTP 服务，对远程请求注入 Cookie/Referer 并转发 Range，播放器只看到 `http://127.0.0.1:<port>/stream/<token>`。移动端优先用 `just_audio` 的 `headers` 直连，代理仅作兜底。
 
-### 5.2 来源子系统
+### 5.2 来源子系统（M3 已落地）
 
 ```dart
 abstract interface class SourceAdapter {
-  String get id;                                   // 'local' | 'webdav' | 'quark'
-  Future<void> authenticate(SourceCredentials credentials);
-  Future<List<RemoteEntry>> list(String path);
-  Future<StreamHandle> open(String path);          // → url + headers 或本地代理 URL
+  String get sourceId;
+  Future<SourceScanResult> scan({void Function(int, String)? onProgress, bool Function()? isCancelled});
+  Future<PlaybackItem> open(String filePathOrUrl);   // → URL + 鉴权头（httpHeaders）
 }
 ```
 
-抓取器（QQ音乐 / 网易云 / LRCLIB / iTunes）不实现 `SourceAdapter`，而是 `MetadataProvider` 接口（`search` / `fetchLyrics` / `fetchCover`），由 `MetadataEnricher` 编排，保持现有"来源与元数据分离"的结构。
+实现：`sources/local/local_library_scanner.dart`（本地目录）、`sources/webdav/`（PROPFIND + Basic 认证）、
+`sources/quark/`（Drive 接口 + Cookie 会话 + 直链缓存）。远端适配器只产出 `ScannedTrack`，
+入库仍由 `TrackRepository.mergeScan` 负责；`open()` 返回的 `PlaybackItem.httpHeaders`
+会被播放引擎（`Media(httpHeaders:)`）原样带给服务器。
+
+元数据抓取不实现 `SourceAdapter`，而是按能力拆成三个窄接口
+（`sources/scraper/metadata_provider.dart`）：
+
+| 接口 | 实现 | 用途 |
+|---|---|---|
+| `MetadataSearcher` | QQ 音乐、网易云 | 搜歌名/歌手/专辑/封面地址 |
+| `LyricsProvider` | LRCLIB（主）、网易云（兜底） | 取歌词；LRCLIB 返回的多为繁体，统一转简体 |
+| `CoverLookup` | iTunes | 按专辑名/歌手查封面地址 |
+| `ArtistLookup` | 网易云 | 艺术家头像地址（`ArtistAvatarStore` 用） |
+
+`MetadataEnricher` 负责编排（管道顺序与旧版 `MetadataEnricher.swift` 一致）：
+脏文件名解析 → QQ 音乐主元数据 → LRCLIB 歌词 → 网易云歌词兜底 → 网易云/iTunes 封面兜底。
+它只产出 `EnrichmentResult`（纯数据），落盘与写库由 `data/enrichment_service.dart` 完成。
+
+繁→简转换：Flutter 没有 ICU 的 `Traditional-Simplified` 变换，改用内置的 OpenCC 字表
+（`assets/opencc/TSCharacters.txt`，Apache-2.0）做逐字转换（不做词组级消歧，接口预留）。
 
 ### 5.3 数据层（drift，M2 已落地）
 
@@ -425,4 +446,87 @@ jobs:
 - 「1000+ 文件不卡 UI」目前靠架构保证（遍历在主 isolate、解析分批进子 isolate、SQLite 在后台 isolate），
   未做真实 1000+ 文件的压测；建议在 M3 开始前用真实音乐目录跑一次。
 - 扫描的全量进度 UI、来源配置界面属于 M4；M2 只保证数据与扫描能力。
+
+---
+
+## 15. M3 来源层结论（2026-09-11）
+
+交付物（`app/`）：
+
+| 模块 | 文件 | 对应 Swift 资产 |
+|---|---|---|
+| 来源抽象 | `lib/sources/source_adapter.dart` | — |
+| WebDAV | `lib/sources/webdav/{webdav_client,webdav_xml_parser,webdav_source_adapter}.dart` | `WebDAVClient.swift` 239 + `WebDAVXMLParser.swift` 94 |
+| Quark | `lib/sources/quark/{quark_cookie_store,quark_drive_client,quark_source_adapter}.dart` | `QuarkDriveClient.swift` 410 + `QuarkCookieStore.swift` |
+| 凭据 | `lib/data/secure_store.dart` | `KeychainService` / 明文 cookie 回退（已移除） |
+| 抓取 | `lib/sources/scraper/{qq_music,netease,lrclib,itunes_cover}_provider.dart` | 四个 Scraper（约 500 行） |
+| 解析 | `lib/sources/scraper/{smart_title_parser,chinese_converter}.dart` + `assets/opencc/TSCharacters.txt` | `SmartTitleParser.swift` 96 + `ChineseConverter.swift`（ICU） |
+| 编排 | `lib/sources/scraper/metadata_enricher.dart` + `lib/data/enrichment_service.dart` | `MetadataEnricher.swift` 113 |
+| 头像 | `lib/sources/scraper/artist_avatar_store.dart` | `ArtistAvatarStore.swift` 91 |
+
+**验证结果**
+
+1. **81 项测试全绿**（`flutter analyze` 无告警），其中 M3 新增 55 项：WebDAV 26（命名空间 XML、
+   href 三态解析、跳过规则、401/403/429/503 文案、depth 0 与非 0 的差异、限流间隔）、
+   Quark 11（目录解析、直链三种 JSON 形状、缓存与 `__puus` 回写、错误映射、BFS 深度/截断/取消）、
+   富化编排 7（不出网快路径、主来源命中、标题不匹配不改写、兜底顺序、封面缺失、可疑标题跳过）、
+   文件名解析 8、繁简转换 3。
+2. **真实 WebDAV 服务器**（本机临时脚本，PROPFIND/GET/Basic 认证）：
+   - 扫描 `/周杰伦/` → 2 首（隐藏目录与 png 被正确跳过，etag/大小/百分号编码 URL 正确）；
+   - `/forbidden/` → `WebDavForbidden`（"WebDAV 拒绝访问该目录 (403 Forbidden)"）；
+   - `/busy/` → `WebDavRateLimited`（"坚果云提示请求过于频繁（临时封禁中）…"）；
+   - **服务器根路径 `/` 扫描 → 2 首**（旧版此处会静默返回空，见下方偏差）；
+   - 适配器 `open()` 产出的 `PlaybackItem` 带 `Authorization`，用同样的头直接 GET 得到
+     `200` 且字节数与 `fileSize` 完全一致。
+3. **真实公开接口**（本机联网）：
+
+   ```
+   QQ      |晴天|周杰伦|叶惠美|https://y.gtimg.cn/.../T002R800x800M000000MkMni19ClKG.jpg
+   LRCLIB  |len=841|[00:27.38] 窗外的麻雀 在电线杆上多嘴 …      ← 已由繁体转成简体
+   NETEASE |晴天(深情版)|Lucky小爱|…|lyrics len=969|avatar=…?param=500y500
+   ITUNES  |…/600x600bb.jpg
+   ```
+4. **端到端**（WebDAV 扫描 → 入库 → 真实抓取 → 封面落盘）：
+
+   ```
+   E2E merge=+2
+   E2E enrich 七里香 → changed=true cover=true lyrics=true
+   E2E row|七里香|周杰伦|七里香|lyrics=841|cover=…/covers/46ba4b3e784092aa.jpg (197471 bytes)
+   E2E row|晴天|周杰伦|叶惠美|lyrics=1089|cover=…/covers/11d82db9849c2dea.jpg (183730 bytes)
+   ```
+
+**与旧版的有意偏差**
+
+| # | 偏差 | 原因 |
+|---|---|---|
+| 1 | 修正 `normalizePath('/')`：旧版得到 `//`，导致从服务器根目录扫描时所有条目都过不了前缀检查、**静默返回空** | 旧版只对 `/dav/` 这类带路径的根目录正常 |
+| 2 | 所有 JSON 接口统一按文本取回再 `jsonDecode` | QQ 返回 `application/x-javascript`、网易云 `text/plain`、iTunes `text/javascript`，dio 的类型推断会直接失败（实测：修复前这四个来源全部返回 null） |
+| 3 | Quark Cookie 不再写一份明文文件兜底 | 明文凭据落盘是纯安全降级 |
+| 4 | 新增 `isCancelled`（旧版无取消） | `SourceAdapter.scan` 契约要求 |
+| 5 | 繁→简用 OpenCC 字表逐字转换（旧版用系统 ICU 变换） | Flutter 无 ICU API；词组级消歧待需要时接入 |
+
+**遗留与未验证项**
+
+- **Quark 未做实机验证**：旧库凭据已失效（导出里 `syncStatus = 夸克凭据已失效`），
+  无法在线验证 `listFolder` / 直链；该模块由 11 项基于假 HTTP 适配器的测试覆盖，
+  等你在应用里重新登录后再补一次端到端。
+- **本机音频输出当前故障**：`afplay` 报 `AudioQueueStart failed (-66681)`，
+  media_kit 也拿不到音频时钟（position 恒为 0）。因此"HTTP + 鉴权头的远端音频出声"这一条
+  只能验到"mpv 成功鉴权取流并解析出容器时长"（未鉴权时该服务器返回 401，取不到时长）。
+  M1 阶段同一台机器上音频正常（当时已验证到播放位置推进 + 系统媒体面板），
+  所以这是环境问题而非代码回归；恢复方式见 §16。
+- 歌词/元数据匹配沿用旧版的"互相包含"判据，网易云可能命中翻唱版本（实测 `晴天` 命中
+  `晴天(深情版)`），与旧版行为一致，未做收紧。
+- 艺术家/专辑排序仍是码点序（M4 处理）。
+
+---
+
+## 16. 本机环境异常（待你处理）
+
+**音频输出不可用**：`afplay` 报 `AudioQueueStart failed (-66681)`，`coreaudiod` 在运行，
+默认输出设备是"MacBook Air扬声器"（另有 `OrayVirtualAudioDevice` 虚拟声卡）。
+影响：所有需要"真的出声"的验证（WebDAV 远端播放、M5 移动端前的桌面播放回归）。
+
+建议处理：`sudo killall coreaudiod`（launchd 会自动重启）或重启系统；若装有向日葵/Oray
+等虚拟声卡软件，先退出再试。处理完告诉我，我补跑一次远端播放验证。
 

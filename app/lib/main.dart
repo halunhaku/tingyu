@@ -122,11 +122,27 @@ Future<void> _runVerifyHarness(TingyuAudioHandler handler) async {
   final List<PlaybackItem> items = sources
       .map((String source) => PlaybackItem.fromUri(
             source.contains('://') ? Uri.parse(source) : Uri.file(source),
+            httpHeaders: _debugHeaders(),
           ))
       .toList(growable: false);
 
   await handler.setQueue(items);
   await handler.play();
+}
+
+/// `TINGYU_DEBUG_HEADERS="Name: value;Name2: value2"` —— 用于验证带鉴权头的
+/// 远端来源（WebDAV / Quark 直链）能否真的被播放引擎取到。
+Map<String, String> _debugHeaders() {
+  final String raw = Platform.environment['TINGYU_DEBUG_HEADERS'] ?? '';
+  final Map<String, String> headers = <String, String>{};
+  for (final String pair in raw.split(';')) {
+    final int colon = pair.indexOf(':');
+    if (colon <= 0) {
+      continue;
+    }
+    headers[pair.substring(0, colon).trim()] = pair.substring(colon + 1).trim();
+  }
+  return headers;
 }
 
 class TingyuApp extends StatelessWidget {

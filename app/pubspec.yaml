@@ -11,14 +11,17 @@ dependencies:
   audio_service: ^0.18.19
   audio_service_mpris: ^0.2.1
   audio_service_win: ^0.0.3
+  dio: ^5.11.1
   drift: ^2.35.0
   flutter:
     sdk: flutter
+  flutter_secure_storage: ^11.1.0
   just_audio: ^0.10.6
   media_kit: ^1.2.6
   media_kit_libs_audio: ^1.0.7
   path: ^1.9.1
   path_provider: ^2.1.6
+  xml: ^7.0.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -28,3 +31,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    # OpenCC 繁→简单字表（Apache-2.0，https://github.com/BYVoid/OpenCC），
+    # 用于把网易云 / LRCLIB 返回的繁体歌词转成简体。
+    - assets/opencc/TSCharacters.txt

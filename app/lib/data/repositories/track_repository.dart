@@ -73,6 +73,29 @@ class TrackRepository {
     );
   }
 
+  /// 写回抓取到的元数据；`null` 表示该字段保持不变。
+  Future<void> applyEnrichment({
+    required String id,
+    String? title,
+    String? artist,
+    String? album,
+    String? lyrics,
+    String? coverArtPath,
+    String? coverArtUrl,
+  }) {
+    return (_db.update(_db.tracks)..where(($TracksTable t) => t.id.equals(id))).write(
+      TracksCompanion(
+        title: title == null ? const Value<String>.absent() : Value<String>(title),
+        artist: artist == null ? const Value<String>.absent() : Value<String>(artist),
+        album: album == null ? const Value<String>.absent() : Value<String>(album),
+        lyrics: lyrics == null ? const Value<String?>.absent() : Value<String?>(lyrics),
+        coverArtPath:
+            coverArtPath == null ? const Value<String?>.absent() : Value<String?>(coverArtPath),
+        coverArtUrl: coverArtUrl == null ? const Value<String?>.absent() : Value<String?>(coverArtUrl),
+      ),
+    );
+  }
+
   /// 把一次扫描结果合并进库。
   Future<MergeResult> mergeScan({
     required String sourceId,
