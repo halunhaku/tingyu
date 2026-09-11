@@ -26,3 +26,21 @@ xcuserdata/
 # Local build artifacts and agent notes
 dist/
 .grok/
+
+# Flutter (app/)
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/.packages
+app/build/
+app/android/.gradle/
+app/android/local.properties
+app/ios/Pods/
+app/ios/.symlinks/
+app/macos/Pods/
+app/macos/.symlinks/
+app/**/Flutter/ephemeral/
+app/**/*.xcworkspace/xcuserdata/
+# flutter create 生成的 workspace 必须入库，覆盖上面的 project.xcworkspace 规则
+!app/ios/Runner.xcworkspace
+!app/macos/Runner.xcworkspace
