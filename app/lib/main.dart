@@ -1,14 +1,21 @@
 import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 
+import 'data/db/database.dart';
+import 'data/legacy_import.dart';
+import 'data/models/library_summaries.dart';
+import 'data/repositories/source_repository.dart';
+import 'data/repositories/track_repository.dart';
 import 'features/player/player_page.dart';
 import 'playback/engine_factory.dart';
 import 'playback/playback_engine.dart';
 import 'playback/playback_item.dart';
 import 'playback/tingyu_audio_handler.dart';
+import 'sources/local/local_library_scanner.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,9 +37,62 @@ Future<void> main() async {
     ),
   );
 
+  await _runDataHarness();
+
   runApp(TingyuApp(handler: handler));
 
   await _runVerifyHarness(handler);
+}
+
+/// M2 数据层验证脚手架：设置 `TINGYU_DEBUG_SCAN_DIR`（扫描目录）与/或
+/// `TINGYU_DEBUG_LEGACY_JSON`（旧版导出 JSON）后，在真实应用进程里跑一次
+/// 「扫描 → 合并入库 → 旧库导入」，并打印结果。
+///
+/// 与测试的区别：这里走的是真实的 `path_provider` 目录、真实的 SQLite 文件与真实文件系统。
+/// 该入口在前端（M4）落地后移除。
+Future<void> _runDataHarness() async {
+  final String scanDir = Platform.environment['TINGYU_DEBUG_SCAN_DIR'] ?? '';
+  final String legacyJson = Platform.environment['TINGYU_DEBUG_LEGACY_JSON'] ?? '';
+  if (scanDir.isEmpty && legacyJson.isEmpty) {
+    return;
+  }
+
+  final TingyuDatabase db = TingyuDatabase();
+  try {
+    if (legacyJson.isNotEmpty) {
+      final LegacyImportReport report =
+          await LegacyLibraryImporter(db).importFile(File(legacyJson));
+      debugPrint('[data] import $report');
+    }
+
+    if (scanDir.isNotEmpty) {
+      const String sourceId = 'debug-local';
+      final SourceRepository sources = SourceRepository(db);
+      await sources.upsert(
+        MusicSourcesCompanion.insert(
+          id: sourceId,
+          name: '调试目录',
+          kind: 'local',
+          localFolderPath: Value<String?>(scanDir),
+        ),
+      );
+      final Stopwatch stopwatch = Stopwatch()..start();
+      final LocalScanResult scan = await LocalLibraryScanner().scan(Directory(scanDir));
+      final MergeResult merge = await TrackRepository(db)
+          .mergeScan(sourceId: sourceId, scanned: scan.tracks);
+      stopwatch.stop();
+      debugPrint('[data] scan files=${scan.tracks.length} unreadable=${scan.unreadableFiles} '
+          'elapsed=${stopwatch.elapsedMilliseconds}ms merge=+${merge.added}/~${merge.updated}/-${merge.removed}');
+      await sources.updateSyncStatus(sourceId, status: '已同步', syncedAt: DateTime.now().toUtc(), trackCount: scan.tracks.length);
+    }
+
+    final TrackRepository tracks = TrackRepository(db);
+    debugPrint('[data] library tracks=${(await tracks.all()).length} '
+        'sources=${(await SourceRepository(db).all()).length} '
+        'albums=${(await tracks.albums()).length} artists=${(await tracks.artists()).length}');
+  } finally {
+    await db.close();
+  }
 }
 
 /// M1 技术验证脚手架：设置 `TINGYU_DEBUG_SOURCES`（逗号分隔的本地路径或 URL）

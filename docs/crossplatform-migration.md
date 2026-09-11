@@ -1,6 +1,6 @@
 # 听屿 跨平台迁移方案 v1（Flutter）
 
-> 状态：**已批准**（2026-09-11）。M0（骨架 + CI）与 M1（技术验证闸门）已完成并通过，结论见 §13。
+> 状态：**已批准**（2026-09-11）。M0（骨架 + CI）、M1（播放闸门）、M2（数据层）已完成，结论见 §13 / §14。
 > 日期：2026-09-11
 > 依据：仓库实测（`Sources/` 61 个 Swift 文件 / 8837 行）、`project.yml`、以及公开生态现状核查。
 
@@ -67,7 +67,7 @@
 | UI 框架 | Flutter（stable） | 桌面三平台生产可用；Android 一等公民；无 WebView 依赖 |
 | 状态管理 | Riverpod（`flutter_riverpod`） | 编译期安全、可测试、无 BuildContext 依赖，适合"播放状态 + 曲库状态"两个独立全局源 |
 | 路由 | `go_router` | 声明式、深链（`tingyu://`）与 App Intents 触发路由都走它 |
-| 本地库 | `drift` + `sqlite3_flutter_libs` | 类型安全 schema、可写迁移；替代 SwiftData |
+| 本地库 | `drift` + `sqlite3` 3.x（Dart hooks 自带 SQLite，已废弃 `sqlite3_flutter_libs`） | 类型安全 schema、可写迁移；替代 SwiftData |
 | 网络 | `dio` + `cookie_jar` | 抓取需要 cookie/重定向控制；Quark 会话保持 |
 | HTML 解析 | `html`（package:html）+ 正则兜底 | 替代 Swift 侧的抓取解析 |
 | XML | `xml` | WebDAV 的 PROPFIND 解析（替代 `WebDAVXMLParser`） |
@@ -103,10 +103,11 @@ tingyu/
 │  │  ├─ app/            di.dart · router.dart · theme.dart · l10n.dart
 │  │  ├─ core/           result.dart · failures.dart · logger.dart · http_client.dart · atomic_file.dart
 │  │  ├─ data/
-│  │  │  ├─ models/      track.dart · music_source.dart · playlist.dart · lyric_line.dart
-│  │  │  ├─ db/          schema.dart · migrations.dart · dao/*.dart
+│  │  │  ├─ models/      scanned_track.dart · library_summaries.dart
+│  │  │  ├─ db/          schema.dart · database.dart · database.g.dart（drift 生成）
+│  │  │  ├─ cover_store.dart · legacy_import.dart
 │  │  │  └─ repositories/ track_repository.dart · playlist_repository.dart · source_repository.dart
-│  │  ├─ sources/        source_adapter.dart · webdav/ · quark/ · scraper/{qqmusic,netease,lrclib,itunes}/
+│  │  ├─ sources/        local/local_library_scanner.dart · webdav/ · quark/ · scraper/{qqmusic,netease,lrclib,itunes}/
 │  │  ├─ playback/
 │  │  │  ├─ playback_engine.dart · playback_item.dart · playback_snapshot.dart
 │  │  │  ├─ media_kit_engine.dart · just_audio_engine.dart · engine_factory.dart
@@ -181,11 +182,27 @@ abstract interface class SourceAdapter {
 
 抓取器（QQ音乐 / 网易云 / LRCLIB / iTunes）不实现 `SourceAdapter`，而是 `MetadataProvider` 接口（`search` / `fetchLyrics` / `fetchCover`），由 `MetadataEnricher` 编排，保持现有"来源与元数据分离"的结构。
 
-### 5.3 数据层（drift）
+### 5.3 数据层（drift，M2 已落地）
 
-表：`tracks` · `albums` · `artists` · `playlists` · `playlist_items` · `sources` · `lyrics_cache` · `match_overrides` · `play_history`。
-- 迁移：`schemaVersion` + `MigrationStrategy`，与 `LegacyCacheMigrator.swift`(89) 的意图对齐。
-- 本地文件扫描：`dart:io` 递归 + 音频元数据（`audio_metadata_reader` 或 `ffprobe` 兜底），对应 `LocalLibraryScanner.swift`(213)。
+表（`app/lib/data/db/schema.dart`）：`tracks` · `music_sources` · `playlists` · `playlist_items`。
+与 §5.3 初版规划相比的收敛：`albums` / `artists` 不建表（用 `GROUP BY` 聚合，见 `TrackRepository.albums/artists`）；
+`lyrics_cache` / `match_overrides` / `play_history` 推迟到 M3（歌词与匹配覆盖目前落在 `tracks` 的 `lyrics` 列与后续的抓取层）。
+
+关键约定：
+
+- **主键与匹配**：`tracks.id` 主键；`(source_id, file_path_or_url)` 唯一 —— 扫描合并的匹配键（对齐 `LibrarySync.swift`）。
+  本地扫描产生的 id 是 `sourceId::path`（幂等），旧库导入则保留原 UUID。
+- **封面不入库**：`cover_art_path` 存 `CoverStore` 管理的文件名（FNV-1a 64 位命名），二进制写应用支持目录；
+  避免上千首内嵌封面把 SQLite 撑大、拖慢查询与备份。
+- **时间戳按文本存 UTC**（`storeDateTimeAsText`）—— 默认的 Unix 秒会丢毫秒，旧库 `dateAdded` 带毫秒，往返会对不上。
+- **外键级联**：`playlist_items` 对 `playlists` 与 `tracks` 都是 `ON DELETE CASCADE`，
+  删除曲目/来源不必手工清列表（`beforeOpen` 打开 `PRAGMA foreign_keys`）。
+- **扫描合并**：`TrackRepository.mergeScan` 只回写"文件事实"（大小、格式、etag、mtime、时长、封面缺省填充），
+  占位元数据（未知艺术家/未知专辑/夸克曲库/WebDAV 曲库/空标题）才允许被真实值替换；
+  收藏、播放计数、歌词、已有封面属于用户资产，永不被扫描覆盖。
+- **本地扫描**：`LocalLibraryScanner` 支持扩展名与旧版一致；遍历在主 isolate，标签解析分批进
+  `Isolate.run`（默认 64 个/批），标签读取用纯 Dart 的 `audio_metadata_reader`（内置 `ffprobe` 不现实）。
+  排序说明：旧版用 `localizedStandardCompare`，Dart 侧暂用码点序（中文即 Unicode 序，非拼音），M4 UI 阶段再引入排序键。
 
 ### 5.4 macOS 三个 Swift 扩展点（D6）
 
@@ -205,11 +222,30 @@ abstract interface class SourceAdapter {
 
 ---
 
-## 6. 数据迁移（旧版 → Flutter 版）
+## 6. 数据迁移（旧版 → Flutter 版，M2 已落地）
 
-1. **冻结前**给 Swift 版加一个临时"导出曲库"入口（或一次性 Swift 脚本），把 SwiftData 库导出为 `tingyu-export.json`（tracks / playlists / 播放历史 / 匹配覆盖 / 来源配置，**不含密钥**）。
-2. Flutter 版首次启动提供"从旧版导入"：解析 JSON → 写入 drift → 迁移密钥（用户重新输入，或从系统 Keychain 读取同名条目）。
-3. 缓存类数据（封面、歌词、头像）不迁移，重新拉取。
+导出工具：`tools/legacy-export/ExportLegacyLibrary.swift`（一次性工具，不进产品）。
+
+```bash
+# 编译（xcode-select 指向 CommandLineTools 时必须显式给 DEVELOPER_DIR）
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+  swiftc -parse-as-library -O -o /tmp/tingyu-legacy-export \
+    tools/legacy-export/ExportLegacyLibrary.swift \
+    Sources/Models/Track.swift Sources/Models/MusicSource.swift Sources/Models/Playlist.swift
+
+# 导出（缺省输出 ~/Desktop/tingyu-legacy-export.json）
+/tmp/tingyu-legacy-export /tmp/tingyu-legacy-export.json
+```
+
+- 工具把 `~/Library/Application Support/default.store`（含 `-wal`/`-shm` 与 `.default_SUPPORT`）
+  **复制到临时目录后打开副本**，绝不写原库；原库 md5 前后一致已核验。
+- 导出 JSON 契约：`{version: 1, exportedAt, sources[], tracks[], playlists[]}`；
+  日期为 ISO8601（UTC，毫秒），空值写 `null`；`coverArtBase64` 携带封面二进制；**不含任何密码/Cookie**。
+
+导入端：`app/lib/data/legacy_import.dart`
+（`LegacyLibraryImporter.importFile`）——保留旧主键（曲目/播放列表 id），
+播放列表引用在迁移后依然成立；失效引用直接丢弃；重复导入幂等。
+封面 base64 落到 `CoverStore`；时间戳统一转 UTC 存储。
 
 ---
 
@@ -340,4 +376,53 @@ jobs:
 - R2（双引擎状态一致性）仅在 macOS 侧观察到正确行为，移动端需在 M5 复核。
 - 系统面板实测中出现过 `duration=0`，已定位为"时长在引擎加载完成前不可知"并在 `_syncMediaItem` 中修复（时长可知后补发媒体元数据并去重），测试覆盖。
 - Windows/Linux 的运行时验证需要对应实机，建议在 M3 之前安排一次人工确认。
+
+---
+
+## 14. M2 数据层结论（2026-09-11）
+
+交付物（`app/`）：
+
+| 模块 | 文件 | 对应 Swift 资产 |
+|---|---|---|
+| 表结构与连接 | `lib/data/db/schema.dart` · `database.dart`（SQLite 文件 + 后台 isolate + UTC 文本时间戳） | SwiftData 模型 |
+| 曲目读写与合并 | `lib/data/repositories/track_repository.dart` | `LibrarySync.swift` 81 行 |
+| 播放列表 | `lib/data/repositories/playlist_repository.dart` | `Playlist.trackIds` |
+| 来源 | `lib/data/repositories/source_repository.dart` | `MusicSource` |
+| 封面缓存 | `lib/data/cover_store.dart` | `@Attribute(.externalStorage) coverArtData` |
+| 本地扫描 | `lib/sources/local/local_library_scanner.dart` | `LocalLibraryScanner.swift` 213 行 |
+| 旧库迁移 | `tools/legacy-export/ExportLegacyLibrary.swift` + `lib/data/legacy_import.dart` | `LegacyCacheMigrator.swift` 89 行 |
+
+**验证结果**
+
+1. 自动化测试 26 项全绿（`flutter analyze` 无告警）：合并语义（新增/更新/删除/用户资产保留/占位值升级）、
+   播放列表顺序与级联、聚合查询、扫描器过滤与标签映射（含 UTF-16 中文 ID3）、导入契约与幂等。
+2. **真实目录扫描**（ffmpeg 生成 3 个带中文标签的文件 + 隐藏目录 + 非音频文件）：
+
+   ```
+   SCAN tracks=3 unreadable=0 cancelled=false elapsed=18ms
+   SCAN|七里香|周杰伦|七里香|2.00s|flac|41481|trackNo=1|cover=null
+   SCAN|以父之名|周杰伦|叶惠美|3.06s|mp3|49995|trackNo=1|cover=21a21e95221c944c.png
+   SCAN|晴天|周杰伦|叶惠美|3.06s|mp3|49021|trackNo=2|cover=null
+   ```
+
+   隐藏目录与非音频文件被正确跳过；内嵌封面落盘并回传文件名。
+
+3. **真实旧库导入**（旧库为夸克来源 176 首）：`LegacyImportReport(sources: 1, tracks: 176, playlists: 0, skippedTracks: 0)`。
+   并用 `sqlite3` 对新旧两个库做独立比对：
+
+   | 比对项 | 结果 |
+   |---|---|
+   | `ZTRACK` vs `tracks` 行数 | 176 = 176 |
+   | `(title, artist, album)` 集合 | 完全一致（无单边差异） |
+   | `filePathOrUrl` 集合 | 完全一致 |
+   | 来源行数 / 名称 / kind / trackCount | 1 = 1，`夸克网盘 (音乐)` / `quark` / 176 |
+   | 时间戳 | 以 UTC 文本存储并保留毫秒（`2026-09-08T02:56:48.323Z`） |
+
+**结论**：M2 达成验收判据（扫描可用、旧库无损导入）。已知偏差与遗留：
+
+- 排序用码点序而非旧版的 `localizedStandardCompare`（中文排序表现不同，M4 处理）。
+- 「1000+ 文件不卡 UI」目前靠架构保证（遍历在主 isolate、解析分批进子 isolate、SQLite 在后台 isolate），
+  未做真实 1000+ 文件的压测；建议在 M3 开始前用真实音乐目录跑一次。
+- 扫描的全量进度 UI、来源配置界面属于 M4；M2 只保证数据与扫描能力。
 
