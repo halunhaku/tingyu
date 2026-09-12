@@ -1,0 +1,742 @@
+# 听屿 跨平台迁移方案 v1（Flutter）
+
+> 状态：**已批准**（2026-09-11）。M0–M4 已完成（结论见 §13–§15、§17）；进度与剩余里程碑见 §18；本机音频异常见 §16。
+> 日期：2026-09-11
+> 依据：仓库实测（`Sources/` 61 个 Swift 文件 / 8837 行）、`project.yml`、以及公开生态现状核查。
+
+---
+
+## 0. 已确认决策（本轮）
+
+| 编号 | 决策 | 结论 |
+|---|---|---|
+| D1 | 跨平台目标 | macOS + Windows + Linux + Android + **iOS** |
+| D2 | 统一栈 | Flutter（Dart），一套 UI + 一套业务逻辑 |
+| D3 | macOS 观感降级 | 接受 |
+| D4 | 现有 Swift 版 macOS 应用 | **冻结维护**（只修 bug），Flutter 版成熟后取代 |
+| D5 | 播放引擎 | **双引擎**：桌面 `media_kit`(libmpv) + 移动 `just_audio`，统一 `PlaybackEngine` 抽象 |
+| D6 | macOS 原生能力 | **全部保留**：WidgetKit 小组件、App Intents、AirPlay（各留一个 Swift 扩展 / 通道） |
+| D7 | macOS 分发 | 保持现状：Developer ID 签名 + 公证 + 自更新，**不上 Mac App Store**（不受 App Sandbox 强约束） |
+| D8 | 仓库布局 | monorepo：Flutter 工作区 `app/`，方案文档 `docs/crossplatform-migration.md` |
+| D9 | 首个里程碑范围 | M0 骨架 + M1 技术验证闸门（三平台播放与系统媒体面板） |
+
+---
+
+## 1. 目标与非目标
+
+**目标**
+- 一套 Dart 代码覆盖 macOS / Windows / Linux / Android / iOS（现有 SwiftUI iOS 版由 Flutter 版取代）。
+- 保留产品的差异化解码能力：多源曲库（本地 / WebDAV / Quark）、抓取式元数据与歌词、AI 元数据解析、歌词动画与流体背景。
+- 保留 macOS 的三个 Apple 原生能力（小组件、快捷指令、AirPlay）。
+- 三平台分发链路可自动化：DMG+公证 / MSIX 签名 / Flatpak+AppImage / APK+AAB。
+
+**非目标**
+- 不追求 macOS 像素级还原 SwiftUI 版本。
+- 不引入 DRM 解密（Apple Music / QQ音乐加密格式依旧不支持，与当前能力上限一致）。
+- 不保留 Swift 版与 Flutter 版的双向数据同步（仅提供一次性导出/导入迁移）。
+
+---
+
+## 2. 现有资产盘点与处置判定（实测）
+
+| 层 | 文件 / 行数 | 处置 | 说明 |
+|---|---|---|---|
+| `App/TingyuApp.swift` | 1 / 79 | 重写 | 应用装配、场景声明 → `main.dart` + `app/di.dart` |
+| `Models/` | 4 / 231 | 重写（结构复用） | `Track/MusicSource/Playlist/LyricLine` → Dart model + drift table |
+| `Services/Audio/` | 4 / 1028 | 重写（逻辑复用） | `AudioPlayerService` 570、`StreamingResourceLoader` 215、`LocalAudioResourceLoader` 125、`NowPlayingManager` 118 |
+| `Services/Scraper/` | 8 / 约 800 | 重写（逻辑复用） | QQ音乐 110 / 网易云 113 / LRCLIB / iTunes / `MetadataEnricher` 113 / `SmartTitleParser` 96 / `ChineseConverter` / `ArtistAvatarStore` 91 |
+| `Services/Quark/` | 2 / 约 500 | 重写 | `QuarkDriveClient` 410、`QuarkCookieStore` |
+| `Services/WebDAV/` | 2 / 333 | 重写 | `WebDAVClient` 239、`WebDAVXMLParser` 94 |
+| `Services/Library/` | 4 / 约 460 | 重写 | 扫描 213、分组、同步 81、`LegacyCacheMigrator` 89 |
+| `Services/Cloud/` | 1 / 139 | 重写 | `CloudSyncManager` |
+| `Services/Security/` | 1 / 89 | 替换 | `KeychainService` → `flutter_secure_storage` |
+| `Services/AI/` | 2 / 236 | 重写 | `AIService` 160、`AIMetadataParser` 76 |
+| `Services/Intents/` | 1 / 85 | **保留 Swift** | App Intents 扩展 |
+| `UI/` | 28 / 4916 | 重写 | 分平台视图结构保留（iOS / macOS 两套布局） |
+| `UI/Widgets/` | 3 / 约 300 | **保留 Swift** | WidgetKit 扩展，挂到 Flutter 的 macOS 工程 |
+| `Resources/` | plist / entitlements / assets | 迁移 | Flutter 侧重建 + 图标资源复用 |
+
+**结论**：约 3611 行 Service 逻辑需要用 Dart 重写（逻辑可照搬，语言与 API 换），4916 行 UI 全部重写，约 385 行 Swift（Widget 261 + Intents 85 + AirPlay 80 中的原生部分）原样保留。
+
+---
+
+## 3. 技术选型
+
+| 关注点 | 选型 | 理由 / 备注 |
+|---|---|---|
+| UI 框架 | Flutter（stable） | 桌面三平台生产可用；Android 一等公民；无 WebView 依赖 |
+| 状态管理 | Riverpod（`flutter_riverpod`） | 编译期安全、可测试、无 BuildContext 依赖，适合"播放状态 + 曲库状态"两个独立全局源 |
+| 路由 | `go_router` | 声明式、深链（`tingyu://`）与 App Intents 触发路由都走它 |
+| 本地库 | `drift` + `sqlite3` 3.x（Dart hooks 自带 SQLite，已废弃 `sqlite3_flutter_libs`） | 类型安全 schema、可写迁移；替代 SwiftData |
+| 网络 | `dio` | 抓取需要自定义头/超时/重定向控制；上游 Content-Type 五花八门，统一按文本取回后自行 `jsonDecode` |
+| 音频标签 | `audio_metadata_reader` | 纯 Dart 读取 mp3/flac/m4a/ogg/opus/wav/aiff 的标签与时长（扫描器用） |
+| 繁简转换 | 内置 OpenCC 字表（Apache-2.0） | Flutter 无 ICU 变换 API；逐字转换，接口预留词组级消歧 |
+| HTML 解析 | `html`（package:html）+ 正则兜底 | 替代 Swift 侧的抓取解析（M4 起按需引入） |
+| XML | `xml` | WebDAV 的 PROPFIND 解析（替代 `WebDAVXMLParser`） |
+| 桌面播放 | `media_kit` + `media_kit_libs_*` | libmpv 统一解码、gapless、缓冲可控、支持任意 URL + headers |
+| 移动播放 | `just_audio` | ExoPlayer / AVPlayer，功耗与系统集成优于 libmpv |
+| 系统媒体会话 | `audio_service`（Android/iOS/macOS）+ `audio_service_win`（SMTC）+ `audio_service_mpris`（Linux MPRIS） | 一套 `AudioHandler` 打通五个平台的 Now Playing / 媒体键 / 锁屏 |
+| 安全存储 | `flutter_secure_storage` | Keychain / DPAPI / libsecret，对应 `KeychainService` |
+| 桌面外壳 | `window_manager`、`tray_manager`、`launch_at_startup` | 窗口/托盘/开机自启；Linux 托盘依赖 `libayatana-appindicator3` |
+| 菜单栏 | macOS：`PlatformMenuBar`；Windows/Linux：应用内 `MenuBar` | `PlatformMenuBar` 官方仅支持 macOS |
+| 单实例 | `windows_single_instance` / `local_notifier` | 桌面必备（点击文件/URL 唤起） |
+| 本地 HTTP 代理 | `shelf` + `shelf_router` | 把带鉴权头的远程流包装成本地 URL 喂给播放引擎（替代 `StreamingResourceLoader` 语义） |
+| 国际化 | `flutter_localizations` + `intl` | 中文优先 |
+| 测试 | `flutter_test` + `drift` 内存库 | 只覆盖解析器 / 迁移 / 队列逻辑 |
+
+**打包**
+- macOS：`flutter build macos --release` → `codesign --deep`（含嵌套插件与扩展）→ `dmg` → `xcrun notarytool submit` + `stapler`。
+- Windows：`flutter build windows --release` → `msix` 包（或 Inno Setup 安装器）→ EV 证书 / Azure Trusted Signing 签名（否则 SmartScreen 拦截）。
+- Linux：`flutter build linux --release` → Flatpak（推荐，携带 libmpv/libsecret 依赖）+ AppImage（备选）+ `.deb`。
+- Android：`flutter build appbundle` + `apksigner`（Play 上架用 AAB）。
+
+---
+
+## 4. 仓库与目录结构
+
+```
+tingyu/
+├─ Sources/ · Tingyu.xcodeproj/ · project.yml      # 现有 Swift 版：冻结维护
+├─ app/                                            # 新增 Flutter 工作区
+│  ├─ pubspec.yaml
+│  ├─ analysis_options.yaml
+│  ├─ lib/
+│  │  ├─ main.dart
+│  │  ├─ app/            di.dart · router.dart · theme.dart · l10n.dart
+│  │  ├─ core/           result.dart · failures.dart · logger.dart · http_client.dart · atomic_file.dart
+│  │  ├─ data/
+│  │  │  ├─ models/      scanned_track.dart · library_summaries.dart
+│  │  │  ├─ db/          schema.dart · database.dart · database.g.dart（drift 生成）
+│  │  │  ├─ cover_store.dart · legacy_import.dart
+│  │  │  └─ repositories/ track_repository.dart · playlist_repository.dart · source_repository.dart
+│  │  ├─ sources/        local/local_library_scanner.dart · webdav/ · quark/ · scraper/{qqmusic,netease,lrclib,itunes}/
+│  │  ├─ playback/
+│  │  │  ├─ playback_engine.dart · playback_item.dart · playback_snapshot.dart
+│  │  │  ├─ media_kit_engine.dart · just_audio_engine.dart · engine_factory.dart
+│  │  │  ├─ tingyu_audio_handler.dart      # audio_service 桥
+│  │  │  ├─ queue_controller.dart · lyrics_clock.dart · stream_proxy.dart
+│  │  ├─ platform/
+│  │  │  ├─ now_playing/ · secure_store/ · autostart/ · airplay/ · single_instance/ · paths/
+│  │  │  └─ widget_bridge/                 # 与 Swift 扩展共享 App Group 数据
+│  │  ├─ features/      library/ · player/ · playlists/ · sources/ · settings/ · lyrics/ · search/
+│  │  └─ channels/      airplay_channel.dart · widget_bridge_channel.dart
+│  ├─ macos/   Runner.xcodeproj（含 TingyuWidget / TingyuIntents 扩展 target）
+│  ├─ windows/ · linux/ · android/ · ios/
+│  ├─ assets/  icons · fonts · default_cover
+│  └─ packaging/ dmg/ · msix/ · flatpak/ · appimage/ · scripts/
+└─ docs/
+```
+
+**分层规则（强制）**
+- `features/` 只依赖 `data/`、`playback/`、`platform/` 的接口，禁止 import 具体引擎（`media_kit` / `just_audio`）或具体云端实现。
+- `sources/` 不得直接操作 UI 或播放器，只返回 `StreamHandle` / `RemoteEntry`。
+- `platform/` 每个能力先定义抽象，再在 `platform/<capability>/<impl>` 提供各平台实现，用 `engine_factory.dart` 风格按 `Platform.is*` 注入。
+
+---
+
+## 5. 核心模块设计
+
+### 5.1 播放子系统
+
+```dart
+// playback/playback_engine.dart
+abstract interface class PlaybackEngine {
+  Stream<PlaybackSnapshot> get snapshots;          // position / duration / buffered / playing / processing
+  Future<void> setQueue(List<PlaybackItem> items, {int startIndex = 0});
+  Future<void> play();
+  Future<void> pause();
+  Future<void> seek(Duration position);
+  Future<void> setRate(double rate);
+  Future<void> setVolume(double volume);
+  Future<void> dispose();
+}
+```
+
+- 桌面实现 `MediaKitEngine`：`media_kit.Player.open(Media(url, httpHeaders: ...))`；队列/gapless 用 mpv 的 playlist 能力。
+- 移动实现 `JustAudioEngine`：`ConcatenatingAudioSource` 承载队列；`AudioSession` 配置播放类别与音频焦点。
+- `engine_factory.dart` 按平台返回实现；**UI 与状态层只依赖抽象**。
+
+```dart
+// playback/tingyu_audio_handler.dart
+final class TingyuAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
+  TingyuAudioHandler(this._engine) {
+    _engine.snapshots.listen(_pushState);          // → playbackState
+    queueController.currentItem.listen(_pushMediaItem); // → mediaItem
+  }
+  // play/pause/seek/skipToNext/skipToPrevious 全部转发到 PlaybackEngine
+}
+```
+
+`audio_service` 在 Android/iOS/macOS 直接映射 `MPNowPlayingInfoCenter` / `MPRemoteCommandCenter` / MediaSession；Windows 由 `audio_service_win` 映射 SMTC；Linux 由 `audio_service_mpris` 暴露 MPRIS2。**`NowPlayingManager.swift`(118 行) 的职责在 Dart 侧只剩"推 mediaItem + playbackState"。**
+
+**流式来源**：`StreamingResourceLoader`(215) 的能力改为 `platform/stream_proxy`：本地 `shelf` 起最小 HTTP 服务，对远程请求注入 Cookie/Referer 并转发 Range，播放器只看到 `http://127.0.0.1:<port>/stream/<token>`。移动端优先用 `just_audio` 的 `headers` 直连，代理仅作兜底。
+
+### 5.2 来源子系统（M3 已落地）
+
+```dart
+abstract interface class SourceAdapter {
+  String get sourceId;
+  Future<SourceScanResult> scan({void Function(int, String)? onProgress, bool Function()? isCancelled});
+  Future<PlaybackItem> open(String filePathOrUrl);   // → URL + 鉴权头（httpHeaders）
+}
+```
+
+实现：`sources/local/local_library_scanner.dart`（本地目录）、`sources/webdav/`（PROPFIND + Basic 认证）、
+`sources/quark/`（Drive 接口 + Cookie 会话 + 直链缓存）。远端适配器只产出 `ScannedTrack`，
+入库仍由 `TrackRepository.mergeScan` 负责；`open()` 返回的 `PlaybackItem.httpHeaders`
+会被播放引擎（`Media(httpHeaders:)`）原样带给服务器。
+
+元数据抓取不实现 `SourceAdapter`，而是按能力拆成三个窄接口
+（`sources/scraper/metadata_provider.dart`）：
+
+| 接口 | 实现 | 用途 |
+|---|---|---|
+| `MetadataSearcher` | QQ 音乐、网易云 | 搜歌名/歌手/专辑/封面地址 |
+| `LyricsProvider` | LRCLIB（主）、网易云（兜底） | 取歌词；LRCLIB 返回的多为繁体，统一转简体 |
+| `CoverLookup` | iTunes | 按专辑名/歌手查封面地址 |
+| `ArtistLookup` | 网易云 | 艺术家头像地址（`ArtistAvatarStore` 用） |
+
+`MetadataEnricher` 负责编排（管道顺序与旧版 `MetadataEnricher.swift` 一致）：
+脏文件名解析 → QQ 音乐主元数据 → LRCLIB 歌词 → 网易云歌词兜底 → 网易云/iTunes 封面兜底。
+它只产出 `EnrichmentResult`（纯数据），落盘与写库由 `data/enrichment_service.dart` 完成。
+
+繁→简转换：Flutter 没有 ICU 的 `Traditional-Simplified` 变换，改用内置的 OpenCC 字表
+（`assets/opencc/TSCharacters.txt`，Apache-2.0）做逐字转换（不做词组级消歧，接口预留）。
+
+### 5.3 数据层（drift，M2 已落地）
+
+表（`app/lib/data/db/schema.dart`）：`tracks` · `music_sources` · `playlists` · `playlist_items`。
+与 §5.3 初版规划相比的收敛：`albums` / `artists` 不建表（用 `GROUP BY` 聚合，见 `TrackRepository.albums/artists`）；
+`lyrics_cache` / `match_overrides` / `play_history` 推迟到 M3（歌词与匹配覆盖目前落在 `tracks` 的 `lyrics` 列与后续的抓取层）。
+
+关键约定：
+
+- **主键与匹配**：`tracks.id` 主键；`(source_id, file_path_or_url)` 唯一 —— 扫描合并的匹配键（对齐 `LibrarySync.swift`）。
+  本地扫描产生的 id 是 `sourceId::path`（幂等），旧库导入则保留原 UUID。
+- **封面不入库**：`cover_art_path` 存 `CoverStore` 管理的文件名（FNV-1a 64 位命名），二进制写应用支持目录；
+  避免上千首内嵌封面把 SQLite 撑大、拖慢查询与备份。
+- **时间戳按文本存 UTC**（`storeDateTimeAsText`）—— 默认的 Unix 秒会丢毫秒，旧库 `dateAdded` 带毫秒，往返会对不上。
+- **外键级联**：`playlist_items` 对 `playlists` 与 `tracks` 都是 `ON DELETE CASCADE`，
+  删除曲目/来源不必手工清列表（`beforeOpen` 打开 `PRAGMA foreign_keys`）。
+- **扫描合并**：`TrackRepository.mergeScan` 只回写"文件事实"（大小、格式、etag、mtime、时长、封面缺省填充），
+  占位元数据（未知艺术家/未知专辑/夸克曲库/WebDAV 曲库/空标题）才允许被真实值替换；
+  收藏、播放计数、歌词、已有封面属于用户资产，永不被扫描覆盖。
+- **本地扫描**：`LocalLibraryScanner` 支持扩展名与旧版一致；遍历在主 isolate，标签解析分批进
+  `Isolate.run`（默认 64 个/批），标签读取用纯 Dart 的 `audio_metadata_reader`（内置 `ffprobe` 不现实）。
+  排序说明：旧版用 `localizedStandardCompare`，Dart 侧暂用码点序（中文即 Unicode 序，非拼音），M4 UI 阶段再引入排序键。
+
+### 5.4 macOS 三个 Swift 扩展点（D6）
+
+| 能力 | 形态 | 数据通道 |
+|---|---|---|
+| WidgetKit 小组件 | 在 `app/macos/Runner.xcodeproj` 内新增 app-extension target，搬运 `TingyuWidget.swift` + `SharedPlaybackState.swift` | App Group（`group.com.halunhaku.tingyu`）共享 JSON/UserDefaults；Dart 侧在播放状态变化时写入 |
+| App Intents | 搬运 `TingyuIntents.swift` 到独立 intents target | 扩展无法直接调 MethodChannel：用 App Group 文件 + Darwin notification 唤醒宿主，宿主 Flutter 侧监听并执行 |
+| AirPlay | 保留 `AirPlayPickerView.swift`(80)，封装为 `airplay` MethodChannel（仅 macOS） | Dart 侧 20 行胶水，弹出 `AVRoutePickerView` |
+
+**待实测确认**：非沙盒宿主 macOS 应用能否直接使用 App Group 容器（WidgetKit 扩展本身必须沙盒）。若不通过，退路一是固定路径共享文件 + 扩展的 `com.apple.security.temporary-exception.files.absolute-path.read-only` 例外；退路二是给主应用开沙盒（会牵动 Quark/WebDAV 与本地文件访问权限，需权衡）。此项列为里程碑 M1 的验证项。
+
+### 5.5 UI 层结构
+
+- 保留现有"分平台布局"设计：`features/player/` 内 `player_view_macos.dart` / `player_view_mobile.dart`，由断点 + `Platform.is*` 选择；不强行一套响应式布局。
+- 自绘组件重写：`FluidBackgroundView`(86) → `CustomPainter`/`FragmentProgram`；`AnimatedLyricsView`(100) + `LyricLine` → `AnimationController` + 时间轴（`lyrics_clock.dart`）；`CoverArtView` → `Image` + 缓存（`cached_network_image` 或自建）。
+- macOS 主题：整体 Material 3，局部使用 `Cupertino*` 控件贴近系统观感；`PlatformMenuBar` 承载原生菜单栏。
+
+---
+
+## 6. 数据迁移（旧版 → Flutter 版，M2 已落地）
+
+导出工具：`tools/legacy-export/ExportLegacyLibrary.swift`（一次性工具，不进产品）。
+
+```bash
+# 编译（xcode-select 指向 CommandLineTools 时必须显式给 DEVELOPER_DIR）
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+  swiftc -parse-as-library -O -o /tmp/tingyu-legacy-export \
+    tools/legacy-export/ExportLegacyLibrary.swift \
+    Sources/Models/Track.swift Sources/Models/MusicSource.swift Sources/Models/Playlist.swift
+
+# 导出（缺省输出 ~/Desktop/tingyu-legacy-export.json）
+/tmp/tingyu-legacy-export /tmp/tingyu-legacy-export.json
+```
+
+- 工具把 `~/Library/Application Support/default.store`（含 `-wal`/`-shm` 与 `.default_SUPPORT`）
+  **复制到临时目录后打开副本**，绝不写原库；原库 md5 前后一致已核验。
+- 导出 JSON 契约：`{version: 1, exportedAt, sources[], tracks[], playlists[]}`；
+  日期为 ISO8601（UTC，毫秒），空值写 `null`；`coverArtBase64` 携带封面二进制；**不含任何密码/Cookie**。
+
+导入端：`app/lib/data/legacy_import.dart`
+（`LegacyLibraryImporter.importFile`）——保留旧主键（曲目/播放列表 id），
+播放列表引用在迁移后依然成立；失效引用直接丢弃；重复导入幂等。
+封面 base64 落到 `CoverStore`；时间戳统一转 UTC 存储。
+
+---
+
+## 7. 迁移阶段（每阶段都有可运行产物与验收判据）
+
+| 阶段 | 内容 | 验收判据 | 对照 Swift 资产 |
+|---|---|---|---|
+| **M0 骨架** | `app/` 工作区、`di/router/theme`、三平台 CI（macOS/Windows/Ubuntu runner，Linux 需 `libmpv-dev`/`libsecret-1-dev`/`libayatana-appindicator3-dev`）、签名脚本骨架 | 三平台空壳应用能在 CI 构建并启动 | — |
+| **M1 技术验证（风险最高）** | `PlaybackEngine` 抽象 + `media_kit` 桌面实现 + `audio_service`(+win/mpris) 接通系统媒体面板；跑通本地文件播放、队列、封面元数据；同时验证 §5.4 的 App Group 方案 | macOS/Win/Linux 三平台：能播放本地音频，系统媒体面板显示曲目并可控制 | `AudioPlayerService` 570、`NowPlayingManager` 118 |
+| **M2 数据层** | drift schema/dao/repository；本地库扫描；导入旧版导出 JSON | 扫描 1000+ 文件不卡 UI；导入后曲库与旧版一致 | `Models/` 231、`LocalLibraryScanner` 213、`LibrarySync` 81、`LegacyCacheMigrator` 89 |
+| **M3 来源层** | WebDAV → Quark（含 Cookie 会话与代理流）→ 抓取器（QQ/网易/LRCLIB/iTunes）→ `MetadataEnricher` / `SmartTitleParser` / `ChineseConverter` | 每个来源可用真实账号/真实专辑跑通"列出 → 播放 → 元数据补全" | `WebDAVClient` 239+94、`QuarkDriveClient` 410、抓取器约 800 |
+| **M4 核心 UI** | 曲库 / 专辑 / 艺术家 / 播放页 / 队列 / 歌词 / 设置；`features/` 全部落地 | macOS 上达到与 Swift 版同等的功能覆盖（外观可不同） | `UI/` 4916 |
+| **M5 移动端** | `just_audio` + `audio_service`(MediaSession + 前台服务)、通知权限、`mediaPlayback` 前台服务类型、MediaStore/SAF 读本地音乐、国内 ROM 保活；iOS 侧 AudioSession 类别与后台音频能力 | Android 后台连续播放 1 小时不被杀，锁屏与蓝牙按键可控；iOS 锁屏控制面板正常 | — |
+| **M6 macOS 原生增强** | 小组件、App Intents、AirPlay 三件套搬运与联调 | 小组件随播放状态刷新；App Intents 可控制播放；AirPlay 可切设备 | `TingyuWidget` 261、`TingyuIntents` 85、`AirPlayPickerView` 80 |
+| **M7 分发** | DMG+公证、MSIX+EV 签名、Flatpak+AppImage+deb、Android 签名上架；自更新通道 | 三平台干净机器安装可用、无签名警告 | — |
+
+**工作量量级（估算，非实测）**：M1–M4 是主体，Dart 代码量约 10000–13000 行（Services 3611 → 约 4500 行 Dart；UI 4916 → 约 6500 行 Flutter）。M0/M1 是风险闸门：**若 M1 三平台系统媒体会话验证失败，方案需要回炉**。
+
+---
+
+## 8. CI / 构建流水线
+
+```yaml
+# .github/workflows/flutter.yml（要点）
+jobs:
+  build:
+    strategy:
+      matrix: { os: [macos-14, windows-2022, ubuntu-22.04] }
+    steps:
+      - subosito/flutter-action
+      - ubuntu: apt-get install libmpv-dev libsecret-1-dev libayatana-appindicator3-dev ninja-build libgtk-3-dev
+      - flutter pub get && flutter analyze && flutter test
+      - flutter build {macos|windows|linux} --release
+      - 平台签名（macOS: codesign+notarytool / Windows: signtool+Azure Trusted Signing）
+```
+
+---
+
+## 9. 风险登记表
+
+| # | 风险 | 影响 | 缓解 | 触发点 |
+|---|---|---|---|---|
+| R1 | libmpv / FFmpeg 许可证（GPL 传染） | 闭源收费分发受限 | 使用 LGPL 构建的 libmpv；发布前做许可证审计 | M7 前 |
+| R2 | 双引擎状态不一致（进度/缓冲/封面） | 播放 UI 与系统面板显示不同步 | 抽象层收敛为单一 source of truth；引擎侧只暴露 `PlaybackSnapshot` | M1 |
+| R3 | App Group 在非沙盒宿主不可用 | 小组件/Intents 拿不到数据 | 退路见 §5.4；M1 内完成验证 | M1 |
+| R4 | Linux 运行时依赖（libmpv/libsecret/appindicator） | 目标机装不上或崩溃 | Flatpak/AppImage 内自带依赖；无 keyring 时降级为文件存储 + 提示 | M1/M7 |
+| R5 | Android 后台被杀（国内 ROM） | 后台播放中断 | 前台服务 + 通知权限引导 + 厂商白名单引导页 | M5 |
+| R6 | Flutter macOS 多 target（扩展）需手改 Xcode 工程 | 每次 `flutter create` 覆盖风险 | 扩展 target 一次建好后不再重建工程；构建脚本对 Runner.xcodeproj 做幂等补丁 | M6 |
+| R7 | 抓取源结构变化 / 合规 | 功能失效或投诉下架 | 抓取器接口隔离、可独立更新；不上架来源相关的商店页描述 | 持续 |
+| R8 | 双版本维护期拉长 | 旧版 bug 与新版进度互相挤占 | D4 冻结策略：旧版只修阻塞性 bug | 持续 |
+
+---
+
+## 10. 里程碑闸门（建议）
+
+- **M0 完成即评审**：目录结构、CI 三平台绿灯。
+- **M1 完成即评审**：播放 + 系统媒体会话三平台验证结论。**这是"继续 / 调整 / 放弃"的决策点。**
+- **M4 完成即评审**：macOS 功能对齐完成，可决定旧 Swift 版正式下线时间。
+
+---
+
+## 11. 决策记录与剩余开放问题
+
+**已决策（2026-09-11）**
+1. iOS 纳入 Flutter 版，与桌面/Android 共用一套 Dart 代码（D1）。
+2. 方案文档入库 `docs/crossplatform-migration.md`（D8）。
+3. Flutter 工作区放 `app/`（D8）。
+4. 首个里程碑 = M0 骨架 + M1 技术验证闸门（D9）。
+
+**剩余开放问题**
+1. Android 是否读取设备本地音乐（MediaStore / SAF 权限），还是仅"自有曲库 + 网络来源"？影响 M5 权限模型、上架隐私描述与扫描器设计。
+2. 是否上 Google Play 等应用商店（影响签名/隐私政策工作量，非技术阻塞）。
+
+---
+
+## 12. 环境前提（本机实测，2026-09-11）
+
+| 项 | 状态 |
+|---|---|
+| Xcode | 已安装 `/Applications/Xcode.app`；但 `xcode-select -p` 仍指向 `/Library/Developer/CommandLineTools`，构建脚本需 `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` 或执行 `sudo xcode-select -s` |
+| CocoaPods | 已安装 1.17.0（`brew install cocoapods`），macOS/iOS 插件构建必需 |
+| Flutter SDK | 已安装 3.47.2 / Dart 3.13.2，位于 `~/development/flutter`（tag 浅克隆），`/opt/homebrew/bin/flutter` 为符号链接；`flutter doctor` 对本机 SDK 报 `[user-branch]` 通道警告（tag 检出所致，不影响构建） |
+| Android SDK | 已安装 `~/Library/Android/sdk`，但缺 `cmdline-tools` 且未接受 license，**Android 本地构建暂不可用**（M5 前补齐） |
+| Homebrew / ffmpeg | 已安装 |
+| 磁盘可用 | 约 4 GiB（Flutter SDK 约 1.8 GiB + 构建产物；安装 SDK 时磁盘曾耗尽，已清理临时 zip 与 Homebrew 缓存） |
+
+**本地验证边界**：Flutter 不支持从 macOS 交叉构建 Windows/Linux 桌面目标，因此本机只能验证 macOS（及 Android/iOS 需对应 SDK/模拟器）；**Windows/Linux 的构建与运行验证必须由 CI 承担**。
+
+---
+
+## 13. M1 技术验证结论（2026-09-11）
+
+分支 `ci/flutter-bootstrap` · PR [#1](https://github.com/halunhaku/tingyu/pull/1) · 提交 `416a994`
+
+| 平台 | 构建 | 运行时（播放 + 系统媒体会话） |
+|---|---|---|
+| macOS | ✅ 本地 Debug 构建 + CI Release 构建 | ✅ **已验证**（见下方证据） |
+| Windows | ✅ CI Release 构建 | ⚠️ 未验证：SMTC 需 Windows 实机 |
+| Linux | ✅ CI Release 构建 | ⚠️ 未验证：MPRIS2 需 Linux 桌面实机（DBus） |
+| Android / iOS | 未纳入 M1 范围（依赖移动端构建环境） | — |
+
+**CI**：`analyze + test` 通过（4 个 handler 契约测试），三平台 release 构建全部绿灯。
+
+**macOS 运行时证据**
+
+1. 播放链路（3 个 5 秒测试音轨，经 `TINGYU_DEBUG_SOURCES` 注入）：
+
+   ```
+   engine=media_kit (libmpv) processing=ready playing=true position=2671ms duration=5000ms index=0
+   … index 0 → 1 → 2 → completed，全程 0 error
+   ```
+
+2. 系统媒体会话（`nowplaying-cli` 独立复核，非应用自述）：
+
+   ```
+   $ nowplaying-cli get title duration playbackRate
+   tone-440.wav / 5 / 1          # bundle id: com.halunhaku.tingyu
+
+   $ nowplaying-cli pause   → 引擎 playing=false
+   $ nowplaying-cli play    → 引擎 playing=true
+   $ nowplaying-cli next    → 系统标题 tone-880.wav，引擎 index=2
+   ```
+
+   即"引擎 → 系统面板"与"系统指令 → 引擎"双向打通。
+
+**闸门结论**：**继续**。播放引擎抽象与系统媒体会话桥在 macOS 上成立，无阻塞性发现。遗留项（不阻塞后续里程碑）：
+
+- R2（双引擎状态一致性）仅在 macOS 侧观察到正确行为，移动端需在 M5 复核。
+- 系统面板实测中出现过 `duration=0`，已定位为"时长在引擎加载完成前不可知"并在 `_syncMediaItem` 中修复（时长可知后补发媒体元数据并去重），测试覆盖。
+- Windows/Linux 的运行时验证需要对应实机，建议在 M3 之前安排一次人工确认。
+
+---
+
+## 14. M2 数据层结论（2026-09-11）
+
+交付物（`app/`）：
+
+| 模块 | 文件 | 对应 Swift 资产 |
+|---|---|---|
+| 表结构与连接 | `lib/data/db/schema.dart` · `database.dart`（SQLite 文件 + 后台 isolate + UTC 文本时间戳） | SwiftData 模型 |
+| 曲目读写与合并 | `lib/data/repositories/track_repository.dart` | `LibrarySync.swift` 81 行 |
+| 播放列表 | `lib/data/repositories/playlist_repository.dart` | `Playlist.trackIds` |
+| 来源 | `lib/data/repositories/source_repository.dart` | `MusicSource` |
+| 封面缓存 | `lib/data/cover_store.dart` | `@Attribute(.externalStorage) coverArtData` |
+| 本地扫描 | `lib/sources/local/local_library_scanner.dart` | `LocalLibraryScanner.swift` 213 行 |
+| 旧库迁移 | `tools/legacy-export/ExportLegacyLibrary.swift` + `lib/data/legacy_import.dart` | `LegacyCacheMigrator.swift` 89 行 |
+
+**验证结果**
+
+1. 自动化测试 26 项全绿（`flutter analyze` 无告警）：合并语义（新增/更新/删除/用户资产保留/占位值升级）、
+   播放列表顺序与级联、聚合查询、扫描器过滤与标签映射（含 UTF-16 中文 ID3）、导入契约与幂等。
+2. **真实目录扫描**（ffmpeg 生成 3 个带中文标签的文件 + 隐藏目录 + 非音频文件）：
+
+   ```
+   SCAN tracks=3 unreadable=0 cancelled=false elapsed=18ms
+   SCAN|七里香|周杰伦|七里香|2.00s|flac|41481|trackNo=1|cover=null
+   SCAN|以父之名|周杰伦|叶惠美|3.06s|mp3|49995|trackNo=1|cover=21a21e95221c944c.png
+   SCAN|晴天|周杰伦|叶惠美|3.06s|mp3|49021|trackNo=2|cover=null
+   ```
+
+   隐藏目录与非音频文件被正确跳过；内嵌封面落盘并回传文件名。
+
+3. **真实旧库导入**（旧库为夸克来源 176 首）：`LegacyImportReport(sources: 1, tracks: 176, playlists: 0, skippedTracks: 0)`。
+   并用 `sqlite3` 对新旧两个库做独立比对：
+
+   | 比对项 | 结果 |
+   |---|---|
+   | `ZTRACK` vs `tracks` 行数 | 176 = 176 |
+   | `(title, artist, album)` 集合 | 完全一致（无单边差异） |
+   | `filePathOrUrl` 集合 | 完全一致 |
+   | 来源行数 / 名称 / kind / trackCount | 1 = 1，`夸克网盘 (音乐)` / `quark` / 176 |
+   | 时间戳 | 以 UTC 文本存储并保留毫秒（`2026-09-08T02:56:48.323Z`） |
+
+**结论**：M2 达成验收判据（扫描可用、旧库无损导入）。已知偏差与遗留：
+
+- 排序用码点序而非旧版的 `localizedStandardCompare`（中文排序表现不同，M4 处理）。
+- 「1000+ 文件不卡 UI」目前靠架构保证（遍历在主 isolate、解析分批进子 isolate、SQLite 在后台 isolate），
+  未做真实 1000+ 文件的压测；建议在 M3 开始前用真实音乐目录跑一次。
+- 扫描的全量进度 UI、来源配置界面属于 M4；M2 只保证数据与扫描能力。
+
+---
+
+## 15. M3 来源层结论（2026-09-11）
+
+交付物（`app/`）：
+
+| 模块 | 文件 | 对应 Swift 资产 |
+|---|---|---|
+| 来源抽象 | `lib/sources/source_adapter.dart` | — |
+| WebDAV | `lib/sources/webdav/{webdav_client,webdav_xml_parser,webdav_source_adapter}.dart` | `WebDAVClient.swift` 239 + `WebDAVXMLParser.swift` 94 |
+| Quark | `lib/sources/quark/{quark_cookie_store,quark_drive_client,quark_source_adapter}.dart` | `QuarkDriveClient.swift` 410 + `QuarkCookieStore.swift` |
+| 凭据 | `lib/data/secure_store.dart` | `KeychainService` / 明文 cookie 回退（已移除） |
+| 抓取 | `lib/sources/scraper/{qq_music,netease,lrclib,itunes_cover}_provider.dart` | 四个 Scraper（约 500 行） |
+| 解析 | `lib/sources/scraper/{smart_title_parser,chinese_converter}.dart` + `assets/opencc/TSCharacters.txt` | `SmartTitleParser.swift` 96 + `ChineseConverter.swift`（ICU） |
+| 编排 | `lib/sources/scraper/metadata_enricher.dart` + `lib/data/enrichment_service.dart` | `MetadataEnricher.swift` 113 |
+| 头像 | `lib/sources/scraper/artist_avatar_store.dart` | `ArtistAvatarStore.swift` 91 |
+
+**验证结果**
+
+1. **81 项测试全绿**（`flutter analyze` 无告警），其中 M3 新增 55 项：WebDAV 26（命名空间 XML、
+   href 三态解析、跳过规则、401/403/429/503 文案、depth 0 与非 0 的差异、限流间隔）、
+   Quark 11（目录解析、直链三种 JSON 形状、缓存与 `__puus` 回写、错误映射、BFS 深度/截断/取消）、
+   富化编排 7（不出网快路径、主来源命中、标题不匹配不改写、兜底顺序、封面缺失、可疑标题跳过）、
+   文件名解析 8、繁简转换 3。
+2. **真实 WebDAV 服务器**（本机临时脚本，PROPFIND/GET/Basic 认证）：
+   - 扫描 `/周杰伦/` → 2 首（隐藏目录与 png 被正确跳过，etag/大小/百分号编码 URL 正确）；
+   - `/forbidden/` → `WebDavForbidden`（"WebDAV 拒绝访问该目录 (403 Forbidden)"）；
+   - `/busy/` → `WebDavRateLimited`（"坚果云提示请求过于频繁（临时封禁中）…"）；
+   - **服务器根路径 `/` 扫描 → 2 首**（旧版此处会静默返回空，见下方偏差）；
+   - 适配器 `open()` 产出的 `PlaybackItem` 带 `Authorization`，用同样的头直接 GET 得到
+     `200` 且字节数与 `fileSize` 完全一致。
+3. **真实公开接口**（本机联网）：
+
+   ```
+   QQ      |晴天|周杰伦|叶惠美|https://y.gtimg.cn/.../T002R800x800M000000MkMni19ClKG.jpg
+   LRCLIB  |len=841|[00:27.38] 窗外的麻雀 在电线杆上多嘴 …      ← 已由繁体转成简体
+   NETEASE |晴天(深情版)|Lucky小爱|…|lyrics len=969|avatar=…?param=500y500
+   ITUNES  |…/600x600bb.jpg
+   ```
+4. **端到端**（WebDAV 扫描 → 入库 → 真实抓取 → 封面落盘）：
+
+   ```
+   E2E merge=+2
+   E2E enrich 七里香 → changed=true cover=true lyrics=true
+   E2E row|七里香|周杰伦|七里香|lyrics=841|cover=…/covers/46ba4b3e784092aa.jpg (197471 bytes)
+   E2E row|晴天|周杰伦|叶惠美|lyrics=1089|cover=…/covers/11d82db9849c2dea.jpg (183730 bytes)
+   ```
+
+**与旧版的有意偏差**
+
+| # | 偏差 | 原因 |
+|---|---|---|
+| 1 | 修正 `normalizePath('/')`：旧版得到 `//`，导致从服务器根目录扫描时所有条目都过不了前缀检查、**静默返回空** | 旧版只对 `/dav/` 这类带路径的根目录正常 |
+| 2 | 所有 JSON 接口统一按文本取回再 `jsonDecode` | QQ 返回 `application/x-javascript`、网易云 `text/plain`、iTunes `text/javascript`，dio 的类型推断会直接失败（实测：修复前这四个来源全部返回 null） |
+| 3 | Quark Cookie 不再写一份明文文件兜底 | 明文凭据落盘是纯安全降级 |
+| 4 | 新增 `isCancelled`（旧版无取消） | `SourceAdapter.scan` 契约要求 |
+| 5 | 繁→简用 OpenCC 字表逐字转换（旧版用系统 ICU 变换） | Flutter 无 ICU API；词组级消歧待需要时接入 |
+
+**遗留与未验证项**
+
+- **Quark 未做实机验证**：旧库凭据已失效（导出里 `syncStatus = 夸克凭据已失效`），
+  无法在线验证 `listFolder` / 直链；该模块由 11 项基于假 HTTP 适配器的测试覆盖，
+  等你在应用里重新登录后再补一次端到端。
+- **本机音频输出当前故障**：`afplay` 报 `AudioQueueStart failed (-66681)`，
+  media_kit 也拿不到音频时钟（position 恒为 0）。因此"HTTP + 鉴权头的远端音频出声"这一条
+  只能验到"mpv 成功鉴权取流并解析出容器时长"（未鉴权时该服务器返回 401，取不到时长）。
+  M1 阶段同一台机器上音频正常（当时已验证到播放位置推进 + 系统媒体面板），
+  所以这是环境问题而非代码回归；恢复方式见 §16。
+- 歌词/元数据匹配沿用旧版的"互相包含"判据，网易云可能命中翻唱版本（实测 `晴天` 命中
+  `晴天(深情版)`），与旧版行为一致，未做收紧。
+- 艺术家/专辑排序仍是码点序（M4 处理）。
+
+---
+
+## 16. 本机环境异常（待你处理）
+
+**音频输出不可用**：`afplay` 报 `AudioQueueStart failed (-66681)`，`coreaudiod` 在运行，
+默认输出设备是"MacBook Air扬声器"（另有 `OrayVirtualAudioDevice` 虚拟声卡）。
+影响：所有需要"真的出声"的验证（WebDAV 远端播放、M5 移动端前的桌面播放回归）。
+
+建议处理：`sudo killall coreaudiod`（launchd 会自动重启）或重启系统；若装有向日葵/Oray
+等虚拟声卡软件，先退出再试。处理完告诉我，我补跑一次远端播放验证。
+
+---
+
+## 17. M4 桌面 UI 结论（2026-09-12）
+
+交付物（`app/lib/`）：
+
+| 模块 | 文件 | 对应 Swift 资产 |
+|---|---|---|
+| 外壳与导航 | `app/router.dart` · `app/theme.dart` · `features/shell/app_shell.dart` | `MacOSContentView.swift` 484 |
+| 状态与动作 | `app/providers.dart` · `app/playback_controller.dart` · `app/track_resolver.dart` · `app/source_adapters.dart` | `AudioPlayerService` 的界面侧职责 |
+| 共享组件 | `features/shared/{cover_art,track_row,empty_state,format,add_to_playlist}.dart` | `TrackRowView` 158 · `CoverArtView` |
+| 曲库 | `features/library/library_page.dart` · `library/manual_match_dialog.dart` | `LibraryTrackListView` · `MacOSTrackTable` 200 · `ManualMatchSheet` 258 |
+| 专辑/艺术家 | `features/albums/*` · `features/artists/*` | `AlbumGridView` 85 · `AlbumDetailView` 208 · `ArtistListView` · `ArtistDetailView` 241 · `ArtistAvatarView` 72 |
+| 播放 | `features/player/{player_bar,now_playing_page,playback_controls,queue_panel,fluid_background,lyrics_panel,lrc_parser}.dart` | `MacOSNowPlayingToolbar` 441 · `PlaybackControls` 103 · `UpNextQueueView` 158 · `FluidBackgroundView` 86 · `AnimatedLyricsView` 100 |
+| 播放列表 | `features/playlists/playlist_page.dart` | `PlaylistActions` + 侧栏 CRUD |
+| 来源与设置 | `features/sources/*` · `features/settings/settings_page.dart` | `SourceManagerView` 524 · `AddQuarkSheet` 481 |
+
+**验证结果**
+
+1. `flutter analyze` 无告警；**81 项测试全绿**（UI 未新增测试：桌面布局属人工核验对象，见下）。
+2. macOS Debug 构建通过，并**逐页截图核验**（`screencapture` + 视觉复核）：
+
+   | 页面 | 核验到的内容 |
+   |---|---|
+   | 曲库 `/library` | 侧栏（曲库/最近添加/艺术家/专辑/收藏 + 来源计数 176/3 + 播放列表 + 设置）、179 首列表（已富化的 周杰伦 · 七里香/叶惠美）、底部悬浮播放条 |
+   | 专辑 `/albums` | 标题「专辑」+ 4 张专辑网格（七里香 / 叶惠美 / 夸克曲库 …） |
+   | 艺术家 `/artists` | 「2 位」+ 周杰伦 16 首 / 未知艺术家 163 首（首字头像） |
+   | 正在播放 `/now-playing` | 全屏舞台（封面 + 标题 + 传送器）+ 歌词区 + 右侧「接下来播放」（2 首） |
+   | 设置 `/settings` | 曲库统计（179/4/2/0/2）、来源与批量操作入口、播放引擎 `media_kit (libmpv)` + `audio_service` |
+   | 全部页面 | **无** Flutter 溢出条纹、**无**红色异常框 |
+
+3. 截图核验发现并修掉的两个真实缺陷：
+   - **播放条溢出 99px**：Flutter 模板默认窗口只有 800×600，侧栏占 248px 后内容区不足。
+     已把窗口默认尺寸改为 1180×760、最小 900×600（`MainFlutterWindow.swift`），
+     并让播放条按宽度分级收敛（窄窗口先去掉音量，再去掉进度条）。
+   - **外部设置的队列不显示元数据**：队列若非经 `PlaybackController` 设置（调试入口、
+     未来的系统恢复/深链），界面拿不到曲目 id。已给 `PlaybackEngine` 增加
+     `currentItem` / `items`，播放条、正在播放页、队列面板都改为"库内行优先、引擎条目兜底"。
+
+**与旧版的功能对照（M4 范围内）**
+
+- 已对齐：侧栏与分组、曲库/最近添加/收藏、专辑与艺术家浏览、播放列表 CRUD 与拖拽排序、
+  播放条、全屏正在播放舞台、歌词（高亮 + 自动滚动 + 一键抓取）、队列、来源管理
+  （本地目录 / WebDAV 表单 / 夸克 Cookie + 文件夹选择）、同步与元数据补全、人工匹配、设置页。
+- 未纳入（按本轮决定）：AI 元数据解析与 AI 设置面板（单独排一个里程碑）；移动端布局（M5）。
+- 已知差异：菜单栏搜索快捷键仍为 ⌘1–⌘4 跳转 + 侧栏搜索框（旧版是 ⌘K 聚焦搜索框）；
+  夸克登录沿用"粘贴 Cookie"（旧版的 WKWebView 抓取属 UI 增强，未移植）。
+
+---
+
+## 18. 里程碑进度
+
+| 里程碑 | 状态 |
+|---|---|
+| M0 骨架 + CI | ✅ |
+| M1 播放与系统媒体会话闸门 | ✅（macOS 运行时已验证；Win/Linux 待实机） |
+| M2 数据层 | ✅ |
+| M3 来源层 | ✅（Quark 待实机验证） |
+| M4 桌面 UI | ✅（AI 与移动端不在本轮范围） |
+| M5 移动端（Android / iOS） | ✅ Android：构建 + 模拟器端到端播放 + SAF 本地音乐（§21）；iOS：构建 + 模拟器运行（播放链路待补） |
+| M6 macOS 原生增强（WidgetKit / App Intents / AirPlay） | 未开始 |
+| M7 分发（DMG / MSIX / Flatpak / 商店） | 未开始 |
+
+---
+
+## 19. M5 移动端结论（2026-09-12）
+
+交付物（`app/`）：
+
+| 模块 | 文件 | 对应 Swift 资产 |
+|---|---|---|
+| 移动外壳 | `lib/features/shell/mobile_shell.dart` · `lib/features/player/mini_player.dart` | `IOSContentView.swift` 202 · `IOSMiniPlayer.swift` 73 |
+| 歌单页 | `lib/features/playlists/playlists_page.dart` | `IOSPlaylistsView.swift` 136 |
+| 移动布局适配 | `now_playing_page.dart`（窄屏纵向 + 队列底部弹层）· `router.dart`（按平台选外壳） | `IOSNowPlayingSheet.swift` 119 |
+| Android 平台配置 | `android/app/src/main/AndroidManifest.xml`（权限 / 前台服务 / 媒体键接收器 / `AudioServiceActivity`） | 旧版无 Android 目标 |
+| iOS 平台配置 | `ios/Runner/Info.plist`（`UIBackgroundModes: audio`） | 同旧版能力 |
+| 通知权限 | `main.dart` 在 Android 上请求 `POST_NOTIFICATIONS`（`permission_handler`） | — |
+
+**本机构建 Android 的前置（实测踩过的坑，写下来避免重复）**
+
+1. SDK 缺 `cmdline-tools`：装到 `~/Library/Android/sdk/cmdline-tools/latest` 并 `sdkmanager --licenses` 接受授权。
+2. **Gradle 必须用 JDK 21**：本机只有 Temurin 26，AGP 的 `JdkImageTransform` 在 JDK 26 上会 `jlink` 失败；
+   已下载免安装版 Temurin 21 到 `~/development/jdk-21`，并 `flutter config --jdk-dir=~/development/jdk-21/Contents/Home`。
+3. `permission_handler` 12.x 需要 compileSdk 34（已装 `platforms;android-34`）；13.x 要求 `android-37`，
+   而当前 SDK 里该平台叫 `android-37.0`，故本工程钉在 `^11.4.0`。
+4. 构建前需 `ANDROID_HOME=~/Library/Android/sdk`；首次构建会下载 Gradle 9.3.1 与依赖。
+
+**验证结果（Android 模拟器 Pixel 10 Pro / Android 17，真机不适用）**
+
+1. **构建**：`flutter build apk --debug` 通过；`apkanalyzer` 核验产物清单包含
+   `INTERNET` / `FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_MEDIA_PLAYBACK` / `WAKE_LOCK` / `POST_NOTIFICATIONS`，
+   以及 `com.ryanheise.audioservice.AudioService`（`foregroundServiceType=mediaPlayback`）、`MediaButtonReceiver`、
+   `AudioServiceActivity`。
+2. **后台播放链路（端到端）**：在模拟器上播放设备内音频时，系统 `MediaSessionService` 报告
+   `PlaybackState {state=PLAYING(3), position=1039→3033, buffered position=3030, speed=1.0, activeItem=1}`，
+   即 ExoPlayer 解码推进、`audio_service` 的媒体会话已被系统接管。
+3. **界面（逐屏截图核验）**：
+   - 曲库页：标题「曲库」+ 底部 Tab（曲库/收藏/歌单/音乐源）+ 曲目列表；
+   - 歌单页：空态文案 + 「新建」入口；
+   - 迷你播放条：显示当前曲目「晴天 / 周杰伦」与播放/下一首按钮；
+   - 正在播放页：大封面 + 曲目信息 + 传送器 + 歌词（含「抓取歌词」）+ 右上队列入口；
+   - **无溢出条纹、无红色异常框**。
+4. 权限请求：首次启动时弹出系统「允许听屿发送通知？」，确认 `POST_NOTIFICATIONS` 请求路径生效。
+
+**截图核验发现并修掉的问题**
+
+- **手机端正在播放页横向溢出 142px**：原布局沿用桌面形态（左侧舞台 + 固定 320px 队列栏），
+  在 426pt 宽的手机上放不下。已改为：窄屏（<720pt）纵向铺满 + 队列改为底部弹层入口（对齐旧版 iOS 的 sheet 形态）。
+
+**未完成与风险**
+
+- **iOS：构建与模拟器运行已验证**（见下方"iOS 补验"），但**播放链路未在 iOS 上端到端验证**
+  （见该节的说明）。
+- **Android 本地音乐访问仍是缺口**：实测直接读取 `/sdcard/Music/*.mp3` 会 `EACCES`（Android 13+ 需要
+  `READ_MEDIA_AUDIO` 或 SAF 目录授权）。本次验证是绕开该限制、把音频放进应用私有目录完成的。
+  旧版没有 Android 目标，因此这是新增需求：建议下一步做「SAF 目录选择 + 持久化 URI 权限」，
+  与 iOS 的安全作用域书签一一对应。
+- 移动端未做真机验证（模拟器无音频输出：启动参数 `-no-audio`）；后台保活、厂商省电策略需真机复核。
+
+---
+
+## 20. M5 补充：iOS 构建与模拟器验证（2026-09-12）
+
+**前置修复（两处，均为一次性环境问题）**
+
+1. 安装 Xcode 的 iOS 平台组件：`xcodebuild -downloadPlatform iOS`（iOS 26.5 模拟器运行时，8.52 GB）。
+   在此之前 `flutter build ios` 直接失败，报 `iOS 26.5 is not installed`。
+2. **`xcode-select` 必须指向 Xcode**：本机原先指向 `/Library/Developer/CommandLineTools`，
+   导致 Flutter 的 native-assets 钩子（`objective_c` 包）在 Xcode 脚本阶段执行
+   `xcrun --show-sdk-path --sdk iphoneos` 时拿到空输出，构建报
+   `Bad state: No element` / `Target build_hooks failed`。
+   修复：`sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`（已由你执行）。
+   顺带好处：此后 flutter 命令不再需要手动带 `DEVELOPER_DIR`。
+
+**验证结果**
+
+| 项目 | 结果 |
+|---|---|
+| 设备构建 | ✅ `flutter build ios --debug --no-codesign` → `build/ios/iphoneos/Runner.app` |
+| 模拟器构建 | ✅ `flutter build ios --debug --simulator` → `build/ios/iphonesimulator/Runner.app` |
+| 模拟器安装与启动 | ✅ iPhone 17 / iOS 26.5：`simctl install` + `launch` 成功 |
+| 移动 UI | ✅ 截图核验：导航标题「曲库」、底部 Tab（曲库/收藏/歌单/音乐源）、库内 178 首列表、空态与「添加来源」按钮；无异常 |
+| 播放链路 | ⚠️ 未在 iOS 上端到端验证：`simctl` 不支持点击自动化，且 `SIMCTL_CHILD_*` 环境变量未能传入 Flutter 应用（实测用 `TINGYU_DEBUG_ROUTE` 验证过：启动仍停在 /library），因此无法用调试入口直接起播 |
+
+**iOS 侧新增的代码改动**：`Info.plist` 的 `UIBackgroundModes: audio`；
+移动端启动时显式配置 `AudioSessionConfiguration.music()`（音频焦点、被电话打断、
+后台播放与锁屏控制的前提；旧版在 `AudioPlayerService` 里做的是同一件事）。
+播放链路的其余部分与 Android 共用同一套 Dart 代码（Android 侧已实测 PLAYING 推进）。
+
+---
+
+## 21. Android 本地音乐（SAF 目录授权）（2026-09-12）
+
+**问题**：Android 10+ 的分区存储下，直接读 `/sdcard/Music/*.mp3` 会 `EACCES`
+（实测复现：ExoPlayer 报 `open failed: EACCES`）。旧版没有 Android 目标，所以这是新增需求。
+两条正路：`READ_MEDIA_AUDIO` + MediaStore（只覆盖"媒体库里的音频"）或 SAF 目录授权
+（任意目录、用户显式授权，语义与 iOS 的安全作用域书签一致）。本工程选后者。
+
+**交付物**
+
+| 模块 | 文件 | 说明 |
+|---|---|---|
+| 原生桥 | `app/packages/tingyu_saf/`（本地 Flutter 插件：Kotlin + Dart） | `pickDirectory` 拉起系统目录选择器并**持久化**读权限；`listChildren` 用 `DocumentsContract` 枚举目录；`hasPermission` / `releasePermission` |
+| 来源适配器 | `lib/sources/local/saf_source_adapter.dart` | 递归枚举授权目录 → `ScannedTrack`（`filePathOrUrl` 是 `content://` URI，ExoPlayer 可直接播放）；扩展名过滤、批量上限、取消、单目录失败不中断 |
+| 接线 | `lib/app/source_adapters.dart` · `features/sources/{sources_page,source_page}.dart` | Android 本地来源走 SAF（tree URI 存在 `music_sources.local_bookmark`）；桌面仍是文件系统路径；删除来源时释放授权 |
+| 授权失效 | `SafPermissionLostException` | 用户在系统设置里撤销授权时给出明确提示 |
+
+**验证（Android 模拟器，真机不适用）**
+
+1. `flutter build apk --debug` 通过（含新插件的 Kotlin 编译）；安装到 Pixel 10 Pro / Android 17。
+2. 走完整用户路径（用 adb 点击 + 截图逐步核对）：
+   「音乐源」→「添加来源」→「本地目录」→ 系统目录选择器（`ACTION_OPEN_DOCUMENT_TREE`）→
+   选中 `Movies` →「USE THIS FOLDER」→ 系统「Allow access to Movies」→ 允许。
+3. 应用随即建源并同步：界面显示 **「系统授权的音乐目录（SAF）」**、
+   **`2 首 · 已同步（新增 2 / 更新 0 / 移除 0）`**，列表出现 `qilixiang` / `qingtian` 两行
+   （文件名解析出的标题，元数据留给抓取管道补全）。
+4. **播放 content:// 曲目**：点击列表行后，系统 `MediaSessionService` 报告
+   `PlaybackState {state=PLAYING(3), position=2067→3033, buffered=3030, speed=1.0}`，无错误 ——
+   即 SAF 枚举出来的 `content://` URI 已被 ExoPlayer 正常读取并解码。
+
+**遗留**：iOS 侧的对应能力（文件夹书签）尚未实现；移动端真机（非模拟器）未验证。
+
+---
+
+## 22. 夸克登录改为应用内网页登录（2026-09-12）
+
+**动机**：粘贴 Cookie 对用户太笨重。夸克没有面向第三方的公开授权接口
+（与阿里云盘的 OpenAPI 不同），业界做法只有两种：内嵌官方网页登录后读取 Cookie，
+或逆向扫码接口。这里选前者——**不依赖任何逆向接口**，官方改页面也不影响，
+且旧版 Swift 也是这么做的（`QuarkWebLoginView` + WKWebView）。
+
+**实现**（纯 Dart，无新增原生代码）
+
+| 环节 | 做法 |
+|---|---|
+| 打开登录 | `webview_flutter` 打开 `https://pan.quark.cn/list`，并**强制桌面 UA**（`QuarkDriveClient.userAgent`）——移动 UA 会被导到"立即下载"推广页，拿不到网页版界面；这个 UA 与后续 API 请求完全一致 |
+| 抓取凭证 | `WebViewCookieManager().getCookies(domain:)` 读取系统 Cookie 存储（含 HttpOnly），拼成 Cookie 串；Android 走 `CookieManager`，iOS/macOS 走 `WKHTTPCookieStore` |
+| 校验与落库 | 用现成的 `QuarkDriveClient.verifyCookie` 校验 → 成功即自动返回上一页并把 Cookie 写进系统安全存储（`SecureStore`）；失败则在页面顶部提示"请先完成登录" |
+| 自动完成 | 每 3 秒轮询一次；也可手动点右上角「完成」立即校验 |
+| 重新登录 | 来源列表里对已存在的夸克来源提供「重新登录」，更新凭据而不动已入库曲目 |
+| 平台差异 | Windows / Linux 官方 WebView 插件不支持，那里仍保留"粘贴 Cookie"入口（`QuarkLoginPage.isSupported` 分流） |
+
+**验证**：Android 真机（Xiaomi 14 Ultra / Android 16）安装 release 包后走
+「音乐源 → 添加来源 → 夸克网盘」，应用内 WebView 成功加载夸克网页版界面
+（页面内可见「登录」「全部文件」「我的分享」等），顶部提示条显示
+"请在下方页面完成登录，成功后会自动返回"。**真实账号的登录与自动抓取需你本人完成**
+（我无法也不应该代你登录），完成后应用会自动返回并让你选曲库文件夹。
+
+**风险**：官方网页若大改（登录入口迁移、增加验证码/风控），需要跟着调整；
+但相比逆向接口，这种改动的频率与破坏性都低得多。
