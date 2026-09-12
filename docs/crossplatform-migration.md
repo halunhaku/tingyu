@@ -608,6 +608,15 @@ jobs:
 | iOS 平台配置 | `ios/Runner/Info.plist`（`UIBackgroundModes: audio`） | 同旧版能力 |
 | 通知权限 | `main.dart` 在 Android 上请求 `POST_NOTIFICATIONS`（`permission_handler`） | — |
 
+**本机构建 Android 的前置（实测踩过的坑，写下来避免重复）**
+
+1. SDK 缺 `cmdline-tools`：装到 `~/Library/Android/sdk/cmdline-tools/latest` 并 `sdkmanager --licenses` 接受授权。
+2. **Gradle 必须用 JDK 21**：本机只有 Temurin 26，AGP 的 `JdkImageTransform` 在 JDK 26 上会 `jlink` 失败；
+   已下载免安装版 Temurin 21 到 `~/development/jdk-21`，并 `flutter config --jdk-dir=~/development/jdk-21/Contents/Home`。
+3. `permission_handler` 12.x 需要 compileSdk 34（已装 `platforms;android-34`）；13.x 要求 `android-37`，
+   而当前 SDK 里该平台叫 `android-37.0`，故本工程钉在 `^11.4.0`。
+4. 构建前需 `ANDROID_HOME=~/Library/Android/sdk`；首次构建会下载 Gradle 9.3.1 与依赖。
+
 **验证结果（Android 模拟器 Pixel 10 Pro / Android 17，真机不适用）**
 
 1. **构建**：`flutter build apk --debug` 通过；`apkanalyzer` 核验产物清单包含
