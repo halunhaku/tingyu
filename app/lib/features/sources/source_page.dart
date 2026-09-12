@@ -67,6 +67,11 @@ class SourcePage extends ConsumerWidget {
                       value.localFolderPath!,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
+                  if ((value.localBookmark ?? '').startsWith('content://'))
+                    Text(
+                      '系统授权的音乐目录（SAF）',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   if (value.webdavUrl != null)
                     Text(
                       '${value.webdavUrl}（${value.webdavUsername ?? ''}）',

@@ -1,5 +1,8 @@
+import 'dart:io' show Platform;
+
 import 'package:drift/drift.dart' show Value;
 import 'package:file_selector/file_selector.dart';
+import 'package:tingyu_saf/tingyu_saf.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -117,24 +120,51 @@ class SourcesPage extends ConsumerWidget {
   }
 
   Future<void> _addLocalFolder(BuildContext context, WidgetRef ref) async {
-    final String? path = await getDirectoryPath(confirmButtonText: '选择');
-    if (path == null || path.isEmpty) {
-      return;
-    }
+    // Android：必须走 SAF 目录授权（分区存储下直接读 /sdcard 会 EACCES）。
+    // 桌面：普通文件系统路径，用系统目录选择器。
     final String id = 'src-${DateTime.now().microsecondsSinceEpoch}';
-    final String name = path.split('/').where((String part) => part.isNotEmpty).last;
-    await ref.read(sourceRepositoryProvider).upsert(
-          MusicSourcesCompanion.insert(
-            id: id,
-            name: name,
-            kind: 'local',
-            localFolderPath: Value<String?>(path),
-          ),
-        );
+    if (Platform.isAndroid) {
+      final String? treeUri = await TingyuSaf.pickDirectory();
+      if (treeUri == null || treeUri.isEmpty) {
+        return; // 用户取消
+      }
+      await ref.read(sourceRepositoryProvider).upsert(
+            MusicSourcesCompanion.insert(
+              id: id,
+              name: _displayNameOfTreeUri(treeUri),
+              kind: 'local',
+              localBookmark: Value<String?>(treeUri),
+            ),
+          );
+    } else {
+      final String? path = await getDirectoryPath(confirmButtonText: '选择');
+      if (path == null || path.isEmpty) {
+        return;
+      }
+      final String name = path.split('/').where((String part) => part.isNotEmpty).last;
+      await ref.read(sourceRepositoryProvider).upsert(
+            MusicSourcesCompanion.insert(
+              id: id,
+              name: name,
+              kind: 'local',
+              localFolderPath: Value<String?>(path),
+            ),
+          );
+    }
     if (!context.mounted) {
       return;
     }
     await _syncAndReport(context, ref, id);
+  }
+
+  /// 从 SAF tree URI 里取一个可读的目录名（形如 `content://.../tree/primary%3AMusic`）。
+  static String _displayNameOfTreeUri(String treeUri) {
+    final String tail = treeUri.split('/').last;
+    final String decoded = Uri.decodeComponent(tail);
+    final int colon = decoded.indexOf(':');
+    final String path = colon >= 0 ? decoded.substring(colon + 1) : decoded;
+    final String name = path.split('/').where((String part) => part.isNotEmpty).lastOrNull ?? '本地音乐';
+    return name;
   }
 
   Future<void> _addWebDav(BuildContext context, WidgetRef ref) async {
@@ -379,6 +409,11 @@ class SourceTile extends ConsumerWidget {
     await ref.read(sourceRepositoryProvider).delete(source.id);
     await SecureStore().delete(SecureStore.accountFor(SecureStore.quarkCookiePrefix, source.id));
     await SecureStore().delete(SecureStore.accountFor(SecureStore.webdavPasswordPrefix, source.id));
+    // Android：同时释放 SAF 目录授权，避免系统设置里留下僵尸权限。
+    final String? treeUri = source.localBookmark;
+    if (Platform.isAndroid && treeUri != null && treeUri.startsWith('content://')) {
+      await TingyuSaf.releasePermission(treeUri);
+    }
   }
 }
 

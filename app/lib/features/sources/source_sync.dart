@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
@@ -131,15 +129,6 @@ class SourceSyncController extends Notifier<Map<String, SourceSyncState>> {
     // 来源异常自带中文文案（WebDavException / QuarkException）。
     return error.toString().replaceFirst('Exception: ', '');
   }
-}
-
-/// 便于 UI 判断是否为本地来源。
-bool isLocalSource(MusicSource source) => source.kind == 'local';
-
-/// 目录是否存在（本地来源的可用性提示）。
-bool localFolderExists(MusicSource source) {
-  final String? path = source.localFolderPath;
-  return path != null && path.isNotEmpty && Directory(path).existsSync();
 }
 
 final NotifierProvider<SourceSyncController, Map<String, SourceSyncState>> sourceSyncProvider =

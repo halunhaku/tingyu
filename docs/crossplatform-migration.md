@@ -589,7 +589,7 @@ jobs:
 | M2 数据层 | ✅ |
 | M3 来源层 | ✅（Quark 待实机验证） |
 | M4 桌面 UI | ✅（AI 与移动端不在本轮范围） |
-| M5 移动端（Android / iOS） | ✅ Android 构建 + 模拟器端到端播放验证；iOS 构建 + 模拟器运行验证（播放链路待补）；Android 本地音乐待接 SAF |
+| M5 移动端（Android / iOS） | ✅ Android：构建 + 模拟器端到端播放 + SAF 本地音乐（§21）；iOS：构建 + 模拟器运行（播放链路待补） |
 | M6 macOS 原生增强（WidgetKit / App Intents / AirPlay） | 未开始 |
 | M7 分发（DMG / MSIX / Flatpak / 商店） | 未开始 |
 
@@ -678,3 +678,36 @@ jobs:
 移动端启动时显式配置 `AudioSessionConfiguration.music()`（音频焦点、被电话打断、
 后台播放与锁屏控制的前提；旧版在 `AudioPlayerService` 里做的是同一件事）。
 播放链路的其余部分与 Android 共用同一套 Dart 代码（Android 侧已实测 PLAYING 推进）。
+
+---
+
+## 21. Android 本地音乐（SAF 目录授权）（2026-09-12）
+
+**问题**：Android 10+ 的分区存储下，直接读 `/sdcard/Music/*.mp3` 会 `EACCES`
+（实测复现：ExoPlayer 报 `open failed: EACCES`）。旧版没有 Android 目标，所以这是新增需求。
+两条正路：`READ_MEDIA_AUDIO` + MediaStore（只覆盖"媒体库里的音频"）或 SAF 目录授权
+（任意目录、用户显式授权，语义与 iOS 的安全作用域书签一致）。本工程选后者。
+
+**交付物**
+
+| 模块 | 文件 | 说明 |
+|---|---|---|
+| 原生桥 | `app/packages/tingyu_saf/`（本地 Flutter 插件：Kotlin + Dart） | `pickDirectory` 拉起系统目录选择器并**持久化**读权限；`listChildren` 用 `DocumentsContract` 枚举目录；`hasPermission` / `releasePermission` |
+| 来源适配器 | `lib/sources/local/saf_source_adapter.dart` | 递归枚举授权目录 → `ScannedTrack`（`filePathOrUrl` 是 `content://` URI，ExoPlayer 可直接播放）；扩展名过滤、批量上限、取消、单目录失败不中断 |
+| 接线 | `lib/app/source_adapters.dart` · `features/sources/{sources_page,source_page}.dart` | Android 本地来源走 SAF（tree URI 存在 `music_sources.local_bookmark`）；桌面仍是文件系统路径；删除来源时释放授权 |
+| 授权失效 | `SafPermissionLostException` | 用户在系统设置里撤销授权时给出明确提示 |
+
+**验证（Android 模拟器，真机不适用）**
+
+1. `flutter build apk --debug` 通过（含新插件的 Kotlin 编译）；安装到 Pixel 10 Pro / Android 17。
+2. 走完整用户路径（用 adb 点击 + 截图逐步核对）：
+   「音乐源」→「添加来源」→「本地目录」→ 系统目录选择器（`ACTION_OPEN_DOCUMENT_TREE`）→
+   选中 `Movies` →「USE THIS FOLDER」→ 系统「Allow access to Movies」→ 允许。
+3. 应用随即建源并同步：界面显示 **「系统授权的音乐目录（SAF）」**、
+   **`2 首 · 已同步（新增 2 / 更新 0 / 移除 0）`**，列表出现 `qilixiang` / `qingtian` 两行
+   （文件名解析出的标题，元数据留给抓取管道补全）。
+4. **播放 content:// 曲目**：点击列表行后，系统 `MediaSessionService` 报告
+   `PlaybackState {state=PLAYING(3), position=2067→3033, buffered=3030, speed=1.0}`，无错误 ——
+   即 SAF 枚举出来的 `content://` URI 已被 ExoPlayer 正常读取并解码。
+
+**遗留**：iOS 侧的对应能力（文件夹书签）尚未实现；移动端真机（非模拟器）未验证。
