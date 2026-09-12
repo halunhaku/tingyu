@@ -1,6 +1,6 @@
 # 听屿 跨平台迁移方案 v1（Flutter）
 
-> 状态：**已批准**（2026-09-11）。M0（骨架 + CI）、M1（播放闸门）、M2（数据层）、M3（来源层）已完成，结论见 §13–§15；本机音频异常见 §16。
+> 状态：**已批准**（2026-09-11）。M0–M4 已完成（结论见 §13–§15、§17）；进度与剩余里程碑见 §18；本机音频异常见 §16。
 > 日期：2026-09-11
 > 依据：仓库实测（`Sources/` 61 个 Swift 文件 / 8837 行）、`project.yml`、以及公开生态现状核查。
 
@@ -529,4 +529,67 @@ jobs:
 
 建议处理：`sudo killall coreaudiod`（launchd 会自动重启）或重启系统；若装有向日葵/Oray
 等虚拟声卡软件，先退出再试。处理完告诉我，我补跑一次远端播放验证。
+
+---
+
+## 17. M4 桌面 UI 结论（2026-09-12）
+
+交付物（`app/lib/`）：
+
+| 模块 | 文件 | 对应 Swift 资产 |
+|---|---|---|
+| 外壳与导航 | `app/router.dart` · `app/theme.dart` · `features/shell/app_shell.dart` | `MacOSContentView.swift` 484 |
+| 状态与动作 | `app/providers.dart` · `app/playback_controller.dart` · `app/track_resolver.dart` · `app/source_adapters.dart` | `AudioPlayerService` 的界面侧职责 |
+| 共享组件 | `features/shared/{cover_art,track_row,empty_state,format,add_to_playlist}.dart` | `TrackRowView` 158 · `CoverArtView` |
+| 曲库 | `features/library/library_page.dart` · `library/manual_match_dialog.dart` | `LibraryTrackListView` · `MacOSTrackTable` 200 · `ManualMatchSheet` 258 |
+| 专辑/艺术家 | `features/albums/*` · `features/artists/*` | `AlbumGridView` 85 · `AlbumDetailView` 208 · `ArtistListView` · `ArtistDetailView` 241 · `ArtistAvatarView` 72 |
+| 播放 | `features/player/{player_bar,now_playing_page,playback_controls,queue_panel,fluid_background,lyrics_panel,lrc_parser}.dart` | `MacOSNowPlayingToolbar` 441 · `PlaybackControls` 103 · `UpNextQueueView` 158 · `FluidBackgroundView` 86 · `AnimatedLyricsView` 100 |
+| 播放列表 | `features/playlists/playlist_page.dart` | `PlaylistActions` + 侧栏 CRUD |
+| 来源与设置 | `features/sources/*` · `features/settings/settings_page.dart` | `SourceManagerView` 524 · `AddQuarkSheet` 481 |
+
+**验证结果**
+
+1. `flutter analyze` 无告警；**81 项测试全绿**（UI 未新增测试：桌面布局属人工核验对象，见下）。
+2. macOS Debug 构建通过，并**逐页截图核验**（`screencapture` + 视觉复核）：
+
+   | 页面 | 核验到的内容 |
+   |---|---|
+   | 曲库 `/library` | 侧栏（曲库/最近添加/艺术家/专辑/收藏 + 来源计数 176/3 + 播放列表 + 设置）、179 首列表（已富化的 周杰伦 · 七里香/叶惠美）、底部悬浮播放条 |
+   | 专辑 `/albums` | 标题「专辑」+ 4 张专辑网格（七里香 / 叶惠美 / 夸克曲库 …） |
+   | 艺术家 `/artists` | 「2 位」+ 周杰伦 16 首 / 未知艺术家 163 首（首字头像） |
+   | 正在播放 `/now-playing` | 全屏舞台（封面 + 标题 + 传送器）+ 歌词区 + 右侧「接下来播放」（2 首） |
+   | 设置 `/settings` | 曲库统计（179/4/2/0/2）、来源与批量操作入口、播放引擎 `media_kit (libmpv)` + `audio_service` |
+   | 全部页面 | **无** Flutter 溢出条纹、**无**红色异常框 |
+
+3. 截图核验发现并修掉的两个真实缺陷：
+   - **播放条溢出 99px**：Flutter 模板默认窗口只有 800×600，侧栏占 248px 后内容区不足。
+     已把窗口默认尺寸改为 1180×760、最小 900×600（`MainFlutterWindow.swift`），
+     并让播放条按宽度分级收敛（窄窗口先去掉音量，再去掉进度条）。
+   - **外部设置的队列不显示元数据**：队列若非经 `PlaybackController` 设置（调试入口、
+     未来的系统恢复/深链），界面拿不到曲目 id。已给 `PlaybackEngine` 增加
+     `currentItem` / `items`，播放条、正在播放页、队列面板都改为"库内行优先、引擎条目兜底"。
+
+**与旧版的功能对照（M4 范围内）**
+
+- 已对齐：侧栏与分组、曲库/最近添加/收藏、专辑与艺术家浏览、播放列表 CRUD 与拖拽排序、
+  播放条、全屏正在播放舞台、歌词（高亮 + 自动滚动 + 一键抓取）、队列、来源管理
+  （本地目录 / WebDAV 表单 / 夸克 Cookie + 文件夹选择）、同步与元数据补全、人工匹配、设置页。
+- 未纳入（按本轮决定）：AI 元数据解析与 AI 设置面板（单独排一个里程碑）；移动端布局（M5）。
+- 已知差异：菜单栏搜索快捷键仍为 ⌘1–⌘4 跳转 + 侧栏搜索框（旧版是 ⌘K 聚焦搜索框）；
+  夸克登录沿用"粘贴 Cookie"（旧版的 WKWebView 抓取属 UI 增强，未移植）。
+
+---
+
+## 18. 里程碑进度
+
+| 里程碑 | 状态 |
+|---|---|
+| M0 骨架 + CI | ✅ |
+| M1 播放与系统媒体会话闸门 | ✅（macOS 运行时已验证；Win/Linux 待实机） |
+| M2 数据层 | ✅ |
+| M3 来源层 | ✅（Quark 待实机验证） |
+| M4 桌面 UI | ✅（AI 与移动端不在本轮范围） |
+| M5 移动端（Android / iOS） | 未开始 |
+| M6 macOS 原生增强（WidgetKit / App Intents / AirPlay） | 未开始 |
+| M7 分发（DMG / MSIX / Flatpak / 商店） | 未开始 |
 

@@ -144,7 +144,14 @@ class TrackRepository {
   }
 
   /// 艺术家聚合；占位名（未知艺术家）排在最后。
-  Future<List<ArtistSummary>> artists({String? sourceId}) async {
+  Future<List<ArtistSummary>> artists({String? sourceId}) =>
+      _artistsQuery(sourceId).get().then(_mapArtists);
+
+  /// 同上，但随曲库变化自动重算（UI 用）。
+  Stream<List<ArtistSummary>> watchArtists({String? sourceId}) =>
+      _artistsQuery(sourceId).watch().map(_mapArtists);
+
+  JoinedSelectStatement<HasResultSet, dynamic> _artistsQuery(String? sourceId) {
     final Expression<int> count = _db.tracks.id.count();
     final JoinedSelectStatement<HasResultSet, dynamic> query = _db.selectOnly(_db.tracks)
       ..addColumns(<Expression<Object>>[_db.tracks.artist, count])
@@ -152,7 +159,11 @@ class TrackRepository {
     if (sourceId != null) {
       query.where(_db.tracks.sourceId.equals(sourceId));
     }
-    final List<TypedResult> rows = await query.get();
+    return query;
+  }
+
+  List<ArtistSummary> _mapArtists(List<TypedResult> rows) {
+    final Expression<int> count = _db.tracks.id.count();
     final List<ArtistSummary> summaries = rows
         .map((TypedResult row) => ArtistSummary(
               name: row.read(_db.tracks.artist)!,
@@ -172,18 +183,27 @@ class TrackRepository {
   /// 这里用 `customSelect`：drift 的 `max()` 只对非空表达式开放，而 `year` 与
   /// `cover_art_path` 都是可空列。SQL 里的列名与 `schema.dart` 的 snake_case 命名绑定，
   /// 由 `track_repository_test.dart` 的聚合用例兜底（改列名会直接测挂）。
-  Future<List<AlbumSummary>> albums({String? sourceId}) async {
+  Future<List<AlbumSummary>> albums({String? sourceId}) =>
+      _albumsQuery(sourceId).get().then(_mapAlbums);
+
+  /// 同上，但随曲库变化自动重算（UI 用）。
+  Stream<List<AlbumSummary>> watchAlbums({String? sourceId}) =>
+      _albumsQuery(sourceId).watch().map(_mapAlbums);
+
+  Selectable<QueryRow> _albumsQuery(String? sourceId) {
     final String whereClause = sourceId == null ? '' : 'WHERE source_id = ?';
     final List<Variable<Object>> variables =
         sourceId == null ? const <Variable<Object>>[] : <Variable<Object>>[Variable<String>(sourceId)];
-    final List<QueryRow> rows = await _db.customSelect(
+    return _db.customSelect(
       'SELECT artist, album, COUNT(*) AS track_count, MAX(year) AS year, '
       'MAX(cover_art_path) AS cover_art_path '
       'FROM tracks $whereClause GROUP BY artist, album',
       variables: variables,
       readsFrom: <ResultSetImplementation<dynamic, dynamic>>{_db.tracks},
-    ).get();
+    );
+  }
 
+  List<AlbumSummary> _mapAlbums(List<QueryRow> rows) {
     final List<AlbumSummary> summaries = rows
         .map((QueryRow row) => AlbumSummary(
               artist: row.read<String>('artist'),

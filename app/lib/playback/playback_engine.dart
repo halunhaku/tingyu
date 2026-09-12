@@ -18,6 +18,15 @@ abstract interface class PlaybackEngine {
   /// 最近一次状态。
   PlaybackSnapshot get current;
 
+  /// 引擎当前队列里正在播放的条目（队列为空或下标越界时为 null）。
+  ///
+  /// UI 用它兜底展示元数据：无论队列是经 `PlaybackController` 还是被外部
+  /// （如系统媒体会话恢复、调试入口）设置的，都能拿到标题/艺术家/封面。
+  PlaybackItem? get currentItem;
+
+  /// 引擎持有的队列（只读）。
+  List<PlaybackItem> get items;
+
   /// 替换整个队列并从 [startIndex] 定位（不自动播放）。
   Future<void> setQueue(List<PlaybackItem> items, {int startIndex = 0});
 

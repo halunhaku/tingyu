@@ -32,11 +32,23 @@ final class JustAudioEngine extends PlaybackEngineBase {
 
   late final List<StreamSubscription<void>> _subscriptions;
 
+  List<PlaybackItem> _items = const <PlaybackItem>[];
+
+  @override
+  List<PlaybackItem> get items => _items;
+
+  @override
+  PlaybackItem? get currentItem {
+    final int? index = _player.currentIndex;
+    return (index != null && index >= 0 && index < _items.length) ? _items[index] : null;
+  }
+
   @override
   String get name => _engineName;
 
   @override
   Future<void> setQueue(List<PlaybackItem> items, {int startIndex = 0}) async {
+    _items = List<PlaybackItem>.unmodifiable(items);
     await _player.setAudioSources(
       items.map(_toAudioSource).toList(growable: false),
       initialIndex: startIndex,

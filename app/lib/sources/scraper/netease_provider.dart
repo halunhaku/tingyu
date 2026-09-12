@@ -32,9 +32,19 @@ class NetEaseProvider implements MetadataSearcher, LyricsProvider, ArtistLookup 
 
   @override
   Future<MetadataCandidate?> search(String title, {String artist = ''}) async {
+    final List<MetadataCandidate> candidates = await searchCandidates(title, artist: artist, limit: 1);
+    return candidates.isEmpty ? null : candidates.first;
+  }
+
+  /// 多候选（人工匹配界面用）。上游按 `limit` 返回一页结果。
+  Future<List<MetadataCandidate>> searchCandidates(
+    String title, {
+    String artist = '',
+    int limit = 5,
+  }) async {
     final String query = _buildQuery(title, artist);
     if (query.isEmpty) {
-      return null;
+      return const <MetadataCandidate>[];
     }
 
     final Map<String, dynamic>? body = await fetchJsonMap(
@@ -46,44 +56,48 @@ class NetEaseProvider implements MetadataSearcher, LyricsProvider, ArtistLookup 
         'type': 1,
         'offset': 0,
         'total': 'true',
-        'limit': 1,
+        'limit': limit,
       },
       headers: browserHeaders,
     );
     final Object? result = body?['result'];
     if (result is! Map<String, dynamic>) {
-      return null;
+      return const <MetadataCandidate>[];
     }
     final Object? songs = result['songs'];
     if (songs is! List<dynamic> || songs.isEmpty) {
-      return null;
-    }
-    final Object? first = songs.first;
-    if (first is! Map<String, dynamic>) {
-      return null;
-    }
-    final Object? songId = first['id'];
-    final String? songTitle = first['name'] as String?;
-    if (songId == null || songTitle == null) {
-      return null;
+      return const <MetadataCandidate>[];
     }
 
-    String albumName = '';
-    String? picUrl;
-    final Object? album = first['album'];
-    if (album is Map<String, dynamic>) {
-      albumName = album['name'] as String? ?? '';
-      picUrl = album['picUrl'] as String?;
+    final List<MetadataCandidate> candidates = <MetadataCandidate>[];
+    for (final dynamic entry in songs) {
+      if (entry is! Map<String, dynamic>) {
+        continue;
+      }
+      final Object? songId = entry['id'];
+      final String? songTitle = entry['name'] as String?;
+      if (songId == null || songTitle == null) {
+        continue;
+      }
+      String albumName = '';
+      String? picUrl;
+      final Object? album = entry['album'];
+      if (album is Map<String, dynamic>) {
+        albumName = album['name'] as String? ?? '';
+        picUrl = album['picUrl'] as String?;
+      }
+      candidates.add(
+        MetadataCandidate(
+          provider: name,
+          title: songTitle,
+          artist: _firstArtist(entry),
+          album: albumName,
+          coverUrl: picUrl,
+          sourceId: songId.toString(),
+        ),
+      );
     }
-
-    return MetadataCandidate(
-      provider: name,
-      title: songTitle,
-      artist: _firstArtist(first),
-      album: albumName,
-      coverUrl: picUrl,
-      sourceId: songId.toString(),
-    );
+    return candidates;
   }
 
   @override

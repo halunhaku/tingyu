@@ -13,9 +13,18 @@ final class _FakeEngine extends PlaybackEngineBase {
   @override
   String get name => 'fake';
 
+  List<PlaybackItem> _items = const <PlaybackItem>[];
+
+  @override
+  List<PlaybackItem> get items => _items;
+
+  @override
+  PlaybackItem? get currentItem => _items.isEmpty ? null : _items.first;
+
   @override
   Future<void> setQueue(List<PlaybackItem> items, {int startIndex = 0}) async {
     queues.add(items);
+    _items = List<PlaybackItem>.unmodifiable(items);
     commands.add('setQueue:$startIndex');
   }
 

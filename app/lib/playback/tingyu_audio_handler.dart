@@ -49,6 +49,12 @@ final class TingyuAudioHandler extends BaseAudioHandler with QueueHandler, SeekH
   /// 最近一次播放状态。
   PlaybackSnapshot get currentSnapshot => _engine.current;
 
+  /// 引擎当前队列条目（UI 兜底展示用）。
+  PlaybackItem? get currentItem => _engine.currentItem;
+
+  /// 引擎持有的队列（只读）。
+  List<PlaybackItem> get items => _engine.items;
+
   /// 替换队列并定位到 [startIndex]（不自动播放）。
   Future<void> setQueue(List<PlaybackItem> items, {int startIndex = 0}) async {
     _items = List<PlaybackItem>.unmodifiable(items);
