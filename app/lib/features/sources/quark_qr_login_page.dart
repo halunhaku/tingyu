@@ -25,8 +25,13 @@ class _QuarkQrLoginPageState extends State<QuarkQrLoginPage> {
   final QuarkQrLogin _login = QuarkQrLogin();
   final QuarkDriveClient _client = QuarkDriveClient();
 
+  /// 二维码寿命：实测 token 约 2 分钟后失效（超时后端回 `50004002`，夸克 App 会说
+  /// 「登录请求已过期」）。这里留出余量，在它死之前**自动换一张**，用户随时扫到的都是有效的。
+  static const Duration _qrLifetime = Duration(seconds: 75);
+
   QuarkQrSession? _session;
   Timer? _poller;
+  DateTime? _issuedAt;
   String _status = '正在申请二维码…';
   bool _loading = true;
   bool _failed = false;
@@ -57,7 +62,9 @@ class _QuarkQrLoginPageState extends State<QuarkQrLoginPage> {
       }
       setState(() {
         _session = session;
+        _issuedAt = DateTime.now();
         _loading = false;
+        _failed = false;
         _status = '请打开夸克 App → 扫一扫';
       });
     } on Object catch (error) {
@@ -74,12 +81,32 @@ class _QuarkQrLoginPageState extends State<QuarkQrLoginPage> {
 
   bool _polling = false;
 
+  /// 距离二维码自动更新还有多少秒（用于倒计时展示）。
+  int get _secondsLeft {
+    final DateTime? issuedAt = _issuedAt;
+    if (issuedAt == null) {
+      return _qrLifetime.inSeconds;
+    }
+    final int left = _qrLifetime.inSeconds - DateTime.now().difference(issuedAt).inSeconds;
+    return left < 0 ? 0 : left;
+  }
+
   Future<void> _tick() async {
     final QuarkQrSession? session = _session;
     if (session == null || _polling || _loading || !mounted) {
       return;
     }
+    // 过期前主动换一张：用户看到的永远是新鲜二维码，不会"扫了才被告知过期"。
+    if (_secondsLeft <= 0) {
+      await _refresh();
+      if (mounted && !_failed) {
+        setState(() => _status = '二维码已自动更新，请重新扫描');
+      }
+      return;
+    }
     _polling = true;
+    setState(() {}); // 推进倒计时
+
     try {
       final QuarkQrPollResult result = await _login.poll(session);
       if (!mounted) {
@@ -89,10 +116,9 @@ class _QuarkQrLoginPageState extends State<QuarkQrLoginPage> {
         case QuarkQrPhase.waitingScan:
           setState(() => _status = result.message);
         case QuarkQrPhase.expired:
-          setState(() {
-            _failed = true;
-            _status = result.message;
-          });
+          // 服务端说过期就立刻换新的，不让用户对着死码发愣。
+          setState(() => _status = '二维码已过期，正在换一张…');
+          await _refresh();
         case QuarkQrPhase.error:
           setState(() {
             _failed = true;
@@ -255,7 +281,15 @@ class _QuarkQrLoginPageState extends State<QuarkQrLoginPage> {
                               backgroundColor: Colors.white,
                             ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+                if (session != null && !_loading && !_failed)
+                  Text(
+                    '二维码 $_secondsLeft 秒后自动更新',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                  ),
+                const SizedBox(height: 8),
                 Text(
                   _status,
                   textAlign: TextAlign.center,
@@ -273,7 +307,8 @@ class _QuarkQrLoginPageState extends State<QuarkQrLoginPage> {
                 const SizedBox(height: 8),
                 Text(
                   '另一种方式：用另一台设备上的夸克 App 扫码。\n'
-                  '二维码约 2 分钟有效，过期点右上角刷新。',
+                  '二维码约 1 分钟换一次（自动），扫码后请**尽快**在手机上点确认 ——\n'
+                  '夸克的登录请求本身很短命，拖久了 App 会提示「已过期」。',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
