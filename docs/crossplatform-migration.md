@@ -711,3 +711,32 @@ jobs:
    即 SAF 枚举出来的 `content://` URI 已被 ExoPlayer 正常读取并解码。
 
 **遗留**：iOS 侧的对应能力（文件夹书签）尚未实现；移动端真机（非模拟器）未验证。
+
+---
+
+## 22. 夸克登录改为应用内网页登录（2026-09-12）
+
+**动机**：粘贴 Cookie 对用户太笨重。夸克没有面向第三方的公开授权接口
+（与阿里云盘的 OpenAPI 不同），业界做法只有两种：内嵌官方网页登录后读取 Cookie，
+或逆向扫码接口。这里选前者——**不依赖任何逆向接口**，官方改页面也不影响，
+且旧版 Swift 也是这么做的（`QuarkWebLoginView` + WKWebView）。
+
+**实现**（纯 Dart，无新增原生代码）
+
+| 环节 | 做法 |
+|---|---|
+| 打开登录 | `webview_flutter` 打开 `https://pan.quark.cn/list`，并**强制桌面 UA**（`QuarkDriveClient.userAgent`）——移动 UA 会被导到"立即下载"推广页，拿不到网页版界面；这个 UA 与后续 API 请求完全一致 |
+| 抓取凭证 | `WebViewCookieManager().getCookies(domain:)` 读取系统 Cookie 存储（含 HttpOnly），拼成 Cookie 串；Android 走 `CookieManager`，iOS/macOS 走 `WKHTTPCookieStore` |
+| 校验与落库 | 用现成的 `QuarkDriveClient.verifyCookie` 校验 → 成功即自动返回上一页并把 Cookie 写进系统安全存储（`SecureStore`）；失败则在页面顶部提示"请先完成登录" |
+| 自动完成 | 每 3 秒轮询一次；也可手动点右上角「完成」立即校验 |
+| 重新登录 | 来源列表里对已存在的夸克来源提供「重新登录」，更新凭据而不动已入库曲目 |
+| 平台差异 | Windows / Linux 官方 WebView 插件不支持，那里仍保留"粘贴 Cookie"入口（`QuarkLoginPage.isSupported` 分流） |
+
+**验证**：Android 真机（Xiaomi 14 Ultra / Android 16）安装 release 包后走
+「音乐源 → 添加来源 → 夸克网盘」，应用内 WebView 成功加载夸克网页版界面
+（页面内可见「登录」「全部文件」「我的分享」等），顶部提示条显示
+"请在下方页面完成登录，成功后会自动返回"。**真实账号的登录与自动抓取需你本人完成**
+（我无法也不应该代你登录），完成后应用会自动返回并让你选曲库文件夹。
+
+**风险**：官方网页若大改（登录入口迁移、增加验证码/风控），需要跟着调整；
+但相比逆向接口，这种改动的频率与破坏性都低得多。

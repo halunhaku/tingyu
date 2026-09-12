@@ -13,6 +13,7 @@ import '../../data/secure_store.dart';
 import '../../sources/quark/quark_drive_client.dart';
 import '../../sources/webdav/webdav_client.dart';
 import '../shared/empty_state.dart';
+import 'quark_login_page.dart';
 import 'source_sync.dart';
 
 /// 来源管理：列出、添加、同步、删除本地目录 / WebDAV / 夸克网盘。
@@ -103,7 +104,9 @@ class SourcesPage extends ConsumerWidget {
               ListTile(
                 leading: const Icon(Icons.cloud_queue),
                 title: const Text('夸克网盘'),
-                subtitle: const Text('粘贴网页版 Cookie 后选择文件夹'),
+                subtitle: Text(
+                  QuarkLoginPage.isSupported ? '应用内登录后自动获取凭证' : '粘贴网页版 Cookie 后选择文件夹',
+                ),
                 onTap: () {
                   Navigator.pop(dialogContext);
                   _addQuark(context, ref);
@@ -217,10 +220,7 @@ class SourcesPage extends ConsumerWidget {
   }
 
   Future<void> _addQuark(BuildContext context, WidgetRef ref) async {
-    final String? cookie = await showDialog<String>(
-      context: context,
-      builder: (BuildContext dialogContext) => const _QuarkCookieDialog(),
-    );
+    final String? cookie = await _obtainQuarkCookie(context);
     if (cookie == null || cookie.trim().isEmpty) {
       return;
     }
@@ -272,6 +272,20 @@ class SourcesPage extends ConsumerWidget {
       return;
     }
     await _syncAndReport(context, ref, id);
+  }
+
+  /// 取夸克凭证：支持 WebView 的平台走应用内登录，其余平台保留粘贴入口。
+  Future<String?> _obtainQuarkCookie(BuildContext context) async {
+    if (QuarkLoginPage.isSupported) {
+      final String? cookie = await Navigator.of(context).push<String>(
+        MaterialPageRoute<String>(builder: (_) => const QuarkLoginPage()),
+      );
+      return cookie;
+    }
+    return showDialog<String>(
+      context: context,
+      builder: (BuildContext dialogContext) => const _QuarkCookieDialog(),
+    );
   }
 
   /// 选择夸克曲库目录：返回 fid（''=根目录），取消返回 null。
@@ -376,6 +390,11 @@ class SourceTile extends ConsumerWidget {
             onPressed: sync.running ? null : () => ref.read(sourceSyncProvider.notifier).sync(source),
             child: const Text('同步'),
           ),
+          if (source.kind == 'quark' && QuarkLoginPage.isSupported)
+            TextButton(
+              onPressed: sync.running ? null : () => _reloginQuark(context, ref),
+              child: const Text('重新登录'),
+            ),
           IconButton(
             tooltip: '打开',
             icon: const Icon(Icons.chevron_right),
@@ -389,6 +408,23 @@ class SourceTile extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// 重新登录夸克：更新安全存储里的凭据，不改动已入库的曲目。
+  Future<void> _reloginQuark(BuildContext context, WidgetRef ref) async {
+    final String? cookie = await Navigator.of(context).push<String>(
+      MaterialPageRoute<String>(builder: (_) => const QuarkLoginPage()),
+    );
+    if (cookie == null || cookie.trim().isEmpty) {
+      return;
+    }
+    await SecureStore().writeQuarkCookie(source.id, cookie.trim());
+    final QuarkDriveClient client = QuarkDriveClient();
+    final ({bool isValid, String nickname}) check = await client.verifyCookie(cookie.trim());
+    await ref.read(sourceRepositoryProvider).updateSyncStatus(
+          source.id,
+          status: check.isValid ? '登录已更新（${check.nickname}）' : '夸克凭据已失效',
+        );
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
