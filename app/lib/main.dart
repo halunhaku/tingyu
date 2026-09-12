@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'app/providers.dart';
 import 'app/router.dart';
@@ -31,6 +32,11 @@ Future<void> main() async {
   // 桌面系统媒体会话：macOS 走 audio_service 自带实现，Windows 由 audio_service_win
   // 接管 SMTC，Linux 由 audio_service_mpris 接管 MPRIS2；两者均通过
   // dartPluginClass 自动注册，无需在此手动初始化。
+
+  // Android 13+ 的系统媒体通知需要运行时授权；被拒绝也不影响播放（只是通知栏不显示）。
+  if (Platform.isAndroid) {
+    await Permission.notification.request();
+  }
 
   final PlaybackEngine engine = createPlaybackEngine();
   final TingyuAudioHandler handler = await AudioService.init<TingyuAudioHandler>(
@@ -68,6 +74,8 @@ class _TingyuAppState extends State<TingyuApp> {
     initialLocation: Platform.environment['TINGYU_DEBUG_ROUTE']?.trim().isNotEmpty ?? false
         ? Platform.environment['TINGYU_DEBUG_ROUTE']!.trim()
         : '/library',
+    // 与旧版一致：移动端与桌面端是两套布局（移动端底部 Tab + 迷你播放条）。
+    mobile: Platform.isAndroid || Platform.isIOS,
   );
 
   @override

@@ -8,23 +8,31 @@ import '../features/artists/artists_page.dart';
 import '../features/library/library_page.dart';
 import '../features/player/now_playing_page.dart';
 import '../features/playlists/playlist_page.dart';
+import '../features/playlists/playlists_page.dart';
 import '../features/settings/settings_page.dart';
 import '../features/shell/app_shell.dart';
+import '../features/shell/mobile_shell.dart';
 import '../features/sources/source_page.dart';
 import '../features/sources/sources_page.dart';
 import 'providers.dart';
 
 /// 应用路由。
 ///
-/// 侧栏驱动的桌面外壳，路径同时承载"当前选中项"与未来的深链
-/// （`tingyu://album/...` 这类由 App Intents 触发的跳转，M6 接）。
-GoRouter createRouter({String initialLocation = '/library'}) {
+/// 两套外壳共用同一组子路由：
+/// - 桌面：侧栏驱动的 [AppShell]；
+/// - 移动：底部 Tab 驱动的 [MobileShell]。
+/// 路径同时承载"当前选中项"与未来的深链（`tingyu://…`，M6 接 App Intents）。
+GoRouter createRouter({
+  String initialLocation = '/library',
+  bool mobile = false,
+}) {
   return GoRouter(
     initialLocation: initialLocation,
     routes: <RouteBase>[
       ShellRoute(
-        builder: (BuildContext context, GoRouterState state, Widget child) =>
-            AppShell(child: child),
+        builder: (BuildContext context, GoRouterState state, Widget child) => mobile
+            ? MobileShell(child: child)
+            : AppShell(child: child),
         routes: <RouteBase>[
           GoRoute(
             path: '/library',
@@ -60,6 +68,10 @@ GoRouter createRouter({String initialLocation = '/library'}) {
                 album: Uri.decodeComponent(state.pathParameters['album'] ?? ''),
               ),
             ),
+          ),
+          GoRoute(
+            path: '/playlists',
+            builder: (_, _) => const PlaylistsPage(),
           ),
           GoRoute(
             path: '/playlist/:id',

@@ -589,7 +589,55 @@ jobs:
 | M2 数据层 | ✅ |
 | M3 来源层 | ✅（Quark 待实机验证） |
 | M4 桌面 UI | ✅（AI 与移动端不在本轮范围） |
-| M5 移动端（Android / iOS） | 未开始 |
+| M5 移动端（Android / iOS） | ✅ 构建与模拟器验证完成；iOS 构建待装平台组件，Android 本地音乐待接 SAF |
 | M6 macOS 原生增强（WidgetKit / App Intents / AirPlay） | 未开始 |
 | M7 分发（DMG / MSIX / Flatpak / 商店） | 未开始 |
 
+---
+
+## 19. M5 移动端结论（2026-09-12）
+
+交付物（`app/`）：
+
+| 模块 | 文件 | 对应 Swift 资产 |
+|---|---|---|
+| 移动外壳 | `lib/features/shell/mobile_shell.dart` · `lib/features/player/mini_player.dart` | `IOSContentView.swift` 202 · `IOSMiniPlayer.swift` 73 |
+| 歌单页 | `lib/features/playlists/playlists_page.dart` | `IOSPlaylistsView.swift` 136 |
+| 移动布局适配 | `now_playing_page.dart`（窄屏纵向 + 队列底部弹层）· `router.dart`（按平台选外壳） | `IOSNowPlayingSheet.swift` 119 |
+| Android 平台配置 | `android/app/src/main/AndroidManifest.xml`（权限 / 前台服务 / 媒体键接收器 / `AudioServiceActivity`） | 旧版无 Android 目标 |
+| iOS 平台配置 | `ios/Runner/Info.plist`（`UIBackgroundModes: audio`） | 同旧版能力 |
+| 通知权限 | `main.dart` 在 Android 上请求 `POST_NOTIFICATIONS`（`permission_handler`） | — |
+
+**验证结果（Android 模拟器 Pixel 10 Pro / Android 17，真机不适用）**
+
+1. **构建**：`flutter build apk --debug` 通过；`apkanalyzer` 核验产物清单包含
+   `INTERNET` / `FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_MEDIA_PLAYBACK` / `WAKE_LOCK` / `POST_NOTIFICATIONS`，
+   以及 `com.ryanheise.audioservice.AudioService`（`foregroundServiceType=mediaPlayback`）、`MediaButtonReceiver`、
+   `AudioServiceActivity`。
+2. **后台播放链路（端到端）**：在模拟器上播放设备内音频时，系统 `MediaSessionService` 报告
+   `PlaybackState {state=PLAYING(3), position=1039→3033, buffered position=3030, speed=1.0, activeItem=1}`，
+   即 ExoPlayer 解码推进、`audio_service` 的媒体会话已被系统接管。
+3. **界面（逐屏截图核验）**：
+   - 曲库页：标题「曲库」+ 底部 Tab（曲库/收藏/歌单/音乐源）+ 曲目列表；
+   - 歌单页：空态文案 + 「新建」入口；
+   - 迷你播放条：显示当前曲目「晴天 / 周杰伦」与播放/下一首按钮；
+   - 正在播放页：大封面 + 曲目信息 + 传送器 + 歌词（含「抓取歌词」）+ 右上队列入口；
+   - **无溢出条纹、无红色异常框**。
+4. 权限请求：首次启动时弹出系统「允许听屿发送通知？」，确认 `POST_NOTIFICATIONS` 请求路径生效。
+
+**截图核验发现并修掉的问题**
+
+- **手机端正在播放页横向溢出 142px**：原布局沿用桌面形态（左侧舞台 + 固定 320px 队列栏），
+  在 426pt 宽的手机上放不下。已改为：窄屏（<720pt）纵向铺满 + 队列改为底部弹层入口（对齐旧版 iOS 的 sheet 形态）。
+
+**未完成与风险**
+
+- **iOS 构建未能验证**：本机 Xcode 26.6 未安装 iOS 平台组件（`xcodebuild` 报
+  `iOS 26.5 is not installed... download from Xcode > Settings > Components`）。
+  代码侧的 iOS 改动（后台音频模式、共用同一套移动 UI）已就位，但**没有构建证据**。
+  安装该组件（约 7–10GB）后即可跑 `flutter build ios --debug --no-codesign`。
+- **Android 本地音乐访问仍是缺口**：实测直接读取 `/sdcard/Music/*.mp3` 会 `EACCES`（Android 13+ 需要
+  `READ_MEDIA_AUDIO` 或 SAF 目录授权）。本次验证是绕开该限制、把音频放进应用私有目录完成的。
+  旧版没有 Android 目标，因此这是新增需求：建议下一步做「SAF 目录选择 + 持久化 URI 权限」，
+  与 iOS 的安全作用域书签一一对应。
+- 移动端未做真机验证（模拟器无音频输出：启动参数 `-no-audio`）；后台保活、厂商省电策略需真机复核。

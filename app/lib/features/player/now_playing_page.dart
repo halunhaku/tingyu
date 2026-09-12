@@ -36,10 +36,11 @@ class NowPlayingPage extends ConsumerWidget {
     // 队列可能不是经控制器设置的（调试入口 / 系统恢复）：此时用引擎条目兜底展示。
     final PlaybackItem? item = controller.currentItem;
 
-    return Row(
-      children: <Widget>[
-        Expanded(
-          child: FluidBackground(
+    // 窄屏（手机）放不下 320px 的固定队列栏，改为"舞台铺满 + 队列用底部弹层"，
+    // 与旧版 iOS 的 `IOSNowPlayingSheet` + 队列按钮的形态一致。
+    final bool narrow = MediaQuery.sizeOf(context).width < 720;
+
+    final Widget stage = FluidBackground(
             // 换色种子用封面标识：同一首歌永远得到同一套配色。
             seed: track?.coverArtPath ??
                 track?.coverArtUrl ??
@@ -50,13 +51,30 @@ class NowPlayingPage extends ConsumerWidget {
               children: <Widget>[
                 Padding(
                   padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: () => context.go('/library'),
-                      icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                      label: const Text('返回'),
-                    ),
+                  child: Row(
+                    children: <Widget>[
+                      TextButton.icon(
+                        // 桌面是页面跳转，移动端是从曲库 push 进来的，直接返回即可。
+                        onPressed: () => context.canPop() ? context.pop() : context.go('/library'),
+                        icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                        label: const Text('返回'),
+                      ),
+                      const Spacer(),
+                      // 窄屏没有固定队列栏，用底部弹层给队列入口。
+                      if (narrow)
+                        IconButton(
+                          tooltip: '播放队列',
+                          icon: const Icon(Icons.queue_music),
+                          onPressed: () => showModalBottomSheet<void>(
+                            context: context,
+                            showDragHandle: true,
+                            builder: (BuildContext sheetContext) => const SizedBox(
+                              height: 420,
+                              child: QueuePanel(),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 Expanded(
@@ -70,8 +88,15 @@ class NowPlayingPage extends ConsumerWidget {
                 ),
               ],
             ),
-          ),
-        ),
+          );
+
+    if (narrow) {
+      return stage;
+    }
+
+    return Row(
+      children: <Widget>[
+        Expanded(child: stage),
         const VerticalDivider(width: 1),
         const SizedBox(width: 320, child: QueuePanel()),
       ],

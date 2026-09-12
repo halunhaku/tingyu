@@ -25,6 +25,7 @@ dependencies:
   media_kit_libs_audio: ^1.0.7
   path: ^1.9.1
   path_provider: ^2.1.6
+  permission_handler: ^11.4.0
   xml: ^7.0.1
 dev_dependencies:
   flutter_test:
