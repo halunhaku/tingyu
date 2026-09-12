@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../sources/quark/quark_drive_client.dart';
 import '../../sources/quark/quark_qr_login.dart';
+import 'quark_import_page.dart';
 
 /// 夸克扫码登录页：应用内直接出二维码，用夸克 App 扫一下就完成。
 ///
@@ -121,6 +122,17 @@ class _QuarkQrLoginPageState extends State<QuarkQrLoginPage> {
       }
     } finally {
       _polling = false;
+    }
+  }
+
+  /// 扫桌面端显示的配对二维码，直接接管其凭证。
+  Future<void> _importFromDesktop() async {
+    final String? cookie = await Navigator.of(context).push<String>(
+      MaterialPageRoute<String>(builder: (_) => const QuarkImportPage()),
+    );
+    if (cookie != null && cookie.isNotEmpty && mounted) {
+      _poller?.cancel();
+      Navigator.of(context).pop(cookie);
     }
   }
 
@@ -274,6 +286,22 @@ class _QuarkQrLoginPageState extends State<QuarkQrLoginPage> {
                     child: const Text('重新获取二维码'),
                   ),
                 ],
+                const SizedBox(height: 20),
+                const Divider(),
+                const SizedBox(height: 8),
+                Text(
+                  '同一台手机扫码不方便？也可以先在电脑（macOS 版）用官方扫码登录，再回来点下面这个按钮把凭证扫过来。',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _importFromDesktop,
+                  icon: const Icon(Icons.qr_code_scanner),
+                  label: const Text('从桌面端扫码接管登录'),
+                ),
               ],
             ),
           ),

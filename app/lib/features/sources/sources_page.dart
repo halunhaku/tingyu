@@ -14,6 +14,7 @@ import '../../sources/quark/quark_drive_client.dart';
 import '../../sources/webdav/webdav_client.dart';
 import '../shared/empty_state.dart';
 import 'quark_qr_login_page.dart';
+import 'quark_transfer_page.dart';
 import 'quark_web_login_page.dart';
 import 'source_sync.dart';
 
@@ -380,6 +381,12 @@ class SourceTile extends ConsumerWidget {
               onPressed: sync.running ? null : () => _reloginQuark(context, ref),
               child: const Text('重新登录'),
             ),
+          // 手机端没法自己登录夸克（风控），让它扫这里显示的二维码接管凭证。
+          if (source.kind == 'quark' && (Platform.isMacOS || Platform.isWindows || Platform.isLinux))
+            TextButton(
+              onPressed: sync.running ? null : () => _transferToPhone(context, ref),
+              child: const Text('手机接管'),
+            ),
           IconButton(
             tooltip: '打开',
             icon: const Icon(Icons.chevron_right),
@@ -392,6 +399,32 @@ class SourceTile extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  /// 把当前凭证通过局域网交给手机（手机扫码即接管）。
+  Future<void> _transferToPhone(BuildContext context, WidgetRef ref) async {
+    final String? cookie = await SecureStore().readQuarkCookie(source.id);
+    if (cookie == null || cookie.isEmpty) {
+      if (context.mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (BuildContext dialogContext) => AlertDialog(
+            title: const Text('还没有可用凭证'),
+            content: const Text('请先用「重新登录」完成扫码登录，再来生成手机接管二维码。'),
+            actions: <Widget>[
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('好')),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+    if (!context.mounted) {
+      return;
+    }
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => QuarkTransferPage(cookie: cookie)),
     );
   }
 
