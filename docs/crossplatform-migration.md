@@ -589,7 +589,7 @@ jobs:
 | M2 数据层 | ✅ |
 | M3 来源层 | ✅（Quark 待实机验证） |
 | M4 桌面 UI | ✅（AI 与移动端不在本轮范围） |
-| M5 移动端（Android / iOS） | ✅ 构建与模拟器验证完成；iOS 构建待装平台组件，Android 本地音乐待接 SAF |
+| M5 移动端（Android / iOS） | ✅ Android 构建 + 模拟器端到端播放验证；iOS 构建 + 模拟器运行验证（播放链路待补）；Android 本地音乐待接 SAF |
 | M6 macOS 原生增强（WidgetKit / App Intents / AirPlay） | 未开始 |
 | M7 分发（DMG / MSIX / Flatpak / 商店） | 未开始 |
 
@@ -641,12 +641,40 @@ jobs:
 
 **未完成与风险**
 
-- **iOS 构建未能验证**：本机 Xcode 26.6 未安装 iOS 平台组件（`xcodebuild` 报
-  `iOS 26.5 is not installed... download from Xcode > Settings > Components`）。
-  代码侧的 iOS 改动（后台音频模式、共用同一套移动 UI）已就位，但**没有构建证据**。
-  安装该组件（约 7–10GB）后即可跑 `flutter build ios --debug --no-codesign`。
+- **iOS：构建与模拟器运行已验证**（见下方"iOS 补验"），但**播放链路未在 iOS 上端到端验证**
+  （见该节的说明）。
 - **Android 本地音乐访问仍是缺口**：实测直接读取 `/sdcard/Music/*.mp3` 会 `EACCES`（Android 13+ 需要
   `READ_MEDIA_AUDIO` 或 SAF 目录授权）。本次验证是绕开该限制、把音频放进应用私有目录完成的。
   旧版没有 Android 目标，因此这是新增需求：建议下一步做「SAF 目录选择 + 持久化 URI 权限」，
   与 iOS 的安全作用域书签一一对应。
 - 移动端未做真机验证（模拟器无音频输出：启动参数 `-no-audio`）；后台保活、厂商省电策略需真机复核。
+
+---
+
+## 20. M5 补充：iOS 构建与模拟器验证（2026-09-12）
+
+**前置修复（两处，均为一次性环境问题）**
+
+1. 安装 Xcode 的 iOS 平台组件：`xcodebuild -downloadPlatform iOS`（iOS 26.5 模拟器运行时，8.52 GB）。
+   在此之前 `flutter build ios` 直接失败，报 `iOS 26.5 is not installed`。
+2. **`xcode-select` 必须指向 Xcode**：本机原先指向 `/Library/Developer/CommandLineTools`，
+   导致 Flutter 的 native-assets 钩子（`objective_c` 包）在 Xcode 脚本阶段执行
+   `xcrun --show-sdk-path --sdk iphoneos` 时拿到空输出，构建报
+   `Bad state: No element` / `Target build_hooks failed`。
+   修复：`sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`（已由你执行）。
+   顺带好处：此后 flutter 命令不再需要手动带 `DEVELOPER_DIR`。
+
+**验证结果**
+
+| 项目 | 结果 |
+|---|---|
+| 设备构建 | ✅ `flutter build ios --debug --no-codesign` → `build/ios/iphoneos/Runner.app` |
+| 模拟器构建 | ✅ `flutter build ios --debug --simulator` → `build/ios/iphonesimulator/Runner.app` |
+| 模拟器安装与启动 | ✅ iPhone 17 / iOS 26.5：`simctl install` + `launch` 成功 |
+| 移动 UI | ✅ 截图核验：导航标题「曲库」、底部 Tab（曲库/收藏/歌单/音乐源）、库内 178 首列表、空态与「添加来源」按钮；无异常 |
+| 播放链路 | ⚠️ 未在 iOS 上端到端验证：`simctl` 不支持点击自动化，且 `SIMCTL_CHILD_*` 环境变量未能传入 Flutter 应用（实测用 `TINGYU_DEBUG_ROUTE` 验证过：启动仍停在 /library），因此无法用调试入口直接起播 |
+
+**iOS 侧新增的代码改动**：`Info.plist` 的 `UIBackgroundModes: audio`；
+移动端启动时显式配置 `AudioSessionConfiguration.music()`（音频焦点、被电话打断、
+后台播放与锁屏控制的前提；旧版在 `AudioPlayerService` 里做的是同一件事）。
+播放链路的其余部分与 Android 共用同一套 Dart 代码（Android 侧已实测 PLAYING 推进）。

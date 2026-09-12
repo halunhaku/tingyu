@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/services.dart';
@@ -36,6 +37,13 @@ Future<void> main() async {
   // Android 13+ 的系统媒体通知需要运行时授权；被拒绝也不影响播放（只是通知栏不显示）。
   if (Platform.isAndroid) {
     await Permission.notification.request();
+  }
+
+  // 移动端必须显式配置音频会话：决定音频焦点、被电话/其他应用打断时的行为，
+  // 以及 iOS 的后台播放与锁屏控制（旧版在 AudioPlayerService 里做了同样的配置）。
+  if (Platform.isAndroid || Platform.isIOS) {
+    final AudioSession session = await AudioSession.instance;
+    await session.configure(const AudioSessionConfiguration.music());
   }
 
   final PlaybackEngine engine = createPlaybackEngine();
