@@ -50,6 +50,12 @@ class LibraryPage extends ConsumerWidget {
                 ),
                 orElse: () => const SizedBox.shrink(),
               ),
+              // 移动端没有侧栏，设置入口放这里（版本/构建戳、来源、曲库统计都在里面）。
+              IconButton(
+                tooltip: '设置',
+                icon: const Icon(Icons.settings_outlined),
+                onPressed: () => context.go('/settings'),
+              ),
             ],
           ),
         ),

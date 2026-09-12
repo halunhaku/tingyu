@@ -86,6 +86,8 @@ class SettingsPage extends ConsumerWidget {
           title: '关于',
           children: <Widget>[
             const _InfoRow(label: '版本', value: '0.1.0 (Flutter 预览版)'),
+            // 构建戳：开发期用来确认"手机上装的到底是哪一次构建"。
+            const _InfoRow(label: '构建', value: String.fromEnvironment('BUILD_STAMP', defaultValue: '本地构建')),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
               child: Text(

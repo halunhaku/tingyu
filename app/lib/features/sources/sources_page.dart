@@ -13,7 +13,8 @@ import '../../data/secure_store.dart';
 import '../../sources/quark/quark_drive_client.dart';
 import '../../sources/webdav/webdav_client.dart';
 import '../shared/empty_state.dart';
-import 'quark_login_page.dart';
+import 'quark_qr_login_page.dart';
+import 'quark_web_login_page.dart';
 import 'source_sync.dart';
 
 /// 来源管理：列出、添加、同步、删除本地目录 / WebDAV / 夸克网盘。
@@ -104,9 +105,7 @@ class SourcesPage extends ConsumerWidget {
               ListTile(
                 leading: const Icon(Icons.cloud_queue),
                 title: const Text('夸克网盘'),
-                subtitle: Text(
-                  QuarkLoginPage.isSupported ? '应用内登录后自动获取凭证' : '粘贴网页版 Cookie 后选择文件夹',
-                ),
+                subtitle: const Text('应用内扫码登录，自动获取凭证'),
                 onTap: () {
                   Navigator.pop(dialogContext);
                   _addQuark(context, ref);
@@ -220,7 +219,7 @@ class SourcesPage extends ConsumerWidget {
   }
 
   Future<void> _addQuark(BuildContext context, WidgetRef ref) async {
-    final String? cookie = await _obtainQuarkCookie(context);
+    final String? cookie = await obtainQuarkCookie(context);
     if (cookie == null || cookie.trim().isEmpty) {
       return;
     }
@@ -272,20 +271,6 @@ class SourcesPage extends ConsumerWidget {
       return;
     }
     await _syncAndReport(context, ref, id);
-  }
-
-  /// 取夸克凭证：支持 WebView 的平台走应用内登录，其余平台保留粘贴入口。
-  Future<String?> _obtainQuarkCookie(BuildContext context) async {
-    if (QuarkLoginPage.isSupported) {
-      final String? cookie = await Navigator.of(context).push<String>(
-        MaterialPageRoute<String>(builder: (_) => const QuarkLoginPage()),
-      );
-      return cookie;
-    }
-    return showDialog<String>(
-      context: context,
-      builder: (BuildContext dialogContext) => const _QuarkCookieDialog(),
-    );
   }
 
   /// 选择夸克曲库目录：返回 fid（''=根目录），取消返回 null。
@@ -390,7 +375,7 @@ class SourceTile extends ConsumerWidget {
             onPressed: sync.running ? null : () => ref.read(sourceSyncProvider.notifier).sync(source),
             child: const Text('同步'),
           ),
-          if (source.kind == 'quark' && QuarkLoginPage.isSupported)
+          if (source.kind == 'quark')
             TextButton(
               onPressed: sync.running ? null : () => _reloginQuark(context, ref),
               child: const Text('重新登录'),
@@ -412,9 +397,7 @@ class SourceTile extends ConsumerWidget {
 
   /// 重新登录夸克：更新安全存储里的凭据，不改动已入库的曲目。
   Future<void> _reloginQuark(BuildContext context, WidgetRef ref) async {
-    final String? cookie = await Navigator.of(context).push<String>(
-      MaterialPageRoute<String>(builder: (_) => const QuarkLoginPage()),
-    );
+    final String? cookie = await obtainQuarkCookie(context);
     if (cookie == null || cookie.trim().isEmpty) {
       return;
     }
@@ -451,6 +434,57 @@ class SourceTile extends ConsumerWidget {
       await TingyuSaf.releasePermission(treeUri);
     }
   }
+}
+
+/// 取夸克凭证：手机走**扫码页**（二维码内容是个链接，可"在夸克 App 中打开并确认"，同机不用扫，
+/// 页面上另有"粘贴 Cookie"兜底）；桌面优先扫码，另给网页登录与粘贴。
+Future<String?> obtainQuarkCookie(BuildContext context) async {
+  if (Platform.isAndroid || Platform.isIOS) {
+    return Navigator.of(context).push<String>(
+      MaterialPageRoute<String>(builder: (_) => const QuarkQrLoginPage()),
+    );
+  }
+  final _QuarkLoginMethod? method = await showDialog<_QuarkLoginMethod>(context: context, builder: _chooser);
+  if (!context.mounted || method == null) {
+    return null;
+  }
+  switch (method) {
+    case _QuarkLoginMethod.qr:
+      return Navigator.of(context).push<String>(
+        MaterialPageRoute<String>(builder: (_) => const QuarkQrLoginPage()),
+      );
+    case _QuarkLoginMethod.web:
+      return Navigator.of(context).push<String>(
+        MaterialPageRoute<String>(builder: (_) => const QuarkWebLoginPage()),
+      );
+    case _QuarkLoginMethod.paste:
+      return showDialog<String>(
+        context: context,
+        builder: (BuildContext dialogContext) => const _QuarkCookieDialog(),
+      );
+  }
+}
+
+Widget _chooser(BuildContext dialogContext) => SimpleDialog(
+      title: const Text('登录夸克网盘'),
+      children: <Widget>[
+        for (final _QuarkLoginMethod method in _QuarkLoginMethod.values)
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(dialogContext, method),
+            child: Text(method.label),
+          ),
+      ],
+    );
+
+/// 桌面端的夸克登录方式。
+enum _QuarkLoginMethod {
+  qr('扫码登录（推荐：电脑出码，手机扫）'),
+  web('网页登录（在应用内输入账号/验证码）'),
+  paste('粘贴 Cookie（兜底）');
+
+  const _QuarkLoginMethod(this.label);
+
+  final String label;
 }
 
 class _WebDavFormResult {

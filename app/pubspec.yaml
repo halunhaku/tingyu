@@ -28,8 +28,10 @@ dependencies:
   path_provider: ^2.1.6
   permission_handler: ^11.4.0
   # 本地插件：Android SAF 目录授权与枚举（Android 10+ 访问本地音乐的唯一正路）
+  qr_flutter: ^4.1.0
   tingyu_saf:
     path: packages/tingyu_saf
+  url_launcher: ^6.3.2
   webview_flutter: ^4.14.1
   xml: ^7.0.1
 dev_dependencies:
