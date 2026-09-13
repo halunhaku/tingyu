@@ -169,7 +169,7 @@ final class TingyuAudioHandler extends BaseAudioHandler with QueueHandler, SeekH
 
 `audio_service` 在 Android/iOS/macOS 直接映射 `MPNowPlayingInfoCenter` / `MPRemoteCommandCenter` / MediaSession；Windows 由 `audio_service_win` 映射 SMTC；Linux 由 `audio_service_mpris` 暴露 MPRIS2。**`NowPlayingManager.swift`(118 行) 的职责在 Dart 侧只剩"推 mediaItem + playbackState"。**
 
-**流式来源**：`StreamingResourceLoader`(215) 的能力改为 `platform/stream_proxy`：本地 `shelf` 起最小 HTTP 服务，对远程请求注入 Cookie/Referer 并转发 Range，播放器只看到 `http://127.0.0.1:<port>/stream/<token>`。移动端优先用 `just_audio` 的 `headers` 直连，代理仅作兜底。
+**流式来源**：`media_kit` 直接消费 `Media(url, httpHeaders: ...)`，桌面侧**没有** `shelf` 代理；移动侧 `just_audio` 的 `headers` 由**它自己内建的 localhost HTTP 代理**实现（`HttpServer.bind(loopbackIPv4, 0)`，播放器只看到 `http://127.0.0.1:<port>/proxy/...`）。因此 Android 必须放行回环地址的明文流量（见 §23），否则带鉴权头的来源一律加载失败。
 
 ### 5.2 来源子系统（M3 已落地）
 
@@ -740,3 +740,54 @@ jobs:
 
 **风险**：官方网页若大改（登录入口迁移、增加验证码/风控），需要跟着调整；
 但相比逆向接口，这种改动的频率与破坏性都低得多。
+
+---
+
+## 23. Android 真机播放无声（2026-09-13）
+
+**现象**（Xiaomi 14 Pro / Android 16 真机，release 包）：点任意曲目后**底部播放条照常出现**，
+但没有声音、进度也不走；界面没有任何报错提示。
+
+**定位**：release 包的 Dart `print` 不进 logcat，改跑 `flutter run --debug` 后拿到栈：
+
+```
+E/ExoPlayerImplInternal: Caused by: java.io.IOException:
+    Cleartext HTTP traffic to 127.0.0.1 not permitted
+E/AudioPlayer: TYPE_SOURCE: Cleartext HTTP traffic not permitted.
+E/flutter: Unhandled Exception: (0) Source error
+  #8  AudioPlayer.setAudioSources (just_audio.dart:897)
+  #9  JustAudioEngine.setQueue (just_audio_engine.dart:54)
+  #11 PlaybackController._restartEngineFrom (playback_controller.dart:156)
+```
+
+**根因**：`just_audio` 对**带 `headers` 的音频源**（夸克直链、WebDAV 鉴权头）不直连，
+而是起一个 localhost HTTP 代理转发，ExoPlayer 实际去取 `http://127.0.0.1:<port>/proxy/...`。
+Android 自 targetSdk 28 起默认禁止明文 HTTP，**回环地址也在禁止范围内**（除非显式放行），
+于是 `HttpDataSource$CleartextNotPermittedException` → `Source error`。
+`setAudioSources` 抛出的异常没人接（`PlaybackController` 未捕获），所以 UI 只留下一个"看起来在播"的空播放条。
+
+**修复**（只放行回环，不打开 `usesCleartextTraffic`，公网仍强制 HTTPS）：
+
+| 文件 | 改动 |
+|---|---|
+| `app/android/app/src/main/res/xml/network_security_config.xml` | 新增：`<domain-config cleartextTrafficPermitted="true">` 列出 `127.0.0.1` 与 `localhost` |
+| `app/android/app/src/main/AndroidManifest.xml` | `<application>` 增加 `android:networkSecurityConfig="@xml/network_security_config"` |
+
+**验证**：`flutter run --debug` 热装后点歌出声、进度推进；再 `flutter build apk --release`
+覆盖安装（debug/release 同用 debug keystore，签名一致，**不需要卸载、曲库数据未丢**），
+release 包同样正常播放。合并后的清单经 `build/app/intermediates/merged_manifests/release/` 核验含 `networkSecurityConfig`。
+
+**失败暴露到界面（同日补做）**
+
+加载异常不再逃逸到调用方，而是变成快照里的状态：
+
+| 环节 | 做法 |
+|---|---|
+| 契约 | `PlaybackEngine` 的 `setQueue` / `addToQueue` **不抛异常**；失败写进 `PlaybackSnapshot.failure`（`PlaybackFailure{message, title}`） |
+| `just_audio` | 捕获 `setAudioSources` / `addAudioSource` 的异常；`playbackEventStream` 的 `onError` 兜底（`PlayerInterruptedException` 是换队列打断的正常噪声，不上报）；进入 `ready` 后自动清空失败 |
+| `media_kit` | 订阅 `stream.error`（libmpv 的失败不走抛出）；媒体装载出确定时长后自动清空失败 |
+| 提示 | `features/shared/playback_failure_listener.dart` 挂在 `MaterialApp.builder`（该位置在 `ScaffoldMessenger` 之下、路由之上），桌面/移动两套外壳共用；按"失败对象是否换了实例"去重——进度事件反复推送同一份快照只提示一次，换一首歌再失败会重新提示 |
+| 测试 | `test/playback_failure_listener_test.dart`（提示内容、同实例不重复提示、新失败重新提示） |
+
+**遗留**：真机端到端核验尚未做（验证过程中手机被拔掉）；`PlaybackFailure.message` 目前直接透传
+引擎原文（如 `Source error`），没有做「明文被拦 / 文件不存在 / 网络不可达」的中文化归类。
