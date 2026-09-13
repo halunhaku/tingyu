@@ -7,6 +7,7 @@ import '../../data/db/database.dart';
 import '../shared/empty_state.dart';
 import '../shared/track_row.dart';
 import 'source_sync.dart';
+import 'sources_page.dart';
 
 /// 单个来源页：同步状态 + 曲目列表 + 元数据补全入口。
 class SourcePage extends ConsumerWidget {
@@ -16,14 +17,22 @@ class SourcePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<MusicSource?> source = ref.watch(sourceByIdProvider(sourceId));
-    final AsyncValue<List<Track>> tracks = ref.watch(tracksOfSourceProvider(sourceId));
-    final SourceSyncState sync = ref.watch(sourceSyncProvider)[sourceId] ?? const SourceSyncState();
+    final AsyncValue<MusicSource?> source = ref.watch(
+      sourceByIdProvider(sourceId),
+    );
+    final AsyncValue<List<Track>> tracks = ref.watch(
+      tracksOfSourceProvider(sourceId),
+    );
+    final SourceSyncState sync =
+        ref.watch(sourceSyncProvider)[sourceId] ?? const SourceSyncState();
 
     return source.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (Object error, StackTrace stack) =>
-          EmptyState(icon: Icons.error_outline, title: '来源读取失败', message: '$error'),
+      error: (Object error, StackTrace stack) => EmptyState(
+        icon: Icons.error_outline,
+        title: '来源读取失败',
+        message: '$error',
+      ),
       data: (MusicSource? value) {
         if (value == null) {
           return const EmptyState(icon: Icons.help_outline, title: '来源不存在');
@@ -39,20 +48,37 @@ class SourcePage extends ConsumerWidget {
                   Row(
                     children: <Widget>[
                       Expanded(
-                        child: Text(value.name, style: Theme.of(context).textTheme.titleLarge),
+                        child: Text(
+                          value.name,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
                       ),
                       TextButton.icon(
                         onPressed: sync.running
                             ? null
-                            : () => ref.read(sourceSyncProvider.notifier).sync(value),
+                            : () => ref
+                                  .read(sourceSyncProvider.notifier)
+                                  .sync(value),
                         icon: const Icon(Icons.sync, size: 18),
                         label: const Text('同步'),
                       ),
+                      if (value.kind == 'quark') ...<Widget>[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          tooltip: '重新登录夸克网盘',
+                          onPressed: sync.running
+                              ? null
+                              : () => reloginQuarkSource(context, ref, value),
+                          icon: const Icon(Icons.login, size: 20),
+                        ),
+                      ],
                       const SizedBox(width: 8),
                       FilledButton.tonalIcon(
                         onPressed: sync.running
                             ? null
-                            : () => ref.read(sourceSyncProvider.notifier).enrichSource(value.id),
+                            : () => ref
+                                  .read(sourceSyncProvider.notifier)
+                                  .enrichSource(value.id),
                         icon: const Icon(Icons.auto_fix_high, size: 18),
                         label: const Text('补全元数据'),
                       ),
@@ -93,10 +119,10 @@ class SourcePage extends ConsumerWidget {
                       child: Text(
                         sync.message,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: sync.error != null
-                                  ? Theme.of(context).colorScheme.error
-                                  : Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
+                          color: sync.error != null
+                              ? Theme.of(context).colorScheme.error
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   const SizedBox(height: 8),
@@ -115,8 +141,11 @@ class SourcePage extends ConsumerWidget {
             Expanded(
               child: tracks.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (Object error, StackTrace stack) =>
-                    EmptyState(icon: Icons.error_outline, title: '曲目读取失败', message: '$error'),
+                error: (Object error, StackTrace stack) => EmptyState(
+                  icon: Icons.error_outline,
+                  title: '曲目读取失败',
+                  message: '$error',
+                ),
                 data: (List<Track> list) {
                   if (list.isEmpty) {
                     return const EmptyState(

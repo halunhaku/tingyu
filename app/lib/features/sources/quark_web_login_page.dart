@@ -1,11 +1,16 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 
+import '../../sources/quark/quark_auth.dart';
 import '../../sources/quark/quark_drive_client.dart';
+import '../../sources/quark/quark_session.dart';
+import '../../sources/quark/quark_web_navigation.dart';
 
 /// 夸克登录（网页版）：应用内打开**官方登录页**，登录完成后自动读取系统 Cookie 存储里的凭证。
 ///
@@ -15,26 +20,31 @@ import '../../sources/quark/quark_drive_client.dart';
 ///    → 直接跳官方登录页：手机用移动版表单，桌面用扫码版。
 /// 2. 不能沿用 WebView 默认 UA：它带 `wv` 与 `Version/4.0`，夸克会判定为"App 内嵌页"
 ///    并尝试拉起夸克 App，表现为"点登录没反应"。→ 去掉这两个标记。
-/// 3. **必须接管 `intent://` 等非 http 跳转**：夸克登录页在手机上会通过 intent 跳转拉起
-///    夸克 App 做授权（浏览器就是这么做的）；WebView 自己不会处理，于是同样表现为"点了没反应"。
-///    这里改成交给系统打开（`url_launcher` 在 Android 上会正确解析 intent://）。
+/// 3. **必须接管 `intent://` 等非 http 跳转**：夸克登录页会发 intent 想拉起夸克 App。
+///    WebView / url_launcher 都处理不了，点登录没反应；再点一次会碰到作废的登录态。
+///    有浏览器回退地址时改在当前 WebView 里继续，不跳出到夸克 App。
 ///
-/// 返回值：登录成功后的 Cookie 串；用户取消返回 null。
+/// 返回值：登录成功后的统一 [QuarkSession]；用户取消返回 null。
 class QuarkWebLoginPage extends StatefulWidget {
-  const QuarkWebLoginPage({super.key});
+  const QuarkWebLoginPage({super.key, required this.authCore});
+
+  final QuarkAuthCore authCore;
 
   /// 官方登录页（地址取自夸克网页版前端 bundle）。
-  static const String mobileLoginUrl =
-      'https://uop.quark.cn/cas/custom/login?custom_login_type=mobile&client_id=503&display=mobile';
-
   static const String desktopLoginUrl =
       'https://uop.quark.cn/cas/custom/login?custom_login_type=common&client_id=532&display=pc';
 
-  static String get loginUrl => Platform.isMacOS ? desktopLoginUrl : mobileLoginUrl;
+  /// 手机不要打开 pan.quark.cn：移动 UA 会进「立即下载」推广页。
+  /// 也不要打开 custom_login_type=mobile：那是拉起夸克 App 的短信页。
+  /// PC 扫码页 + 桌面 UA 才能在 WebView 里把登录走完。
+  static String get loginUrl => desktopLoginUrl;
 
-  /// 登录后凭证落在 `.quark.cn` 域上，两个站点都读一遍再合并。
+  /// 登录链路会跨多个夸克域名；逐域读取并交给统一 CookieJar 去重。
   static const List<String> cookieOrigins = <String>[
     'https://pan.quark.cn',
+    'https://drive.quark.cn',
+    'https://drive-pc.quark.cn',
+    'https://passport.quark.cn',
     'https://uop.quark.cn',
   ];
 
@@ -45,20 +55,21 @@ class QuarkWebLoginPage extends StatefulWidget {
 class _QuarkWebLoginPageState extends State<QuarkWebLoginPage> {
   final WebViewController _controller = WebViewController();
 
-  final QuarkDriveClient _client = QuarkDriveClient();
-
   Timer? _poller;
   bool _checking = false;
   bool _busy = false;
   String _currentUrl = '';
-  String _hint = '请在下方页面完成登录，成功后会自动返回';
+  String _hint = '请用夸克 App 扫描下方二维码，成功后会自动返回';
 
   @override
   void initState() {
     super.initState();
     _prepare();
     // 登录成功后页面可能停在回调地址，靠轮询而不是页面事件来发现。
-    _poller = Timer.periodic(const Duration(seconds: 3), (_) => _probeCookies());
+    _poller = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => _probeCookies(),
+    );
   }
 
   @override
@@ -74,57 +85,122 @@ class _QuarkWebLoginPageState extends State<QuarkWebLoginPage> {
         onPageStarted: (String url) => setState(() => _currentUrl = url),
         onPageFinished: (String url) {
           setState(() => _currentUrl = url);
+          _fitDesktopLayout();
+          _rewriteIntentLinks();
           _probeCookies();
         },
-        onNavigationRequest: (NavigationRequest request) => _handleNavigation(request),
+        onNavigationRequest: (NavigationRequest request) =>
+            _handleNavigation(request),
       ),
     );
     // 控制台日志打给 logcat，便于线上排查登录卡点。
     await _controller.setOnConsoleMessage(
-      (JavaScriptConsoleMessage message) =>
-          debugPrint('[quark-webview] ${message.level.name}: ${message.message}'),
+      (JavaScriptConsoleMessage message) => debugPrint(
+        '[quark-webview] ${message.level.name}: ${message.message}',
+      ),
     );
     await _controller.setUserAgent(await _userAgent());
+    await _enableAndroidThirdPartyCookies();
     await _controller.loadRequest(Uri.parse(QuarkWebLoginPage.loginUrl));
   }
 
-  /// 非 http(s) 跳转（`intent://`、`quark://` 等）交给系统：
-  /// 这正是"打开夸克 App 授权登录"的入口，WebView 自己处理不了。
-  Future<NavigationDecision> _handleNavigation(NavigationRequest request) async {
-    final Uri? uri = Uri.tryParse(request.url);
-    final String scheme = uri?.scheme ?? '';
-    if (scheme.isEmpty || scheme == 'http' || scheme == 'https') {
+  /// CAS 登录跨 uop / pan / drive 多个域；Android 默认拦截第三方 Cookie。
+  Future<void> _enableAndroidThirdPartyCookies() async {
+    final Object cookiePlatform = WebViewCookieManager().platform;
+    final Object controllerPlatform = _controller.platform;
+    if (controllerPlatform is AndroidWebViewController) {
+      // 默认 false：桌面登录页按 360px 排版，二维码被媒体查询藏掉，只剩两个空输入框。
+      await controllerPlatform.setUseWideViewPort(true);
+      if (cookiePlatform is AndroidWebViewCookieManager) {
+        await cookiePlatform.setAcceptThirdPartyCookies(controllerPlatform, true);
+      }
+    }
+  }
+
+  /// 非 http(s) 跳转：尽量抽成 https 回退地址，继续留在本页登录。
+  Future<NavigationDecision> _handleNavigation(
+    NavigationRequest request,
+  ) async {
+    final Uri? inApp = resolveQuarkWebNavigation(request.url);
+    if (inApp == null) {
+      debugPrint('[quark-webview] 拦截无法继续的跳转: ${request.url}');
+      await _continueAfterAppHandoff();
+      return NavigationDecision.prevent;
+    }
+    if (inApp.toString() == request.url) {
       return NavigationDecision.navigate;
     }
-    try {
-      await launchUrl(uri!, mode: LaunchMode.externalApplication);
-      setState(() => _hint = '已打开夸克 App，请在 App 内确认后返回本页');
-    } on Object catch (error) {
-      debugPrint('[quark-webview] 打开外部应用失败: $error');
-      setState(() => _hint = '无法打开夸克 App：$error');
-    }
+    debugPrint('[quark-webview] intent 回退到 $inApp');
+    await _controller.loadRequest(inApp);
+    unawaited(_probeCookies());
     return NavigationDecision.prevent;
   }
 
-  /// 桌面用与 API 一致的 UA；手机用去掉 `wv` / `Version/x.x` 的干净浏览器 UA。
-  Future<String> _userAgent() async {
-    if (Platform.isMacOS) {
-      return QuarkDriveClient.userAgent;
+  /// 短信验证通过后夸克常只发 `quark://` / 无 fallback 的 intent。
+  /// 请求其实已经成功（验证码被用掉），这里立刻收 Cookie 并打开网盘页把会话补齐。
+  Future<void> _continueAfterAppHandoff() async {
+    if (mounted) {
+      setState(() => _hint = '正在完成登录…');
     }
-    const String fallback = 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 '
-        '(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
+    await _probeCookies();
+    if (mounted == false) {
+      return;
+    }
+    await _controller.loadRequest(Uri.parse('https://pan.quark.cn/list'));
+  }
+
+  Future<void> _fitDesktopLayout() async {
     try {
-      final String? system = await _controller.getUserAgent();
-      if (system == null || system.isEmpty) {
-        return fallback;
-      }
-      return system
-          .replaceAll(RegExp(r';\s*wv\b'), '')
-          .replaceAll(RegExp(r'\s*Version/[\d.]+'), '');
-    } on Object {
-      return fallback;
+      await _controller.runJavaScript(r'''(function () {
+  document.querySelectorAll('meta[name="viewport"]').forEach(function (node) {
+    node.remove();
+  });
+  var meta = document.createElement('meta');
+  meta.name = 'viewport';
+  meta.content = 'width=1280, initial-scale=0.28, maximum-scale=3, user-scalable=yes';
+  document.head.appendChild(meta);
+})();''');
+    } on Object catch (error) {
+      debugPrint('[quark-webview] 适配桌面布局失败: $error');
     }
   }
+
+  Future<void> _rewriteIntentLinks() async {
+    try {
+      await _controller.runJavaScript(r'''(function () {
+  function fallback(href) {
+    var match = href.match(/S\.browser_fallback_url=([^;]+)/);
+    if (match) {
+      try { return decodeURIComponent(match[1]); } catch (e) { return null; }
+    }
+    return null;
+  }
+  document.addEventListener('click', function (event) {
+    var node = event.target;
+    while (node && node.tagName !== 'A') {
+      node = node.parentElement;
+    }
+    if (!node || !node.href || node.href.indexOf('intent:') !== 0) {
+      return;
+    }
+    var next = fallback(node.href);
+    if (next) {
+      event.preventDefault();
+      event.stopPropagation();
+      window.location.href = next;
+    }
+  }, true);
+})();''');
+    } on Object catch (error) {
+      debugPrint('[quark-webview] 注入 intent 拦截失败: $error');
+    }
+  }
+
+  /// 登录页必须用桌面 UA，否则会进下载推广页或 App 唤起页。
+  Future<String> _userAgent() async {
+    return QuarkDriveClient.userAgent;
+  }
+
 
   Future<void> _probeCookies() async {
     if (_checking || _busy || !mounted) {
@@ -136,10 +212,14 @@ class _QuarkWebLoginPageState extends State<QuarkWebLoginPage> {
       if (cookie.isEmpty) {
         return;
       }
-      final ({bool isValid, String nickname}) result = await _client.verifyCookie(cookie);
-      if (result.isValid && mounted) {
-        _poller?.cancel();
-        Navigator.of(context).pop(cookie);
+      try {
+        final QuarkSession session = await widget.authCore.authenticate(cookie);
+        if (mounted) {
+          _poller?.cancel();
+          Navigator.of(context).pop(session);
+        }
+      } on QuarkAuthException {
+        // 尚未登录的匿名 Cookie 或临时网络失败都不打断官方登录页，继续轮询。
       }
     } finally {
       _checking = false;
@@ -151,7 +231,9 @@ class _QuarkWebLoginPageState extends State<QuarkWebLoginPage> {
     final WebViewCookieManager manager = WebViewCookieManager();
     for (final String origin in QuarkWebLoginPage.cookieOrigins) {
       try {
-        final List<WebViewCookie> cookies = await manager.getCookies(domain: Uri.parse(origin));
+        final List<WebViewCookie> cookies = await manager.getCookies(
+          domain: Uri.parse(origin),
+        );
         for (final WebViewCookie cookie in cookies) {
           if (cookie.value.isNotEmpty) {
             merged[cookie.name] = cookie.value;
@@ -161,7 +243,9 @@ class _QuarkWebLoginPageState extends State<QuarkWebLoginPage> {
         // 某个域读不到不影响另一个域。
       }
     }
-    return merged.entries.map((MapEntry<String, String> e) => '${e.key}=${e.value}').join('; ');
+    return merged.entries
+        .map((MapEntry<String, String> e) => '${e.key}=${e.value}')
+        .join('; ');
   }
 
   Future<void> _finishManually() async {
@@ -170,6 +254,9 @@ class _QuarkWebLoginPageState extends State<QuarkWebLoginPage> {
       _hint = '正在校验登录状态…';
     });
     final String cookie = await _readCookieHeader();
+    if (!mounted) {
+      return;
+    }
     if (cookie.isEmpty) {
       setState(() {
         _busy = false;
@@ -177,18 +264,36 @@ class _QuarkWebLoginPageState extends State<QuarkWebLoginPage> {
       });
       return;
     }
-    final ({bool isValid, String nickname}) result = await _client.verifyCookie(cookie);
-    if (!mounted) {
-      return;
+    try {
+      final QuarkSession session = await widget.authCore.authenticate(cookie);
+      if (mounted) {
+        Navigator.of(context).pop(session);
+      }
+    } on QuarkAuthException catch (error) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _hint = error.message;
+        });
+      }
     }
-    if (result.isValid) {
-      Navigator.of(context).pop(cookie);
-      return;
+  }
+
+  Widget _buildWebView() {
+    const Set<Factory<OneSequenceGestureRecognizer>> gestures =
+        <Factory<OneSequenceGestureRecognizer>>{
+          Factory<EagerGestureRecognizer>(EagerGestureRecognizer.new),
+        };
+    if (Platform.isAndroid) {
+      return WebViewWidget.fromPlatformCreationParams(
+        params: AndroidWebViewWidgetCreationParams(
+          controller: _controller.platform,
+          displayWithHybridComposition: true,
+          gestureRecognizers: gestures,
+        ),
+      );
     }
-    setState(() {
-      _busy = false;
-      _hint = '未检测到有效登录，请完成登录后再点「完成」';
-    });
+    return WebViewWidget(controller: _controller, gestureRecognizers: gestures);
   }
 
   @override
@@ -224,14 +329,14 @@ class _QuarkWebLoginPageState extends State<QuarkWebLoginPage> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
               ],
             ),
           ),
           if (_busy) const LinearProgressIndicator(minHeight: 2),
-          Expanded(child: WebViewWidget(controller: _controller)),
+          Expanded(child: _buildWebView()),
         ],
       ),
     );

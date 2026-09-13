@@ -1,22 +1,28 @@
 import '../../playback/playback_item.dart';
 import '../source_adapter.dart';
+import 'quark_auth.dart';
 import 'quark_cookie_store.dart';
 import 'quark_drive_client.dart';
+import 'quark_session.dart';
 
 /// 夸克网盘来源适配器：把 [QuarkDriveClient] 接进 M3 的来源层契约。
 ///
 /// 一个实例对应 `music_sources` 里的一行（[sourceId] + 扫描根目录 [folderFid]）；
-/// Cookie 每次都从 [QuarkCookieStore] 现读，登录/登出不需要重建实例。
+/// 会话每次由 [QuarkAuthCore] 从安全存储恢复，登录/登出不需要重建实例。
 class QuarkSourceAdapter implements SourceAdapter {
   QuarkSourceAdapter({
     required this.sourceId,
     this.folderFid = '0',
     QuarkDriveClient? client,
+    QuarkAuthCore? authCore,
     QuarkCookieStore? cookieStore,
     this.maxDepth = 5,
     this.maxFiles = 5000,
-  })  : _client = client ?? QuarkDriveClient(),
-        _cookieStore = cookieStore ?? QuarkCookieStore();
+  }) {
+    _client = client ?? QuarkDriveClient();
+    _authCore =
+        authCore ?? QuarkAuthCore(client: _client, cookieStore: cookieStore);
+  }
 
   /// `quark://<fid>` 的 scheme 前缀。
   static const String uriScheme = 'quark://';
@@ -33,9 +39,9 @@ class QuarkSourceAdapter implements SourceAdapter {
   /// 单次扫描曲目上限，与旧版默认值一致。
   final int maxFiles;
 
-  final QuarkDriveClient _client;
+  late final QuarkDriveClient _client;
 
-  final QuarkCookieStore _cookieStore;
+  late final QuarkAuthCore _authCore;
 
   /// 扫描目录树，产出曲目事实（不入库）。
   ///
@@ -45,15 +51,12 @@ class QuarkSourceAdapter implements SourceAdapter {
     void Function(int done, String name)? onProgress,
     bool Function()? isCancelled,
   }) async {
-    final String? cookie = await _cookieStore.load(sourceId);
-    if (cookie == null) {
-      throw const QuarkUnauthenticated();
-    }
+    final QuarkSession session = await _authCore.restore(sourceId);
 
     final QuarkScanResult result = await _client.scan(
       folderFid: folderFid.isEmpty ? '0' : folderFid,
       sourceId: sourceId,
-      cookie: cookie,
+      session: session,
       maxDepth: maxDepth,
       maxFiles: maxFiles,
       onProgress: onProgress,
@@ -65,24 +68,18 @@ class QuarkSourceAdapter implements SourceAdapter {
 
   /// 把库里的 `quark://<fid>` 解析成带鉴权头的直链条目。
   ///
-  /// 旧版播放 Quark 曲目时会顺手把刷新出来的 `__puus` 写回凭据存储，这里保持一致，
-  /// 少一次下次播放的 401。
+  /// API 响应带回的所有 Set-Cookie 都由 [QuarkSession] 合并并写回安全存储。
   @override
   Future<PlaybackItem> open(String filePathOrUrl) async {
     final String fid = _fidOf(filePathOrUrl);
 
-    final String? cookie = await _cookieStore.load(sourceId);
-    if (cookie == null) {
-      throw const QuarkUnauthenticated();
-    }
+    final QuarkSession session = await _authCore.restore(sourceId);
+    final Uri uri = await _client.getDownloadUrl(fid, session);
 
-    final Uri uri = await _client.getDownloadUrl(fid, cookie);
-    final String latest = _client.latestCookie(cookie);
-    if (latest != cookie) {
-      await _cookieStore.save(sourceId, latest);
-    }
-
-    return PlaybackItem.fromUri(uri, httpHeaders: QuarkDriveClient.playbackHeaders(latest));
+    return PlaybackItem.fromUri(
+      uri,
+      httpHeaders: QuarkDriveClient.playbackHeaders(session),
+    );
   }
 
   static String _fidOf(String filePathOrUrl) {

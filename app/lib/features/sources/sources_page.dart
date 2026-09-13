@@ -10,18 +10,19 @@ import 'package:go_router/go_router.dart';
 import '../../app/providers.dart';
 import '../../data/db/database.dart';
 import '../../data/secure_store.dart';
+import '../../sources/quark/quark_auth.dart';
 import '../../sources/quark/quark_drive_client.dart';
+import '../../sources/quark/quark_session.dart';
 import '../../sources/webdav/webdav_client.dart';
 import '../shared/empty_state.dart';
 import 'quark_qr_login_page.dart';
-import 'quark_transfer_page.dart';
 import 'quark_web_login_page.dart';
 import 'source_sync.dart';
 
 /// 来源管理：列出、添加、同步、删除本地目录 / WebDAV / 夸克网盘。
 ///
 /// 对应旧版 `Sources/UI/Shared/SourceManagerView.swift`：本地目录用系统目录选择器，
-/// WebDAV 用表单（地址/账号/应用专用密码），夸克粘贴 Cookie 并选择文件夹。
+/// WebDAV 用表单；夸克按平台提供扫码、WebView、Cookie 导入并统一选择文件夹。
 class SourcesPage extends ConsumerWidget {
   const SourcesPage({super.key});
 
@@ -37,7 +38,10 @@ class SourcesPage extends ConsumerWidget {
           child: Row(
             children: <Widget>[
               Expanded(
-                child: Text('来源管理', style: Theme.of(context).textTheme.titleLarge),
+                child: Text(
+                  '来源管理',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
               ),
               FilledButton.tonalIcon(
                 onPressed: () => _showAddDialog(context, ref),
@@ -50,8 +54,11 @@ class SourcesPage extends ConsumerWidget {
         Expanded(
           child: sources.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (Object error, StackTrace stack) =>
-                EmptyState(icon: Icons.error_outline, title: '读取来源失败', message: '$error'),
+            error: (Object error, StackTrace stack) => EmptyState(
+              icon: Icons.error_outline,
+              title: '读取来源失败',
+              message: '$error',
+            ),
             data: (List<MusicSource> list) {
               if (list.isEmpty) {
                 return const EmptyState(
@@ -61,7 +68,10 @@ class SourcesPage extends ConsumerWidget {
                 );
               }
               return ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 itemCount: list.length,
                 separatorBuilder: (_, _) => const Divider(height: 1),
                 itemBuilder: (BuildContext context, int index) =>
@@ -106,7 +116,7 @@ class SourcesPage extends ConsumerWidget {
               ListTile(
                 leading: const Icon(Icons.cloud_queue),
                 title: const Text('夸克网盘'),
-                subtitle: const Text('应用内扫码登录，自动获取凭证'),
+                subtitle: const Text('扫码、网页登录或 Cookie 导入'),
                 onTap: () {
                   Navigator.pop(dialogContext);
                   _addQuark(context, ref);
@@ -116,7 +126,10 @@ class SourcesPage extends ConsumerWidget {
           ),
         ),
         actions: <Widget>[
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('取消'),
+          ),
         ],
       ),
     );
@@ -131,7 +144,9 @@ class SourcesPage extends ConsumerWidget {
       if (treeUri == null || treeUri.isEmpty) {
         return; // 用户取消
       }
-      await ref.read(sourceRepositoryProvider).upsert(
+      await ref
+          .read(sourceRepositoryProvider)
+          .upsert(
             MusicSourcesCompanion.insert(
               id: id,
               name: _displayNameOfTreeUri(treeUri),
@@ -144,8 +159,13 @@ class SourcesPage extends ConsumerWidget {
       if (path == null || path.isEmpty) {
         return;
       }
-      final String name = path.split('/').where((String part) => part.isNotEmpty).last;
-      await ref.read(sourceRepositoryProvider).upsert(
+      final String name = path
+          .split('/')
+          .where((String part) => part.isNotEmpty)
+          .last;
+      await ref
+          .read(sourceRepositoryProvider)
+          .upsert(
             MusicSourcesCompanion.insert(
               id: id,
               name: name,
@@ -166,7 +186,9 @@ class SourcesPage extends ConsumerWidget {
     final String decoded = Uri.decodeComponent(tail);
     final int colon = decoded.indexOf(':');
     final String path = colon >= 0 ? decoded.substring(colon + 1) : decoded;
-    final String name = path.split('/').where((String part) => part.isNotEmpty).lastOrNull ?? '本地音乐';
+    final String name =
+        path.split('/').where((String part) => part.isNotEmpty).lastOrNull ??
+        '本地音乐';
     return name;
   }
 
@@ -195,7 +217,10 @@ class SourcesPage extends ConsumerWidget {
           title: const Text('连接失败'),
           content: const Text('WebDAV 认证失败，请检查地址、账号与应用专用密码'),
           actions: <Widget>[
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('好')),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('好'),
+            ),
           ],
         ),
       );
@@ -204,7 +229,12 @@ class SourcesPage extends ConsumerWidget {
 
     final String id = 'src-${DateTime.now().microsecondsSinceEpoch}';
     await SecureStore().writeWebDavPassword(id, form.password);
-    await ref.read(sourceRepositoryProvider).upsert(
+    if (context.mounted) {
+      _showCredentialStorageWarning(context);
+    }
+    await ref
+        .read(sourceRepositoryProvider)
+        .upsert(
           MusicSourcesCompanion.insert(
             id: id,
             name: form.name.isEmpty ? Uri.parse(form.url).host : form.name,
@@ -220,52 +250,39 @@ class SourcesPage extends ConsumerWidget {
   }
 
   Future<void> _addQuark(BuildContext context, WidgetRef ref) async {
-    final String? cookie = await obtainQuarkCookie(context);
-    if (cookie == null || cookie.trim().isEmpty) {
+    final QuarkDriveClient client = QuarkDriveClient();
+    final QuarkAuthCore authCore = QuarkAuthCore(client: client);
+    final QuarkSession? session = await obtainQuarkSession(
+      context,
+      authCore: authCore,
+    );
+    if (session == null || !context.mounted) {
       return;
     }
 
-    final QuarkDriveClient client = QuarkDriveClient();
-    final ({bool isValid, String nickname}) check = await client.verifyCookie(cookie.trim());
-    if (!context.mounted) {
-      return;
-    }
-    if (!check.isValid) {
-      await showDialog<void>(
-        context: context,
-        builder: (BuildContext dialogContext) => AlertDialog(
-          title: const Text('Cookie 无效'),
-          content: const Text('夸克网盘登录凭据已失效，请重新登录后复制最新 Cookie'),
-          actions: <Widget>[
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('好')),
-          ],
-        ),
-      );
+    // 登录后选择曲库所在文件夹（不选则扫描根目录）。取消时不会留下孤立凭据。
+    final String? folderFid = await _pickQuarkFolder(context, client, session);
+    if (!context.mounted || folderFid == null) {
       return;
     }
 
     final String id = 'src-${DateTime.now().microsecondsSinceEpoch}';
-    await SecureStore().writeQuarkCookie(id, cookie.trim());
+    await authCore.bindAndSave(id, session);
     if (!context.mounted) {
       return;
     }
-
-    // 与旧版一致：登录后选择曲库所在文件夹（不选则扫描根目录）。
-    final String? folderFid = await _pickQuarkFolder(context, client, cookie.trim());
-    if (!context.mounted) {
-      return;
-    }
-    if (folderFid == null) {
-      return; // 用户取消
-    }
-
-    await ref.read(sourceRepositoryProvider).upsert(
+    _showCredentialStorageWarning(context);
+    await ref
+        .read(sourceRepositoryProvider)
+        .upsert(
           MusicSourcesCompanion.insert(
             id: id,
             name: '夸克网盘',
             kind: 'quark',
-            quarkAccountName: Value<String?>(check.nickname),
-            quarkFolderFid: Value<String?>(folderFid.isEmpty ? null : folderFid),
+            quarkAccountName: Value<String?>(session.nickname),
+            quarkFolderFid: Value<String?>(
+              folderFid.isEmpty ? null : folderFid,
+            ),
           ),
         );
     if (!context.mounted) {
@@ -278,11 +295,13 @@ class SourcesPage extends ConsumerWidget {
   Future<String?> _pickQuarkFolder(
     BuildContext context,
     QuarkDriveClient client,
-    String cookie,
+    QuarkSession session,
   ) async {
     final List<QuarkItem> folders;
     try {
-      folders = (await client.listFolder(cookie: cookie)).where((QuarkItem item) => item.isFolder).toList();
+      folders = (await client.listFolder(session: session))
+          .where((QuarkItem item) => item.isFolder)
+          .toList();
     } on Object catch (error) {
       if (context.mounted) {
         await showDialog<void>(
@@ -291,7 +310,10 @@ class SourcesPage extends ConsumerWidget {
             title: const Text('读取夸克目录失败'),
             content: Text('$error'),
             actions: <Widget>[
-              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('好')),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('好'),
+              ),
             ],
           ),
         );
@@ -322,8 +344,14 @@ class SourcesPage extends ConsumerWidget {
   }
 
   /// 添加后立即同步一次，并跳到来源页看结果。
-  Future<void> _syncAndReport(BuildContext context, WidgetRef ref, String sourceId) async {
-    final MusicSource? source = await ref.read(sourceRepositoryProvider).byId(sourceId);
+  Future<void> _syncAndReport(
+    BuildContext context,
+    WidgetRef ref,
+    String sourceId,
+  ) async {
+    final MusicSource? source = await ref
+        .read(sourceRepositoryProvider)
+        .byId(sourceId);
     if (source != null) {
       await ref.read(sourceSyncProvider.notifier).sync(source);
     }
@@ -341,7 +369,8 @@ class SourceTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final SourceSyncState sync = ref.watch(sourceSyncProvider)[source.id] ?? const SourceSyncState();
+    final SourceSyncState sync =
+        ref.watch(sourceSyncProvider)[source.id] ?? const SourceSyncState();
     final IconData icon = switch (source.kind) {
       'webdav' => Icons.cloud,
       'quark' => Icons.cloud_queue,
@@ -363,7 +392,10 @@ class SourceTile extends ConsumerWidget {
           if (sync.running)
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: LinearProgressIndicator(value: sync.progress, minHeight: 2),
+              child: LinearProgressIndicator(
+                value: sync.progress,
+                minHeight: 2,
+              ),
             ),
           if (sync.message.isNotEmpty && sync.running)
             Text(sync.message, style: Theme.of(context).textTheme.bodySmall),
@@ -373,19 +405,17 @@ class SourceTile extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           TextButton(
-            onPressed: sync.running ? null : () => ref.read(sourceSyncProvider.notifier).sync(source),
+            onPressed: sync.running
+                ? null
+                : () => ref.read(sourceSyncProvider.notifier).sync(source),
             child: const Text('同步'),
           ),
           if (source.kind == 'quark')
             TextButton(
-              onPressed: sync.running ? null : () => _reloginQuark(context, ref),
+              onPressed: sync.running
+                  ? null
+                  : () => _reloginQuark(context, ref),
               child: const Text('重新登录'),
-            ),
-          // 手机端没法自己登录夸克（风控），让它扫这里显示的二维码接管凭证。
-          if (source.kind == 'quark' && (Platform.isMacOS || Platform.isWindows || Platform.isLinux))
-            TextButton(
-              onPressed: sync.running ? null : () => _transferToPhone(context, ref),
-              child: const Text('手机接管'),
             ),
           IconButton(
             tooltip: '打开',
@@ -402,46 +432,8 @@ class SourceTile extends ConsumerWidget {
     );
   }
 
-  /// 把当前凭证通过局域网交给手机（手机扫码即接管）。
-  Future<void> _transferToPhone(BuildContext context, WidgetRef ref) async {
-    final String? cookie = await SecureStore().readQuarkCookie(source.id);
-    if (cookie == null || cookie.isEmpty) {
-      if (context.mounted) {
-        await showDialog<void>(
-          context: context,
-          builder: (BuildContext dialogContext) => AlertDialog(
-            title: const Text('还没有可用凭证'),
-            content: const Text('请先用「重新登录」完成扫码登录，再来生成手机接管二维码。'),
-            actions: <Widget>[
-              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('好')),
-            ],
-          ),
-        );
-      }
-      return;
-    }
-    if (!context.mounted) {
-      return;
-    }
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(builder: (_) => QuarkTransferPage(cookie: cookie)),
-    );
-  }
-
-  /// 重新登录夸克：更新安全存储里的凭据，不改动已入库的曲目。
-  Future<void> _reloginQuark(BuildContext context, WidgetRef ref) async {
-    final String? cookie = await obtainQuarkCookie(context);
-    if (cookie == null || cookie.trim().isEmpty) {
-      return;
-    }
-    await SecureStore().writeQuarkCookie(source.id, cookie.trim());
-    final QuarkDriveClient client = QuarkDriveClient();
-    final ({bool isValid, String nickname}) check = await client.verifyCookie(cookie.trim());
-    await ref.read(sourceRepositoryProvider).updateSyncStatus(
-          source.id,
-          status: check.isValid ? '登录已更新（${check.nickname}）' : '夸克凭据已失效',
-        );
-  }
+  Future<void> _reloginQuark(BuildContext context, WidgetRef ref) =>
+      reloginQuarkSource(context, ref, source);
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final bool? confirmed = await showDialog<bool>(
@@ -450,8 +442,14 @@ class SourceTile extends ConsumerWidget {
         title: Text('删除来源「${source.name}」？'),
         content: Text('将同时删除该来源下的 ${source.trackCount} 首曲目，并把它们从所有播放列表中移除。'),
         actions: <Widget>[
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('删除')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('删除'),
+          ),
         ],
       ),
     );
@@ -459,65 +457,128 @@ class SourceTile extends ConsumerWidget {
       return;
     }
     await ref.read(sourceRepositoryProvider).delete(source.id);
-    await SecureStore().delete(SecureStore.accountFor(SecureStore.quarkCookiePrefix, source.id));
-    await SecureStore().delete(SecureStore.accountFor(SecureStore.webdavPasswordPrefix, source.id));
+    await SecureStore().delete(
+      SecureStore.accountFor(SecureStore.quarkCookiePrefix, source.id),
+    );
+    await SecureStore().delete(
+      SecureStore.accountFor(SecureStore.webdavPasswordPrefix, source.id),
+    );
     // Android：同时释放 SAF 目录授权，避免系统设置里留下僵尸权限。
     final String? treeUri = source.localBookmark;
-    if (Platform.isAndroid && treeUri != null && treeUri.startsWith('content://')) {
+    if (Platform.isAndroid &&
+        treeUri != null &&
+        treeUri.startsWith('content://')) {
       await TingyuSaf.releasePermission(treeUri);
     }
   }
 }
 
-/// 取夸克凭证：手机走**扫码页**（二维码内容是个链接，可"在夸克 App 中打开并确认"，同机不用扫，
-/// 页面上另有"粘贴 Cookie"兜底）；桌面优先扫码，另给网页登录与粘贴。
-Future<String?> obtainQuarkCookie(BuildContext context) async {
-  if (Platform.isAndroid || Platform.isIOS) {
-    return Navigator.of(context).push<String>(
-      MaterialPageRoute<String>(builder: (_) => const QuarkQrLoginPage()),
+/// 平台入口层：手机直接扫码（WebView 会被夸克拦截）；桌面扫码 / 网页 / Cookie。
+Future<QuarkSession?> obtainQuarkSession(
+  BuildContext context, {
+  QuarkAuthCore? authCore,
+}) async {
+  final QuarkAuthCore core = authCore ?? QuarkAuthCore();
+  final bool mobile = Platform.isAndroid || Platform.isIOS;
+  if (mobile) {
+    return Navigator.of(context).push<QuarkSession>(
+      MaterialPageRoute<QuarkSession>(
+        builder: (_) => QuarkQrLoginPage(authCore: core),
+      ),
     );
   }
-  final _QuarkLoginMethod? method = await showDialog<_QuarkLoginMethod>(context: context, builder: _chooser);
+  final List<_QuarkLoginMethod> methods = <_QuarkLoginMethod>[
+    _QuarkLoginMethod.qr,
+    if (Platform.isMacOS) _QuarkLoginMethod.web,
+    _QuarkLoginMethod.paste,
+  ];
+  final _QuarkLoginMethod? method = await showDialog<_QuarkLoginMethod>(
+    context: context,
+    builder: (BuildContext dialogContext) => SimpleDialog(
+      title: const Text('登录夸克网盘'),
+      children: <Widget>[
+        for (int index = 0; index < methods.length; index++)
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(dialogContext, methods[index]),
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(methods[index].icon),
+              title: Text('${methods[index].label}${index == 0 ? '（推荐）' : ''}'),
+              subtitle: Text(methods[index].description),
+            ),
+          ),
+      ],
+    ),
+  );
   if (!context.mounted || method == null) {
     return null;
   }
   switch (method) {
     case _QuarkLoginMethod.qr:
-      return Navigator.of(context).push<String>(
-        MaterialPageRoute<String>(builder: (_) => const QuarkQrLoginPage()),
+      return Navigator.of(context).push<QuarkSession>(
+        MaterialPageRoute<QuarkSession>(
+          builder: (_) => QuarkQrLoginPage(authCore: core),
+        ),
       );
     case _QuarkLoginMethod.web:
-      return Navigator.of(context).push<String>(
-        MaterialPageRoute<String>(builder: (_) => const QuarkWebLoginPage()),
+      return Navigator.of(context).push<QuarkSession>(
+        MaterialPageRoute<QuarkSession>(
+          builder: (_) => QuarkWebLoginPage(authCore: core),
+        ),
       );
     case _QuarkLoginMethod.paste:
-      return showDialog<String>(
+      return showDialog<QuarkSession>(
         context: context,
-        builder: (BuildContext dialogContext) => const _QuarkCookieDialog(),
+        builder: (_) => _QuarkCookieDialog(authCore: core),
       );
   }
 }
 
-Widget _chooser(BuildContext dialogContext) => SimpleDialog(
-      title: const Text('登录夸克网盘'),
-      children: <Widget>[
-        for (final _QuarkLoginMethod method in _QuarkLoginMethod.values)
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(dialogContext, method),
-            child: Text(method.label),
-          ),
-      ],
-    );
+/// 更新已有来源的登录，不改动已入库曲目。
+Future<void> reloginQuarkSource(
+  BuildContext context,
+  WidgetRef ref,
+  MusicSource source,
+) async {
+  final QuarkAuthCore authCore = QuarkAuthCore();
+  final QuarkSession? session = await obtainQuarkSession(
+    context,
+    authCore: authCore,
+  );
+  if (session == null) {
+    return;
+  }
+  await authCore.bindAndSave(source.id, session);
+  if (context.mounted) {
+    _showCredentialStorageWarning(context);
+  }
+  await ref
+      .read(sourceRepositoryProvider)
+      .updateSyncStatus(source.id, status: '登录已更新（${session.nickname}）');
+}
 
-/// 桌面端的夸克登录方式。
+void _showCredentialStorageWarning(BuildContext context) {
+  if (!SecureStore.usedFallback) {
+    return;
+  }
+  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+    const SnackBar(
+      content: Text('当前是未签名开发构建：系统安全存储不可用，凭据暂存于仅当前用户可读的本地文件。正式构建不会使用此回退。'),
+      duration: Duration(seconds: 8),
+    ),
+  );
+}
+
 enum _QuarkLoginMethod {
-  qr('扫码登录（推荐：电脑出码，手机扫）'),
-  web('网页登录（在应用内输入账号/验证码）'),
-  paste('粘贴 Cookie（兜底）');
+  qr('扫码登录', '显示二维码，用夸克 App 扫码确认', Icons.qr_code_2),
+  web('网页登录', '在夸克官方页面完成登录', Icons.language),
+  paste('Cookie 导入', '高级用户或调试场景', Icons.content_paste);
 
-  const _QuarkLoginMethod(this.label);
+  const _QuarkLoginMethod(this.label, this.description, this.icon);
 
   final String label;
+  final String description;
+  final IconData icon;
 }
 
 class _WebDavFormResult {
@@ -595,7 +656,10 @@ class _WebDavFormDialogState extends State<_WebDavFormDialog> {
         ),
       ),
       actions: <Widget>[
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
         FilledButton(
           onPressed: () {
             if (_url.text.trim().isEmpty || _username.text.trim().isEmpty) {
@@ -619,7 +683,9 @@ class _WebDavFormDialogState extends State<_WebDavFormDialog> {
 }
 
 class _QuarkCookieDialog extends StatefulWidget {
-  const _QuarkCookieDialog();
+  const _QuarkCookieDialog({required this.authCore});
+
+  final QuarkAuthCore authCore;
 
   @override
   State<_QuarkCookieDialog> createState() => _QuarkCookieDialogState();
@@ -628,16 +694,41 @@ class _QuarkCookieDialog extends StatefulWidget {
 class _QuarkCookieDialogState extends State<_QuarkCookieDialog> {
   final TextEditingController _cookie = TextEditingController();
 
+  bool _busy = false;
+  String? _error;
+
   @override
   void dispose() {
     _cookie.dispose();
     super.dispose();
   }
 
+  Future<void> _submit() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final QuarkSession session = await widget.authCore.authenticate(
+        _cookie.text,
+      );
+      if (mounted) {
+        Navigator.pop(context, session);
+      }
+    } on QuarkAuthException catch (error) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = error.message;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('夸克网盘 Cookie'),
+      title: const Text('导入夸克 Cookie'),
       content: SizedBox(
         width: 460,
         child: Column(
@@ -648,20 +739,32 @@ class _QuarkCookieDialogState extends State<_QuarkCookieDialog> {
             const SizedBox(height: 8),
             TextField(
               controller: _cookie,
+              enabled: !_busy,
               maxLines: 6,
               style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-              decoration: const InputDecoration(border: OutlineInputBorder(), hintText: '__pus=...; __puus=...'),
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                hintText: 'Cookie: __pus=...; __puus=...',
+                errorText: _error,
+              ),
             ),
             const SizedBox(height: 8),
-            const Text('Cookie 只写入系统安全存储（钥匙串），不会写进数据库。'),
+            const Text('凭据完成规范化与会话校验后，只写入系统安全存储，不会进入数据库。'),
+            if (_busy) ...<Widget>[
+              const SizedBox(height: 12),
+              const LinearProgressIndicator(),
+            ],
           ],
         ),
       ),
       actions: <Widget>[
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
         FilledButton(
-          onPressed: () => Navigator.pop(context, _cookie.text),
-          child: const Text('验证并扫描'),
+          onPressed: _busy ? null : _submit,
+          child: const Text('校验并使用'),
         ),
       ],
     );

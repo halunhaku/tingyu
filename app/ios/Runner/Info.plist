@@ -9,9 +9,6 @@
 	<array>
 		<string>audio</string>
 	</array>
-	<!-- 扫码导入桌面端登录凭证 / 扫描二维码 -->
-	<key>NSCameraUsageDescription</key>
-	<string>用于扫描二维码（例如从桌面端接管登录凭证）</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

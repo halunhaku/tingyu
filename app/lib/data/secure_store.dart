@@ -18,14 +18,15 @@ import 'package:path_provider/path_provider.dart';
 /// 让设置页能如实告诉用户当前用的是什么存储 —— 正式签名分发的构建会走 Keychain。
 class SecureStore {
   SecureStore({FlutterSecureStorage? storage})
-      : _storage = storage ??
-            const FlutterSecureStorage(
-              // macOS 默认走 Data Protection Keychain，它要求 app 带
-              // `keychain-access-groups` entitlement —— 未签名/Developer ID 构建会被拒
-              // （errSecMissingEntitlement -34018）。我们不上 Mac App Store、也不开沙盒，
-              // 用**登录钥匙串**才是这类 app 的正解：同样是系统钥匙串，仍按用户登录态加密保护。
-              mOptions: MacOsOptions(usesDataProtectionKeychain: false),
-            );
+    : _storage =
+          storage ??
+          const FlutterSecureStorage(
+            // macOS 默认走 Data Protection Keychain，它要求 app 带
+            // `keychain-access-groups` entitlement —— 未签名/Developer ID 构建会被拒
+            // （errSecMissingEntitlement -34018）。我们不上 Mac App Store、也不开沙盒，
+            // 用**登录钥匙串**才是这类 app 的正解：同样是系统钥匙串，仍按用户登录态加密保护。
+            mOptions: MacOsOptions(usesDataProtectionKeychain: false),
+          );
 
   /// 账号名前缀；完整账号名是 `<prefix>_<sourceId>`。
   static const String webdavPasswordPrefix = 'webdav_password';
@@ -37,19 +38,23 @@ class SecureStore {
 
   final FlutterSecureStorage _storage;
 
-  static String accountFor(String prefix, String sourceId) => '${prefix}_$sourceId';
+  static String accountFor(String prefix, String sourceId) =>
+      '${prefix}_$sourceId';
 
   Future<void> write(String account, String value) async {
     try {
       await _storage.write(key: account, value: value);
       usedFallback = false;
     } on PlatformException catch (error) {
-      if (!_isMissingEntitlement(error)) {
+      if (!_isMissingEntitlement(error) || kReleaseMode) {
         rethrow;
       }
       usedFallback = true;
       await _writeFile(account, value);
     } on MissingPluginException {
+      if (kReleaseMode) {
+        rethrow;
+      }
       usedFallback = true;
       await _writeFile(account, value);
     }
@@ -60,18 +65,24 @@ class SecureStore {
     try {
       value = await _storage.read(key: account);
     } on PlatformException catch (error) {
-      if (!_isMissingEntitlement(error)) {
+      if (!_isMissingEntitlement(error) || kReleaseMode) {
         rethrow;
       }
       usedFallback = true;
     } on MissingPluginException {
+      if (kReleaseMode) {
+        rethrow;
+      }
       usedFallback = true;
     }
     final String? trimmed = value?.trim();
     if (trimmed != null && trimmed.isNotEmpty) {
       return trimmed;
     }
-    // Keychain 里没有（或不可用）时看回退文件。
+    // 正式构建绝不读取明文回退；它仅用于未签名开发包。
+    if (kReleaseMode) {
+      return null;
+    }
     final String? fallback = await _readFile(account);
     if (fallback != null) {
       usedFallback = true;
@@ -83,13 +94,18 @@ class SecureStore {
     try {
       await _storage.delete(key: account);
     } on PlatformException catch (error) {
-      if (!_isMissingEntitlement(error)) {
+      if (!_isMissingEntitlement(error) || kReleaseMode) {
         rethrow;
       }
     } on MissingPluginException {
-      // 忽略：下面照样清文件。
+      if (kReleaseMode) {
+        rethrow;
+      }
+      // 开发态忽略：下面照样清文件。
     }
-    await _deleteFile(account);
+    if (!kReleaseMode) {
+      await _deleteFile(account);
+    }
   }
 
   // 便捷入口，避免调用方拼错账号名。
@@ -102,9 +118,11 @@ class SecureStore {
   Future<void> writeQuarkCookie(String sourceId, String cookie) =>
       write(accountFor(quarkCookiePrefix, sourceId), cookie);
 
-  Future<String?> readQuarkCookie(String sourceId) => read(accountFor(quarkCookiePrefix, sourceId));
+  Future<String?> readQuarkCookie(String sourceId) =>
+      read(accountFor(quarkCookiePrefix, sourceId));
 
-  Future<void> deleteQuarkCookie(String sourceId) => delete(accountFor(quarkCookiePrefix, sourceId));
+  Future<void> deleteQuarkCookie(String sourceId) =>
+      delete(accountFor(quarkCookiePrefix, sourceId));
 
   /// macOS/iOS 的 `errSecMissingEntitlement`。
   static bool _isMissingEntitlement(PlatformException error) =>

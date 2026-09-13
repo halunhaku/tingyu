@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import '../../data/models/scanned_track.dart';
 import '../local/local_library_scanner.dart';
 import '../scraper/smart_title_parser.dart';
+import 'quark_session.dart';
 
 /// 夸克网盘里的一个条目（目录或文件），对齐旧版 `QuarkItem`。
 class QuarkItem {
@@ -80,9 +81,9 @@ class QuarkDriveClient {
     Dio? dio,
     DateTime Function()? clock,
     Duration? folderDelay,
-  })  : _dio = dio ?? Dio(_baseOptions()),
-        _clock = clock ?? DateTime.now,
-        folderDelay = folderDelay ?? defaultFolderDelay;
+  }) : _dio = dio ?? Dio(_baseOptions()),
+       _clock = clock ?? DateTime.now,
+       folderDelay = folderDelay ?? defaultFolderDelay;
 
   /// 旧版 `URLSessionConfiguration.timeoutIntervalForRequest`。
   static const Duration requestTimeout = Duration(seconds: 20);
@@ -124,10 +125,10 @@ class QuarkDriveClient {
   /// 旧版用 ephemeral 配置：不落 Cookie 存储。Dio 侧在请求里显式带 Cookie，
   /// 连接/接收超时映射 `timeoutIntervalForRequest`，发送（整次传输）映射资源超时。
   static BaseOptions _baseOptions() => BaseOptions(
-        connectTimeout: requestTimeout,
-        receiveTimeout: requestTimeout,
-        sendTimeout: resourceTimeout,
-      );
+    connectTimeout: requestTimeout,
+    receiveTimeout: requestTimeout,
+    sendTimeout: resourceTimeout,
+  );
 
   final Dio _dio;
 
@@ -136,13 +137,13 @@ class QuarkDriveClient {
   /// 目录之间的间隔；测试可传 [Duration.zero]。
   final Duration folderDelay;
 
-  final Map<String, _CachedDownloadUrl> _downloadCache = <String, _CachedDownloadUrl>{};
-
-  String? _refreshedPuus;
+  final Map<String, _CachedDownloadUrl> _downloadCache =
+      <String, _CachedDownloadUrl>{};
 
   /// CDN 直链需要的请求头；播放引擎原样带上即可（不与 API 头共用，Accept 不同）。
-  static Map<String, String> playbackHeaders(String cookie) => <String, String>{
-        'Cookie': cookie,
+  static Map<String, String> playbackHeaders(QuarkSession session) =>
+      <String, String>{
+        'Cookie': session.cookieHeader,
         'User-Agent': userAgent,
         'Referer': _referer,
         'Origin': _origin,
@@ -151,24 +152,50 @@ class QuarkDriveClient {
 
   // MARK: - Cookie 校验
 
-  /// 校验 Cookie 是否可用。
-  ///
-  /// 与旧版一致：任何失败（网络/状态码/结构）都返回 `isValid == false`，不抛异常。
-  Future<({bool isValid, String nickname})> verifyCookie(String cookie) async {
+  /// 用轻量的 file/sort 请求校验会话，并区分凭据失效与临时网络故障。
+  Future<QuarkSessionCheck> validateSession(QuarkSession session) async {
     const String url =
         '$_pcHost/1/clouddrive/file/sort?pr=ucpro&fr=pc&uc_param_str=&pdir_fid=0&_page=1&_size=1';
+    if (session.isEmpty) {
+      return const QuarkSessionCheck(state: QuarkSessionState.expired);
+    }
     try {
-      final _QuarkResponse response = await _send(url, cookie: cookie);
-      if (response.statusCode != 200) {
-        return (isValid: false, nickname: '');
+      final _QuarkResponse response = await _send(url, session: session);
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        return const QuarkSessionCheck(state: QuarkSessionState.expired);
+      }
+      if (response.statusCode < 200 || response.statusCode > 299) {
+        return QuarkSessionCheck(
+          state: QuarkSessionState.unavailable,
+          message: 'HTTP ${response.statusCode}',
+        );
       }
       final Map<String, dynamic>? json = response.json;
-      if (json == null || _asInt(json['status']) != 200) {
-        return (isValid: false, nickname: '');
+      if (json == null) {
+        return const QuarkSessionCheck(
+          state: QuarkSessionState.unavailable,
+          message: '服务返回了无法识别的数据',
+        );
       }
-      return (isValid: true, nickname: '夸克用户');
-    } on QuarkException {
-      return (isValid: false, nickname: '');
+      final int? status = _asInt(json['status']);
+      if (status == 200) {
+        return const QuarkSessionCheck(
+          state: QuarkSessionState.valid,
+          nickname: '夸克用户',
+        );
+      }
+      if (status == 400 || status == 401 || status == 403 || status == 31001) {
+        return const QuarkSessionCheck(state: QuarkSessionState.expired);
+      }
+      return QuarkSessionCheck(
+        state: QuarkSessionState.unavailable,
+        message: (json['message'] as String?) ?? '接口 status ${status ?? '未知'}',
+      );
+    } on QuarkNetworkError catch (error) {
+      return QuarkSessionCheck(
+        state: QuarkSessionState.unavailable,
+        message: error.message,
+      );
     }
   }
 
@@ -177,16 +204,43 @@ class QuarkDriveClient {
   /// 列出目录内容；`fid == '0'` 表示根目录。
   ///
   /// 结构不符（缺 `data.list`、非 JSON）时返回空列表，与旧版一致。
-  Future<List<QuarkItem>> listFolder({String fid = '0', required String cookie}) async {
+  Future<List<QuarkItem>> listFolder({
+    String fid = '0',
+    required QuarkSession session,
+  }) async {
     final String url =
         '$_pcHost/1/clouddrive/file/sort?pr=ucpro&fr=pc&uc_param_str=&pdir_fid=$fid&_page=1&_size=100&_fetch_total=1&_sort=file_type:asc,file_name:asc';
 
-    final _QuarkResponse response = await _send(url, cookie: cookie);
+    final _QuarkResponse response = await _send(url, session: session);
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw const QuarkUnauthenticated();
+    }
+    if (response.statusCode == 429) {
+      throw const QuarkRateLimited();
+    }
     if (response.statusCode < 200 || response.statusCode > 299) {
       throw QuarkNetworkError('读取夸克文件列表失败 (HTTP ${response.statusCode})');
     }
 
     final Map<String, dynamic>? json = response.json;
+    final int? apiStatus = _asInt(json?['status']);
+    final int? apiCode = _asInt(json?['code']);
+    if (apiStatus == 400 ||
+        apiStatus == 401 ||
+        apiStatus == 403 ||
+        apiCode == 31001) {
+      throw const QuarkUnauthenticated();
+    }
+    if (apiStatus == 429) {
+      throw const QuarkRateLimited();
+    }
+    if (apiStatus != null && apiStatus != 200) {
+      final Object? rawMessage = json?['message'];
+      final String message = rawMessage is String && rawMessage.isNotEmpty
+          ? rawMessage
+          : '接口 status $apiStatus';
+      throw QuarkNetworkError(message);
+    }
     final Object? data = json?['data'];
     if (data is! Map<String, dynamic>) {
       return <QuarkItem>[];
@@ -215,7 +269,9 @@ class QuarkDriveClient {
           name: name,
           isFolder: isFolder,
           size: _asInt(entry['size']) ?? 0,
-          formatType: formatType is String ? formatType : (isFolder ? 'dir' : 'file'),
+          formatType: formatType is String
+              ? formatType
+              : (isFolder ? 'dir' : 'file'),
         ),
       );
     }
@@ -231,7 +287,7 @@ class QuarkDriveClient {
   Future<QuarkScanResult> scan({
     required String folderFid,
     required String sourceId,
-    required String cookie,
+    required QuarkSession session,
     required int maxDepth,
     required int maxFiles,
     void Function(int done, String name)? onProgress,
@@ -255,7 +311,10 @@ class QuarkDriveClient {
         continue;
       }
 
-      final List<QuarkItem> items = await listFolder(fid: currentFid, cookie: cookie);
+      final List<QuarkItem> items = await listFolder(
+        fid: currentFid,
+        session: session,
+      );
 
       for (final QuarkItem item in items) {
         if (item.isFolder) {
@@ -275,7 +334,9 @@ class QuarkDriveClient {
           continue;
         }
 
-        final ParsedSongInfo parsed = SmartTitleParser.parse(name.substring(0, dot));
+        final ParsedSongInfo parsed = SmartTitleParser.parse(
+          name.substring(0, dot),
+        );
         onProgress?.call(tracks.length + 1, parsed.title);
 
         tracks.add(
@@ -283,7 +344,9 @@ class QuarkDriveClient {
             filePathOrUrl: 'quark://${item.id}',
             title: parsed.title,
             artist: parsed.artist,
-            album: parsed.album == ScannedTrack.unknownAlbum ? libraryAlbum : parsed.album,
+            album: parsed.album == ScannedTrack.unknownAlbum
+                ? libraryAlbum
+                : parsed.album,
             fileFormat: ext,
             fileSize: item.size,
           ),
@@ -306,9 +369,8 @@ class QuarkDriveClient {
   /// 取音频播放直链：先 `drive-pc.quark.cn`，失败再退 `drive.quark.cn`。
   ///
   /// 结果按 fid 缓存 5400s（旧版只写不读，这里补上读取——否则每次播放都要打两次网盘）。
-  Future<Uri> getDownloadUrl(String fid, String cookie) async {
-    final String trimmedCookie = cookie.trim();
-    if (trimmedCookie.isEmpty) {
+  Future<Uri> getDownloadUrl(String fid, QuarkSession session) async {
+    if (session.isEmpty) {
       throw const QuarkUnauthenticated();
     }
 
@@ -325,8 +387,15 @@ class QuarkDriveClient {
     QuarkException lastError = QuarkParseError('获取下载直链失败');
     for (final String endpoint in endpoints) {
       try {
-        final Uri downloadUrl = await _requestDownloadUrl(endpoint, fid: fid, cookie: trimmedCookie);
-        _downloadCache[fid] = _CachedDownloadUrl(downloadUrl, _clock().add(downloadUrlTtl));
+        final Uri downloadUrl = await _requestDownloadUrl(
+          endpoint,
+          fid: fid,
+          session: session,
+        );
+        _downloadCache[fid] = _CachedDownloadUrl(
+          downloadUrl,
+          _clock().add(downloadUrlTtl),
+        );
         return downloadUrl;
       } on QuarkException catch (error) {
         lastError = error;
@@ -336,23 +405,6 @@ class QuarkDriveClient {
       }
     }
     throw lastError;
-  }
-
-  /// 把最新一次响应里刷新出来的 `__puus` 合并回 Cookie 串（旧版 `cookieWithRefreshedPuus`）。
-  ///
-  /// 没有刷新过时原样返回，调用方可以据此判断要不要写回安全存储。
-  String latestCookie(String original) {
-    final String? puus = _refreshedPuus;
-    if (puus == null || puus.isEmpty) {
-      return original;
-    }
-    final List<String> parts = original
-        .split(';')
-        .map((String part) => part.trim())
-        .where((String part) => part.isNotEmpty && !part.startsWith('__puus='))
-        .toList();
-    parts.add('__puus=$puus');
-    return parts.join('; ');
   }
 
   /// 从下载接口响应里取直链；兼容 `data[]`、`data{}`、`data.list[]` 三种形状。
@@ -402,33 +454,47 @@ class QuarkDriveClient {
     return null;
   }
 
-  Future<Uri> _requestDownloadUrl(String endpoint, {required String fid, required String cookie}) async {
+  Future<Uri> _requestDownloadUrl(
+    String endpoint, {
+    required String fid,
+    required QuarkSession session,
+  }) async {
     final _QuarkResponse response = await _send(
       endpoint,
-      cookie: cookie,
+      session: session,
       jsonBody: true,
-      body: <String, dynamic>{'fids': <String>[fid]},
+      body: <String, dynamic>{
+        'fids': <String>[fid],
+      },
     );
 
-    final Map<String, dynamic> json = response.json ?? const <String, dynamic>{};
+    final Map<String, dynamic> json =
+        response.json ?? const <String, dynamic>{};
     final int statusCode = response.statusCode;
     final int? apiStatus = _asInt(json['status']);
     final int? apiCode = _asInt(json['code']);
     final Object? message = json['message'];
     final String apiMessage = message is String ? message : '';
 
-    if (statusCode == 401 || apiStatus == 401 || apiCode == 31001 || apiMessage.contains('login')) {
+    if (statusCode == 401 ||
+        apiStatus == 401 ||
+        apiCode == 31001 ||
+        apiMessage.contains('login')) {
       throw const QuarkUnauthenticated();
     }
     if (statusCode == 429 || apiStatus == 429) {
       throw const QuarkRateLimited();
     }
     if (statusCode < 200 || statusCode > 299) {
-      final String detail = apiMessage.isEmpty ? 'HTTP $statusCode' : 'HTTP $statusCode $apiMessage';
+      final String detail = apiMessage.isEmpty
+          ? 'HTTP $statusCode'
+          : 'HTTP $statusCode $apiMessage';
       throw QuarkNetworkError('直链失败 $detail');
     }
     if (apiStatus != null && apiStatus != 200) {
-      throw QuarkNetworkError(apiMessage.isEmpty ? '接口 status $apiStatus' : apiMessage);
+      throw QuarkNetworkError(
+        apiMessage.isEmpty ? '接口 status $apiStatus' : apiMessage,
+      );
     }
 
     final Uri? downloadUrl = extractDownloadURL(json);
@@ -443,7 +509,7 @@ class QuarkDriveClient {
 
   Future<_QuarkResponse> _send(
     String endpoint, {
-    required String cookie,
+    required QuarkSession session,
     bool jsonBody = false,
     Object? body,
   }) async {
@@ -453,28 +519,41 @@ class QuarkDriveClient {
         data: body,
         options: Options(
           method: jsonBody ? 'POST' : 'GET',
-          headers: _apiHeaders(cookie: cookie, jsonBody: jsonBody),
+          headers: _apiHeaders(session: session, jsonBody: jsonBody),
           responseType: ResponseType.plain,
           // 状态码由调用方按夸克的语义映射，不让 dio 直接抛 DioException。
           validateStatus: (int? status) => true,
         ),
       );
-      _capturePuus(response.headers);
-      return _QuarkResponse(statusCode: response.statusCode ?? 0, body: _bodyText(response.data));
+      await session.mergeSetCookie(
+        response.headers['set-cookie'] ?? const <String>[],
+      );
+      return _QuarkResponse(
+        statusCode: response.statusCode ?? 0,
+        body: _bodyText(response.data),
+      );
     } on DioException catch (error) {
       final Response<dynamic>? response = error.response;
       if (response == null) {
         throw QuarkNetworkError(error.message ?? error.type.name);
       }
-      _capturePuus(response.headers);
-      return _QuarkResponse(statusCode: response.statusCode ?? 0, body: _bodyText(response.data));
+      await session.mergeSetCookie(
+        response.headers['set-cookie'] ?? const <String>[],
+      );
+      return _QuarkResponse(
+        statusCode: response.statusCode ?? 0,
+        body: _bodyText(response.data),
+      );
     }
   }
 
   /// 与旧版 `applyAPIHeaders` 一致。
-  static Map<String, String> _apiHeaders({required String cookie, required bool jsonBody}) {
+  static Map<String, String> _apiHeaders({
+    required QuarkSession session,
+    required bool jsonBody,
+  }) {
     final Map<String, String> headers = <String, String>{
-      'Cookie': cookie,
+      'Cookie': session.cookieHeader,
       'User-Agent': userAgent,
       'Referer': _referer,
       'Origin': _origin,
@@ -494,28 +573,6 @@ class QuarkDriveClient {
       return '';
     }
     return jsonEncode(data);
-  }
-
-  /// 从 `Set-Cookie` 里抓出 `__puus`（旧版 `capturePuus`）。
-  void _capturePuus(Headers? headers) {
-    final List<String>? raw = headers?['set-cookie'];
-    if (raw == null) {
-      return;
-    }
-    for (final String value in raw) {
-      for (final String part in value.split(RegExp(r'[;,]'))) {
-        final String item = part.trim();
-        if (!item.startsWith('__puus=')) {
-          continue;
-        }
-        final String puus = item.substring('__puus='.length);
-        if (puus.isEmpty) {
-          continue;
-        }
-        _refreshedPuus = puus;
-        return;
-      }
-    }
   }
 
   /// JSON 数字统一按整数解读（`size` / `status` / `code`）。
