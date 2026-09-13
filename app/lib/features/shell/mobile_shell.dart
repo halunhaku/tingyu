@@ -24,9 +24,11 @@ class MobileShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final String path = GoRouterState.of(context).uri.path;
+    // 正在播放页整页出血（光晕背景铺到状态栏下），由它自己让开顶栏安全区。
+    final bool fullBleed = path == '/now-playing';
 
     return Scaffold(
-      body: SafeArea(bottom: false, child: child),
+      body: SafeArea(top: fullBleed == false, bottom: false, child: child),
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[

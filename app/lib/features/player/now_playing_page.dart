@@ -16,9 +16,11 @@ import 'lyrics_panel.dart';
 import 'playback_controls.dart';
 import 'queue_panel.dart';
 
-/// 正在播放：只保留封面舞台；歌词 / 队列用按钮打开。
+/// 正在播放：只保留封面舞台；歌词 / 队列按需让位。
 ///
-/// 桌面：侧栏滑出。手机：歌词整页、队列底部弹层。对齐常见播放器，不再把三块挤在一屏。
+/// 桌面：歌词与队列都是右侧滑出的面板。
+/// 手机：**点封面切到歌词、点歌词切回封面**（对齐常见播放器，不再单设歌词按钮）；
+/// 队列仍是底部弹层。
 class NowPlayingPage extends ConsumerStatefulWidget {
   const NowPlayingPage({super.key});
 
@@ -30,24 +32,17 @@ class _NowPlayingPageState extends ConsumerState<NowPlayingPage> {
   bool _lyricsOpen = false;
   bool _queueOpen = false;
 
-  void _toggleLyrics({required bool narrow}) {
-    if (narrow) {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const _LyricsPage()),
-      );
-      return;
-    }
-    setState(() => _lyricsOpen = _lyricsOpen == false);
-  }
+  void _toggleLyrics() => setState(() => _lyricsOpen = _lyricsOpen == false);
 
   void _toggleQueue({required bool narrow}) {
     if (narrow) {
       showModalBottomSheet<void>(
         context: context,
         showDragHandle: true,
-        builder: (BuildContext sheetContext) => const SizedBox(
-          height: 420,
-          child: QueuePanel(),
+        // 弹层贴着屏幕底部，得自己让开全面屏手势条。
+        builder: (BuildContext sheetContext) => const SafeArea(
+          top: false,
+          child: SizedBox(height: 420, child: QueuePanel()),
         ),
       );
       return;
@@ -68,6 +63,18 @@ class _NowPlayingPageState extends ConsumerState<NowPlayingPage> {
     final PlaybackItem? item = controller.currentItem;
     final bool narrow = MediaQuery.sizeOf(context).width < 720;
 
+    final Widget stageContent = (track == null && item == null)
+        ? const EmptyState(
+            icon: Icons.headphones_outlined,
+            title: '未在播放',
+            message: '从曲库中选一首歌开始播放',
+          )
+        : _Stage(
+            track: track,
+            item: item,
+            onTapCover: narrow ? _toggleLyrics : null,
+          );
+
     final Widget stage = FluidBackground(
       seed: track?.coverArtPath ??
           track?.coverArtUrl ??
@@ -77,7 +84,13 @@ class _NowPlayingPageState extends ConsumerState<NowPlayingPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+            // 这一页整页出血，顶栏自己让开状态栏（桌面安全区为 0，无影响）。
+            padding: EdgeInsets.fromLTRB(
+              10,
+              8 + MediaQuery.paddingOf(context).top,
+              10,
+              0,
+            ),
             child: Row(
               children: <Widget>[
                 TextButton.icon(
@@ -87,14 +100,15 @@ class _NowPlayingPageState extends ConsumerState<NowPlayingPage> {
                   label: const Text('返回'),
                 ),
                 const Spacer(),
-                IconButton(
-                  tooltip: '歌词',
-                  isSelected: narrow ? false : _lyricsOpen,
-                  icon: Icon(_lyricsOpen && narrow == false
-                      ? Icons.lyrics
-                      : Icons.lyrics_outlined),
-                  onPressed: () => _toggleLyrics(narrow: narrow),
-                ),
+                if (narrow == false)
+                  IconButton(
+                    tooltip: '歌词',
+                    isSelected: _lyricsOpen,
+                    icon: Icon(
+                      _lyricsOpen ? Icons.lyrics : Icons.lyrics_outlined,
+                    ),
+                    onPressed: _toggleLyrics,
+                  ),
                 IconButton(
                   tooltip: '播放队列',
                   isSelected: narrow ? false : _queueOpen,
@@ -107,13 +121,20 @@ class _NowPlayingPageState extends ConsumerState<NowPlayingPage> {
             ),
           ),
           Expanded(
-            child: (track == null && item == null)
-                ? const EmptyState(
-                    icon: Icons.headphones_outlined,
-                    title: '未在播放',
-                    message: '从曲库中选一首歌开始播放',
-                  )
-                : _Stage(track: track, item: item),
+            child: narrow == false
+                ? stageContent
+                : AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    child: _lyricsOpen
+                        ? _LyricsStage(
+                            key: const ValueKey<String>('lyrics'),
+                            onTap: _toggleLyrics,
+                          )
+                        : KeyedSubtree(
+                            key: const ValueKey<String>('stage'),
+                            child: stageContent,
+                          ),
+                  ),
           ),
         ],
       ),
@@ -209,27 +230,35 @@ class _SidePanel extends StatelessWidget {
   }
 }
 
-class _LyricsPage extends StatelessWidget {
-  const _LyricsPage();
+/// 手机上的歌词：整块可点，点回封面。
+///
+/// 面板里的按钮（如「抓取歌词」）是它的后代，手势竞技场逐层判定，
+/// 按钮自己吃掉点击，只有歌词与空白回到封面。
+class _LyricsStage extends StatelessWidget {
+  const _LyricsStage({required this.onTap, super.key});
+
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('歌词'),
-      ),
-      body: const LyricsPanel(),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: const LyricsPanel(),
     );
   }
 }
 
 /// 封面舞台：只放封面、曲目信息和传送器。
 class _Stage extends StatelessWidget {
-  const _Stage({required this.track, required this.item});
+  const _Stage({required this.track, required this.item, this.onTapCover});
 
   final Track? track;
 
   final PlaybackItem? item;
+
+  /// 手机上点封面切歌词；桌面为 null（歌词走侧栏按钮）。
+  final VoidCallback? onTapCover;
 
   @override
   Widget build(BuildContext context) {
@@ -242,7 +271,12 @@ class _Stage extends StatelessWidget {
         return Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-            child: _StageBlock(track: track, item: item, coverSize: coverSize),
+            child: _StageBlock(
+              track: track,
+              item: item,
+              coverSize: coverSize,
+              onTapCover: onTapCover,
+            ),
           ),
         );
       },
@@ -251,13 +285,20 @@ class _Stage extends StatelessWidget {
 }
 
 class _StageBlock extends StatelessWidget {
-  const _StageBlock({required this.track, required this.item, required this.coverSize});
+  const _StageBlock({
+    required this.track,
+    required this.item,
+    required this.coverSize,
+    this.onTapCover,
+  });
 
   final Track? track;
 
   final PlaybackItem? item;
 
   final double coverSize;
+
+  final VoidCallback? onTapCover;
 
   @override
   Widget build(BuildContext context) {
@@ -269,7 +310,7 @@ class _StageBlock extends StatelessWidget {
       color: scheme.onSurfaceVariant,
     );
 
-    return ConstrainedBox(
+    final Widget block = ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 420),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -324,6 +365,16 @@ class _StageBlock extends StatelessWidget {
           const PlaybackControls(large: true),
         ],
       ),
+    );
+
+    if (onTapCover == null) {
+      return block;
+    }
+    // 整块（封面 + 曲目信息）都可点；传送器是后代，按钮与进度条自己吃掉手势。
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTapCover,
+      child: block,
     );
   }
 }

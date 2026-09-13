@@ -40,6 +40,13 @@ Future<void> main() async {
     await Permission.notification.request();
   }
 
+  // 全面屏手势：内容画到状态栏与手势条之下，留白交给各页面的安全区。
+  // Android 15+ 对 targetSdk 35+ 的应用本来就强制 edge-to-edge，这里显式打开是为
+  // 了让更低版本表现一致，而不是"开启一个可选功能"。
+  if (Platform.isAndroid || Platform.isIOS) {
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
+
   // 移动端必须显式配置音频会话：决定音频焦点、被电话/其他应用打断时的行为，
   // 以及 iOS 的后台播放与锁屏控制（旧版在 AudioPlayerService 里做了同样的配置）。
   if (Platform.isAndroid || Platform.isIOS) {
