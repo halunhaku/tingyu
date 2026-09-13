@@ -81,4 +81,19 @@ class TingyuSaf {
       );
     }).toList(growable: false);
   }
+
+  /// 用夸克 App 打开确认登录链接。未安装夸克时走系统 VIEW（可能是浏览器）。
+  static Future<bool> openInQuark(String url) async {
+    final bool? opened = await _channel.invokeMethod<bool>(
+      'openInQuark',
+      <String, Object?>{'url': url},
+    );
+    return opened ?? false;
+  }
+
+  /// 把听屿从后台拉回前台（夸克 App 确认登录后）。
+  static Future<bool> bringToForeground() async {
+    final bool? ok = await _channel.invokeMethod<bool>('bringToForeground');
+    return ok ?? false;
+  }
 }

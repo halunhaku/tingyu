@@ -1,9 +1,15 @@
 package com.halunhaku.tingyu_saf
 
 import android.app.Activity
+import android.app.ActivityManager
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.provider.DocumentsContract
 import androidx.annotation.NonNull
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -66,6 +72,8 @@ class TingyuSafPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             "listChildren" -> listChildren(call, result)
             "hasPermission" -> result.success(hasPersistedPermission(call.argument<String>("treeUri")))
             "releasePermission" -> releasePermission(call.argument<String>("treeUri"), result)
+            "openInQuark" -> openInQuark(call.argument<String>("url"), result)
+            "bringToForeground" -> bringToForeground(result)
             else -> result.notImplemented()
         }
     }
@@ -194,8 +202,111 @@ class TingyuSafPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         }
     }
 
+    private fun openInQuark(url: String?, result: MethodChannel.Result) {
+        if (url.isNullOrEmpty()) {
+            result.success(false)
+            return
+        }
+        val host = activity ?: context
+        val packages = listOf("com.quark.clouddrive", "com.quark.browser")
+        for (pkg in packages) {
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                intent.setPackage(pkg)
+                if (host !is Activity) {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                if (intent.resolveActivity(host.packageManager) != null) {
+                    host.startActivity(intent)
+                    result.success(true)
+                    return
+                }
+            } catch (_: Exception) {
+            }
+        }
+        try {
+            val fallback = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            if (host !is Activity) {
+                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            host.startActivity(fallback)
+            result.success(true)
+        } catch (_: Exception) {
+            result.success(false)
+        }
+    }
+
+    private fun bringToForeground(result: MethodChannel.Result) {
+        var moved = false
+        val current = activity
+        if (current != null) {
+            try {
+                val am = current.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                am.moveTaskToFront(current.taskId, 0)
+                moved = true
+            } catch (_: Exception) {
+            }
+        }
+        try {
+            val launch = launchIntent()
+            if (launch != null) {
+                context.startActivity(launch)
+                moved = true
+            }
+        } catch (_: Exception) {
+        }
+        postReturnNotification()
+        result.success(moved)
+    }
+
+    private fun launchIntent(): Intent? {
+        val launch = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return null
+        launch.addFlags(
+            Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP,
+        )
+        return launch
+    }
+
+    private fun postReturnNotification() {
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId = "tingyu.login"
+        if (Build.VERSION.SDK_INT >= 26) {
+            val channel = NotificationChannel(
+                channelId,
+                "登录",
+                NotificationManager.IMPORTANCE_HIGH,
+            )
+            channel.description = "夸克登录完成后返回听屿"
+            manager.createNotificationChannel(channel)
+        }
+        val launch = launchIntent() ?: return
+        val pending = PendingIntent.getActivity(
+            context,
+            RETURN_NOTIFY_ID,
+            launch,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val builder = if (Build.VERSION.SDK_INT >= 26) {
+            Notification.Builder(context, channelId)
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(context)
+        }
+        val notification = builder
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("听屿")
+            .setContentText("夸克已登录，点这里选择文件夹")
+            .setContentIntent(pending)
+            .setAutoCancel(true)
+            .build()
+        manager.notify(RETURN_NOTIFY_ID, notification)
+    }
+
     private companion object {
         const val CHANNEL = "tingyu/saf"
         const val REQUEST_PICK_DIRECTORY = 0x5AF1
+        const val RETURN_NOTIFY_ID = 0x71
     }
 }
