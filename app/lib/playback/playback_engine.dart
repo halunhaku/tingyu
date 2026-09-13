@@ -8,6 +8,10 @@ import 'playback_snapshot.dart';
 /// 播放引擎抽象：桌面（libmpv）与移动（ExoPlayer / AVPlayer）各有一套实现。
 ///
 /// 上层（UI、[AudioHandler]）只允许依赖本接口，禁止直接引用具体引擎的 API。
+///
+/// **失败不抛出**：加载/解码失败（文件不存在、网络不可达、权限被撤销、明文流量被拦……）
+/// 一律写进 [PlaybackSnapshot.failure]，调用方不需要在每个 await 上包 try/catch；
+/// UI 监听快照即可提示，且引擎恢复后失败会自动撤下。
 abstract interface class PlaybackEngine {
   /// 引擎名，用于诊断与设置页展示。
   String get name;
@@ -28,7 +32,14 @@ abstract interface class PlaybackEngine {
   List<PlaybackItem> get items;
 
   /// 替换整个队列并从 [startIndex] 定位（不自动播放）。
+  ///
+  /// 装载失败不抛出，见类文档：失败会出现在随后推送的快照里。
   Future<void> setQueue(List<PlaybackItem> items, {int startIndex = 0});
+
+  /// 在不打断当前播放的前提下追加一个已解析条目。
+  ///
+  /// 装载失败不抛出，见类文档：失败会出现在随后推送的快照里。
+  Future<void> addToQueue(PlaybackItem item);
 
   Future<void> play();
 

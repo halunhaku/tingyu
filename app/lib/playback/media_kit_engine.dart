@@ -22,6 +22,8 @@ final class MediaKitEngine extends PlaybackEngineBase {
       _player.stream.playlist.listen((_) => _sync()),
       _player.stream.rate.listen((_) => _sync()),
       _player.stream.volume.listen((_) => _sync()),
+      // libmpv 的失败（打不开文件、网络不可达、解码失败）从这里来，不会抛给调用方。
+      _player.stream.error.listen((String message) => _fail(message)),
     ];
   }
 
@@ -32,6 +34,9 @@ final class MediaKitEngine extends PlaybackEngineBase {
   late final List<StreamSubscription<void>> _subscriptions;
 
   List<PlaybackItem> _items = const <PlaybackItem>[];
+
+  /// 最近一次未恢复的失败；装载成功或重新出声后清空。
+  PlaybackFailure? _failure;
 
   @override
   List<PlaybackItem> get items => _items;
@@ -48,10 +53,29 @@ final class MediaKitEngine extends PlaybackEngineBase {
   @override
   Future<void> setQueue(List<PlaybackItem> items, {int startIndex = 0}) async {
     _items = List<PlaybackItem>.unmodifiable(items);
-    await _player.open(
-      Playlist(items.map(_toMedia).toList(growable: false), index: startIndex),
-      play: false,
-    );
+    _failure = null;
+    try {
+      await _player.open(
+        Playlist(items.map(_toMedia).toList(growable: false), index: startIndex),
+        play: false,
+      );
+    } on Object catch (error) {
+      _fail(error.toString());
+      return;
+    }
+    _sync();
+  }
+
+  @override
+  Future<void> addToQueue(PlaybackItem item) async {
+    _items = List<PlaybackItem>.unmodifiable(<PlaybackItem>[..._items, item]);
+    _failure = null;
+    try {
+      await _player.add(_toMedia(item));
+    } on Object catch (error) {
+      _fail(error.toString());
+      return;
+    }
     _sync();
   }
 
@@ -86,12 +110,22 @@ final class MediaKitEngine extends PlaybackEngineBase {
   }
 
   static Media _toMedia(PlaybackItem item) => Media(
-        item.uri.toString(),
-        httpHeaders: item.httpHeaders.isEmpty ? null : item.httpHeaders,
-      );
+    item.uri.toString(),
+    httpHeaders: item.httpHeaders.isEmpty ? null : item.httpHeaders,
+  );
+
+  /// 记录一次失败并立即播报；失败以快照字段向上传递，不抛给调用方。
+  void _fail(String message) {
+    _failure = PlaybackFailure(message: message, title: currentItem?.title);
+    _sync();
+  }
 
   void _sync() {
     final PlayerState state = _player.state;
+    // 有确定时长说明当前媒体确实装载成功，之前那次失败可以撤下来了。
+    if (state.duration > Duration.zero) {
+      _failure = null;
+    }
     emit(
       PlaybackSnapshot(
         processing: _processingOf(state),
@@ -102,6 +136,7 @@ final class MediaKitEngine extends PlaybackEngineBase {
         index: state.playlist.index,
         rate: state.rate,
         volume: state.volume,
+        failure: _failure,
       ),
     );
   }

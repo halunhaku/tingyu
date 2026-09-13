@@ -18,6 +18,7 @@ import 'data/legacy_import.dart';
 import 'data/models/library_summaries.dart';
 import 'data/repositories/source_repository.dart';
 import 'data/repositories/track_repository.dart';
+import 'features/shared/playback_failure_listener.dart';
 import 'playback/engine_factory.dart';
 import 'playback/playback_engine.dart';
 import 'playback/playback_item.dart';
@@ -95,6 +96,9 @@ class _TingyuAppState extends State<TingyuApp> {
       darkTheme: buildTingyuTheme(Brightness.dark),
       themeMode: ThemeMode.system,
       routerConfig: _router,
+      // 放在这里（而非各页面里）是为了让桌面/移动两套外壳共用同一个提示出口。
+      builder: (BuildContext context, Widget? child) =>
+          PlaybackFailureListener(child: child ?? const SizedBox.shrink()),
     );
     if (!Platform.isMacOS) {
       return app;
