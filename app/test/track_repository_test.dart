@@ -44,7 +44,10 @@ void main() {
   test('mergeScan 首次扫描写入曲目并保留文件事实', () async {
     final MergeResult result = await tracks.mergeScan(
       sourceId: 'src-1',
-      scanned: <ScannedTrack>[scan('/music/a.flac'), scan('/music/b.flac', title: '另一首')],
+      scanned: <ScannedTrack>[
+        scan('/music/a.flac'),
+        scan('/music/b.flac', title: '另一首'),
+      ],
     );
 
     expect(result.added, 2);
@@ -53,15 +56,23 @@ void main() {
 
     final List<Track> stored = await tracks.bySource('src-1');
     expect(stored.length, 2);
-    final Track first = stored.firstWhere((Track t) => t.filePathOrUrl == '/music/a.flac');
+    final Track first = stored.firstWhere(
+      (Track t) => t.filePathOrUrl == '/music/a.flac',
+    );
     expect(first.title, '歌曲');
     expect(first.fileSize, 1000);
     expect(first.fileFormat, 'flac');
-    expect(first.id, TrackRepository.idFor(sourceId: 'src-1', filePathOrUrl: '/music/a.flac'));
+    expect(
+      first.id,
+      TrackRepository.idFor(sourceId: 'src-1', filePathOrUrl: '/music/a.flac'),
+    );
   });
 
   test('重复扫描只更新变化的文件事实，保留封面/歌词/收藏/播放统计', () async {
-    await tracks.mergeScan(sourceId: 'src-1', scanned: <ScannedTrack>[scan('/music/a.flac')]);
+    await tracks.mergeScan(
+      sourceId: 'src-1',
+      scanned: <ScannedTrack>[scan('/music/a.flac')],
+    );
     final Track original = (await tracks.bySource('src-1')).single;
 
     await tracks.setFavorite(original.id, value: true);
@@ -95,12 +106,18 @@ void main() {
       sourceId: 'src-1',
       scanned: <ScannedTrack>[scan('/music/a.flac'), scan('/music/b.flac')],
     );
-    final String removedId = TrackRepository.idFor(sourceId: 'src-1', filePathOrUrl: '/music/b.flac');
+    final String removedId = TrackRepository.idFor(
+      sourceId: 'src-1',
+      filePathOrUrl: '/music/b.flac',
+    );
 
     final PlaylistRepository playlists = PlaylistRepository(db);
     await playlists.create(id: 'pl-1', name: '收藏夹');
     await playlists.addTrack('pl-1', removedId);
-    await playlists.addTrack('pl-1', TrackRepository.idFor(sourceId: 'src-1', filePathOrUrl: '/music/a.flac'));
+    await playlists.addTrack(
+      'pl-1',
+      TrackRepository.idFor(sourceId: 'src-1', filePathOrUrl: '/music/a.flac'),
+    );
 
     final MergeResult result = await tracks.mergeScan(
       sourceId: 'src-1',
@@ -118,7 +135,12 @@ void main() {
     await tracks.mergeScan(
       sourceId: 'src-1',
       scanned: <ScannedTrack>[
-        ScannedTrack(filePathOrUrl: '/music/c.flac', title: '', album: '夸克曲库', duration: 10),
+        ScannedTrack(
+          filePathOrUrl: '/music/c.flac',
+          title: '',
+          album: '夸克曲库',
+          duration: 10,
+        ),
       ],
     );
 
@@ -165,12 +187,48 @@ void main() {
     expect(await tracks.search('不存在'), isEmpty);
   });
 
+  test('响应式查询在首次空结果后仍推送新入库曲目', () async {
+    final Future<List<List<Track>>> allEvents = tracks
+        .watchAll()
+        .take(2)
+        .toList();
+    final Future<List<List<Track>>> sourceEvents = tracks
+        .watchBySource('src-1')
+        .take(2)
+        .toList();
+    await pumpEventQueue();
+
+    await tracks.mergeScan(
+      sourceId: 'src-1',
+      scanned: <ScannedTrack>[scan('/music/live.flac', title: '立即出现')],
+    );
+
+    final List<List<Track>> all = await allEvents;
+    final List<List<Track>> source = await sourceEvents;
+    expect(all.first, isEmpty);
+    expect(all.last.single.title, '立即出现');
+    expect(source.first, isEmpty);
+    expect(source.last.single.title, '立即出现');
+  });
+
   test('artists/albums 聚合：计数、年份取最大、占位名排最后', () async {
     await tracks.mergeScan(
       sourceId: 'src-1',
       scanned: <ScannedTrack>[
-        scan('/music/1.flac', artist: '周杰伦', album: '叶惠美', duration: 1, coverArtPath: null),
-        scan('/music/2.flac', artist: '周杰伦', album: '叶惠美', duration: 1, coverArtPath: 'c1.jpg'),
+        scan(
+          '/music/1.flac',
+          artist: '周杰伦',
+          album: '叶惠美',
+          duration: 1,
+          coverArtPath: null,
+        ),
+        scan(
+          '/music/2.flac',
+          artist: '周杰伦',
+          album: '叶惠美',
+          duration: 1,
+          coverArtPath: 'c1.jpg',
+        ),
         ScannedTrack(
           filePathOrUrl: '/music/3.flac',
           title: 'x',
@@ -178,20 +236,38 @@ void main() {
           album: '七里香',
           duration: 1,
         ),
-        ScannedTrack(filePathOrUrl: '/music/4.flac', title: 'y', duration: 1, year: 2004),
-        ScannedTrack(filePathOrUrl: '/music/5.flac', title: 'z', duration: 1, year: 2011),
+        ScannedTrack(
+          filePathOrUrl: '/music/4.flac',
+          title: 'y',
+          duration: 1,
+          year: 2004,
+        ),
+        ScannedTrack(
+          filePathOrUrl: '/music/5.flac',
+          title: 'z',
+          duration: 1,
+          year: 2011,
+        ),
       ],
     );
 
     final List<ArtistSummary> artists = await tracks.artists();
-    expect(artists.map((ArtistSummary a) => a.name).toList(), <String>['周杰伦', ScannedTrack.unknownArtist]);
+    expect(artists.map((ArtistSummary a) => a.name).toList(), <String>[
+      '周杰伦',
+      ScannedTrack.unknownArtist,
+    ]);
     expect(artists.first.trackCount, 3);
     expect(artists.last.trackCount, 2);
 
     final List<AlbumSummary> albums = await tracks.albums();
-    expect(albums.map((AlbumSummary a) => a.album).toList(),
-        <String>['七里香', '叶惠美', ScannedTrack.unknownAlbum]);
-    final AlbumSummary album = albums.firstWhere((AlbumSummary a) => a.album == '叶惠美');
+    expect(albums.map((AlbumSummary a) => a.album).toList(), <String>[
+      '七里香',
+      '叶惠美',
+      ScannedTrack.unknownAlbum,
+    ]);
+    final AlbumSummary album = albums.firstWhere(
+      (AlbumSummary a) => a.album == '叶惠美',
+    );
     expect(album.trackCount, 2);
     expect(album.coverArtPath, 'c1.jpg');
     final AlbumSummary unknown = albums.last;

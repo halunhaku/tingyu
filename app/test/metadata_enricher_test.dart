@@ -39,7 +39,10 @@ final class _FakeLyricsProvider implements LyricsProvider {
   LyricsQuery? lastQuery;
 
   @override
-  Future<String?> fetchLyrics(LyricsQuery query, {MetadataCandidate? candidate}) async {
+  Future<String?> fetchLyrics(
+    LyricsQuery query, {
+    MetadataCandidate? candidate,
+  }) async {
     calls++;
     lastQuery = query;
     return _lyrics;
@@ -122,6 +125,34 @@ void main() {
     expect(adapter.requested, isEmpty);
   });
 
+  test('Swift 对照：元数据齐备时仍落下脏标题清理，但完全不出网', () async {
+    final _FakeSearcher searcher = _FakeSearcher(null);
+    final _FakeLyricsProvider lyrics = _FakeLyricsProvider(null);
+    final _FakeHttpAdapter adapter = _FakeHttpAdapter(coverBytes);
+    final MetadataEnricher enricher = MetadataEnricher(
+      searcher: searcher,
+      lyricsProvider: lyrics,
+      downloader: _downloaderReturning(adapter),
+    );
+
+    final EnrichmentResult result = await enricher.enrich(
+      const EnrichmentInput(
+        title: '01. 周杰伦 - 晴天.flac',
+        artist: '周杰伦',
+        album: '叶惠美',
+        lyrics: '[00:01.00]故事的小黄花',
+        hasCover: true,
+      ),
+    );
+
+    expect(result.title, '晴天');
+    expect(result.artist, isNull);
+    expect(result.album, isNull);
+    expect(searcher.calls, 0);
+    expect(lyrics.calls, 0);
+    expect(adapter.requested, isEmpty);
+  });
+
   test('脏文件名 + 占位元数据：主来源补齐歌手/专辑/封面，歌词走主来源', () async {
     final _FakeSearcher searcher = _FakeSearcher(
       const MetadataCandidate(
@@ -142,7 +173,10 @@ void main() {
     );
 
     final EnrichmentResult result = await enricher.enrich(
-      const EnrichmentInput(title: '周杰伦 - 晴天', duration: Duration(seconds: 269)),
+      const EnrichmentInput(
+        title: '周杰伦 - 晴天',
+        duration: Duration(seconds: 269),
+      ),
     );
 
     expect(searcher.lastTitle, '晴天', reason: '查询词应是解析后的干净标题');
@@ -158,7 +192,12 @@ void main() {
 
   test('主来源标题不匹配时不改写元数据，歌词/封面交给兜底来源', () async {
     final _FakeSearcher primary = _FakeSearcher(
-      const MetadataCandidate(provider: 'qqmusic', title: '完全不同的歌', artist: '别人', album: '别的专辑'),
+      const MetadataCandidate(
+        provider: 'qqmusic',
+        title: '完全不同的歌',
+        artist: '别人',
+        album: '别的专辑',
+      ),
     );
     final _FakeSearcher fallback = _FakeSearcher(
       const MetadataCandidate(
@@ -172,7 +211,10 @@ void main() {
       name: 'netease',
     );
     final _FakeLyricsProvider primaryLyrics = _FakeLyricsProvider(null);
-    final _FakeLyricsProvider fallbackLyrics = _FakeLyricsProvider('[00:02.00]网易云歌词', name: 'netease');
+    final _FakeLyricsProvider fallbackLyrics = _FakeLyricsProvider(
+      '[00:02.00]网易云歌词',
+      name: 'netease',
+    );
     final _FakeHttpAdapter adapter = _FakeHttpAdapter(coverBytes);
 
     final MetadataEnricher enricher = MetadataEnricher(
@@ -196,8 +238,13 @@ void main() {
 
   test('歌词主来源命中时不再请求兜底歌词（封面仍会走兜底搜索）', () async {
     final _FakeSearcher fallback = _FakeSearcher(null, name: 'netease');
-    final _FakeLyricsProvider primaryLyrics = _FakeLyricsProvider('[00:01.00]主来源歌词');
-    final _FakeLyricsProvider fallbackLyrics = _FakeLyricsProvider('兜底歌词', name: 'netease');
+    final _FakeLyricsProvider primaryLyrics = _FakeLyricsProvider(
+      '[00:01.00]主来源歌词',
+    );
+    final _FakeLyricsProvider fallbackLyrics = _FakeLyricsProvider(
+      '兜底歌词',
+      name: 'netease',
+    );
 
     final MetadataEnricher enricher = MetadataEnricher(
       searcher: _FakeSearcher(null),
@@ -217,7 +264,9 @@ void main() {
   });
 
   test('封面缺失时按专辑查 iTunes，且已有封面时不再查', () async {
-    final _FakeCoverLookup lookup = _FakeCoverLookup('https://example.com/itunes.jpg');
+    final _FakeCoverLookup lookup = _FakeCoverLookup(
+      'https://example.com/itunes.jpg',
+    );
     final _FakeHttpAdapter adapter = _FakeHttpAdapter(coverBytes);
 
     final MetadataEnricher enricher = MetadataEnricher(
@@ -228,7 +277,12 @@ void main() {
     );
 
     final EnrichmentResult withCover = await enricher.enrich(
-      const EnrichmentInput(title: '晴天', artist: '周杰伦', album: '叶惠美', hasCover: true),
+      const EnrichmentInput(
+        title: '晴天',
+        artist: '周杰伦',
+        album: '叶惠美',
+        hasCover: true,
+      ),
     );
     expect(withCover.coverBytes, isNull);
     expect(lookup.calls, 0);
@@ -269,7 +323,9 @@ void main() {
     final MetadataEnricher enricher = MetadataEnricher(
       searcher: searcher,
       lyricsProvider: _FakeLyricsProvider('[00:01.00]歌词'),
-      downloader: _downloaderReturning(_FakeHttpAdapter(coverBytes, statusCode: 404)),
+      downloader: _downloaderReturning(
+        _FakeHttpAdapter(coverBytes, statusCode: 404),
+      ),
     );
 
     final EnrichmentResult result = await enricher.enrich(

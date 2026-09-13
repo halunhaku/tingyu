@@ -31,9 +31,14 @@ class QQMusicProvider implements MetadataSearcher {
   Future<List<MetadataCandidate>> searchCandidates(
     String title, {
     String artist = '',
+    String album = '',
     int limit = 10,
   }) async {
-    final String query = _buildQuery(title, artist);
+    final String query = buildMetadataSearchQuery(
+      title: title,
+      artist: artist,
+      album: album,
+    );
     if (query.isEmpty) {
       return const <MetadataCandidate>[];
     }
@@ -78,18 +83,6 @@ class QQMusicProvider implements MetadataSearcher {
   /// QQ 音乐封面地址模板（800×800）。
   static String coverUrlForAlbumMid(String albumMid) =>
       'https://y.gtimg.cn/music/photo_new/T002R800x800M000$albumMid.jpg';
-
-  static String _buildQuery(String title, String artist) {
-    final String cleanTitle = title.trim();
-    if (cleanTitle.isEmpty) {
-      return '';
-    }
-    final String cleanArtist = artist.trim();
-    if (cleanArtist.isEmpty || cleanArtist == '未知艺术家') {
-      return cleanTitle;
-    }
-    return '$cleanTitle $cleanArtist';
-  }
 
   static List<dynamic> _songList(Map<String, dynamic> body) {
     final Object? data = body['data'];

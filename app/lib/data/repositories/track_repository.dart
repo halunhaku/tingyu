@@ -15,30 +15,68 @@ class TrackRepository {
   final TingyuDatabase _db;
 
   /// 新扫描曲目的稳定 id：来源 + 路径。重复扫描幂等，且不必依赖随机 UUID。
-  static String idFor({required String sourceId, required String filePathOrUrl}) =>
-      '$sourceId::$filePathOrUrl';
+  static String idFor({
+    required String sourceId,
+    required String filePathOrUrl,
+  }) => '$sourceId::$filePathOrUrl';
 
   Stream<List<Track>> watchAll() => _ordered(_db.select(_db.tracks)).watch();
 
   Future<List<Track>> all() => _ordered(_db.select(_db.tracks)).get();
 
-  Future<Track?> byId(String id) =>
-      (_db.select(_db.tracks)..where(($TracksTable t) => t.id.equals(id))).getSingleOrNull();
+  Future<Track?> byId(String id) => (_db.select(
+    _db.tracks,
+  )..where(($TracksTable t) => t.id.equals(id))).getSingleOrNull();
 
-  Future<List<Track>> bySource(String sourceId) =>
-      _ordered(_db.select(_db.tracks)..where(($TracksTable t) => t.sourceId.equals(sourceId))).get();
+  Stream<Track?> watchById(String id) => (_db.select(
+    _db.tracks,
+  )..where(($TracksTable t) => t.id.equals(id))).watchSingleOrNull();
 
-  Stream<List<Track>> watchFavorites() =>
-      _ordered(_db.select(_db.tracks)..where(($TracksTable t) => t.isFavorite.equals(true))).watch();
+  Future<List<Track>> bySource(String sourceId) => _ordered(
+    _db.select(_db.tracks)
+      ..where(($TracksTable t) => t.sourceId.equals(sourceId)),
+  ).get();
+
+  Stream<List<Track>> watchBySource(String sourceId) => _ordered(
+    _db.select(_db.tracks)
+      ..where(($TracksTable t) => t.sourceId.equals(sourceId)),
+  ).watch();
+
+  Stream<List<Track>> watchFavorites() => _ordered(
+    _db.select(_db.tracks)
+      ..where(($TracksTable t) => t.isFavorite.equals(true)),
+  ).watch();
 
   /// 按标题/艺术家/专辑做子串匹配（大小写不敏感，ASCII 范围）。
-  Future<List<Track>> search(String query, {int limit = 200}) {
+  Future<List<Track>> search(String query, {int limit = 200}) =>
+      _searchQuery(query, limit: limit).get();
+
+  Stream<List<Track>> watchSearch(String query, {int limit = 200}) =>
+      _searchQuery(query, limit: limit).watch();
+
+  Stream<List<Track>> watchRecentlyAdded({int limit = 100}) {
+    final select = _db.select(_db.tracks)
+      ..orderBy(<OrderingTerm Function($TracksTable)>[
+        ($TracksTable t) => OrderingTerm.desc(t.dateAdded),
+      ])
+      ..limit(limit);
+    return select.watch();
+  }
+
+  SimpleSelectStatement<$TracksTable, Track> _searchQuery(
+    String query, {
+    required int limit,
+  }) {
     final String needle = '%${query.trim().toLowerCase()}%';
     final select = _db.select(_db.tracks)
-      ..where(($TracksTable t) =>
-          t.title.lower().like(needle) | t.artist.lower().like(needle) | t.album.lower().like(needle))
+      ..where(
+        ($TracksTable t) =>
+            t.title.lower().like(needle) |
+            t.artist.lower().like(needle) |
+            t.album.lower().like(needle),
+      )
       ..limit(limit);
-    return _ordered(select).get();
+    return _ordered(select);
   }
 
   Future<void> setFavorite(String id, {required bool value}) {
@@ -51,7 +89,9 @@ class TrackRepository {
     if (track == null) {
       return;
     }
-    await (_db.update(_db.tracks)..where(($TracksTable t) => t.id.equals(id))).write(
+    await (_db.update(
+      _db.tracks,
+    )..where(($TracksTable t) => t.id.equals(id))).write(
       TracksCompanion(
         playCount: Value<int>(track.playCount + 1),
         lastPlayedAt: Value<DateTime>((at ?? DateTime.now()).toUtc()),
@@ -65,7 +105,9 @@ class TrackRepository {
   }
 
   Future<void> updateCoverArt(String id, {String? path, String? url}) {
-    return (_db.update(_db.tracks)..where(($TracksTable t) => t.id.equals(id))).write(
+    return (_db.update(
+      _db.tracks,
+    )..where(($TracksTable t) => t.id.equals(id))).write(
       TracksCompanion(
         coverArtPath: Value<String?>(path),
         coverArtUrl: Value<String?>(url),
@@ -83,15 +125,28 @@ class TrackRepository {
     String? coverArtPath,
     String? coverArtUrl,
   }) {
-    return (_db.update(_db.tracks)..where(($TracksTable t) => t.id.equals(id))).write(
+    return (_db.update(
+      _db.tracks,
+    )..where(($TracksTable t) => t.id.equals(id))).write(
       TracksCompanion(
-        title: title == null ? const Value<String>.absent() : Value<String>(title),
-        artist: artist == null ? const Value<String>.absent() : Value<String>(artist),
-        album: album == null ? const Value<String>.absent() : Value<String>(album),
-        lyrics: lyrics == null ? const Value<String?>.absent() : Value<String?>(lyrics),
-        coverArtPath:
-            coverArtPath == null ? const Value<String?>.absent() : Value<String?>(coverArtPath),
-        coverArtUrl: coverArtUrl == null ? const Value<String?>.absent() : Value<String?>(coverArtUrl),
+        title: title == null
+            ? const Value<String>.absent()
+            : Value<String>(title),
+        artist: artist == null
+            ? const Value<String>.absent()
+            : Value<String>(artist),
+        album: album == null
+            ? const Value<String>.absent()
+            : Value<String>(album),
+        lyrics: lyrics == null
+            ? const Value<String?>.absent()
+            : Value<String?>(lyrics),
+        coverArtPath: coverArtPath == null
+            ? const Value<String?>.absent()
+            : Value<String?>(coverArtPath),
+        coverArtUrl: coverArtUrl == null
+            ? const Value<String?>.absent()
+            : Value<String?>(coverArtUrl),
       ),
     );
   }
@@ -102,8 +157,9 @@ class TrackRepository {
     required List<ScannedTrack> scanned,
   }) {
     return _db.transaction<MergeResult>(() async {
-      final List<Track> existing =
-          await (_db.select(_db.tracks)..where(($TracksTable t) => t.sourceId.equals(sourceId))).get();
+      final List<Track> existing = await (_db.select(
+        _db.tracks,
+      )..where(($TracksTable t) => t.sourceId.equals(sourceId))).get();
       final Map<String, Track> byPath = <String, Track>{
         for (final Track track in existing) track.filePathOrUrl: track,
       };
@@ -125,7 +181,9 @@ class TrackRepository {
         }
         final Track merged = _withFileFacts(old, incoming);
         if (merged != old) {
-          await (_db.update(_db.tracks)..where(($TracksTable t) => t.id.equals(old.id))).write(merged);
+          await (_db.update(
+            _db.tracks,
+          )..where(($TracksTable t) => t.id.equals(old.id))).write(merged);
           updated++;
         }
       }
@@ -136,10 +194,16 @@ class TrackRepository {
           .toList(growable: false);
       if (removedIds.isNotEmpty) {
         // 播放列表条目的清理由外键级联完成（见 schema 中的 references）。
-        await (_db.delete(_db.tracks)..where(($TracksTable t) => t.id.isIn(removedIds))).go();
+        await (_db.delete(
+          _db.tracks,
+        )..where(($TracksTable t) => t.id.isIn(removedIds))).go();
       }
 
-      return MergeResult(added: added, updated: updated, removed: removedIds.length);
+      return MergeResult(
+        added: added,
+        updated: updated,
+        removed: removedIds.length,
+      );
     });
   }
 
@@ -153,9 +217,10 @@ class TrackRepository {
 
   JoinedSelectStatement<HasResultSet, dynamic> _artistsQuery(String? sourceId) {
     final Expression<int> count = _db.tracks.id.count();
-    final JoinedSelectStatement<HasResultSet, dynamic> query = _db.selectOnly(_db.tracks)
-      ..addColumns(<Expression<Object>>[_db.tracks.artist, count])
-      ..groupBy(<Expression<Object>>[_db.tracks.artist]);
+    final JoinedSelectStatement<HasResultSet, dynamic> query =
+        _db.selectOnly(_db.tracks)
+          ..addColumns(<Expression<Object>>[_db.tracks.artist, count])
+          ..groupBy(<Expression<Object>>[_db.tracks.artist]);
     if (sourceId != null) {
       query.where(_db.tracks.sourceId.equals(sourceId));
     }
@@ -165,16 +230,20 @@ class TrackRepository {
   List<ArtistSummary> _mapArtists(List<TypedResult> rows) {
     final Expression<int> count = _db.tracks.id.count();
     final List<ArtistSummary> summaries = rows
-        .map((TypedResult row) => ArtistSummary(
-              name: row.read(_db.tracks.artist)!,
-              trackCount: row.read(count) ?? 0,
-            ))
+        .map(
+          (TypedResult row) => ArtistSummary(
+            name: row.read(_db.tracks.artist)!,
+            trackCount: row.read(count) ?? 0,
+          ),
+        )
         .toList();
-    summaries.sort((ArtistSummary a, ArtistSummary b) => _compareNames(
-          a.name,
-          b.name,
-          isPlaceholder: (String name) => name == ScannedTrack.unknownArtist,
-        ));
+    summaries.sort(
+      (ArtistSummary a, ArtistSummary b) => _compareNames(
+        a.name,
+        b.name,
+        isPlaceholder: (String name) => name == ScannedTrack.unknownArtist,
+      ),
+    );
     return summaries;
   }
 
@@ -192,8 +261,9 @@ class TrackRepository {
 
   Selectable<QueryRow> _albumsQuery(String? sourceId) {
     final String whereClause = sourceId == null ? '' : 'WHERE source_id = ?';
-    final List<Variable<Object>> variables =
-        sourceId == null ? const <Variable<Object>>[] : <Variable<Object>>[Variable<String>(sourceId)];
+    final List<Variable<Object>> variables = sourceId == null
+        ? const <Variable<Object>>[]
+        : <Variable<Object>>[Variable<String>(sourceId)];
     return _db.customSelect(
       'SELECT artist, album, COUNT(*) AS track_count, MAX(year) AS year, '
       'MAX(cover_art_path) AS cover_art_path '
@@ -205,23 +275,29 @@ class TrackRepository {
 
   List<AlbumSummary> _mapAlbums(List<QueryRow> rows) {
     final List<AlbumSummary> summaries = rows
-        .map((QueryRow row) => AlbumSummary(
-              artist: row.read<String>('artist'),
-              album: row.read<String>('album'),
-              trackCount: row.read<int>('track_count'),
-              year: row.readNullable<int>('year'),
-              coverArtPath: row.readNullable<String>('cover_art_path'),
-            ))
+        .map(
+          (QueryRow row) => AlbumSummary(
+            artist: row.read<String>('artist'),
+            album: row.read<String>('album'),
+            trackCount: row.read<int>('track_count'),
+            year: row.readNullable<int>('year'),
+            coverArtPath: row.readNullable<String>('cover_art_path'),
+          ),
+        )
         .toList();
-    summaries.sort((AlbumSummary a, AlbumSummary b) => _compareNames(
-          a.album,
-          b.album,
-          isPlaceholder: (String name) => ScannedTrack.placeholderAlbums.contains(name),
-        ));
+    summaries.sort(
+      (AlbumSummary a, AlbumSummary b) => _compareNames(
+        a.album,
+        b.album,
+        isPlaceholder: (String name) =>
+            ScannedTrack.placeholderAlbums.contains(name),
+      ),
+    );
     return summaries;
   }
 
-  TracksCompanion _insert(String sourceId, ScannedTrack incoming) => TracksCompanion.insert(
+  TracksCompanion _insert(String sourceId, ScannedTrack incoming) =>
+      TracksCompanion.insert(
         id: idFor(sourceId: sourceId, filePathOrUrl: incoming.filePathOrUrl),
         sourceId: sourceId,
         title: incoming.title,
@@ -259,11 +335,17 @@ class TrackRepository {
       coverArtUrl: old.coverArtUrl == null && incoming.coverArtUrl != null
           ? Value<String?>(incoming.coverArtUrl)
           : const Value<String?>.absent(),
-      title: _isPlaceholderText(old.title) && !_isPlaceholderText(incoming.title) ? incoming.title : old.title,
-      artist: _isPlaceholderArtist(old.artist) && !_isPlaceholderArtist(incoming.artist)
+      title:
+          _isPlaceholderText(old.title) && !_isPlaceholderText(incoming.title)
+          ? incoming.title
+          : old.title,
+      artist:
+          _isPlaceholderArtist(old.artist) &&
+              !_isPlaceholderArtist(incoming.artist)
           ? incoming.artist
           : old.artist,
-      album: ScannedTrack.placeholderAlbums.contains(old.album) &&
+      album:
+          ScannedTrack.placeholderAlbums.contains(old.album) &&
               !ScannedTrack.placeholderAlbums.contains(incoming.album)
           ? incoming.album
           : old.album,
@@ -272,11 +354,16 @@ class TrackRepository {
 
   static bool _isPlaceholderText(String value) => value.trim().isEmpty;
 
-  static bool _isPlaceholderArtist(String value) => value.isEmpty || value == ScannedTrack.unknownArtist;
+  static bool _isPlaceholderArtist(String value) =>
+      value.isEmpty || value == ScannedTrack.unknownArtist;
 
   /// 占位名排最后，其余按码点序（与旧版 `localizedStandardCompare` 的本地化排序
   /// 略有差异：中文按 Unicode 码点而非拼音，M4 UI 阶段再按需引入排序键）。
-  static int _compareNames(String a, String b, {required bool Function(String) isPlaceholder}) {
+  static int _compareNames(
+    String a,
+    String b, {
+    required bool Function(String) isPlaceholder,
+  }) {
     final bool placeholderA = isPlaceholder(a);
     final bool placeholderB = isPlaceholder(b);
     if (placeholderA != placeholderB) {
@@ -288,13 +375,12 @@ class TrackRepository {
   static SimpleSelectStatement<$TracksTable, Track> _ordered(
     SimpleSelectStatement<$TracksTable, Track> statement,
   ) {
-    return statement
-      ..orderBy(<OrderingTerm Function($TracksTable)>[
-        ($TracksTable t) => OrderingTerm.asc(t.artist),
-        ($TracksTable t) => OrderingTerm.asc(t.album),
-        ($TracksTable t) => OrderingTerm.asc(t.discNumber),
-        ($TracksTable t) => OrderingTerm.asc(t.trackNumber),
-        ($TracksTable t) => OrderingTerm.asc(t.title),
-      ]);
+    return statement..orderBy(<OrderingTerm Function($TracksTable)>[
+      ($TracksTable t) => OrderingTerm.asc(t.artist),
+      ($TracksTable t) => OrderingTerm.asc(t.album),
+      ($TracksTable t) => OrderingTerm.asc(t.discNumber),
+      ($TracksTable t) => OrderingTerm.asc(t.trackNumber),
+      ($TracksTable t) => OrderingTerm.asc(t.title),
+    ]);
   }
 }

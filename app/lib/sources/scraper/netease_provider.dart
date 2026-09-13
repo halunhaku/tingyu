@@ -40,9 +40,14 @@ class NetEaseProvider implements MetadataSearcher, LyricsProvider, ArtistLookup 
   Future<List<MetadataCandidate>> searchCandidates(
     String title, {
     String artist = '',
+    String album = '',
     int limit = 5,
   }) async {
-    final String query = _buildQuery(title, artist);
+    final String query = buildMetadataSearchQuery(
+      title: title,
+      artist: artist,
+      album: album,
+    );
     if (query.isEmpty) {
       return const <MetadataCandidate>[];
     }
@@ -150,28 +155,28 @@ class NetEaseProvider implements MetadataSearcher, LyricsProvider, ArtistLookup 
     if (first is! Map<String, dynamic>) {
       return null;
     }
-    final String url = (first['img1v1Url'] as String?) ?? (first['picUrl'] as String?) ?? '';
-    if (url.isEmpty) {
-      return null;
+    return _artistImageUrl(first);
+  }
+
+  /// 优先正式写真 picUrl。img1v1Url 经常是空串或默认剪影，空串不能靠 ?? 落到 picUrl。
+  static String? _artistImageUrl(Map<String, dynamic> artist) {
+    for (final String key in <String>['picUrl', 'img1v1Url']) {
+      final String? raw = artist[key] as String?;
+      if (raw == null || raw.trim().isEmpty) {
+        continue;
+      }
+      if (raw.contains('5639395138885805')) {
+        continue;
+      }
+      final String https = raw.replaceFirst('http://', 'https://');
+      return https.contains('?') ? '$https&param=500y500' : '$https?param=500y500';
     }
-    return url.contains('?') ? '$url&param=500y500' : '$url?param=500y500';
+    return null;
   }
 
   /// 网易云的 `picUrl` 可以加 `param` 参数取更高分辨率。
   static String highResolutionCoverUrl(String picUrl) =>
       picUrl.contains('?') ? '$picUrl&param=800y800' : '$picUrl?param=800y800';
-
-  static String _buildQuery(String title, String artist) {
-    final String cleanTitle = title.trim();
-    if (cleanTitle.isEmpty) {
-      return '';
-    }
-    final String cleanArtist = artist.trim();
-    if (cleanArtist.isEmpty || cleanArtist == '未知艺术家') {
-      return cleanTitle;
-    }
-    return '$cleanTitle $cleanArtist';
-  }
 
   static String _firstArtist(Map<String, dynamic> song) {
     final Object? artists = song['artists'];

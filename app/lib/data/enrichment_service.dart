@@ -52,7 +52,25 @@ class LibraryEnrichmentService {
 
   final MetadataEnricher enricher;
 
-  Future<EnrichmentOutcome> enrichTrack(Track track) async {
+  final Map<String, Future<EnrichmentOutcome>> _inFlight =
+      <String, Future<EnrichmentOutcome>>{};
+
+  /// 同一首歌的自动补全、播放触发与手动触发共用一个在途任务，避免重复请求上游。
+  Future<EnrichmentOutcome> enrichTrack(Track track) {
+    final Future<EnrichmentOutcome>? existing = _inFlight[track.id];
+    if (existing != null) {
+      return existing;
+    }
+    final Future<EnrichmentOutcome> future = _enrichTrack(track);
+    _inFlight[track.id] = future;
+    return future.whenComplete(() {
+      if (identical(_inFlight[track.id], future)) {
+        _inFlight.remove(track.id);
+      }
+    });
+  }
+
+  Future<EnrichmentOutcome> _enrichTrack(Track track) async {
     final EnrichmentResult result = await enricher.enrich(
       EnrichmentInput(
         title: track.title,
@@ -65,7 +83,9 @@ class LibraryEnrichmentService {
     );
 
     if (result.isSkipped || !result.hasChanges) {
-      return result.isSkipped ? EnrichmentOutcome.skipped : EnrichmentOutcome.unchanged;
+      return result.isSkipped
+          ? EnrichmentOutcome.skipped
+          : EnrichmentOutcome.unchanged;
     }
 
     String? coverArtPath;

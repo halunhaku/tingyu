@@ -59,7 +59,11 @@ class EnrichmentResult {
   final bool isSkipped;
 
   bool get hasChanges =>
-      title != null || artist != null || album != null || lyrics != null || coverBytes != null;
+      title != null ||
+      artist != null ||
+      album != null ||
+      lyrics != null ||
+      coverBytes != null;
 }
 
 /// 元数据富化编排（对齐 `Sources/Services/Scraper/MetadataEnricher.swift` 的第 1–5 步）。
@@ -110,18 +114,28 @@ class MetadataEnricher {
     );
 
     final String queryTitle = parsed.title.trim();
-    if (queryTitle.isEmpty || queryTitle == input.artist || queryTitle == suspiciousTitle) {
+    String artist = _placeholderArtist(input.artist)
+        ? parsed.artist
+        : input.artist;
+    String album = _placeholderAlbum(input.album) ? parsed.album : input.album;
+    if (queryTitle.isEmpty ||
+        queryTitle == artist ||
+        queryTitle == suspiciousTitle) {
       return EnrichmentResult.skipped;
     }
 
-    String artist = _placeholderArtist(input.artist) ? parsed.artist : input.artist;
-    String album = _placeholderAlbum(input.album) ? parsed.album : input.album;
-    String? title = _looksMessy(input.title) ? queryTitle : null;
-
-    final bool needsSearch = !input.hasCover || _placeholderArtist(input.artist) || _placeholderAlbum(input.album);
+    final String? title = _looksMessy(input.title) ? queryTitle : null;
+    final bool needsSearch =
+        !input.hasCover ||
+        _placeholderArtist(input.artist) ||
+        _placeholderAlbum(input.album);
     if (!needsSearch && input.hasCover && (input.lyrics?.isNotEmpty ?? false)) {
-      // 元数据与封面/歌词都已齐备，无需联网。
-      return const EnrichmentResult();
+      // 即使无需联网，仍要像原生版一样落下文件名清理结果。
+      return EnrichmentResult(
+        title: title,
+        artist: artist == input.artist ? null : artist,
+        album: album == input.album ? null : album,
+      );
     }
 
     Uint8List? coverBytes;
@@ -129,7 +143,10 @@ class MetadataEnricher {
 
     // 2. 主搜索来源：歌手 / 专辑 / 封面
     if (needsSearch) {
-      final MetadataCandidate? candidate = await searcher.search(queryTitle, artist: artist);
+      final MetadataCandidate? candidate = await searcher.search(
+        queryTitle,
+        artist: artist,
+      );
       if (candidate != null && candidate.matchesTitle(queryTitle)) {
         if (candidate.artist.isNotEmpty) {
           artist = candidate.artist;
@@ -160,11 +177,22 @@ class MetadataEnricher {
     MetadataCandidate? fallbackCandidate;
 
     // 4. 歌词兜底：网易云（需要候选 id）
-    if ((lyrics == null || lyrics.isEmpty) && fallbackSearcher != null && fallbackLyricsProvider != null) {
-      fallbackCandidate = await fallbackSearcher!.search(queryTitle, artist: artist);
-      if (fallbackCandidate != null && fallbackCandidate.matchesTitle(queryTitle)) {
+    if ((lyrics == null || lyrics.isEmpty) &&
+        fallbackSearcher != null &&
+        fallbackLyricsProvider != null) {
+      fallbackCandidate = await fallbackSearcher!.search(
+        queryTitle,
+        artist: artist,
+      );
+      if (fallbackCandidate != null &&
+          fallbackCandidate.matchesTitle(queryTitle)) {
         lyrics = await fallbackLyricsProvider!.fetchLyrics(
-          LyricsQuery(title: queryTitle, artist: artist, album: album, duration: input.duration),
+          LyricsQuery(
+            title: queryTitle,
+            artist: artist,
+            album: album,
+            duration: input.duration,
+          ),
           candidate: fallbackCandidate,
         );
       }
@@ -172,7 +200,10 @@ class MetadataEnricher {
 
     // 5. 封面兜底：网易云
     if (coverBytes == null && !input.hasCover && fallbackSearcher != null) {
-      fallbackCandidate ??= await fallbackSearcher!.search(queryTitle, artist: artist);
+      fallbackCandidate ??= await fallbackSearcher!.search(
+        queryTitle,
+        artist: artist,
+      );
       final String? url = fallbackCandidate?.matchesTitle(queryTitle) == true
           ? fallbackCandidate?.coverUrl
           : null;
@@ -199,14 +230,17 @@ class MetadataEnricher {
       title: title,
       artist: artist == input.artist ? null : artist,
       album: album == input.album ? null : album,
-      lyrics: (lyrics != null && lyrics.isNotEmpty && lyrics != input.lyrics) ? lyrics : null,
+      lyrics: (lyrics != null && lyrics.isNotEmpty && lyrics != input.lyrics)
+          ? lyrics
+          : null,
       coverUrl: coverUrl,
       coverBytes: coverBytes,
     );
   }
 
   /// 旧实现把"未知艺术家 / 未知专辑 / 夸克曲库 / 空"视为占位。
-  static bool _placeholderArtist(String value) => value.isEmpty || value == SmartTitleParser.fallbackArtist;
+  static bool _placeholderArtist(String value) =>
+      value.isEmpty || value == SmartTitleParser.fallbackArtist;
 
   static bool _placeholderAlbum(String value) =>
       value.isEmpty ||
@@ -217,7 +251,9 @@ class MetadataEnricher {
   /// 标题里带分隔符或音频扩展名时，说明它还是文件名而不是歌名。
   static bool _looksMessy(String title) {
     final String lower = title.toLowerCase();
-    if (lower.endsWith('.mp3') || lower.endsWith('.flac') || lower.endsWith('.m4a')) {
+    if (lower.endsWith('.mp3') ||
+        lower.endsWith('.flac') ||
+        lower.endsWith('.m4a')) {
       return true;
     }
     return title.contains('-') || title.contains('_') || title.contains('.');

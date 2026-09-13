@@ -1,5 +1,6 @@
 import 'dart:io';
-import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
 
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -48,12 +49,26 @@ class ArtistAvatarStore {
       }
     }
 
-    final String? url = await lookup.avatarUrl(name);
-    if (url == null || url.isEmpty) {
+    final String? url;
+    try {
+      url = await lookup.avatarUrl(name);
+    } on Object catch (error) {
+      debugPrint('[avatar] 查找「$name」失败: $error');
       return null;
     }
-    final Uint8List? bytes = await _downloader.download(url);
+    if (url == null || url.isEmpty) {
+      debugPrint('[avatar] 没有「$name」的头像地址');
+      return null;
+    }
+    final Uint8List? bytes = await _downloader.download(
+      url,
+      headers: const <String, String>{
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Referer': 'https://music.163.com',
+      },
+    );
     if (bytes == null) {
+      debugPrint('[avatar] 下载「$name」头像失败 $url');
       return null;
     }
     _memoryCache[name] = bytes;

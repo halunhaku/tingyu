@@ -61,6 +61,33 @@ class LyricsQuery {
   final Duration duration;
 }
 
+/// 把用户填写的歌名 / 歌手 / 专辑拼成上游搜索词。
+///
+/// 占位值不进查询，避免夸克文件名（专辑常是「夸克曲库」）污染 QQ / 网易结果。
+String buildMetadataSearchQuery({
+  required String title,
+  String artist = '',
+  String album = '',
+}) {
+  final String cleanTitle = title.trim();
+  if (cleanTitle.isEmpty) {
+    return '';
+  }
+  final List<String> parts = <String>[cleanTitle];
+  final String cleanArtist = artist.trim();
+  if (cleanArtist.isNotEmpty && cleanArtist != '未知艺术家') {
+    parts.add(cleanArtist);
+  }
+  final String cleanAlbum = album.trim();
+  if (cleanAlbum.isNotEmpty &&
+      cleanAlbum != '未知专辑' &&
+      cleanAlbum != '夸克曲库' &&
+      cleanAlbum != 'WebDAV 曲库') {
+    parts.add(cleanAlbum);
+  }
+  return parts.join(' ');
+}
+
 /// 可搜索曲目元数据的来源。
 abstract interface class MetadataSearcher {
   String get name;
