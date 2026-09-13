@@ -29,13 +29,20 @@ final class _FakeEngine extends PlaybackEngineBase {
   }
 
   @override
+  Future<void> addToQueue(PlaybackItem item) async {
+    _items = List<PlaybackItem>.unmodifiable(<PlaybackItem>[..._items, item]);
+    commands.add('add');
+  }
+
+  @override
   Future<void> play() async => commands.add('play');
 
   @override
   Future<void> pause() async => commands.add('pause');
 
   @override
-  Future<void> seek(Duration position) async => commands.add('seek:${position.inMilliseconds}');
+  Future<void> seek(Duration position) async =>
+      commands.add('seek:${position.inMilliseconds}');
 
   @override
   Future<void> setRate(double rate) async => commands.add('rate:$rate');
@@ -77,9 +84,9 @@ PlaybackSnapshot _snapshot({
 }
 
 List<PlaybackItem> _items() => <PlaybackItem>[
-      PlaybackItem.fromUri(Uri.parse('file:///music/a.flac')),
-      PlaybackItem.fromUri(Uri.parse('file:///music/b.flac')),
-    ];
+  PlaybackItem.fromUri(Uri.parse('file:///music/a.flac')),
+  PlaybackItem.fromUri(Uri.parse('file:///music/b.flac')),
+];
 
 void main() {
   late _FakeEngine engine;
@@ -93,7 +100,10 @@ void main() {
 
   setUp(() {
     engine = _FakeEngine();
-    handler = TingyuAudioHandler(engine, statePushInterval: const Duration(days: 1));
+    handler = TingyuAudioHandler(
+      engine,
+      statePushInterval: const Duration(days: 1),
+    );
   });
 
   tearDown(() => handler.dispose());
@@ -110,6 +120,20 @@ void main() {
       items.map((PlaybackItem item) => item.id).toList(),
     );
     expect(handler.queue.value.first.title, 'a.flac');
+  });
+
+  test('addToQueue 追加队列且不重建当前播放', () async {
+    final List<PlaybackItem> items = _items();
+    await handler.setQueue(<PlaybackItem>[items.first]);
+    await handler.addToQueue(items.last);
+    await pumpEventQueue();
+
+    expect(engine.commands, <String>['setQueue:0', 'add']);
+    expect(handler.items, items);
+    expect(
+      handler.queue.value.map((MediaItem item) => item.id).toList(),
+      items.map((PlaybackItem item) => item.id).toList(),
+    );
   });
 
   test('系统媒体会话指令转发到引擎', () async {
@@ -146,7 +170,12 @@ void main() {
     expect(handler.mediaItem.value?.duration, const Duration(seconds: 5));
     final int afterDurationKnown = published.length;
 
-    await push(_snapshot(duration: const Duration(seconds: 5), position: const Duration(seconds: 1)));
+    await push(
+      _snapshot(
+        duration: const Duration(seconds: 5),
+        position: const Duration(seconds: 1),
+      ),
+    );
     expect(published.length, afterDurationKnown, reason: '相同时长与曲目不应重复发布媒体元数据');
 
     await push(_snapshot(index: 1, duration: const Duration(seconds: 5)));
@@ -165,11 +194,17 @@ void main() {
     await push(_snapshot(playing: true));
     expect(states.length, initial + 1, reason: '播放态变化应立即推送');
 
-    await push(_snapshot(playing: true, position: const Duration(milliseconds: 60)));
-    await push(_snapshot(playing: true, position: const Duration(milliseconds: 120)));
+    await push(
+      _snapshot(playing: true, position: const Duration(milliseconds: 60)),
+    );
+    await push(
+      _snapshot(playing: true, position: const Duration(milliseconds: 120)),
+    );
     expect(states.length, initial + 1, reason: '节流窗口内的纯进度更新应被抑制');
 
-    await push(_snapshot(playing: false, position: const Duration(milliseconds: 180)));
+    await push(
+      _snapshot(playing: false, position: const Duration(milliseconds: 180)),
+    );
     expect(states.length, initial + 2, reason: '暂停应立即推送');
     expect(states.last.playing, isFalse);
     expect(states.last.queueIndex, 0);

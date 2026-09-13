@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -81,6 +83,12 @@ class ArtistsPage extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
           child: Row(
             children: <Widget>[
+              if (Platform.isAndroid || Platform.isIOS)
+                IconButton(
+                  tooltip: '返回曲库',
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => context.go('/library'),
+                ),
               Expanded(child: Text('艺术家', style: text.titleLarge)),
               artists.maybeWhen(
                 data: (List<ArtistSummary> list) =>

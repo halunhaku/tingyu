@@ -15,7 +15,8 @@ import 'playback_snapshot.dart';
 /// macOS/iOS → MPNowPlayingInfoCenter + MPRemoteCommandCenter，
 /// Android → MediaSession，Windows → SMTC（`audio_service_win`），
 /// Linux → MPRIS2（`audio_service_mpris`）。
-final class TingyuAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
+final class TingyuAudioHandler extends BaseAudioHandler
+    with QueueHandler, SeekHandler {
   TingyuAudioHandler(
     this._engine, {
     this.statePushInterval = const Duration(milliseconds: 500),
@@ -63,6 +64,14 @@ final class TingyuAudioHandler extends BaseAudioHandler with QueueHandler, SeekH
     _broadcast(_engine.current);
   }
 
+  /// 追加已解析条目，不重建播放器队列，因此不会打断当前直链播放。
+  Future<void> addToQueue(PlaybackItem item) async {
+    await _engine.addToQueue(item);
+    _items = List<PlaybackItem>.unmodifiable(<PlaybackItem>[..._items, item]);
+    queue.add(_items.map(_toMediaItem).toList(growable: false));
+    _broadcast(_engine.current);
+  }
+
   @override
   Future<void> play() => _engine.play();
 
@@ -106,7 +115,8 @@ final class TingyuAudioHandler extends BaseAudioHandler with QueueHandler, SeekH
     _syncMediaItem(snapshot);
 
     final PlaybackSnapshot? last = _lastPushed;
-    final bool semanticsChanged = last == null ||
+    final bool semanticsChanged =
+        last == null ||
         last.playing != snapshot.playing ||
         last.processing != snapshot.processing ||
         last.index != snapshot.index ||
@@ -144,8 +154,9 @@ final class TingyuAudioHandler extends BaseAudioHandler with QueueHandler, SeekH
     if (index < 0 || index >= _items.length) {
       return;
     }
-    final Duration? duration =
-        snapshot.duration == Duration.zero ? _items[index].duration : snapshot.duration;
+    final Duration? duration = snapshot.duration == Duration.zero
+        ? _items[index].duration
+        : snapshot.duration;
     if (_lastMediaItemIndex == index && _lastMediaItemDuration == duration) {
       return;
     }
@@ -156,7 +167,9 @@ final class TingyuAudioHandler extends BaseAudioHandler with QueueHandler, SeekH
 
   static MediaItem _toMediaItem(PlaybackItem item, {Duration? duration}) {
     final List<String> segments = item.uri.pathSegments;
-    final String fallbackTitle = segments.isEmpty ? item.uri.toString() : segments.last;
+    final String fallbackTitle = segments.isEmpty
+        ? item.uri.toString()
+        : segments.last;
     return MediaItem(
       id: item.id,
       title: item.title ?? fallbackTitle,
@@ -168,11 +181,13 @@ final class TingyuAudioHandler extends BaseAudioHandler with QueueHandler, SeekH
     );
   }
 
-  static AudioProcessingState _processingStateOf(PlaybackProcessing processing) => switch (processing) {
-        PlaybackProcessing.idle => AudioProcessingState.idle,
-        PlaybackProcessing.loading => AudioProcessingState.loading,
-        PlaybackProcessing.buffering => AudioProcessingState.buffering,
-        PlaybackProcessing.ready => AudioProcessingState.ready,
-        PlaybackProcessing.completed => AudioProcessingState.completed,
-      };
+  static AudioProcessingState _processingStateOf(
+    PlaybackProcessing processing,
+  ) => switch (processing) {
+    PlaybackProcessing.idle => AudioProcessingState.idle,
+    PlaybackProcessing.loading => AudioProcessingState.loading,
+    PlaybackProcessing.buffering => AudioProcessingState.buffering,
+    PlaybackProcessing.ready => AudioProcessingState.ready,
+    PlaybackProcessing.completed => AudioProcessingState.completed,
+  };
 }

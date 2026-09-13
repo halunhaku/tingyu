@@ -11,10 +11,10 @@ import '../../sources/scraper/netease_provider.dart';
 import '../../sources/scraper/qq_music_provider.dart';
 import '../shared/cover_art.dart';
 
-/// 人工匹配：搜索候选并手动选定正确的元数据（对齐旧版 `ManualMatchSheet`）。
+/// 人工匹配：先填歌名 / 歌手 / 专辑，再搜候选并选定。
 ///
-/// 自动抓取用的是"互相包含"的宽松判据，遇到翻唱/同名版本会命中错误条目；
-/// 这里让用户直接指定，选定后写入歌手/专辑/标题/封面/歌词。
+/// 对齐旧版 `ManualMatchSheet`，但打开时**不**自动搜索——夸克曲目的文件名
+/// 经常是噪声，一打开就搜会打出一堆无关结果。占位专辑/歌手不预填进输入框。
 Future<void> showManualMatchDialog(BuildContext context, WidgetRef ref, Track track) async {
   await showDialog<void>(
     context: context,
@@ -32,7 +32,9 @@ class _ManualMatchDialog extends ConsumerStatefulWidget {
 }
 
 class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
-  late final TextEditingController _query = TextEditingController(text: widget.track.title);
+  late final TextEditingController _title = TextEditingController(text: widget.track.title);
+  late final TextEditingController _artist = TextEditingController(text: _editableArtist(widget.track.artist));
+  late final TextEditingController _album = TextEditingController(text: _editableAlbum(widget.track.album));
 
   final QQMusicProvider _qq = QQMusicProvider();
   final NetEaseProvider _netease = NetEaseProvider();
@@ -41,29 +43,42 @@ class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
   List<MetadataCandidate> _candidates = const <MetadataCandidate>[];
   bool _searching = false;
   bool _applying = false;
+  bool _didSearch = false;
   String? _error;
 
-  @override
-  void initState() {
-    super.initState();
-    _search();
-  }
+  static String _editableArtist(String artist) =>
+      artist.trim().isEmpty || artist == '未知艺术家' ? '' : artist;
+
+  static String _editableAlbum(String album) => isPlaceholderAlbum(album) ? '' : album;
 
   @override
   void dispose() {
-    _query.dispose();
+    _title.dispose();
+    _artist.dispose();
+    _album.dispose();
     super.dispose();
   }
 
   Future<void> _search() async {
+    final String title = _title.text.trim();
+    if (title.isEmpty) {
+      setState(() {
+        _error = '请先填写歌名';
+        _candidates = const <MetadataCandidate>[];
+        _didSearch = false;
+      });
+      return;
+    }
     setState(() {
       _searching = true;
       _error = null;
+      _didSearch = true;
     });
-    final String query = _query.text.trim();
+    final String artist = _artist.text.trim();
+    final String album = _album.text.trim();
     final List<MetadataCandidate> results = <MetadataCandidate>[
-      ...await _qq.searchCandidates(query, artist: _artistHint, limit: 8),
-      ...await _netease.searchCandidates(query, artist: _artistHint, limit: 5),
+      ...await _qq.searchCandidates(title, artist: artist, album: album, limit: 8),
+      ...await _netease.searchCandidates(title, artist: artist, album: album, limit: 5),
     ];
     if (!mounted) {
       return;
@@ -75,11 +90,6 @@ class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
         _error = '没有找到候选，换个关键词试试';
       }
     });
-  }
-
-  String get _artistHint {
-    final String artist = widget.track.artist;
-    return artist == '未知艺术家' ? '' : artist;
   }
 
   Future<void> _apply(MetadataCandidate candidate) async {
@@ -129,11 +139,12 @@ class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final bool canSearch = !_searching && _title.text.trim().isNotEmpty;
     return AlertDialog(
       title: const Text('匹配元数据'),
       content: SizedBox(
         width: 560,
-        height: 420,
+        height: 460,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
@@ -141,17 +152,59 @@ class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
               children: <Widget>[
                 Expanded(
                   child: TextField(
-                    controller: _query,
+                    controller: _title,
                     decoration: const InputDecoration(
-                      labelText: '搜索关键词',
+                      labelText: '歌名',
                       isDense: true,
                     ),
-                    onSubmitted: (_) => _search(),
+                    textInputAction: TextInputAction.next,
+                    onChanged: (_) => setState(() {}),
+                    onSubmitted: (_) {
+                      if (canSearch) {
+                        _search();
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _artist,
+                    decoration: const InputDecoration(
+                      labelText: '歌手（选填）',
+                      isDense: true,
+                    ),
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) {
+                      if (canSearch) {
+                        _search();
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: TextField(
+                    controller: _album,
+                    decoration: const InputDecoration(
+                      labelText: '专辑（选填）',
+                      isDense: true,
+                    ),
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (_) {
+                      if (canSearch) {
+                        _search();
+                      }
+                    },
                   ),
                 ),
                 const SizedBox(width: 8),
                 FilledButton.tonal(
-                  onPressed: _searching ? null : _search,
+                  onPressed: canSearch ? _search : null,
                   child: const Text('搜索'),
                 ),
               ],
@@ -170,7 +223,8 @@ class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
                   : _candidates.isEmpty
                       ? Center(
                           child: Text(
-                            _error ?? '输入关键词后点搜索',
+                            _error ??
+                                (_didSearch ? '没有找到候选，换个关键词试试' : '先填写歌名，再点搜索'),
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         )

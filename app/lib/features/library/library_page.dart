@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,7 +13,11 @@ import '../shared/track_row.dart';
 ///
 /// 与旧版一致：搜索框在侧栏，命中结果回到曲库列表展示。
 class LibraryPage extends ConsumerWidget {
-  const LibraryPage({super.key, this.recentOnly = false, this.favoritesOnly = false});
+  const LibraryPage({
+    super.key,
+    this.recentOnly = false,
+    this.favoritesOnly = false,
+  });
 
   final bool recentOnly;
 
@@ -19,6 +25,8 @@ class LibraryPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 原生 macOS 在曲库出现时后台补全所有缺失元数据的歌曲。
+    ref.watch(autoLibraryEnrichmentProvider);
     final String query = ref.watch(searchQueryProvider);
     final AsyncValue<List<Track>> tracks;
     final String title;
@@ -41,7 +49,10 @@ class LibraryPage extends ConsumerWidget {
           child: Row(
             children: <Widget>[
               Expanded(
-                child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
               ),
               tracks.maybeWhen(
                 data: (List<Track> list) => Text(
@@ -50,15 +61,42 @@ class LibraryPage extends ConsumerWidget {
                 ),
                 orElse: () => const SizedBox.shrink(),
               ),
-              // 移动端没有侧栏，设置入口放这里（版本/构建戳、来源、曲库统计都在里面）。
-              IconButton(
-                tooltip: '设置',
-                icon: const Icon(Icons.settings_outlined),
-                onPressed: () => context.go('/settings'),
-              ),
+              // 桌面侧栏左下角已有设置；只有移动端没有侧栏，才在标题栏放入口。
+              if (Platform.isAndroid || Platform.isIOS)
+                IconButton(
+                  tooltip: '设置',
+                  icon: const Icon(Icons.settings_outlined),
+                  onPressed: () => context.go('/settings'),
+                ),
             ],
           ),
         ),
+        if ((Platform.isAndroid || Platform.isIOS) &&
+            favoritesOnly == false &&
+            recentOnly == false &&
+            query.trim().isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.go('/artists'),
+                    icon: const Icon(Icons.person_outline, size: 18),
+                    label: const Text('艺术家'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.go('/albums'),
+                    icon: const Icon(Icons.album_outlined, size: 18),
+                    label: const Text('专辑'),
+                  ),
+                ),
+              ],
+            ),
+          ),
         Expanded(
           child: tracks.when(
             loading: () => const Center(child: CircularProgressIndicator()),
@@ -119,9 +157,12 @@ class _TrackRowWithPlayback extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final List<String> playingIds = ref.watch(playbackProvider.notifier).trackIds;
+    final List<String> playingIds = ref
+        .watch(playbackProvider.notifier)
+        .trackIds;
     final int playingIndex = ref.watch(playbackProvider).index;
-    final bool isPlaying = playingIndex >= 0 &&
+    final bool isPlaying =
+        playingIndex >= 0 &&
         playingIndex < playingIds.length &&
         playingIds[playingIndex] == track.id;
 
@@ -129,7 +170,9 @@ class _TrackRowWithPlayback extends ConsumerWidget {
       track: track,
       index: index,
       isPlaying: isPlaying,
-      onTap: () => ref.read(playbackProvider.notifier).playTracks(queue, startIndex: startIndex),
+      onTap: () => ref
+          .read(playbackProvider.notifier)
+          .playTracks(queue, startIndex: startIndex),
     );
   }
 }

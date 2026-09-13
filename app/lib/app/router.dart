@@ -30,14 +30,10 @@ GoRouter createRouter({
     initialLocation: initialLocation,
     routes: <RouteBase>[
       ShellRoute(
-        builder: (BuildContext context, GoRouterState state, Widget child) => mobile
-            ? MobileShell(child: child)
-            : AppShell(child: child),
+        builder: (BuildContext context, GoRouterState state, Widget child) =>
+            mobile ? MobileShell(child: child) : AppShell(child: child),
         routes: <RouteBase>[
-          GoRoute(
-            path: '/library',
-            builder: (_, _) => const LibraryPage(),
-          ),
+          GoRoute(path: '/library', builder: (_, _) => const LibraryPage()),
           GoRoute(
             path: '/recent',
             builder: (_, _) => const LibraryPage(recentOnly: true),
@@ -46,53 +42,37 @@ GoRouter createRouter({
             path: '/favorites',
             builder: (_, _) => const LibraryPage(favoritesOnly: true),
           ),
-          GoRoute(
-            path: '/artists',
-            builder: (_, _) => const ArtistsPage(),
-          ),
+          GoRoute(path: '/artists', builder: (_, _) => const ArtistsPage()),
           GoRoute(
             path: '/artists/:name',
-            builder: (_, GoRouterState state) => ArtistDetailPage(
-              artist: Uri.decodeComponent(state.pathParameters['name'] ?? ''),
-            ),
+            // go_router 18 已把 pathParameters 解码；再次 decodeComponent 会让中文名
+            // 直接抛 Illegal percent encoding，表现为详情页空白。
+            builder: (_, GoRouterState state) =>
+                ArtistDetailPage(artist: state.pathParameters['name'] ?? ''),
           ),
-          GoRoute(
-            path: '/albums',
-            builder: (_, _) => const AlbumsPage(),
-          ),
+          GoRoute(path: '/albums', builder: (_, _) => const AlbumsPage()),
           GoRoute(
             path: '/albums/:artist/:album',
             builder: (_, GoRouterState state) => AlbumDetailPage(
               albumKey: AlbumKey(
-                artist: Uri.decodeComponent(state.pathParameters['artist'] ?? ''),
-                album: Uri.decodeComponent(state.pathParameters['album'] ?? ''),
+                artist: state.pathParameters['artist'] ?? '',
+                album: state.pathParameters['album'] ?? '',
               ),
             ),
           ),
-          GoRoute(
-            path: '/playlists',
-            builder: (_, _) => const PlaylistsPage(),
-          ),
+          GoRoute(path: '/playlists', builder: (_, _) => const PlaylistsPage()),
           GoRoute(
             path: '/playlist/:id',
-            builder: (_, GoRouterState state) => PlaylistPage(
-              playlistId: state.pathParameters['id'] ?? '',
-            ),
+            builder: (_, GoRouterState state) =>
+                PlaylistPage(playlistId: state.pathParameters['id'] ?? ''),
           ),
           GoRoute(
             path: '/source/:id',
-            builder: (_, GoRouterState state) => SourcePage(
-              sourceId: state.pathParameters['id'] ?? '',
-            ),
+            builder: (_, GoRouterState state) =>
+                SourcePage(sourceId: state.pathParameters['id'] ?? ''),
           ),
-          GoRoute(
-            path: '/sources',
-            builder: (_, _) => const SourcesPage(),
-          ),
-          GoRoute(
-            path: '/settings',
-            builder: (_, _) => const SettingsPage(),
-          ),
+          GoRoute(path: '/sources', builder: (_, _) => const SourcesPage()),
+          GoRoute(path: '/settings', builder: (_, _) => const SettingsPage()),
           GoRoute(
             path: '/now-playing',
             builder: (_, _) => const NowPlayingPage(),
@@ -100,8 +80,7 @@ GoRouter createRouter({
         ],
       ),
     ],
-    errorBuilder: (BuildContext context, GoRouterState state) => Center(
-      child: Text('页面不存在：${state.uri}'),
-    ),
+    errorBuilder: (BuildContext context, GoRouterState state) =>
+        Center(child: Text('页面不存在：${state.uri}')),
   );
 }

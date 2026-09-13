@@ -74,10 +74,17 @@ class _Sidebar extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
             child: TextField(
               controller: searchController,
+              style: Theme.of(context).textTheme.bodySmall,
               decoration: InputDecoration(
                 isDense: true,
                 hintText: '搜索歌曲、艺术家或专辑',
-                prefixIcon: const Icon(Icons.search, size: 18),
+                hintStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                prefixIcon: const Icon(Icons.search, size: 16),
+                prefixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                suffixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                contentPadding: const EdgeInsets.fromLTRB(0, 8, 8, 8),
                 suffixIcon: !hasQuery
                     ? null
                     : IconButton(

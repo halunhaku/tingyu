@@ -10,11 +10,11 @@ import '../shared/cover_art.dart';
 import '../shared/empty_state.dart';
 import '../shared/format.dart';
 
-/// "接下来播放"：当前播放队列（对齐旧版 `UpNextQueueView` 的信息架构）。
+/// "接下来播放"：当前播放会话的完整列表（对齐旧版 `UpNextQueueView`）。
 ///
 /// 高亮正在播放的那一行；点击任意一行从该行开始播放（`playAt`）。
-/// 队列条数由 `PlaybackController.trackIds` 给出，行数据按 id 从曲库取，
-/// 这样抓取富化改过的元数据能即时反映到队列里。
+/// 行数据按 id 从曲库取，这样抓取富化改过的元数据能即时反映到队列里。
+/// 直链仍懒解析；这里展示的是 [PlaybackController.sourceQueue]，不是引擎里那两三首。
 class QueuePanel extends ConsumerWidget {
   const QueuePanel({super.key});
 
@@ -22,11 +22,16 @@ class QueuePanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final PlaybackSnapshot snapshot = ref.watch(playbackProvider);
     final PlaybackController controller = ref.read(playbackProvider.notifier);
+    final List<Track> source = controller.sourceQueue;
     final List<String> ids = controller.trackIds;
     // 队列由外部设置时没有曲目 id：退化为直接展示引擎条目（无曲库详情）。
     final List<PlaybackItem> items = controller.items;
+    final bool showSource = source.isNotEmpty;
     final bool showIds = ids.isNotEmpty;
-    final int count = showIds ? ids.length : items.length;
+    final int count = showSource
+        ? source.length
+        : (showIds ? ids.length : items.length);
+    final int currentIndex = showSource ? controller.queueDisplayIndex : snapshot.index;
     final ThemeData theme = Theme.of(context);
 
     return ColoredBox(
@@ -63,11 +68,13 @@ class QueuePanel extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     itemCount: count,
                     itemBuilder: (BuildContext context, int index) => _QueueRow(
-                      trackId: showIds ? ids[index] : null,
-                      item: showIds ? null : items[index],
+                      trackId: showSource
+                          ? source[index].id
+                          : (showIds ? ids[index] : null),
+                      item: showSource || showIds ? null : items[index],
                       number: index + 1,
-                      isCurrent: index == snapshot.index,
-                      isPlaying: index == snapshot.index && snapshot.playing,
+                      isCurrent: index == currentIndex,
+                      isPlaying: index == currentIndex && snapshot.playing,
                       onTap: () => ref.read(playbackProvider.notifier).playAt(index),
                     ),
                   ),

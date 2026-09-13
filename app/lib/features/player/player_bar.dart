@@ -111,7 +111,7 @@ class PlayerBar extends ConsumerWidget {
                   ),
                   if (showProgress) ...<Widget>[
                     const SizedBox(width: 4),
-                    Text(formatDuration(snapshot.position), style: Theme.of(context).textTheme.bodySmall),
+                    _TimeLabel(snapshot.position, align: TextAlign.right),
                     Expanded(
                       child: Slider(
                         value: progress,
@@ -122,7 +122,7 @@ class PlayerBar extends ConsumerWidget {
                             : null,
                       ),
                     ),
-                    Text(formatDuration(duration), style: Theme.of(context).textTheme.bodySmall),
+                    _TimeLabel(duration),
                   ] else
                     const Spacer(),
                   const SizedBox(width: 8),
@@ -147,6 +147,31 @@ class PlayerBar extends ConsumerWidget {
             },
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+/// 固定宽度 + 等宽数字，避免 1/9 字形宽度差把进度条左右拽动。
+class _TimeLabel extends StatelessWidget {
+  const _TimeLabel(this.duration, {this.align = TextAlign.left});
+
+  final Duration duration;
+
+  final TextAlign align;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 44,
+      child: Text(
+        formatDuration(duration),
+        maxLines: 1,
+        textAlign: align,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+            ),
       ),
     );
   }

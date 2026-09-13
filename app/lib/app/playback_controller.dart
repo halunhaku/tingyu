@@ -8,30 +8,45 @@ import '../playback/playback_item.dart';
 import '../playback/playback_snapshot.dart';
 import '../playback/tingyu_audio_handler.dart';
 import 'providers.dart';
+import 'track_resolver.dart';
 
-/// 界面层唯一的播放入口：管理队列、转发指令、并把播放历史写回曲库。
-///
-/// 系统媒体会话（媒体键 / 锁屏 / SMTC / MPRIS）的指令由 [TingyuAudioHandler]
-/// 直接落到引擎上，这里只负责"用户从界面发起的播放"与状态暴露。
+/// 界面层唯一的播放入口：管理懒解析队列、转发指令、并把播放历史写回曲库。
 class PlaybackController extends Notifier<PlaybackSnapshot> {
+  static const int _prefetchCount = 2;
+
   TingyuAudioHandler? _handler;
 
   List<PlaybackItem> _queue = const <PlaybackItem>[];
-
   List<String> _trackIds = const <String>[];
-
+  List<int> _resolvedSourceIndices = const <int>[];
+  List<Track> _sourceQueue = const <Track>[];
+  int _nextSourceIndex = 0;
+  int _queueGeneration = 0;
+  Future<void>? _prefetchFuture;
   String? _lastRecordedId;
 
-  /// 与队列一一对应的曲目 id（用于"正在播放"与播放列表联动）。
+  /// 与已解析队列一一对应的曲目 id。
   List<String> get trackIds => _trackIds;
 
   List<PlaybackItem> get queue => _queue;
 
-  /// 引擎当前条目：即使队列不是经本控制器设置（调试入口 / 系统恢复）也能拿到元数据。
   PlaybackItem? get currentItem => handler.currentItem;
 
-  /// 引擎持有的队列；控制器自己设置的队列优先（含曲目 id 映射）。
   List<PlaybackItem> get items => _queue.isNotEmpty ? _queue : handler.items;
+
+  /// 当前播放会话的完整曲目列表（点击起播时排好序），供「接下来播放」展示。
+  ///
+  /// 引擎侧仍只预取当前曲目后两首直链；UI 用这份列表，避免队列看起来只有 3 首。
+  List<Track> get sourceQueue => _sourceQueue;
+
+  /// 「接下来播放」里正在播放那一行的下标（相对 [sourceQueue]）。
+  int get queueDisplayIndex {
+    final int engineIndex = state.index;
+    if (engineIndex < 0 || engineIndex >= _resolvedSourceIndices.length) {
+      return engineIndex;
+    }
+    return _resolvedSourceIndices[engineIndex];
+  }
 
   TingyuAudioHandler get handler {
     final TingyuAudioHandler? cached = _handler;
@@ -47,52 +62,58 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
   PlaybackSnapshot build() {
     final TingyuAudioHandler handler = ref.watch(audioHandlerProvider);
     _handler = handler;
-    final StreamSubscription<PlaybackSnapshot> subscription = handler.snapshots.listen((PlaybackSnapshot snapshot) {
-      state = snapshot;
-      _recordPlay(snapshot);
-    });
+    final StreamSubscription<PlaybackSnapshot> subscription = handler.snapshots
+        .listen((PlaybackSnapshot snapshot) {
+          state = snapshot;
+          _recordPlay(snapshot);
+          unawaited(_ensureAhead());
+        });
     ref.onDispose(subscription.cancel);
     return handler.currentSnapshot;
   }
 
-  /// 用一批曲目替换队列并开始播放。
+  /// 优先解析用户点击的歌曲并立即播放，只在后台预取后续两首直链。
   ///
-  /// 单条曲目解析失败（例如远端凭据失效）只跳过该条，不影响整队列。
+  /// 旧实现会先串行解析整个列表；夸克曲库每首都要请求一次下载地址，导致点击后
+  /// 长时间无响应。现在队列从点击项开始循环排列，并随播放推进按需追加。
   Future<void> playTracks(List<Track> tracks, {int startIndex = 0}) async {
     if (tracks.isEmpty) {
       return;
     }
-    final resolver = ref.read(trackResolverProvider);
-    final List<PlaybackItem> items = <PlaybackItem>[];
-    final List<String> ids = <String>[];
-    for (final Track track in tracks) {
-      try {
-        items.add(await resolver.resolve(track));
-        ids.add(track.id);
-      } on Object catch (error) {
-        debugPrint('[playback] 跳过无法解析的曲目「${track.title}」: $error');
-      }
-    }
-    if (items.isEmpty) {
-      return;
-    }
-    _queue = List<PlaybackItem>.unmodifiable(items);
-    _trackIds = List<String>.unmodifiable(ids);
-    _lastRecordedId = null;
-    await handler.setQueue(items, startIndex: startIndex);
-    await handler.play();
+    final int normalized = startIndex.clamp(0, tracks.length - 1);
+    _sourceQueue = <Track>[
+      ...tracks.skip(normalized),
+      ...tracks.take(normalized),
+    ];
+    await _restartEngineFrom(0);
   }
 
-  /// 在当前队列的指定位置开始播放（点击列表某一行）。
+  /// 在「接下来播放」的指定行开始播放。
   Future<void> playAt(int index) async {
+    if (_sourceQueue.isNotEmpty) {
+      if (index < 0 || index >= _sourceQueue.length) {
+        return;
+      }
+      final int resolved = _resolvedSourceIndices.indexOf(index);
+      if (resolved >= 0 && resolved < _queue.length) {
+        await handler.seek(Duration.zero);
+        final List<PlaybackItem> items = List<PlaybackItem>.of(_queue);
+        await handler.setQueue(items, startIndex: resolved);
+        await handler.play();
+        unawaited(_ensureAhead());
+        return;
+      }
+      await _restartEngineFrom(index);
+      return;
+    }
     if (index < 0 || index >= _queue.length) {
       return;
     }
     await handler.seek(Duration.zero);
-    // 通过重建队列定位：引擎的 jump 语义在各平台上不一致，重建最稳。
     final List<PlaybackItem> items = List<PlaybackItem>.of(_queue);
     await handler.setQueue(items, startIndex: index);
     await handler.play();
+    unawaited(_ensureAhead());
   }
 
   Future<void> togglePlayPause() async {
@@ -105,7 +126,10 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
 
   Future<void> pause() => handler.pause();
 
-  Future<void> next() => handler.skipToNext();
+  Future<void> next() async {
+    await _ensureAhead(minimumAhead: 1);
+    await handler.skipToNext();
+  }
 
   Future<void> previous() => handler.skipToPrevious();
 
@@ -113,8 +137,97 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
 
   Future<void> setVolume(double volume) => handler.setVolume(volume);
 
+  Future<void> _restartEngineFrom(int sourceIndex) async {
+    final int generation = ++_queueGeneration;
+    _prefetchFuture = null;
+    _nextSourceIndex = sourceIndex;
+    _queue = const <PlaybackItem>[];
+    _trackIds = const <String>[];
+    _resolvedSourceIndices = const <int>[];
+    _lastRecordedId = null;
+
+    final _Resolved? first = await _resolveNext(generation);
+    if (first == null || generation != _queueGeneration) {
+      return;
+    }
+    _queue = List<PlaybackItem>.unmodifiable(<PlaybackItem>[first.item]);
+    _trackIds = List<String>.unmodifiable(<String>[first.track.id]);
+    _resolvedSourceIndices = List<int>.unmodifiable(<int>[first.sourceIndex]);
+    await handler.setQueue(_queue);
+    if (generation != _queueGeneration) {
+      return;
+    }
+    await handler.play();
+    unawaited(ref.read(enrichmentServiceProvider).enrichTrack(first.track));
+    unawaited(_ensureAhead());
+  }
+
+  Future<void> _ensureAhead({int minimumAhead = _prefetchCount}) {
+    if (_sourceQueue.isEmpty || _nextSourceIndex >= _sourceQueue.length) {
+      return Future<void>.value();
+    }
+    final Future<void>? active = _prefetchFuture;
+    if (active != null) {
+      return active;
+    }
+    final int generation = _queueGeneration;
+    final Future<void> future = _prefetch(generation, minimumAhead);
+    _prefetchFuture = future;
+    return future.whenComplete(() {
+      if (identical(_prefetchFuture, future)) {
+        _prefetchFuture = null;
+      }
+    });
+  }
+
+  Future<void> _prefetch(int generation, int minimumAhead) async {
+    while (generation == _queueGeneration &&
+        _nextSourceIndex < _sourceQueue.length &&
+        _queue.length - handler.currentSnapshot.index - 1 < minimumAhead) {
+      final _Resolved? resolved = await _resolveNext(generation);
+      if (resolved == null || generation != _queueGeneration) {
+        return;
+      }
+      await handler.addToQueue(resolved.item);
+      if (generation != _queueGeneration) {
+        return;
+      }
+      _queue = List<PlaybackItem>.unmodifiable(<PlaybackItem>[
+        ..._queue,
+        resolved.item,
+      ]);
+      _trackIds = List<String>.unmodifiable(<String>[
+        ..._trackIds,
+        resolved.track.id,
+      ]);
+      _resolvedSourceIndices = List<int>.unmodifiable(<int>[
+        ..._resolvedSourceIndices,
+        resolved.sourceIndex,
+      ]);
+    }
+  }
+
+  Future<_Resolved?> _resolveNext(int generation) async {
+    final TrackResolver resolver = ref.read(trackResolverProvider);
+    while (generation == _queueGeneration &&
+        _nextSourceIndex < _sourceQueue.length) {
+      final int sourceIndex = _nextSourceIndex;
+      final Track track = _sourceQueue[_nextSourceIndex++];
+      try {
+        final PlaybackItem item = await resolver.resolve(track);
+        if (generation != _queueGeneration) {
+          return null;
+        }
+        return _Resolved(track: track, item: item, sourceIndex: sourceIndex);
+      } on Object catch (error) {
+        debugPrint('[playback] 跳过无法解析的曲目「${track.title}」: $error');
+      }
+    }
+    return null;
+  }
+
   void _recordPlay(PlaybackSnapshot snapshot) {
-    if (!snapshot.playing) {
+    if (snapshot.playing == false) {
       return;
     }
     final int index = snapshot.index;
@@ -128,4 +241,16 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
     _lastRecordedId = id;
     unawaited(ref.read(trackRepositoryProvider).recordPlay(id));
   }
+}
+
+class _Resolved {
+  const _Resolved({
+    required this.track,
+    required this.item,
+    required this.sourceIndex,
+  });
+
+  final Track track;
+  final PlaybackItem item;
+  final int sourceIndex;
 }

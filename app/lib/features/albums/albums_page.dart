@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -40,6 +42,12 @@ class AlbumsPage extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(_sidePadding, 16, _sidePadding, 0),
           child: Row(
             children: <Widget>[
+              if (Platform.isAndroid || Platform.isIOS)
+                IconButton(
+                  tooltip: '返回曲库',
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => context.go('/library'),
+                ),
               Expanded(child: Text('专辑', style: text.titleLarge)),
               albums.maybeWhen(
                 data: (List<AlbumSummary> list) => Text('${list.length} 张', style: text.bodySmall),
