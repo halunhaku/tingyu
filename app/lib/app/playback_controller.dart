@@ -25,6 +25,12 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
   Future<void>? _prefetchFuture;
   String? _lastRecordedId;
 
+  /// 本次起播第一个要解析的曲目（用户点的那一首）。
+  int _startSourceIndex = 0;
+
+  /// 最近一次解析失败的原因（取直链、校验授权）。
+  Object? _lastResolveError;
+
   /// 与已解析队列一一对应的曲目 id。
   List<String> get trackIds => _trackIds;
 
@@ -141,10 +147,12 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
     final int generation = ++_queueGeneration;
     _prefetchFuture = null;
     _nextSourceIndex = sourceIndex;
+    _startSourceIndex = sourceIndex;
     _queue = const <PlaybackItem>[];
     _trackIds = const <String>[];
     _resolvedSourceIndices = const <int>[];
     _lastRecordedId = null;
+    _lastResolveError = null;
 
     final _Resolved? first = await _resolveNext(generation);
     if (first == null || generation != _queueGeneration) {
@@ -220,10 +228,34 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
         }
         return _Resolved(track: track, item: item, sourceIndex: sourceIndex);
       } on Object catch (error) {
+        _lastResolveError = error;
+        if (sourceIndex == _startSourceIndex) {
+          // 点的就是这一首：立刻给提示。否则用户只看到"点了没反应"，
+          // 而后面几十首挨个尝试要跑很久。
+          _reportResolveFailure(sourceIndex);
+        }
         debugPrint('[playback] 跳过无法解析的曲目「${track.title}」: $error');
       }
     }
     return null;
+  }
+
+  /// 用户点的那一首解析不出来（取直链、校验授权失败）时，把原因写进快照。
+  ///
+  /// 引擎侧的失败由引擎自己上报；解析发生在引擎之前，没有引擎事件可依赖，
+  /// 这里补上同一个字段，界面不必为"取直链失败"再开一条提示路径。
+  /// 队列里**后续**曲目解析失败不提示（那只是"跳过"，歌曲照放），只进日志。
+  void _reportResolveFailure(int sourceIndex) {
+    final String title = sourceIndex >= 0 && sourceIndex < _sourceQueue.length
+        ? _sourceQueue[sourceIndex].title
+        : '';
+    final Object? error = _lastResolveError;
+    debugPrint('[playback] 无法播放「$title」: ${error ?? '未知原因'}');
+    final PlaybackFailure reported = PlaybackFailure(
+      message: error == null ? '无法加载曲目' : '无法播放：$error',
+      title: title.isEmpty ? null : title,
+    );
+    state = state.copyWith(failure: reported);
   }
 
   void _recordPlay(PlaybackSnapshot snapshot) {
