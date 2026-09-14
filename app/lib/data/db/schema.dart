@@ -86,7 +86,8 @@ class MusicSources extends Table {
 
   TextColumn get localFolderPath => text().nullable()();
 
-  /// 旧版 macOS 安全作用域书签（base64）；仅用于迁移留痕，新版本按目录路径访问。
+  /// 系统授权目录的持久化凭据：Android 是 SAF tree URI，iOS 是安全作用域书签（base64）。
+  /// 旧版 macOS 迁移过来的书签也落在这里（桌面来源仍按 `local_folder_path` 访问）。
   TextColumn get localBookmark => text().nullable()();
 
   TextColumn get webdavUrl => text().nullable()();

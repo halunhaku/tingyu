@@ -1,11 +1,11 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../data/db/database.dart';
 import 'package:tingyu_saf/tingyu_saf.dart';
 
+import '../data/db/database.dart';
 import '../data/secure_store.dart';
+import '../sources/local/local_bookmark_source_adapter.dart';
 import '../sources/local/local_source_adapter.dart';
 import '../sources/local/saf_source_adapter.dart';
 import '../sources/quark/quark_source_adapter.dart';
@@ -39,11 +39,15 @@ Future<SourceAdapter> buildSourceAdapter(
         folderFid: source.quarkFolderFid ?? '0',
       );
     default:
-      // Android 的本地目录是 SAF 授权的 tree URI（存在 local_bookmark 列），
-      // 其余平台仍是普通文件系统路径。
-      final String? treeUri = source.localBookmark;
-      if (Platform.isAndroid && treeUri != null && treeUri.startsWith('content://')) {
-        return SafSourceAdapter(sourceId: source.id, treeUri: treeUri);
+      // 本地目录"怎么拿到文件"由 local_bookmark 决定：
+      // Android 是 SAF 授权的 tree URI，iOS 是安全作用域书签，
+      // 其余情况（桌面、以及从旧版迁移过来的路径）就是普通文件系统路径。
+      final String? token = source.localBookmark;
+      if (Platform.isAndroid && token != null && token.startsWith('content://')) {
+        return SafSourceAdapter(sourceId: source.id, treeUri: token);
+      }
+      if (Platform.isIOS && token != null && token.isNotEmpty) {
+        return LocalBookmarkSourceAdapter(sourceId: source.id, bookmark: token);
       }
       return LocalSourceAdapter(
         sourceId: source.id,
@@ -52,8 +56,31 @@ Future<SourceAdapter> buildSourceAdapter(
   }
 }
 
+/// 本地目录的授权是否仍然有效：Android 查 SAF 持久化授权，iOS 解析安全作用域书签，
+/// 桌面只有路径本身（非空即算可用）。
+Future<bool> localFolderAccessValid(MusicSource source) async {
+  final String? token = source.localBookmark;
+  if (Platform.isAndroid) {
+    return token != null &&
+        token.startsWith('content://') &&
+        await _safPermissionValid(token);
+  }
+  if (Platform.isIOS) {
+    if (token == null || token.isEmpty) {
+      return false;
+    }
+    try {
+      // 解析成功即视为有效：插件顺手开启安全作用域，随后的扫描与播放都靠它。
+      return (await TingyuSaf.resolveBookmark(token)) != null;
+    } on Object {
+      return false;
+    }
+  }
+  return (source.localFolderPath ?? '').isNotEmpty;
+}
+
 /// SAF 授权是否仍有效；插件不可用（非 Android）时按无效处理。
-Future<bool> safPermissionValid(String treeUri) async {
+Future<bool> _safPermissionValid(String treeUri) async {
   try {
     return await TingyuSaf.hasPermission(treeUri);
   } on Object {
@@ -70,13 +97,6 @@ Future<bool> sourceHasCredentials(MusicSource source, {SecureStore? secureStore}
     case 'quark':
       return (await store.readQuarkCookie(source.id)) != null;
     default:
-      if (Platform.isAndroid) {
-        final String? treeUri = source.localBookmark;
-        // Android 只有拿到持久化授权的 SAF 目录才算"可用"。
-        return treeUri != null &&
-            treeUri.startsWith('content://') &&
-            await safPermissionValid(treeUri);
-      }
-      return (source.localFolderPath ?? '').isNotEmpty;
+      return localFolderAccessValid(source);
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -96,6 +98,11 @@ class SourcePage extends ConsumerWidget {
                   if ((value.localBookmark ?? '').startsWith('content://'))
                     Text(
                       '系统授权的音乐目录（SAF）',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  if (Platform.isIOS && (value.localBookmark ?? '').isNotEmpty)
+                    Text(
+                      '系统授权的音乐目录（安全书签）',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   if (value.webdavUrl != null)

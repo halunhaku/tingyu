@@ -98,7 +98,9 @@ class SourcesPage extends ConsumerWidget {
               ListTile(
                 leading: const Icon(Icons.folder),
                 title: const Text('本地目录'),
-                subtitle: const Text('选择电脑上的音乐文件夹'),
+                subtitle: Text(
+                  Platform.isAndroid || Platform.isIOS ? '选择本机上的音乐文件夹' : '选择电脑上的音乐文件夹',
+                ),
                 onTap: () {
                   Navigator.pop(dialogContext);
                   _addLocalFolder(context, ref);
@@ -137,6 +139,7 @@ class SourcesPage extends ConsumerWidget {
 
   Future<void> _addLocalFolder(BuildContext context, WidgetRef ref) async {
     // Android：必须走 SAF 目录授权（分区存储下直接读 /sdcard 会 EACCES）。
+    // iOS：文档选择器 + 安全作用域书签（沙盒外目录拿不到可持久化的路径）。
     // 桌面：普通文件系统路径，用系统目录选择器。
     final String id = 'src-${DateTime.now().microsecondsSinceEpoch}';
     if (Platform.isAndroid) {
@@ -154,21 +157,32 @@ class SourcesPage extends ConsumerWidget {
               localBookmark: Value<String?>(treeUri),
             ),
           );
-    } else {
-      final String? path = await getDirectoryPath(confirmButtonText: '选择');
-      if (path == null || path.isEmpty) {
-        return;
+    } else if (Platform.isIOS) {
+      final PickedFolder? picked = await TingyuSaf.pickFolderBookmark();
+      if (picked == null) {
+        return; // 用户取消
       }
-      final String name = path
-          .split('/')
-          .where((String part) => part.isNotEmpty)
-          .last;
       await ref
           .read(sourceRepositoryProvider)
           .upsert(
             MusicSourcesCompanion.insert(
               id: id,
-              name: name,
+              name: _displayNameOfPath(picked.path),
+              kind: 'local',
+              localBookmark: Value<String?>(picked.bookmark),
+            ),
+          );
+    } else {
+      final String? path = await getDirectoryPath(confirmButtonText: '选择');
+      if (path == null || path.isEmpty) {
+        return;
+      }
+      await ref
+          .read(sourceRepositoryProvider)
+          .upsert(
+            MusicSourcesCompanion.insert(
+              id: id,
+              name: _displayNameOfPath(path),
               kind: 'local',
               localFolderPath: Value<String?>(path),
             ),
@@ -185,12 +199,13 @@ class SourcesPage extends ConsumerWidget {
     final String tail = treeUri.split('/').last;
     final String decoded = Uri.decodeComponent(tail);
     final int colon = decoded.indexOf(':');
-    final String path = colon >= 0 ? decoded.substring(colon + 1) : decoded;
-    final String name =
-        path.split('/').where((String part) => part.isNotEmpty).lastOrNull ??
-        '本地音乐';
-    return name;
+    return _displayNameOfPath(colon >= 0 ? decoded.substring(colon + 1) : decoded);
   }
+
+  /// 取目录路径的最后一段作为来源名（`/a/b/音乐` → `音乐`）。
+  static String _displayNameOfPath(String path) =>
+      path.split('/').where((String part) => part.isNotEmpty).lastOrNull ??
+      '本地音乐';
 
   Future<void> _addWebDav(BuildContext context, WidgetRef ref) async {
     final _WebDavFormResult? form = await showDialog<_WebDavFormResult>(
@@ -463,12 +478,12 @@ class SourceTile extends ConsumerWidget {
     await SecureStore().delete(
       SecureStore.accountFor(SecureStore.webdavPasswordPrefix, source.id),
     );
-    // Android：同时释放 SAF 目录授权，避免系统设置里留下僵尸权限。
-    final String? treeUri = source.localBookmark;
-    if (Platform.isAndroid &&
-        treeUri != null &&
-        treeUri.startsWith('content://')) {
-      await TingyuSaf.releasePermission(treeUri);
+    // 同时归还系统授权，避免留下僵尸权限：Android 的 SAF 目录授权、iOS 的安全作用域。
+    final String? token = source.localBookmark;
+    if (Platform.isAndroid && token != null && token.startsWith('content://')) {
+      await TingyuSaf.releasePermission(token);
+    } else if (Platform.isIOS && token != null && token.isNotEmpty) {
+      await TingyuSaf.releaseBookmark(token);
     }
   }
 }

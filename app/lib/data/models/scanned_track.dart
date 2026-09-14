@@ -27,6 +27,31 @@ class ScannedTrack {
     this.lyrics,
   });
 
+  /// 换一个 [filePathOrUrl]，其余事实原样保留。
+  ///
+  /// iOS 书签来源用它把扫描器的绝对路径改写成相对授权目录的路径：绝对路径里的容器
+  /// UUID 会随应用更新变化，只有相对路径才能跨重装保持同一条曲目。
+  ScannedTrack withPath(String path) => ScannedTrack(
+    filePathOrUrl: path,
+    title: title,
+    artist: artist,
+    album: album,
+    duration: duration,
+    trackNumber: trackNumber,
+    discNumber: discNumber,
+    year: year,
+    genre: genre,
+    bitrate: bitrate,
+    sampleRate: sampleRate,
+    fileFormat: fileFormat,
+    fileSize: fileSize,
+    etag: etag,
+    lastModified: lastModified,
+    coverArtPath: coverArtPath,
+    coverArtUrl: coverArtUrl,
+    lyrics: lyrics,
+  );
+
   /// 占位值：与旧版 Swift 实现保持一致，合并时据此判断"元数据是否还没补上"。
   static const String unknownArtist = '未知艺术家';
 
@@ -39,7 +64,8 @@ class ScannedTrack {
     'WebDAV 曲库',
   };
 
-  /// 本地绝对路径或远端 URL；同一来源内唯一，是合并的匹配键。
+  /// 本地绝对路径、远端 URL，或 iOS 书签来源下相对授权目录的路径；
+  /// 同一来源内唯一，是合并的匹配键。
   final String filePathOrUrl;
 
   final String title;

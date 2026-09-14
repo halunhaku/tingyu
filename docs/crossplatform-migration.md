@@ -791,3 +791,38 @@ release 包同样正常播放。合并后的清单经 `build/app/intermediates/m
 
 **遗留**：真机端到端核验尚未做（验证过程中手机被拔掉）；`PlaybackFailure.message` 目前直接透传
 引擎原文（如 `Source error`），没有做「明文被拦 / 文件不存在 / 网络不可达」的中文化归类。
+
+---
+
+## 24. iOS 本地音乐（文档选择器 + 安全作用域书签）（2026-09-14）
+
+**问题**：§21 给 Android 补上了 SAF 目录授权，iOS 侧还是缺口 —— 沙盒拿不到用户任意目录的长期访问权，
+而桌面那条 `file_selector` 路径只在当前这次进程里有效（重启后目录就不可读），更没法持久化。
+
+**方案**：与 Android 的 SAF 一一对应：用户在系统文档选择器里显式授权一个目录，应用把这份授权存成
+**安全作用域书签**（base64，落 `music_sources.local_bookmark`），插件在进程内保持安全作用域，
+拿到真实路径后交给 `dart:io` 与 AVPlayer。
+
+**交付物**
+
+| 模块 | 文件 | 说明 |
+|---|---|---|
+| 原生桥 | `app/packages/tingyu_saf/ios/`（podspec + `TingyuSafPlugin.swift`） | `pickFolderBookmark` 拉起 `UIDocumentPickerViewController(forOpeningContentTypes: [.folder])`，返回书签（base64）与目录路径；`resolveBookmark` 解析书签、**开启安全作用域并在进程内保持**，返回绝对路径；`releaseBookmark` 关闭作用域 |
+| 来源适配器 | `lib/sources/local/local_bookmark_source_adapter.dart` | 扫描复用 `LocalLibraryScanner`（标签、封面、isolate 分批与 Android / 桌面完全一致），把绝对路径改写成**相对授权目录**的路径；`open()` 用当前解析出的根目录拼回绝对路径 |
+| 授权失效 | `lib/sources/local/folder_permission.dart` | `FolderPermissionLostException`：两个平台共用同一句提示；原先的 `SafPermissionLostException` 随之删除 |
+| 列语义 | `lib/data/db/schema.dart` | `local_bookmark` 的注释从"旧版迁移留痕"改成"系统授权目录的持久化凭据：Android = tree URI，iOS = 安全书签" |
+| 接线 | `lib/app/source_adapters.dart` · `features/sources/{sources_page,source_page}.dart` | iOS 本地来源按书签构造适配器；添加来源走文档选择器；删除来源调 `releaseBookmark`；来源页显示「系统授权的音乐目录（安全书签）」；添加入口副标题按平台改成"本机 / 电脑" |
+
+**为什么库里存相对路径**：iOS 授权到的目录可能位于别的应用或文件提供者的容器里，绝对路径含容器
+UUID，会随应用更新变化。若存绝对路径，每次更新后的扫描都会把整个曲库判成"全部移除 + 全部新增"
+（合并键就是 `filePathOrUrl`），收藏与播放列表随之丢失。相对路径跨重装稳定，播放时用当前根目录拼回。
+
+**验证**
+
+| 项目 | 结果 |
+|---|---|
+| `flutter analyze` | ✅ 无问题 |
+| `flutter test` | ✅ 108 项全绿，含新增 `test/local_bookmark_source_adapter_test.dart`：相对路径映射、授权目录换位置后匹配键不变、`open()` 拼回绝对路径、书签失效抛授权提示、只调用 iOS 侧方法 |
+| iOS 模拟器构建 | ✅ `flutter build ios --debug --simulator`，`tingyu_saf.framework` 已链接进 `Runner.app` |
+| 桌面回归 | ✅ `flutter build macos --debug` 通过（插件加 iOS 平台后桌面构建不受影响） |
+| 选择器弹出 | ✅ iPhone 17 / iOS 26.5：应用内「音乐源 → 添加来源 → 本地目录」成功拉起系统文档选择器（截图核验，未走 Android 分支、无异常） |

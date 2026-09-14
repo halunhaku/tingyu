@@ -27,12 +27,27 @@ class SafEntry {
   final DateTime? lastModified;
 }
 
-/// Android 存储访问框架（SAF）桥。
+/// 用户在系统文档选择器里授权的目录（iOS）。
+class PickedFolder {
+  const PickedFolder({required this.bookmark, required this.path});
+
+  /// 安全作用域书签（base64）：可持久化，重启应用后仍能解析。
+  final String bookmark;
+
+  /// 选择时的绝对路径 —— 只用于展示目录名；容器路径会随应用更新变化，不要落库。
+  final String path;
+}
+
+/// 「系统授权目录」桥：Android 是 SAF（tree URI + 持久化权限），iOS 是安全作用域书签。
 ///
-/// Android 10+ 起应用无法直接读取 `/sdcard` 下的任意目录，必须由用户通过系统目录选择器
-/// 授权一个目录（tree URI），并持久化该授权 —— 作用等价于 iOS 的安全作用域书签。
-/// 拿到的子项以 `content://` 形式交给播放引擎（ExoPlayer 原生支持），
-/// 不像"猜路径"那样受分区存储限制。
+/// 两端解决的是同一个问题：沙盒不允许直接读用户任意目录，必须由用户在系统选择器里
+/// 显式授权，并把这份授权持久化下来。
+/// - Android（[pickDirectory] / [listChildren]）：授权是 tree URI，子项以 `content://`
+///   形式直接交给 ExoPlayer，不需要 `READ_MEDIA_AUDIO`；
+/// - iOS（[pickFolderBookmark] / [resolveBookmark]）：授权是安全作用域书签，解析出真实
+///   路径后交给 `dart:io` 与 AVPlayer，插件负责在进程内保持安全作用域。
+///
+/// 其余方法（夸克跳转、拉回前台）是 Android 专属，Dart 侧按平台调用。
 class TingyuSaf {
   TingyuSaf._();
 
@@ -40,6 +55,30 @@ class TingyuSaf {
 
   /// 拉起系统目录选择器；用户取消返回 null。
   static Future<String?> pickDirectory() => _channel.invokeMethod<String>('pickDirectory');
+
+  /// iOS：拉起系统文档选择器选一个目录；用户取消返回 null。
+  ///
+  /// 返回的书签可以持久化（落库），[PickedFolder.path] 只是当时的绝对路径。
+  static Future<PickedFolder?> pickFolderBookmark() async {
+    final Map<Object?, Object?>? raw = await _channel.invokeMethod<Map<Object?, Object?>>(
+      'pickFolderBookmark',
+    );
+    final String? bookmark = raw?['bookmark'] as String?;
+    if (bookmark == null || bookmark.isEmpty) {
+      return null;
+    }
+    return PickedFolder(bookmark: bookmark, path: raw?['path'] as String? ?? '');
+  }
+
+  /// iOS：解析书签并开启安全作用域访问，返回目录绝对路径；书签失效返回 null。
+  ///
+  /// 安全作用域一直开到 [releaseBookmark]（或进程结束）：扫描与点播之间可能隔很久。
+  static Future<String?> resolveBookmark(String bookmark) =>
+      _channel.invokeMethod<String>('resolveBookmark', <String, Object?>{'bookmark': bookmark});
+
+  /// iOS：关闭书签的安全作用域访问（删除来源时调用）。
+  static Future<void> releaseBookmark(String bookmark) =>
+      _channel.invokeMethod<bool>('releaseBookmark', <String, Object?>{'bookmark': bookmark});
 
   /// 该 tree URI 的读权限是否仍然有效（用户可能在系统设置里撤销）。
   static Future<bool> hasPermission(String treeUri) async {

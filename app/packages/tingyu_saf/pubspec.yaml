@@ -1,5 +1,5 @@
 name: tingyu_saf
-description: "听屿的 Android SAF（存储访问框架）目录授权与枚举桥。"
+description: "听屿的系统授权目录桥：Android 走 SAF（tree URI + 持久化权限），iOS 走文档选择器 + 安全作用域书签。"
 version: 0.0.1
 homepage:
 
@@ -32,6 +32,8 @@ flutter:
     platforms:
       android:
         package: com.halunhaku.tingyu_saf
+        pluginClass: TingyuSafPlugin
+      ios:
         pluginClass: TingyuSafPlugin
 
   # To add assets to your plugin package, add an assets section, like this:

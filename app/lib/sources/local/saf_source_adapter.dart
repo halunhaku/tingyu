@@ -5,6 +5,7 @@ import '../../data/models/scanned_track.dart';
 import '../../playback/playback_item.dart';
 import '../source_adapter.dart';
 import '../scraper/smart_title_parser.dart';
+import 'folder_permission.dart';
 import 'local_library_scanner.dart';
 
 /// Android 本地目录来源（SAF 授权目录）。
@@ -13,6 +14,7 @@ import 'local_library_scanner.dart';
 /// 这里所有的读写都通过 `content://` URI 走系统 DocumentProvider，
 /// 因此不受分区存储限制，也不需要 `READ_MEDIA_AUDIO`。
 /// 文件名解析、扩展名过滤、批量上限与取消语义与本地扫描器保持一致。
+/// iOS 的对应实现是 `LocalBookmarkSourceAdapter`（安全作用域书签 + `dart:io` 扫描）。
 class SafSourceAdapter implements SourceAdapter {
   SafSourceAdapter({
     required this.sourceId,
@@ -37,7 +39,7 @@ class SafSourceAdapter implements SourceAdapter {
     bool Function()? isCancelled,
   }) async {
     if (!await TingyuSaf.hasPermission(treeUri)) {
-      throw const SafPermissionLostException();
+      throw const FolderPermissionLostException();
     }
 
     final List<ScannedTrack> tracks = <ScannedTrack>[];
@@ -123,12 +125,4 @@ class _SafDirectory {
   final String? documentId;
 
   final int depth;
-}
-
-/// 授权已失效（用户在系统设置里撤销，或换了设备）。
-class SafPermissionLostException implements Exception {
-  const SafPermissionLostException();
-
-  @override
-  String toString() => '本地目录授权已失效，请重新选择音乐文件夹';
 }
