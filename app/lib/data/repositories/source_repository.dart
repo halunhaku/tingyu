@@ -22,6 +22,11 @@ class SourceRepository {
     return (_db.select(_db.musicSources)..where(($MusicSourcesTable t) => t.id.equals(id))).getSingleOrNull();
   }
 
+  /// 某个来源的实时记录：同步（可能从别的页面发起）写回统计后，正开着的详情页要立刻反映出来。
+  Stream<MusicSource?> watchById(String id) {
+    return (_db.select(_db.musicSources)..where(($MusicSourcesTable t) => t.id.equals(id))).watchSingleOrNull();
+  }
+
   Future<void> upsert(MusicSourcesCompanion source) => _db.into(_db.musicSources).insertOnConflictUpdate(source);
 
   Future<void> updateSyncStatus(

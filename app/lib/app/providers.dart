@@ -208,11 +208,14 @@ final trackByIdProvider = StreamProvider.family<Track?, String>((
 });
 
 /// 按来源 id 取一条来源记录（播放解析、来源页都用它）。
-final sourceByIdProvider = FutureProvider.family<MusicSource?, String>((
+///
+/// 用流而不是一次性的 Future：同步可能在来源列表那边发起，正开着的来源详情页
+/// 必须立刻显示新统计，而不是把旧的「3 首 · 新增 1 / 移除 0」一直挂到杀进程重进。
+final sourceByIdProvider = StreamProvider.family<MusicSource?, String>((
   Ref ref,
   String id,
-) async {
-  return ref.watch(sourceRepositoryProvider).byId(id);
+) {
+  return ref.watch(sourceRepositoryProvider).watchById(id);
 });
 
 // ---------------------------------------------------------------- 抓取与播放
