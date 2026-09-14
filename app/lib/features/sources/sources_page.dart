@@ -67,6 +67,17 @@ class SourcesPage extends ConsumerWidget {
                   message: '添加本地目录、WebDAV 或夸克网盘后即可扫描曲库',
                 );
               }
+              // 手机（以及平板竖屏）没有横向余量给 trailing 里的四个按钮：
+              // 状态文案会被挤成三四行、删除按钮紧贴屏幕边缘。这些平台改用卡片布局。
+              if (Platform.isAndroid || Platform.isIOS) {
+                return ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                  itemCount: list.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (BuildContext context, int index) =>
+                      _SourceCard(source: list[index]),
+                );
+              }
               return ListView.separated(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -429,7 +440,7 @@ class SourceTile extends ConsumerWidget {
             TextButton(
               onPressed: sync.running
                   ? null
-                  : () => _reloginQuark(context, ref),
+                  : () => _reloginQuarkSource(context, ref, source),
               child: const Text('重新登录'),
             ),
           IconButton(
@@ -440,52 +451,226 @@ class SourceTile extends ConsumerWidget {
           IconButton(
             tooltip: '删除来源',
             icon: const Icon(Icons.delete_outline),
-            onPressed: () => _confirmDelete(context, ref),
+            onPressed: () => _confirmDeleteSource(context, ref, source),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _reloginQuark(BuildContext context, WidgetRef ref) =>
-      reloginQuarkSource(context, ref, source);
+}
 
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: Text('删除来源「${source.name}」？'),
-        content: Text('将同时删除该来源下的 ${source.trackCount} 首曲目，并把它们从所有播放列表中移除。'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('取消'),
+/// 重新登录夸克来源（手机卡片与桌面行共用）。
+Future<void> _reloginQuarkSource(BuildContext context, WidgetRef ref, MusicSource source) =>
+    reloginQuarkSource(context, ref, source);
+
+/// 删除来源：连同凭据与系统授权一起归还（手机卡片与桌面行共用）。
+Future<void> _confirmDeleteSource(
+  BuildContext context,
+  WidgetRef ref,
+  MusicSource source,
+) async {
+  final bool? confirmed = await showDialog<bool>(
+    context: context,
+    builder: (BuildContext dialogContext) => AlertDialog(
+      title: Text('删除来源「${source.name}」？'),
+      content: Text('将同时删除该来源下的 ${source.trackCount} 首曲目，并把它们从所有播放列表中移除。'),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: const Text('取消'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: const Text('删除'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) {
+    return;
+  }
+  await ref.read(sourceRepositoryProvider).delete(source.id);
+  await SecureStore().delete(
+    SecureStore.accountFor(SecureStore.quarkCookiePrefix, source.id),
+  );
+  await SecureStore().delete(
+    SecureStore.accountFor(SecureStore.webdavPasswordPrefix, source.id),
+  );
+  // 同时归还系统授权，避免留下僵尸权限：Android 的 SAF 目录授权、iOS 的安全作用域。
+  final String? token = source.localBookmark;
+  if (Platform.isAndroid && token != null && token.startsWith('content://')) {
+    await TingyuSaf.releasePermission(token);
+  } else if (Platform.isIOS && token != null && token.isNotEmpty) {
+    await TingyuSaf.releaseBookmark(token);
+  }
+}
+
+/// 手机端的来源卡片。
+///
+/// 桌面那套把「同步 / 重新登录 / 打开 / 删除」全塞进 `ListTile` 的 trailing：窄屏上状态文案
+/// 被挤成三四行，删除按钮还紧贴屏幕边缘。这里改成三段式 —— 标题一行、状态两行、操作单独一行，
+/// 删除收进右上角菜单；整张卡片可点，进来源详情。
+class _SourceCard extends ConsumerWidget {
+  const _SourceCard({required this.source});
+
+  final MusicSource source;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme colors = theme.colorScheme;
+    final SourceSyncState sync =
+        ref.watch(sourceSyncProvider)[source.id] ?? const SourceSyncState();
+    final IconData icon = switch (source.kind) {
+      'webdav' => Icons.cloud,
+      'quark' => Icons.cloud_queue,
+      _ => Icons.folder,
+    };
+
+    return Card(
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      color: colors.surfaceContainerLow,
+      child: InkWell(
+        onTap: () => context.go('/source/${source.id}'),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Icon(icon, size: 22, color: colors.primary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      source.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  PopupMenuButton<_SourceMenuAction>(
+                    tooltip: '更多操作',
+                    icon: const Icon(Icons.more_vert),
+                    onSelected: (_SourceMenuAction action) {
+                      if (action == _SourceMenuAction.delete) {
+                        _confirmDeleteSource(context, ref, source);
+                      } else {
+                        context.go('/source/${source.id}');
+                      }
+                    },
+                    itemBuilder: (BuildContext context) =>
+                        const <PopupMenuEntry<_SourceMenuAction>>[
+                          PopupMenuItem<_SourceMenuAction>(
+                            value: _SourceMenuAction.open,
+                            child: Text('打开'),
+                          ),
+                          PopupMenuItem<_SourceMenuAction>(
+                            value: _SourceMenuAction.delete,
+                            child: Text('删除来源'),
+                          ),
+                        ],
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 32, right: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      '${source.trackCount} 首 · ${source.syncStatus}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                    if (source.lastSyncedAt != null)
+                      Text(
+                        '上次同步 ${_compactTime(source.lastSyncedAt!)}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    if (sync.running) ...<Widget>[
+                      const SizedBox(height: 8),
+                      LinearProgressIndicator(
+                        value: sync.progress,
+                        minHeight: 2,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        sync.message,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ] else if (sync.message.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          sync.message,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: sync.error != null
+                                ? colors.error
+                                : colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.only(left: 26, right: 12),
+                child: Row(
+                  children: <Widget>[
+                    FilledButton.tonalIcon(
+                      onPressed: sync.running
+                          ? null
+                          : () => ref
+                                .read(sourceSyncProvider.notifier)
+                                .sync(source),
+                      icon: const Icon(Icons.sync, size: 18),
+                      label: const Text('同步'),
+                    ),
+                    if (source.kind == 'quark') ...<Widget>[
+                      const SizedBox(width: 6),
+                      TextButton(
+                        onPressed: sync.running
+                            ? null
+                            : () => _reloginQuarkSource(context, ref, source),
+                        child: const Text('重新登录'),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('删除'),
-          ),
-        ],
+        ),
       ),
     );
-    if (confirmed != true) {
-      return;
-    }
-    await ref.read(sourceRepositoryProvider).delete(source.id);
-    await SecureStore().delete(
-      SecureStore.accountFor(SecureStore.quarkCookiePrefix, source.id),
-    );
-    await SecureStore().delete(
-      SecureStore.accountFor(SecureStore.webdavPasswordPrefix, source.id),
-    );
-    // 同时归还系统授权，避免留下僵尸权限：Android 的 SAF 目录授权、iOS 的安全作用域。
-    final String? token = source.localBookmark;
-    if (Platform.isAndroid && token != null && token.startsWith('content://')) {
-      await TingyuSaf.releasePermission(token);
-    } else if (Platform.isIOS && token != null && token.isNotEmpty) {
-      await TingyuSaf.releaseBookmark(token);
-    }
   }
+}
+
+enum _SourceMenuAction { open, delete }
+
+/// `2026-09-13 14:54:51` → `09-13 14:54`：窄屏上一行放得下。
+String _compactTime(DateTime time) {
+  final DateTime local = time.toLocal();
+  String two(int value) => value.toString().padLeft(2, '0');
+  return '${two(local.month)}-${two(local.day)} '
+      '${two(local.hour)}:${two(local.minute)}';
 }
 
 /// 平台入口层：手机直接扫码（WebView 会被夸克拦截）；桌面扫码 / 网页 / Cookie。
