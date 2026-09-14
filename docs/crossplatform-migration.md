@@ -359,7 +359,8 @@ jobs:
 
 ## 13. M1 技术验证结论（2026-09-11）
 
-分支 `ci/flutter-bootstrap` · PR [#1](https://github.com/halunhaku/tingyu/pull/1) · 提交 `416a994`
+分支 `ci/flutter-bootstrap`（**已合入 `main` 并删除**：PR [#1](https://github.com/halunhaku/tingyu/pull/1)
+于 2026-09-14 合并为 `4c05d3e`，此后所有提交直接落在 `main`）· 提交 `416a994`
 
 | 平台 | 构建 | 运行时（播放 + 系统媒体会话） |
 |---|---|---|
