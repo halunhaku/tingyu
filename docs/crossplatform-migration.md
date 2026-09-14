@@ -840,8 +840,12 @@ release 包同样正常播放。合并后的清单经 `build/app/intermediates/m
    （`HandshakeException.osError` 在这里同样为 null），所以日志里看不到调用方；要指名到代码行，
    只能在调试期挂 `HttpOverrides` 记 URL。真正需要修的是依赖本身（`_ProxyHttpServer.start` 没给 handler 挂错误处理），
    我们这边只能兜住 + 记日志。
-3. **来源详情页的统计会过期**：从来源列表发起同步后，详情页仍显示旧的「3 首 · 新增 1 / 移除 0」；
-   杀进程重进才变成「2 首 · 新增 0 / 移除 1」（数据库本身是对的）。
+3. **来源详情页的统计会过期**（**同日已修**，提交 `89fedb9`）：根因是详情页读的 `sourceByIdProvider`
+   是一次性的 `FutureProvider` —— 同步在别处写回统计后它不会重读。现在 `SourceRepository.watchById`
+   + `sourceByIdProvider` 改成 `StreamProvider`，与它下面的曲目列表一样跟着数据库走。
+   真机实测：在来源列表点「同步」（移除 1 首）后，详情页**立刻**显示
+   「2 首 · 已同步（新增 0 / 更新 0 / 移除 1）」，不必再杀进程重进。
+   回归测试 `test/source_by_id_provider_test.dart`（换成 `FutureProvider` 即失败，实测过）。
 4. 原遗留仍在：失败文案是引擎原文（`PlatformException(Error: java.lang.IllegalArgumentException, …)`），没有归纳成中文。
 
 ---
