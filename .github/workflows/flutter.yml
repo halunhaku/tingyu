@@ -55,10 +55,16 @@ jobs:
         include:
           - os: macos-14
             target: macos
+            # 只收产物目录：`**/Release/**` 会把 Build/Intermediates 里的同名目录一起收进来（近 1GB）
+            artifacts: app/build/macos/Build/Products/Release/**
           - os: windows-2022
             target: windows
+            artifacts: app/build/windows/x64/runner/Release/**
           - os: ubuntu-22.04
             target: linux
+            # Flutter 的 Linux 产物是小写的 release/bundle —— 旧写法（大写 Release）在 Linux 上什么都匹配不到，
+            # 于是 tingyu-linux 这个 artifact 一直没上传（构建其实是成功的）。
+            artifacts: app/build/linux/x64/release/bundle/**
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -80,6 +86,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tingyu-${{ matrix.target }}
-          path: app/build/${{ matrix.target }}/**/Release/**
+          path: ${{ matrix.artifacts }}
           if-no-files-found: warn
           retention-days: 7
