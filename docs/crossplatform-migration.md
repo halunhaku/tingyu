@@ -826,3 +826,20 @@ UUID，会随应用更新变化。若存绝对路径，每次更新后的扫描�
 | iOS 模拟器构建 | ✅ `flutter build ios --debug --simulator`，`tingyu_saf.framework` 已链接进 `Runner.app` |
 | 桌面回归 | ✅ `flutter build macos --debug` 通过（插件加 iOS 平台后桌面构建不受影响） |
 | 选择器弹出 | ✅ iPhone 17 / iOS 26.5：应用内「音乐源 → 添加来源 → 本地目录」成功拉起系统文档选择器（截图核验，未走 Android 分支、无异常） |
+
+**端到端核验的现状**：模拟器里「选目录 → 入库 → 播放」这一轮没能跑完。
+
+- 模拟器的「文件」里默认**没有任何可授权的目录**：「我的 iPhone」只会列出发了 `UIFileSharingEnabled`
+  的应用，而本机模拟器只有系统 App、iCloud 未登录；本机 `com.apple.FileProvider.LocalStorage` 的
+  存储根也是空的（实测）。
+- 绕开办法（已验证可行，留给下次）：临时装一个空壳 App（`Info.plist` 打开 `UIFileSharingEnabled`
+  与 `LSSupportsOpeningDocumentsInPlace`），把测试音频塞进它的 `Documents/`，它就会以
+  「我的 iPhone → <App 名>」出现在选择器里。本次已用它把
+  「音乐源 → 添加来源 → 本地目录 → 系统文档选择器（能看到该目录）」走通。
+- 剩下最后两下（进入该目录 → 右上角「打开」）只能在模拟器上点，而本机 macOS 的辅助功能授权会间歇性
+  失效（`osascript` 报 -25211「不允许辅助访问」），无法稳定自动点击；按你的选择先到此为止。
+
+**遗留**：真机上的「选目录 → 入库 → 播放」端到端核验待做。建议路径：`flutter run` 到 iPhone →
+「音乐源 → 添加来源 → 本地目录」选一个真实音乐目录 → 核验来源页显示「系统授权的音乐目录（安全书签）」、
+库里 `filePathOrUrl` 是**相对授权目录**的路径、点歌出声；随后更新一次应用（或删掉重装），
+确认曲目没有被判成「全部新增 / 全部移除」（收藏与歌单还在）。
