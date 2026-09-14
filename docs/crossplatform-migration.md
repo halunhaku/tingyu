@@ -811,7 +811,7 @@ release 包同样正常播放。合并后的清单经 `build/app/intermediates/m
 | 本地播放 | SAF 来源点《不能说的秘密》 | ✅ `PLAYING`，position 推进 |
 | 失败提示（引擎侧） | 往 `/sdcard/Music` 放一个只有 ID3、没有任何 MPEG 帧的 `broken.mp3`，同步后点它 | ✅ 界面弹出「broken」`PlatformException(Error: java.lang.IllegalArgumentException, ...)`；logcat 里是 ExoPlayer 的 `None of the available extractors … could read the stream` |
 | 失败提示（解析侧） | 飞行模式下点夸克曲目（取直链必失败） | 复核当场 ❌「点了没反应」→ 同日修复（`38c8019`）：弹出「伊斯坦堡」无法播放：夸克网络连接异常: unknown |
-| 未捕获异常 | 离线时的 `HandshakeException` | 同日定位到 `just_audio` 代理漏错误（我们接不到）→ 已把富化的失败收进日志、`main()` 加 zone 守卫（`eda139f`）；真机复核待补 |
+| 未捕获异常 | 离线时的 `HandshakeException` | ✅ 已定位（`just_audio` 的本地代理漏错误，我们接不到）并加防护（`eda139f`）：真机上由 `main()` 的 zone 守卫打印 `[unhandled] HandshakeException …`，同刻 VPN 日志显示目标是刚入队的直链 `dl-pc-sz.drive.quark.cn:443` |
 | 夸克重新登录 | 来源列表点「重新登录」 | ✅ WebView 打开官方登录页 → 自动校验已有会话 → 凭据写回，来源状态变「登录已更新（夸克用户）」，曲目未受影响 |
 | 同步移除 | 删掉 `broken.mp3` 再同步 | ✅ `移除 1`，曲目回到 2 首，数据无损 |
 
@@ -832,7 +832,14 @@ release 包同样正常播放。合并后的清单经 `build/app/intermediates/m
    我们自己那些 `unawaited(...)` 的调用点因此不再漏；② `main()` 主体放进 `runZonedGuarded`，
    未捕获的异步错误带上栈打印，下次能直接指出是哪条请求。新增
    `test/enrichment_service_test.dart`（去掉 catch 即失败）。
-   **真机复核待补**：这一步验证到一半设备被拔掉，尚未在真机上确认改动后的日志形态。
+   **真机复核（2026-09-14，release 包）**：联网起播一首夸克曲目 → 开飞行模式 → 按播放器「下一首」，
+   日志里出现 `[unhandled] HandshakeException: Connection terminated during handshake`（我们的守卫打的，
+   不再是引擎那条无栈横幅）；同一刻 VPN 的 DNS/TCP 日志在连 `dl-pc-sz.drive.quark.cn:443`，
+   即刚入队的那条直链 —— 与"来源是 just_audio 的本地代理"的读码结论对上了。
+   **仍有局限**：错误是 `Future.error(error, stackTrace)` 带**空栈** rethrow 出来的
+   （`HandshakeException.osError` 在这里同样为 null），所以日志里看不到调用方；要指名到代码行，
+   只能在调试期挂 `HttpOverrides` 记 URL。真正需要修的是依赖本身（`_ProxyHttpServer.start` 没给 handler 挂错误处理），
+   我们这边只能兜住 + 记日志。
 3. **来源详情页的统计会过期**：从来源列表发起同步后，详情页仍显示旧的「3 首 · 新增 1 / 移除 0」；
    杀进程重进才变成「2 首 · 新增 0 / 移除 1」（数据库本身是对的）。
 4. 原遗留仍在：失败文案是引擎原文（`PlatformException(Error: java.lang.IllegalArgumentException, …)`），没有归纳成中文。

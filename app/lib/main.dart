@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
@@ -27,20 +28,33 @@ import 'playback/tingyu_audio_handler.dart';
 import 'sources/local/local_library_scanner.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
   // 未捕获的异步错误默认只打印一行 "Unhandled Exception"，没有栈，也看不出是谁发的请求 ——
   // 离线时 just_audio 的本地代理拉上游流失败就是这样漏出来的（见 docs §23 复核）。
-  // 这里统一接住并带上栈打印：行为不变，但下一次能直接定位到具体请求。
-  await runZonedGuarded<Future<void>>(
-    _run,
-    (Object error, StackTrace stack) =>
-        debugPrint('[unhandled] $error\n$stack'),
-  );
+  // 整个主体放进 zone 里跑，并带上栈打印：行为不变，但下一次能直接定位到具体请求。
+  await runZonedGuarded<Future<void>>(_run, _reportUnhandled);
 }
 
-/// `main` 的真正主体；放在 zone 里跑，便于接住来自依赖内部的漏网异常。
+void _reportUnhandled(Object error, StackTrace stack) {
+  // 依赖内部漏出来的错误常常带着空栈（just_audio 的本地代理就是这样 rethrow 的），
+  // 这时 `osError` 里的 address/errno 是唯一能指认"是哪条请求"的线索。
+  final OSError? osError = switch (error) {
+    HandshakeException(:final OSError? osError) => osError,
+    SocketException(:final OSError? osError) => osError,
+    _ => null,
+  };
+  debugPrint('[unhandled] $error${osError == null ? '' : ' ($osError)'}\n$stack');
+}
+
+/// `main` 的真正主体。
+///
+/// 绑定必须**在这个 zone 里**初始化：平台消息与引擎回调会使用注册时的 zone，
+/// 否则它们抛出的错误会绕开这里的守卫（真机实测踩过）。
 Future<void> _run() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    _reportUnhandled(error, stack);
+    return true;
+  };
 
   if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
     MediaKit.ensureInitialized();
