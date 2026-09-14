@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'cover_store.dart';
 import 'db/database.dart';
 import 'repositories/track_repository.dart';
@@ -56,6 +58,9 @@ class LibraryEnrichmentService {
       <String, Future<EnrichmentOutcome>>{};
 
   /// 同一首歌的自动补全、播放触发与手动触发共用一个在途任务，避免重复请求上游。
+  /// 补全一首曲目。**不抛异常**：抓取是尽力而为，上游失败（离线、接口变动）在这里
+  /// 就被吞掉并记账为"没有变化"，调用方（同步循环、起播、打开曲库）不必各自包 try/catch ——
+  /// 否则 `unawaited(...)` 的调用会把失败变成未捕获异常（见 docs §23 复核）。
   Future<EnrichmentOutcome> enrichTrack(Track track) {
     final Future<EnrichmentOutcome>? existing = _inFlight[track.id];
     if (existing != null) {
@@ -71,6 +76,15 @@ class LibraryEnrichmentService {
   }
 
   Future<EnrichmentOutcome> _enrichTrack(Track track) async {
+    try {
+      return await _enrichTrackOrThrow(track);
+    } on Object catch (error) {
+      debugPrint('[enrich] 补全失败「${track.title}」: $error');
+      return EnrichmentOutcome.unchanged;
+    }
+  }
+
+  Future<EnrichmentOutcome> _enrichTrackOrThrow(Track track) async {
     final EnrichmentResult result = await enricher.enrich(
       EnrichmentInput(
         title: track.title,

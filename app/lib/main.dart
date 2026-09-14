@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
@@ -27,6 +28,19 @@ import 'sources/local/local_library_scanner.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 未捕获的异步错误默认只打印一行 "Unhandled Exception"，没有栈，也看不出是谁发的请求 ——
+  // 离线时 just_audio 的本地代理拉上游流失败就是这样漏出来的（见 docs §23 复核）。
+  // 这里统一接住并带上栈打印：行为不变，但下一次能直接定位到具体请求。
+  await runZonedGuarded<Future<void>>(
+    _run,
+    (Object error, StackTrace stack) =>
+        debugPrint('[unhandled] $error\n$stack'),
+  );
+}
+
+/// `main` 的真正主体；放在 zone 里跑，便于接住来自依赖内部的漏网异常。
+Future<void> _run() async {
 
   if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
     MediaKit.ensureInitialized();
