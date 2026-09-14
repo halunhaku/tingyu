@@ -40,6 +40,13 @@
   <img src="docs/screenshots/flutter-sources.png" width="900" alt="来源管理" />
 </p>
 
+### 手机端
+窄屏上来源改成一来源一卡片：标题、状态、操作分行摆放，删除收进右上角菜单（整张卡片可点进详情）：
+
+<p align="center">
+  <img src="docs/screenshots/mobile-sources-after.png" width="360" alt="手机端来源管理" />
+</p>
+
 > `main-window.png` 与 `now-playing-fullscreen.png` 是上一版 SwiftUI 实现的截图，保留在同目录作对照。
 
 ---
@@ -90,7 +97,7 @@
 │  ├─ packages/tingyu_saf/                     # 本地插件：Android SAF + iOS 安全作用域书签
 │  ├─ macos/ windows/ linux/ android/ ios/
 │  ├─ assets/                                  # 应用图标 · OpenCC 字表
-│  └─ test/                                    # flutter_test 测试（当前 108 项）
+│  └─ test/                                    # flutter_test 测试（解析器 / 数据层 / 播放队列 / 来源）
 ├─ docs/
 │  ├─ crossplatform-migration.md               # 迁移方案与逐阶段验证结论（含遗留项）
 │  └─ screenshots/
@@ -152,7 +159,7 @@ dart run build_runner build
 | 平台 | 状态 |
 |---|---|
 | **macOS 12+** | ✅ 主力验证平台：播放与系统媒体会话、曲库 / 专辑 / 艺术家 / 播放列表、全屏舞台与歌词、来源管理均已实机核验（本文截图即本机实拍） |
-| **Android** | ✅ 真机（Xiaomi 14 Pro / Android 16）验证：播放与后台播放、SAF 本地音乐入库与播放、夸克应用内登录；播放失败提示的真机核验待补（§23） |
+| **Android** | ✅ 真机（Xiaomi 24031PN0DC / Android 16）验证：播放与后台播放、SAF 本地音乐入库与播放、夸克应用内登录、**播放失败提示**（引擎侧与取直链侧都已核过，§23） |
 | **iOS 15+** | ✅ 构建与模拟器运行验证通过；本地目录书签（安全作用域）已落地，真机端到端「选目录 → 入库 → 播放」待补（§24） |
 | **Windows / Linux** | ⚠️ CI 三平台 release 构建绿灯，尚未做实机运行验证 |
 
