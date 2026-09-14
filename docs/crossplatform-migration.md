@@ -589,7 +589,7 @@ jobs:
 | M2 数据层 | ✅ |
 | M3 来源层 | ✅（Quark 待实机验证） |
 | M4 桌面 UI | ✅（AI 与移动端不在本轮范围） |
-| M5 移动端（Android / iOS） | ✅ Android：构建 + 模拟器端到端播放 + SAF 本地音乐（§21）；iOS：构建 + 模拟器运行（播放链路待补） |
+| M5 移动端（Android / iOS） | ✅ Android：构建 + 模拟器与真机播放、SAF 本地音乐（§21）、应用内夸克登录（§22）、失败提示（§23）；iOS：构建 + 模拟器运行（§20）、本地目录安全作用域书签（§24）。两端的真机端到端遗留见对应小节 |
 | M6 macOS 原生增强（WidgetKit / App Intents / AirPlay） | 未开始 |
 | M7 分发（DMG / MSIX / Flatpak / 商店） | 未开始 |
 
