@@ -811,6 +811,7 @@ release 包同样正常播放。合并后的清单经 `build/app/intermediates/m
 | 本地播放 | SAF 来源点《不能说的秘密》 | ✅ `PLAYING`，position 推进 |
 | 失败提示（引擎侧） | 往 `/sdcard/Music` 放一个只有 ID3、没有任何 MPEG 帧的 `broken.mp3`，同步后点它 | ✅ 界面弹出「broken」`PlatformException(Error: java.lang.IllegalArgumentException, ...)`；logcat 里是 ExoPlayer 的 `None of the available extractors … could read the stream` |
 | 失败提示（解析侧） | 飞行模式下点夸克曲目（取直链必失败） | 复核当场 ❌「点了没反应」→ 同日修复（`38c8019`）：弹出「伊斯坦堡」无法播放：夸克网络连接异常: unknown |
+| 未捕获异常 | 离线时的 `HandshakeException` | 同日定位到 `just_audio` 代理漏错误（我们接不到）→ 已把富化的失败收进日志、`main()` 加 zone 守卫（`eda139f`）；真机复核待补 |
 | 夸克重新登录 | 来源列表点「重新登录」 | ✅ WebView 打开官方登录页 → 自动校验已有会话 → 凭据写回，来源状态变「登录已更新（夸克用户）」，曲目未受影响 |
 | 同步移除 | 删掉 `broken.mp3` 再同步 | ✅ `移除 1`，曲目回到 2 首，数据无损 |
 
@@ -822,7 +823,16 @@ release 包同样正常播放。合并后的清单经 `build/app/intermediates/m
    走既有提示通道；真机实测弹出 **「伊斯坦堡」无法播放：夸克网络连接异常: unknown**（点一次弹一次，
    后续被跳过的曲目只进日志）。回归测试 `test/playback_controller_resolve_failure_test.dart` 四条，
    去掉上报调用即失败。
-2. **离线时的未捕获异常**：`Unhandled Exception: HandshakeException: Connection terminated during handshake`，且不带栈信息。
+2. **离线时的未捕获异常**（**同日已定位并加防护**，提交 `eda139f`）：
+   `Unhandled Exception: HandshakeException: Connection terminated during handshake`，不带栈。
+   读依赖源码后确认这类错误**我们接不到**：带 headers 的音频源在 Android 上走 `just_audio`
+   的本地 HTTP 代理，代理服务器的 `_server.listen` 调用 handler 时既不 `await` 也不挂 `onError`
+   （`just_audio-0.10.6/lib/just_audio.dart`），上游 TLS 失败就直接漏到 zone —— 离线点歌正是这条路径。
+   处理：① 富化服务 `enrichTrack` 改为**不抛异常**（尽力而为：失败记一行日志、计作"没有变化"），
+   我们自己那些 `unawaited(...)` 的调用点因此不再漏；② `main()` 主体放进 `runZonedGuarded`，
+   未捕获的异步错误带上栈打印，下次能直接指出是哪条请求。新增
+   `test/enrichment_service_test.dart`（去掉 catch 即失败）。
+   **真机复核待补**：这一步验证到一半设备被拔掉，尚未在真机上确认改动后的日志形态。
 3. **来源详情页的统计会过期**：从来源列表发起同步后，详情页仍显示旧的「3 首 · 新增 1 / 移除 0」；
    杀进程重进才变成「2 首 · 新增 0 / 移除 1」（数据库本身是对的）。
 4. 原遗留仍在：失败文案是引擎原文（`PlatformException(Error: java.lang.IllegalArgumentException, …)`），没有归纳成中文。
