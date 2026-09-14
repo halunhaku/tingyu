@@ -1,89 +1,75 @@
 # 听屿 (TINGYU)
 
-> **连接本地文件夹、WebDAV 私人云与夸克网盘的 100% 纯原生 Apple 音乐播放器。**  
-> 深度还原官方 **Apple Music** 优雅设计与交互质感，专为 **macOS 15+ (Sequoia)** 与 **iOS 18+** 打造，采用 Swift 6、SwiftUI、SwiftData、AVFoundation、AppIntents 与 WidgetKit 深度构建。
+> **连接本地文件夹、WebDAV 私人云与夸克网盘的跨平台音乐播放器。**
+> 一套 Dart / Flutter 代码覆盖 **macOS、Windows、Linux、Android、iOS**，界面沿袭 Apple Music 的红粉强调色、磨砂材质与流体播放舞台。
 
 > [!NOTE]
-> **平台验证状态说明**：本项目目前主要在 **macOS 15+ (Sequoia)** 环境上完成了全功能的深度实机验证与持续打磨。代码仓库中已完整包含 **iOS 18+** 的全套原生界面与组件支持，但因作者目前手头暂无可用 iOS 实机测试设备，真机实测仍在推进中，十分欢迎拥有 iOS 设备的开发者与朋友一同体验与反馈！
+> 现役实现是 **`app/`（Flutter）**；仓库里同时保留着上一版 SwiftUI 实现（`Sources/`、`Tingyu.xcodeproj`、`project.yml`），**冻结不再演进**，只作移植参考。
+> 完整的移植方案、每一步的验证结论与遗留项都记在 **[`docs/crossplatform-migration.md`](docs/crossplatform-migration.md)**。
+
 <p align="center">
-  <img src="https://img.shields.io/badge/Platform-macOS%2015%2B%20%7C%20iOS%2018%2B-blue?logo=apple" alt="Platform" />
-  <img src="https://img.shields.io/badge/Language-Swift%206-orange?logo=swift" alt="Language" />
-  <img src="https://img.shields.io/badge/UI-SwiftUI-purple?logo=swift" alt="SwiftUI" />
-  <img src="https://img.shields.io/badge/Storage-SwiftData-green" alt="SwiftData" />
+  <img src="https://img.shields.io/badge/Flutter-3.47-02569B?logo=flutter" alt="Flutter" />
+  <img src="https://img.shields.io/badge/Dart-3.13-0175C2?logo=dart" alt="Dart" />
+  <img src="https://img.shields.io/badge/Platform-macOS%20%C2%B7%20Windows%20%C2%B7%20Linux%20%C2%B7%20Android%20%C2%B7%20iOS-blue" alt="Platforms" />
+  <img src="https://img.shields.io/badge/Storage-drift%20(SQLite)-green" alt="drift" />
   <img src="https://img.shields.io/badge/Accent-%23FA243C-red" alt="Apple Music Red" />
 </p>
 
 ---
 
-## 界面预览 (Screenshots)
+## 界面预览
 
-### 🎵 曲库主界面与精细化悬浮播放栏
-紧凑的原生窗口布局，Apple Music 标志性红粉色主题 (`#FA243C`)，支持行悬浮单击开播、动态音波指示、右键直通专辑/艺人，以及底部「待播清单 (Up Next)」浮层：
-
-<p align="center">
-  <img src="docs/screenshots/main-window.png" width="900" alt="听屿 macOS 主界面" />
-</p>
-
-### 🌌 1:1 原生级全屏沉浸流体播放器与动态歌词
-自适应封面色谱的流体渐变动态背景、毫秒级逐字时间轴滚动歌词、超细进度条与一键收藏：
+### 曲库主界面
+侧栏（曲库 / 最近添加 / 艺术家 / 专辑 / 收藏 + 来源 + 播放列表）、带封面的曲目列表与底部悬浮播放条：
 
 <p align="center">
-  <img src="docs/screenshots/now-playing-fullscreen.png" width="900" alt="全屏正在播放与歌词" />
+  <img src="docs/screenshots/flutter-library.png" width="900" alt="听屿 曲库主界面" />
 </p>
+
+### 全屏「正在播放」与待播清单
+随封面取色的流体渐变舞台、超细进度条与传送器，右侧是实时待播队列：
+
+<p align="center">
+  <img src="docs/screenshots/flutter-now-playing.png" width="900" alt="全屏正在播放与待播清单" />
+</p>
+
+### 来源管理
+夸克网盘 / WebDAV / 本地目录三类来源的同步状态、重新登录与添加入口：
+
+<p align="center">
+  <img src="docs/screenshots/flutter-sources.png" width="900" alt="来源管理" />
+</p>
+
+> `main-window.png` 与 `now-playing-fullscreen.png` 是上一版 SwiftUI 实现的截图，保留在同目录作对照。
 
 ---
 
 ## 特性亮点
 
-### 1. 深度对齐官方 Apple Music 原生体验
-- **官方设计语言**：注入 Apple Music 标志性红粉强调色 (`#FA243C`)，全系遵循 Liquid Glass 现代同心圆角、半透明磨砂材质与自然弹性物理动效。
-- **纯正侧边栏体系**：
-  - **资料库**：`歌曲`、`最近添加`、`艺人`、`专辑`、`喜爱歌曲`；
-  - **播放列表**：自建歌单创建、编辑与快捷点播；
-  - **云端与存储**：收纳已挂载网盘、`管理音乐来源...` 与 `AI 智能洗库...`，保持窗口顶栏纯净清爽。
-- **全新大画幅「专辑主页（AlbumDetailView）」**：
-  - 大尺寸封面 Header、红色歌手超链接跳转、流派/年份/首数/总时长统计。
-  - 大号红色「播放」与「随机播放」主按钮，精致排版的音轨列表。
-  - 专辑网格卡片支持鼠标悬浮一键开播全专。
-- **全新「艺人主页（ArtistDetailView）」**：
-  - 顶部艺人巨幅大圆肖像、歌手统计、「热门歌曲」Top 5 精选，以及该艺人全作品专辑横滑陈列墙。
-  - **歌手真实写真刮削（`ArtistAvatarStore`）**：告别以唱片封面充当歌手头像，自动联网抓取歌手超清肖像并持久化缓存在本地磁盘，支持离线秒开。
-- **歌曲列表极致交互（`MacOSTrackTable`）**：
-  - 鼠标悬浮行即刻浮现播放三角，单击即刻开播；当前曲目呈现动态小喇叭音波。
-  - 右键菜单支持「在专辑中查看」、「在艺人中查看」、「下一首播放」、「加入播放列表」。
-  - 列表向下滑动充裕避让底栏（110pt），滑动条严格约束在圆角以内。
-- **底栏播放控制器与「待播清单（Up Next Queue）」**：
-  - 进度条与高亮全面对齐 Apple Music 红色，时间显示精准。
-  - 新增 `list.bullet` 待播清单浮层，实时查看当前播放及后续待播歌曲，支持点击插播与一键清空。
-- **全屏沉浸流体播放器**：
-  - 动态模糊渐变背景，封面下方集成时间、超细进度条、爱心喜欢、播放控制与歌词气泡开关。
-  - 支持键盘 `Esc` 键与 `⌘ ⇧ F` 秒级出入，原生红黄绿三色控制灯无缝融合。
+### 1. 播放内核：桌面与移动各取所长
+- **桌面**用 `media_kit`（libmpv）：统一解码、gapless、缓冲可控、任意 URL + 自定义请求头；**移动端**用 `just_audio`（ExoPlayer / AVPlayer）：功耗与系统集成更好。引擎由 `playback/engine_factory.dart` 按平台注入，界面只认 `PlaybackEngine` 接口。
+- **系统媒体会话**由 `audio_service` 一套 `AudioHandler` 打通：Android MediaSession + 前台服务、iOS 锁屏与控制中心、macOS Now Playing、Windows SMTC（`audio_service_win`）、Linux MPRIS（`audio_service_mpris`）。
+- 待播队列（列表内点击即插播）、时间轴歌词（自动滚动 + 当前行高亮 + 一键抓取）、迷你播放条与全屏「正在播放」舞台。
+- 加载失败不再静默：失败写进播放快照并在界面提示（`PlaybackFailure`）。
 
-- **应用内「隔空播放 (AirPlay)」设备快速切换**：
-  - 在 macOS 底部悬浮播放条、全屏沉浸播放器以及 iOS 播放详情页无缝集成原生 `AVRoutePickerView` 路由选择器；
-  - 100% 深度支持 HomePod、Apple TV、隔空播放音响及蓝牙设备的快速一键投送与音频路由切换。
+### 2. 三种音乐来源，原生直连
+- **本地文件夹**：桌面直接读文件系统路径；**Android** 走 SAF 目录授权（持久化 tree URI，`content://` 直接交给 ExoPlayer）；**iOS** 走系统文档选择器 + 安全作用域书签。两端的原生桥都是仓库内的本地插件 **`app/packages/tingyu_saf`**。
+- **WebDAV**：群晖 / 坚果云 / Nextcloud 等标准 WebDAV，PROPFIND 解析目录，带鉴权头取流。
+- **夸克网盘**：应用内官方网页登录 / 手机端跳转夸克确认 / Cookie 导入，目录挑选后动态换取 CDN 直链播放。
 
-### 2. 多云端与本地存储原生直连
-- **本地文件夹**：采用 macOS / iOS 原生安全书签（Security-Scoped Bookmarks），持久化保留音乐目录读取授权，安全无干扰。
-- **WebDAV 私人云**：支持群晖、坚果云、Nextcloud 等标准 WebDAV 服务器，RFC 4918 目录解析，温和流控调度。
-- **夸克网盘 (Quark Drive) 原生直连**：内嵌官方 WebKit 安全登录网关，手机扫码秒级授权，两步式目录挑选，动态换取 CDN 签名 Range 直链边下边播。
+### 3. 多源元数据刮削
+- 文件名清洗（`SmartTitleParser`）识别 `歌手 - 歌名`，剥离音轨号、前导点、`[HQ]`、`(Live)` 等噪音；
+- QQ 音乐 / 网易云 / iTunes / LRCLIB 多源降级抓取封面与歌词；繁简转换用内置 OpenCC 字表；封面与歌手写真落盘缓存；
+- 单曲可「重新匹配」，在多候选中人工挑一个覆盖。
 
-### 3. 多源智能音乐刮削管线
-- **智能文件名噪音清洗 (`SmartTitleParser`)**：智能识别华语音乐 `歌手 - 歌名` 格式，自动剥离音轨号、前导点、`[HQ]`、`(Live)` 等噪音；
-- **QQ 音乐官方正版源 (`QQMusicScraper`)**：周杰伦及华语流行歌曲 100% 正版专辑与 800x800 原生超清封面精准匹配；
-- **权威同步歌词 (`LRCLIBScraper`)**：毫秒级精准 LRC 时间轴滚动歌词；
-- **单曲右键重新匹配**：在曲目列表右键点击即可弹出可视化多候选匹配卡片，用户可自主挑选最契合的版本一键应用。
+### 4. 数据与凭据
+- 曲库落在 drift(SQLite)：`tracks` / `music_sources` / `playlists`；扫描按 `filePathOrUrl` 合并，分别统计新增 / 更新 / 移除；
+- 夸克 Cookie、WebDAV 密码等凭据进系统安全存储（Keychain / DPAPI / libsecret）；
+- 旧版曲库可用 `tools/legacy-export/` 一次性导出后导入。
 
-### 4. AI 大模型智能识别与洗库
-- 兼容标准 OpenAI 协议（`/chat/completions`）；
-- 预设一键切换 **DeepSeek**（调用成本极低）、**通义千问 (Qwen)**、**Kimi**、**OpenAI**、**本地 Ollama**；
-- 提供一键「AI 深度洗库」流水线，将各种乱码或特殊命名文件批量秒级还原为标准歌名、歌手与专辑。
-
-### 5. Apple 系统级生态深度打通
-- **系统媒体中心**：`MPNowPlayingInfoCenter` 与 `MPRemoteCommandCenter`，打通锁屏媒体卡片、控制中心、触控栏与 AirPods 耳机手势；
-- **Siri 快捷指令与 App Intents**：原生注入“在听屿中播放”、“听屿切歌”等语音动作；
-- **桌面与锁屏小组件 (`WidgetKit`)**：提供小号、中号及锁屏胶囊小组件，支持直接点击交互切歌；
-- **iCloud (CloudKit) 多端云同步**：SwiftData 私有数据库跨端自动同步，离线自适应降级。
+### 5. 与上一版 SwiftUI 实现的差异
+- **已对齐**：曲库 / 最近添加 / 收藏、专辑与艺术家浏览、播放列表、播放条与全屏舞台、歌词、队列、来源管理与同步、人工匹配、设置页。
+- **尚未迁移**：AI 洗库（旧版 `AIService`）、macOS 原生三件套（WidgetKit 小组件、App Intents / Siri、AirPlay 路由选择器）——见 `docs/crossplatform-migration.md` §18 的 M6。
 
 ---
 
@@ -91,119 +77,90 @@
 
 ```text
 .
-├── project.yml                       # XcodeGen 声明式工程配置
-├── Tingyu.xcodeproj                 # Xcode 项目工程
-├── Sources/
-│   ├── App/
-│   │   └── TingyuApp.swift           # App 入口、全局 Apple Music 红色主题、WindowGroup 与全局快捷键
-│   ├── Models/
-│   │   ├── Track.swift               # SwiftData 曲目持久化实体
-│   │   ├── MusicSource.swift         # 音乐来源实体 (本地文件夹 / WebDAV / 夸克网盘)
-│   │   ├── Playlist.swift            # 播放列表实体
-│   │   └── LyricLine.swift           # 时间轴 LRC 歌词解析引擎
-│   ├── Services/
-│   │   ├── Audio/
-│   │   │   ├── AudioPlayerService.swift # AVPlayer 低能耗播放引擎、循环模式与队列
-│   │   │   ├── NowPlayingManager.swift  # MPNowPlayingInfo & MPRemoteCommands 系统控制
-│   │   │   └── SharedPlaybackState.swift # 跨进程 WidgetKit 共享播放状态
-│   │   ├── Security/
-│   │   │   └── KeychainService.swift    # Apple Keychain 原生凭据存储（支持沙盒与本地双重容错）
-│   │   ├── Library/
-│   │   │   ├── LocalLibraryScanner.swift # 安全书签与 AVAsset 本地递归扫描
-│   │   │   └── LegacyCacheMigrator.swift # 历史缓存自动迁移救援
-│   │   ├── WebDAV/
-│   │   │   ├── WebDAVClient.swift       # WebDAV async/await 网络客户端
-│   │   │   └── WebDAVXMLParser.swift    # WebDAV PROPFIND XML 深度解析器
-│   │   ├── Quark/
-│   │   │   ├── QuarkDriveClient.swift   # 夸克网盘 API 驱动与 CDN 直链解析
-│   │   │   └── QuarkCookieStore.swift   # 夸克持久化凭据管理与磁盘兜底
-│   │   ├── Scraper/
-│   │   │   ├── ArtistAvatarStore.swift  # 歌手真实写真肖像抓取与磁盘缓存
-│   │   │   ├── QQMusicScraper.swift     # QQ 音乐正版专辑与超清封面抓取
-│   │   │   ├── LRCLIBScraper.swift      # LRCLIB 歌词检索服务
-│   │   │   ├── NetEaseScraper.swift     # 网易云公开数据源与歌手写真
-│   │   │   ├── iTunesCoverScraper.swift # iTunes Search 国际封面兜底
-│   │   │   ├── SmartTitleParser.swift   # 智能文件名清洗与复合结构提取
-│   │   │   ├── ChineseConverter.swift   # 原生繁简中文转换
-│   │   │   └── MetadataEnricher.swift   # 多源降级并发调度器
-│   │   ├── Cloud/
-│   │   │   └── CloudSyncManager.swift   # CloudKit iCloud 多端同步管理器
-│   │   └── Intents/
-│   │       └── TingyuIntents.swift      # App Intents & Siri Shortcuts 快捷指令
-│   ├── UI/
-│   │   ├── Shared/
-│   │   │   ├── CoverArtView.swift       # 封面图片展示与占位
-│   │   │   ├── ArtistAvatarView.swift   # 歌手真实写真圆形头像组件
-│   │   │   ├── AlbumDetailView.swift    # 官方 Apple Music 风格大画幅专辑主页
-│   │   │   ├── ArtistDetailView.swift   # 官方 Apple Music 风格艺人详情主页
-│   │   │   ├── UpNextQueueView.swift    # 待播清单 (Up Next) 弹出面板
-│   │   │   ├── AlbumGridView.swift      # 专辑封面网格与悬浮开播
-│   │   │   ├── ArtistListView.swift     # 艺人列表与真容头像聚合
-│   │   │   ├── FluidBackgroundView.swift# 动态流体磨砂玻璃渐变背景
-│   │   │   ├── AnimatedLyricsView.swift # Apple Music 级动态时间轴歌词
-│   │   │   ├── PlaybackControls.swift   # 进度条与播放控制组件
-│   │   │   ├── TrackRowView.swift       # 曲目行与上下文菜单
-│   │   │   ├── SourceManagerView.swift  # 本地、WebDAV 与夸克来源管理器
-│   │   │   ├── AddQuarkSheet.swift      # 夸克网盘扫码与目录选择面板
-│   │   │   ├── AISettingsView.swift     # AI 大模型智能识别与洗库设置
-│   │   │   └── ManualMatchSheet.swift   # 单曲右键重新匹配元数据弹窗
-│   │   ├── macOS/
-│   │   │   ├── MacOSContentView.swift   # macOS NavigationSplitView 主界面与顶层导航
-│   │   │   ├── MacOSTrackTable.swift    # 歌曲列表表格（悬浮播放、波形、爱心列、右键直达）
-│   │   │   ├── MacOSNowPlayingToolbar.swift # 悬浮磨砂玻璃底栏与 1:1 全屏流体播放器
-│   │   ├── iOS/
-│   │   │   ├── IOSContentView.swift     # iOS TabView 导航界面
-│   │   │   ├── IOSMiniPlayer.swift      # 悬浮 MiniPlayer 胶囊
-│   │   │   └── IOSNowPlayingSheet.swift # 全屏沉浸播放器与歌词面板
-│   │   └── Widgets/
-│   │       └── TingyuWidget.swift       # 桌面与锁屏交互小组件 (WidgetKit)
-│   └── Resources/
-│       ├── Assets.xcassets/          # 1024x1024 通用高清应用图标
-│       ├── Tingyu-macOS.entitlements # macOS 沙盒与安全书签授权
-│       ├── Tingyu-iOS.entitlements   # iOS CloudKit 授权
-│       ├── Info-macOS.plist          # macOS 应用配置
-│       └── Info-iOS.plist            # iOS 应用配置 (后台音频播放等)
-├── docs/
-│   └── screenshots/                  # 高清界面预览截图
-└── dist/
-    ├── Tingyu-macOS.dmg             # 发布版 macOS DMG 安装镜像
-    └── Tingyu-macOS.zip             # 发布版 macOS 绿色压缩包
+├─ app/                                        # 现役 Flutter 工作区
+│  ├─ lib/
+│  │  ├─ main.dart                             # 入口：装配、AudioHandler、调试入口
+│  │  ├─ app/                                  # router · theme · providers · playback_controller · track_resolver · source_adapters
+│  │  ├─ data/                                 # db/(schema + database + drift 生成) · models/ · repositories/
+│  │  │                                        #   cover_store · secure_store · legacy_import · enrichment_service
+│  │  ├─ sources/                              # local/(扫描器 · Android SAF · iOS 书签) · webdav/ · quark/ · scraper/
+│  │  ├─ playback/                             # playback_engine · engine_factory · just_audio_engine · media_kit_engine
+│  │  │                                        #   playback_item · playback_snapshot · tingyu_audio_handler
+│  │  └─ features/                             # library · albums · artists · playlists · player · sources · settings · shell · shared
+│  ├─ packages/tingyu_saf/                     # 本地插件：Android SAF + iOS 安全作用域书签
+│  ├─ macos/ windows/ linux/ android/ ios/
+│  ├─ assets/                                  # 应用图标 · OpenCC 字表
+│  └─ test/                                    # flutter_test 测试（当前 108 项）
+├─ docs/
+│  ├─ crossplatform-migration.md               # 迁移方案与逐阶段验证结论（含遗留项）
+│  └─ screenshots/
+├─ tools/legacy-export/                        # 旧版 SwiftUI 曲库的一次性导出工具
+├─ Sources/ · Tingyu.xcodeproj/ · project.yml  # 上一版 SwiftUI 实现：冻结保留
+└─ .github/workflows/flutter.yml               # analyze + test（含 drift 生成代码校验）+ 三平台构建
 ```
 
 ---
 
 ## 开发与构建
 
-### 运行环境要求
-- **macOS 15.0+**（当前主力深度实机验证平台）
-- **iOS 18.0+**（代码与组件已齐备，实机测试推进中）
-- Xcode 16.0+
-- Command Line Tools (`xcode-select --install`)
-- [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
-### 快速开始
+### 环境
+- **Flutter 3.47+**（开发机：3.47.2 / Dart 3.13.2）
+- 按目标平台装工具链：
+  - macOS / iOS：Xcode（iOS 走 CocoaPods，本地插件 `tingyu_saf` 以 Pod 形式集成）
+  - Windows：Visual Studio 的「使用 C++ 的桌面开发」工作负载
+  - Linux：`libmpv-dev libsecret-1-dev libayatana-appindicator3-dev ninja-build libgtk-3-dev pkg-config`
+  - Android：Android SDK + JDK
 
-1. **生成或更新 Xcode 工程**：
-   ```bash
-   xcodegen generate
-   ```
+### 常用命令
+```bash
+cd app
 
-2. **使用 Xcode 打开工程**：
-   ```bash
-   open Tingyu.xcodeproj
-   ```
-   在 Xcode 顶部选择 `Tingyu-macOS` 或 `Tingyu-iOS` Target 即可直接运行或调试。
+flutter pub get
 
-3. **命令行构建 macOS Release 产物**：
-   ```bash
-   xcodebuild -project Tingyu.xcodeproj \
-              -scheme Tingyu-macOS \
-              -destination 'platform=macOS' \
-              build
-   ```
+# 跑起来（macOS / Windows / Linux / Android / iOS）
+flutter run -d macos
+
+flutter analyze
+flutter test
+
+# 打包
+flutter build macos --release        # → build/macos/Build/Products/Release
+flutter build windows --release
+flutter build linux --release
+flutter build appbundle --release    # Android
+flutter build ios --release
+
+# 改了 data/db/schema.dart 之后必须重新生成（CI 会校验生成代码是否同步）
+dart run build_runner build
+```
+
+### 调试入口（`main.dart` 读取的环境变量）
+| 变量 | 作用 |
+|---|---|
+| `TINGYU_DEBUG_ROUTE=/sources` | 启动即打开某个页面（截图 / 排查用） |
+| `TINGYU_DEBUG_SCAN_DIR=<目录>` | 在真实进程里跑一次「扫描 → 合并入库」并打印结果 |
+| `TINGYU_DEBUG_LEGACY_JSON=<文件>` | 导入旧版导出的曲库 JSON |
+| `TINGYU_DEBUG_SOURCES=<a,b,...>` | 启动即载入队列并播放，便于脚本化验证播放链路 |
+
+### CI
+`.github/workflows/flutter.yml`：改动 `app/**` 时在 Ubuntu 上跑 `dart run build_runner build` 校验 drift 生成代码无漂移、`flutter analyze` 与 `flutter test`，随后在 macOS / Windows / Linux 三平台跑 `--release` 构建。
+
+---
+
+## 平台与验证状态
+
+| 平台 | 状态 |
+|---|---|
+| **macOS 12+** | ✅ 主力验证平台：播放与系统媒体会话、曲库 / 专辑 / 艺术家 / 播放列表、全屏舞台与歌词、来源管理均已实机核验（本文截图即本机实拍） |
+| **Android** | ✅ 真机（Xiaomi 14 Pro / Android 16）验证：播放与后台播放、SAF 本地音乐入库与播放、夸克应用内登录；播放失败提示的真机核验待补（§23） |
+| **iOS 15+** | ✅ 构建与模拟器运行验证通过；本地目录书签（安全作用域）已落地，真机端到端「选目录 → 入库 → 播放」待补（§24） |
+| **Windows / Linux** | ⚠️ CI 三平台 release 构建绿灯，尚未做实机运行验证 |
+
+里程碑进度：**M0–M5 已完成**；M6（macOS 原生增强：WidgetKit / App Intents / AirPlay）与 M7（各平台分发与签名）未开始。逐项结论、环境前提与遗留项见 [`docs/crossplatform-migration.md`](docs/crossplatform-migration.md) §18。
 
 ---
 
 ## 开源协议与声明
 
-- 本项目基于 [MIT License](LICENSE) 开源。
+- 本项目基于 MIT License 开源。
 - **免责声明**：本项目定位为**个人私有云盘与本地音频播放工具**。应用自身不内置、不提供、不分发任何受版权保护的音乐音频资源，所有播放内容均来源于用户合法拥有的个人存储或第三方网盘授权。
