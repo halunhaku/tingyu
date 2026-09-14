@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  just_audio 在 Android 上用本地 HTTP 代理实现「带 headers 的音频源」（夸克直链、
+  WebDAV 鉴权头）。Android 默认禁止明文 HTTP，包括回环地址，因此必须显式放行
+  127.0.0.1 / localhost，否则 ExoPlayer 会在加载时抛 CleartextNotPermittedException。
+
+  这里只放行回环地址：公网仍然强制 HTTPS，不引入 android:usesCleartextTraffic="true"。
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

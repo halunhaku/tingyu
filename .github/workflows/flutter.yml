@@ -1,0 +1,85 @@
+name: Flutter
+
+on:
+  push:
+    paths:
+      - 'app/**'
+      - '.github/workflows/flutter.yml'
+  pull_request:
+    paths:
+      - 'app/**'
+      - '.github/workflows/flutter.yml'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: app
+
+concurrency:
+  group: flutter-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: analyze + test
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      # media_kit / audio_service_mpris / flutter_secure_storage 在 Linux 上需要这些原生依赖才能解析与构建
+      - name: Install Linux native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libmpv-dev libsecret-1-dev libayatana-appindicator3-dev \
+            ninja-build libgtk-3-dev pkg-config
+      - run: flutter pub get
+      # drift 的 database.g.dart 是提交进仓库的；schema 改了却忘记重新生成，
+      # 会在运行时才发现。这里用"重新生成后必须无 diff"来兜底。
+      - name: Verify generated drift code is up to date
+        run: |
+          dart run build_runner build
+          git diff --exit-code --stat
+      - run: flutter analyze
+      - run: flutter test
+
+  build:
+    name: build (${{ matrix.os }})
+    needs: analyze
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: macos
+          - os: windows-2022
+            target: windows
+          - os: ubuntu-22.04
+            target: linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Install Linux native dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libmpv-dev libsecret-1-dev libayatana-appindicator3-dev \
+            ninja-build libgtk-3-dev pkg-config
+      - run: flutter pub get
+      - name: Build
+        run: flutter build ${{ matrix.target }} --release
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tingyu-${{ matrix.target }}
+          path: app/build/${{ matrix.target }}/**/Release/**
+          if-no-files-found: warn
+          retention-days: 7
