@@ -4,7 +4,7 @@
 > 一套 Dart / Flutter 代码覆盖 **macOS、Windows、Linux、Android、iOS**，界面沿袭 Apple Music 的红粉强调色、磨砂材质与流体播放舞台。
 
 > [!NOTE]
-> 现役实现是 **`app/`（Flutter）**；仓库里同时保留着上一版 SwiftUI 实现（`Sources/`、`Tingyu.xcodeproj`、`project.yml`），**冻结不再演进**，只作移植参考。
+> 现役实现是 **`app/`（Flutter）**；上一版 SwiftUI 实现整体归到 **`legacy-swift/`**（`Sources/`、`Tingyu.xcodeproj/`、`project.yml`），**冻结不再演进**，只作移植参考。
 > 完整的移植方案、每一步的验证结论与遗留项都记在 **[`docs/crossplatform-migration.md`](docs/crossplatform-migration.md)**。
 
 <p align="center">
@@ -102,7 +102,7 @@
 │  ├─ crossplatform-migration.md               # 迁移方案与逐阶段验证结论（含遗留项）
 │  └─ screenshots/
 ├─ tools/legacy-export/                        # 旧版 SwiftUI 曲库的一次性导出工具
-├─ Sources/ · Tingyu.xcodeproj/ · project.yml  # 上一版 SwiftUI 实现：冻结保留
+├─ legacy-swift/                               # 上一版 SwiftUI 实现：Sources/ · Tingyu.xcodeproj/ · project.yml，冻结保留
 └─ .github/workflows/flutter.yml               # analyze + test（含 drift 生成代码校验）+ 三平台构建
 ```
 
