@@ -810,14 +810,18 @@ release 包同样正常播放。合并后的清单经 `build/app/intermediates/m
 | 远端播放 | 夸克来源点《轻盈法则》 | ✅ `PlaybackState PLAYING`，进度 0:20 持续推进，封面 / 专辑 / 歌手齐全 |
 | 本地播放 | SAF 来源点《不能说的秘密》 | ✅ `PLAYING`，position 推进 |
 | 失败提示（引擎侧） | 往 `/sdcard/Music` 放一个只有 ID3、没有任何 MPEG 帧的 `broken.mp3`，同步后点它 | ✅ 界面弹出「broken」`PlatformException(Error: java.lang.IllegalArgumentException, ...)`；logcat 里是 ExoPlayer 的 `None of the available extractors … could read the stream` |
+| 失败提示（解析侧） | 飞行模式下点夸克曲目（取直链必失败） | 复核当场 ❌「点了没反应」→ 同日修复（`38c8019`）：弹出「伊斯坦堡」无法播放：夸克网络连接异常: unknown |
 | 夸克重新登录 | 来源列表点「重新登录」 | ✅ WebView 打开官方登录页 → 自动校验已有会话 → 凭据写回，来源状态变「登录已更新（夸克用户）」，曲目未受影响 |
 | 同步移除 | 删掉 `broken.mp3` 再同步 | ✅ `移除 1`，曲目回到 2 首，数据无损 |
 
-**复核发现的新问题（未修）**
+**复核发现的新问题**
 
-1. **取直链失败是静默的**：飞行模式下点夸克曲目，logcat 里只有
-   `[playback] 跳过无法解析的曲目「…」: 夸克网络连接异常`，界面却停在 `0:00 / 0:00`、按钮仍是"暂停" ——
-   正是 §23 想消灭的"看起来在播"，只是发生在解析侧而不是引擎侧（`playback_controller.dart` 那条 `catch` 只 debugPrint）。
+1. **取直链失败是静默的**（**同日已修**，提交 `38c8019`）：飞行模式下点夸克曲目，logcat 里只有
+   `[playback] 跳过无法解析的曲目「…」: 夸克网络连接异常`，整队列都解析不出来时控制器直接返回、
+   界面"点了没反应"。现在用户点的那一首解析失败时，控制器把原因写进同一个 `PlaybackSnapshot.failure`，
+   走既有提示通道；真机实测弹出 **「伊斯坦堡」无法播放：夸克网络连接异常: unknown**（点一次弹一次，
+   后续被跳过的曲目只进日志）。回归测试 `test/playback_controller_resolve_failure_test.dart` 四条，
+   去掉上报调用即失败。
 2. **离线时的未捕获异常**：`Unhandled Exception: HandshakeException: Connection terminated during handshake`，且不带栈信息。
 3. **来源详情页的统计会过期**：从来源列表发起同步后，详情页仍显示旧的「3 首 · 新增 1 / 移除 0」；
    杀进程重进才变成「2 首 · 新增 0 / 移除 1」（数据库本身是对的）。
