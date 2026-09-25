@@ -80,12 +80,7 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
           );
           state = enriched;
           _recordPlay(enriched);
-          if (snapshot.processing == PlaybackProcessing.completed &&
-              _repeatMode == PlaybackRepeatMode.one) {
-            unawaited(handler.seek(Duration.zero).then((_) => handler.play()));
-          } else {
-            unawaited(_ensureAhead());
-          }
+          unawaited(_onSnapshot(enriched));
         });
     ref.onDispose(subscription.cancel);
     return handler.currentSnapshot.copyWith(
@@ -94,11 +89,73 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
     );
   }
 
+  /// 当前这一遍是否已经走完（预取指针越过队尾）。
+  bool get _passFinished =>
+      _sourceQueue.isNotEmpty && _nextSourceIndex >= _sourceQueue.length;
+
+  /// 本轮 completed 是否已经处理过。
+  ///
+  /// 必须按「跃迁」而不是「当前值」触发：真实引擎（libmpv / ExoPlayer）在
+  /// seek 回 0 之后仍可能继续上报自身处于 completed（mpv 的 eof-reached 要等
+  /// 重新出声才清），如果每次收到 completed 都重播一次，就会变成 seek→play→
+  /// completed→seek… 的死循环。
+  bool _completionHandled = false;
+
+  /// 一首播完时的收尾。
+  ///
+  /// - 单曲循环：回到 0 重播当前曲；
+  /// - 列表循环：走完一遍就从头重建队列（顺带把 `_queue` / `_trackIds` /
+  ///   `_resolvedSourceIndices` 三份平行数组截断，长会话下不会无限增长）；
+  /// - 顺序播放：停在最后一首，不再预取。
+  Future<void> _onSnapshot(PlaybackSnapshot snapshot) async {
+    if (snapshot.processing != PlaybackProcessing.completed) {
+      _completionHandled = false;
+      await _ensureAhead();
+      return;
+    }
+    if (_completionHandled) {
+      return;
+    }
+    _completionHandled = true;
+    switch (_repeatMode) {
+      case PlaybackRepeatMode.one:
+        await handler.seek(Duration.zero);
+        await handler.play();
+      case PlaybackRepeatMode.all:
+        if (_passFinished) {
+          await _replayResolvedQueue();
+        } else {
+          await _ensureAhead();
+        }
+      case PlaybackRepeatMode.off:
+        // just_audio 在播完后 playing 仍为 true（要显式 pause/stop 才变），
+        // 不暂停的话 UI 与系统媒体会话会一直显示"正在播放"，播放键点了没反应。
+        await handler.pause();
+    }
+  }
+
+  /// 列表循环重开一轮：直接复用已经解析好的引擎队列，从第 0 首重放。
+  ///
+  /// 刻意不在队尾重新解析整条队列：夸克每首要取一次直链，既慢，又会与仍在跑的
+  /// 后台预取抢 `_nextSourceIndex`（重建期间预取会把旧队列当成追加目标，解析结果
+  /// 白跑、指针被提前推到队尾，新队列只剩一首）。此刻引擎队列本身就是一轮完整
+  /// 快照，重放它既没有网络开销，也天然把三份平行数组限制在一轮长度内。
+  Future<void> _replayResolvedQueue() async {
+    if (_queue.isEmpty) {
+      return;
+    }
+    ++_queueGeneration;
+    _prefetchFuture = null;
+    // 本轮已全部解析完；这一遍重放期间不需要再预取。
+    _nextSourceIndex = _sourceQueue.length;
+    await handler.setQueue(List<PlaybackItem>.of(_queue), startIndex: 0);
+    await handler.play();
+  }
+
   /// 优先解析用户点击的歌曲并立即播放，只在后台预取后续两首直链。
   ///
   /// 旧实现会先串行解析整个列表；夸克曲库每首都要请求一次下载地址，导致点击后
   /// 长时间无响应。现在队列从点击项开始循环排列，并随播放推进按需追加。
-  /// 优先解析用户点击的歌曲并立即播放，只在后台预取后续两首直链。
   ///
   /// 支持传入 [shuffle] 直接以随机顺序起播。
   Future<void> playTracks(
@@ -167,6 +224,14 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
   Future<void> pause() => handler.pause();
 
   Future<void> next() async {
+    // 队尾按「下一首」：列表循环重放已解析的队列回到第 1 首；其余模式交给引擎
+    // （顺序播放会停在最后一首，单曲循环由播完事件处理）。
+    if (_repeatMode == PlaybackRepeatMode.all &&
+        _passFinished &&
+        handler.currentSnapshot.index >= _queue.length - 1) {
+      await _replayResolvedQueue();
+      return;
+    }
     await _ensureAhead(minimumAhead: 1);
     await handler.skipToNext();
   }
@@ -177,64 +242,45 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
 
   /// 切换随机播放状态（顺序 ↔ 随机）。
   ///
-  /// 切换时仅重排后续待播队列并更新后台预取，**绝不中断当前正在播放的曲目**，
-  /// 也不重置当前播放进度。
+  /// 只重排「尚未入队」的那一部分：换掉整条队列必然要 `setQueue`，那会重新装载
+  /// 当前音轨、把播放进度清零；而重建引擎队列时若只改控制器侧的
+  /// `_queue`/`_trackIds`/`_resolvedSourceIndices`，又与引擎实际队列错位
+  /// （高亮行、迷你条歌名、歌词、播放历史全部指到别的歌）。因此这里保持
+  /// `[0.._nextSourceIndex)` 不动，只打乱其后的部分，预取照旧往队尾追加：
+  /// 没有重复曲目、没有下标错位，也不会打断正在播放的这一首。
   void toggleShuffle() {
-    ++_queueGeneration;
+    if (_sourceQueue.isEmpty) {
+      _playOrder = _playOrder == PlayOrder.sequential
+          ? PlayOrder.shuffle
+          : PlayOrder.sequential;
+      state = state.copyWith(playOrder: _playOrder);
+      return;
+    }
     if (_playOrder == PlayOrder.sequential) {
       _playOrder = PlayOrder.shuffle;
-      if (_sourceQueue.isNotEmpty) {
-        if (_originalSourceQueue.isEmpty) {
-          _originalSourceQueue = List<Track>.of(_sourceQueue);
-        }
-        final int currentIdx = queueDisplayIndex.clamp(
-          0,
-          _sourceQueue.length - 1,
-        );
-        final Track current = _sourceQueue[currentIdx];
-        final List<Track> remainder =
-            _sourceQueue.where((Track t) => t.id != current.id).toList()
-              ..shuffle();
-        _sourceQueue = <Track>[current, ...remainder];
-        _nextSourceIndex = 1;
-        _resolvedSourceIndices = List<int>.unmodifiable(<int>[0]);
-        if (_queue.isNotEmpty) {
-          final int engineIdx = state.index.clamp(0, _queue.length - 1);
-          _queue = List<PlaybackItem>.unmodifiable(<PlaybackItem>[
-            _queue[engineIdx],
-          ]);
-          _trackIds = List<String>.unmodifiable(<String>[current.id]);
-        }
+      if (_originalSourceQueue.isEmpty) {
+        _originalSourceQueue = List<Track>.of(_sourceQueue);
       }
+      final int from = _nextSourceIndex.clamp(0, _sourceQueue.length);
+      final List<Track> tail = _sourceQueue.sublist(from)..shuffle();
+      _sourceQueue = <Track>[..._sourceQueue.sublist(0, from), ...tail];
     } else {
       _playOrder = PlayOrder.sequential;
-      if (_originalSourceQueue.isNotEmpty) {
-        final int currentIdx = queueDisplayIndex.clamp(
-          0,
-          _sourceQueue.length - 1,
-        );
-        final String currentId = _sourceQueue[currentIdx].id;
-        final int originalIdx = _originalSourceQueue.indexWhere(
-          (Track t) => t.id == currentId,
-        );
-        if (originalIdx != -1) {
-          _sourceQueue = <Track>[
-            ..._originalSourceQueue.skip(originalIdx),
-            ..._originalSourceQueue.take(originalIdx),
-          ];
-        } else {
-          _sourceQueue = List<Track>.of(_originalSourceQueue);
-        }
-        _nextSourceIndex = 1;
-        _resolvedSourceIndices = List<int>.unmodifiable(<int>[0]);
-        if (_queue.isNotEmpty) {
-          final int engineIdx = state.index.clamp(0, _queue.length - 1);
-          _queue = List<PlaybackItem>.unmodifiable(<PlaybackItem>[
-            _queue[engineIdx],
-          ]);
-          _trackIds = List<String>.unmodifiable(<String>[currentId]);
-        }
+      if (_originalSourceQueue.isEmpty) {
+        state = state.copyWith(playOrder: _playOrder);
+        return;
       }
+      final int from = _nextSourceIndex.clamp(0, _sourceQueue.length);
+      // 尾部这批曲目只是被打乱过，成员集合与原始队列的尾部一致：
+      // 按原始顺序把它们挑回来即可还原，且不会引入重复。
+      final Set<String> tailIds = _sourceQueue
+          .sublist(from)
+          .map((Track t) => t.id)
+          .toSet();
+      final List<Track> restored = _originalSourceQueue
+          .where((Track t) => tailIds.contains(t.id))
+          .toList(growable: false);
+      _sourceQueue = <Track>[..._sourceQueue.sublist(0, from), ...restored];
     }
     state = state.copyWith(playOrder: _playOrder);
     unawaited(_ensureAhead());

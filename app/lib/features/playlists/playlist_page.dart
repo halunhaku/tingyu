@@ -118,7 +118,8 @@ class PlaylistPage extends ConsumerWidget {
                   }
                   await ref.read(playlistRepositoryProvider).delete(playlistId);
                   if (context.mounted) {
-                    context.go('/library');
+                    // 从歌单列表 push 进来的就退回列表；深链/侧栏直达时落到列表页。
+                    context.canPop() ? context.pop() : context.go('/playlists');
                   }
                 },
               ),

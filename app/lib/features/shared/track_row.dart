@@ -62,12 +62,18 @@ class TrackRow extends ConsumerWidget {
                     ? Icon(Icons.graphic_eq, size: 16, color: scheme.primary)
                     : Text(
                         index == null ? '' : '$index',
-                        style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                        style: text.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
                         textAlign: TextAlign.center,
                       ),
               ),
             if (showIndex) const SizedBox(width: 4),
-            CoverArt(coverArtPath: track.coverArtPath, coverArtUrl: track.coverArtUrl, size: 40),
+            CoverArt(
+              coverArtPath: track.coverArtPath,
+              coverArtUrl: track.coverArtUrl,
+              size: 40,
+            ),
             const SizedBox(width: 12),
             Expanded(
               flex: 5,
@@ -87,7 +93,9 @@ class TrackRow extends ConsumerWidget {
                     track.artist,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                    style: text.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -99,7 +107,9 @@ class TrackRow extends ConsumerWidget {
                   track.album,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                  style: text.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             if (track.isFavorite)
@@ -128,12 +138,21 @@ class TrackRow extends ConsumerWidget {
     );
   }
 
-  Future<void> _showMenu(BuildContext context, WidgetRef ref, {Offset? position}) async {
+  Future<void> _showMenu(
+    BuildContext context,
+    WidgetRef ref, {
+    Offset? position,
+  }) async {
     final RenderBox box = context.findRenderObject()! as RenderBox;
     final Offset origin = position ?? box.localToGlobal(Offset.zero);
     final String? selected = await showMenu<String>(
       context: context,
-      position: RelativeRect.fromLTRB(origin.dx, origin.dy, origin.dx, origin.dy),
+      position: RelativeRect.fromLTRB(
+        origin.dx,
+        origin.dy,
+        origin.dx,
+        origin.dy,
+      ),
       items: <PopupMenuEntry<String>>[
         const PopupMenuItem<String>(value: 'play', child: Text('播放')),
         PopupMenuItem<String>(
@@ -142,8 +161,12 @@ class TrackRow extends ConsumerWidget {
         ),
         const PopupMenuItem<String>(value: 'playlist', child: Text('添加到播放列表…')),
         const PopupMenuItem<String>(value: 'match', child: Text('匹配元数据…')),
-        if (track.filePathOrUrl.startsWith('/'))
-          const PopupMenuItem<String>(value: 'reveal', child: Text('在访达中显示')),
+        if (track.filePathOrUrl.startsWith('/') &&
+            (Platform.isMacOS || Platform.isLinux))
+          PopupMenuItem<String>(
+            value: 'reveal',
+            child: Text(Platform.isMacOS ? '在访达中显示' : '在文件管理器中显示'),
+          ),
       ],
     );
     if (selected == null || !context.mounted) {
@@ -153,7 +176,9 @@ class TrackRow extends ConsumerWidget {
       case 'play':
         onTap?.call();
       case 'favorite':
-        await ref.read(trackRepositoryProvider).setFavorite(track.id, value: !track.isFavorite);
+        await ref
+            .read(trackRepositoryProvider)
+            .setFavorite(track.id, value: !track.isFavorite);
       case 'playlist':
         await showAddToPlaylistDialog(context, ref, <Track>[track]);
       case 'match':
@@ -161,7 +186,21 @@ class TrackRow extends ConsumerWidget {
           await showManualMatchDialog(context, ref, track);
         }
       case 'reveal':
-        await Process.run('open', <String>['-R', track.filePathOrUrl]);
+        final String path = track.filePathOrUrl;
+        try {
+          if (Platform.isMacOS) {
+            await Process.run('open', <String>['-R', path]);
+          } else {
+            // Linux 桌面没有 macOS 的 open -R；xdg-open 目录即文件管理器。
+            await Process.run('xdg-open', <String>[File(path).parent.path]);
+          }
+        } on Object catch (error) {
+          debugPrint('[library] 打开文件管理器失败: $error');
+          if (context.mounted) {
+            ScaffoldMessenger.of(context)
+                .showSnackBar(const SnackBar(content: Text('无法打开文件管理器')));
+          }
+        }
     }
   }
 }

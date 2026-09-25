@@ -82,8 +82,18 @@ class _QuarkWebLoginPageState extends State<QuarkWebLoginPage> {
     await _controller.setJavaScriptMode(JavaScriptMode.unrestricted);
     await _controller.setNavigationDelegate(
       NavigationDelegate(
-        onPageStarted: (String url) => setState(() => _currentUrl = url),
+        // WebView 的平台侧消息可能在页面 dispose 之后才投递到 Dart；
+        // dispose 只取消了定时器，这里必须自己挡住 setState。
+        onPageStarted: (String url) {
+          if (!mounted) {
+            return;
+          }
+          setState(() => _currentUrl = url);
+        },
         onPageFinished: (String url) {
+          if (!mounted) {
+            return;
+          }
           setState(() => _currentUrl = url);
           _fitDesktopLayout();
           _rewriteIntentLinks();
