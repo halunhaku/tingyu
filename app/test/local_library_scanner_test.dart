@@ -156,4 +156,25 @@ void main() {
     expect(result.unreadableDirectories, 1);
     expect(result.isAuthoritative, isFalse);
   });
+
+  test('无法识别内容的文件被保留为文件名曲目，不会让整次扫描失败', () async {
+    // 裸 ADTS 头 + 垃圾数据：扩展名在 supportedExtensions 内，
+    // 但 audio_metadata_reader 没有任何解析器认领它。
+    await write('good.wav', buildSilentWav(seconds: 1));
+    await write('weird.mp3', <int>[
+      0xFF,
+      0xF1,
+      ...List<int>.filled(2048, 0x00),
+    ]);
+
+    final LocalScanResult result = await scanner.scan(root);
+
+    expect(result.tracks, hasLength(2), reason: '一个无法识别的文件不应让整次扫描抛出、丢掉其它曲目');
+    final ScannedTrack weird = result.tracks.firstWhere(
+      (ScannedTrack t) => p.basename(t.filePathOrUrl) == 'weird.mp3',
+    );
+    expect(weird.title, 'weird', reason: '无标签时回落到文件名');
+    expect(weird.artist, ScannedTrack.unknownArtist);
+    expect(result.unreadableFiles, 0);
+  });
 }

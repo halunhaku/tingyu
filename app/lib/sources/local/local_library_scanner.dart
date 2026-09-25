@@ -201,7 +201,9 @@ _BatchResult _scanBatch(List<String> paths, String coversDirectory) {
   for (final String path in paths) {
     try {
       tracks.add(_scanFile(path, coversDirectory));
-    } on FileSystemException {
+    } on Object {
+      // 单个文件无论如何都不该让整批（乃至整次扫描）失败：列目录与真正读取
+      // 之间文件可能已被删除/改权限，任何异常都只记一次「读不了」。
       unreadable++;
     }
   }
@@ -256,6 +258,13 @@ ScannedTrack _scanFile(String path, String coversDirectory) {
     // 该容器/标签不被支持（如裸 AAC）：保留文件名与文件事实，其余留空由后续补全。
   } on UnsupportedError {
     // 同上，不同版本抛出的异常类型不一致。
+  } on Object {
+    // audio_metadata_reader 在「扩展名受支持、内容却没有任何解析器认领」时抛的是
+    // NoMetadataParserException —— 它 implements Exception，**不是**
+    // MetadataParserException 的子类（见包的 utils/metadata_parser_exception.dart）。
+    // 只捕获上面两种类型会让一个裸 ADTS 的 .aac / 改名后的垃圾 .mp3 直接把异常
+    // 抛出 isolate，整次扫描一首都不入库。这里按类文档的契约兜住：
+    // 该文件保留文件名与文件事实，其余留空交给后续补全。
   }
 
   return ScannedTrack(
