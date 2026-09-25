@@ -17,8 +17,12 @@ class PlaylistPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<Playlist>> playlists = ref.watch(playlistsProvider);
-    final Playlist? playlist = playlists.value?.where((Playlist item) => item.id == playlistId).firstOrNull;
-    final AsyncValue<List<Track>> tracks = ref.watch(playlistTracksProvider(playlistId));
+    final Playlist? playlist = playlists.value
+        ?.where((Playlist item) => item.id == playlistId)
+        .firstOrNull;
+    final AsyncValue<List<Track>> tracks = ref.watch(
+      playlistTracksProvider(playlistId),
+    );
 
     if (playlist == null) {
       return const EmptyState(icon: Icons.queue_music, title: '播放列表不存在');
@@ -35,7 +39,10 @@ class PlaylistPage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(playlist.name, style: Theme.of(context).textTheme.titleLarge),
+                    Text(
+                      playlist.name,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
                     Text(
                       '${tracks.value?.length ?? 0} 首',
                       style: Theme.of(context).textTheme.bodySmall,
@@ -46,9 +53,21 @@ class PlaylistPage extends ConsumerWidget {
               FilledButton.tonalIcon(
                 onPressed: (tracks.value?.isEmpty ?? true)
                     ? null
-                    : () => ref.read(playbackProvider.notifier).playTracks(tracks.value!),
+                    : () => ref
+                          .read(playbackProvider.notifier)
+                          .playTracks(tracks.value!),
                 icon: const Icon(Icons.play_arrow),
                 label: const Text('播放全部'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.tonalIcon(
+                onPressed: (tracks.value?.isEmpty ?? true)
+                    ? null
+                    : () => ref
+                          .read(playbackProvider.notifier)
+                          .playTracks(tracks.value!, shuffle: true),
+                icon: const Icon(Icons.shuffle),
+                label: const Text('随机播放'),
               ),
               const SizedBox(width: 8),
               IconButton(
@@ -64,7 +83,9 @@ class PlaylistPage extends ConsumerWidget {
                   if (name == null || name.trim().isEmpty) {
                     return;
                   }
-                  await ref.read(playlistRepositoryProvider).rename(playlistId, name.trim());
+                  await ref
+                      .read(playlistRepositoryProvider)
+                      .rename(playlistId, name.trim());
                 },
               ),
               IconButton(
@@ -104,8 +125,11 @@ class PlaylistPage extends ConsumerWidget {
         Expanded(
           child: tracks.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (Object error, StackTrace stack) =>
-                EmptyState(icon: Icons.error_outline, title: '读取失败', message: '$error'),
+            error: (Object error, StackTrace stack) => EmptyState(
+              icon: Icons.error_outline,
+              title: '读取失败',
+              message: '$error',
+            ),
             data: (List<Track> list) {
               if (list.isEmpty) {
                 return const EmptyState(
@@ -118,11 +142,9 @@ class PlaylistPage extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 itemCount: list.length,
                 onReorderItem: (int oldIndex, int newIndex) async {
-                  await ref.read(playlistRepositoryProvider).move(
-                        playlistId,
-                        from: oldIndex,
-                        to: newIndex,
-                      );
+                  await ref
+                      .read(playlistRepositoryProvider)
+                      .move(playlistId, from: oldIndex, to: newIndex);
                   ref.invalidate(playlistTracksProvider(playlistId));
                 },
                 itemBuilder: (BuildContext context, int index) {
@@ -139,7 +161,9 @@ class PlaylistPage extends ConsumerWidget {
                       iconSize: 16,
                       icon: const Icon(Icons.remove_circle_outline),
                       onPressed: () async {
-                        await ref.read(playlistRepositoryProvider).removeAt(playlistId, index);
+                        await ref
+                            .read(playlistRepositoryProvider)
+                            .removeAt(playlistId, index);
                         ref.invalidate(playlistTracksProvider(playlistId));
                       },
                     ),

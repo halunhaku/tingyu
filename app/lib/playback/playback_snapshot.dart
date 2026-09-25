@@ -20,6 +20,27 @@ class PlaybackFailure {
   final String? title;
 }
 
+/// 播放顺序：顺序播放或随机打乱。
+enum PlayOrder {
+  /// 顺序播放（按原始列表顺序）
+  sequential,
+
+  /// 随机播放（打乱队列顺序）
+  shuffle,
+}
+
+/// 循环模式：不循环、列表循环、单曲循环。
+enum PlaybackRepeatMode {
+  /// 不循环：播完列表末尾后停止
+  off,
+
+  /// 列表循环：播完列表末尾后循环回第一首
+  all,
+
+  /// 单曲循环：单曲结束后重新播放该曲
+  one,
+}
+
 /// 播放引擎对外的唯一状态载体。
 ///
 /// UI 层与系统媒体会话（[AudioHandler]）都只消费它，避免双引擎各自的状态口径漂移。
@@ -34,6 +55,8 @@ class PlaybackSnapshot {
     required this.index,
     required this.rate,
     required this.volume,
+    this.playOrder = PlayOrder.sequential,
+    this.repeatMode = PlaybackRepeatMode.all,
     this.failure,
   });
 
@@ -46,6 +69,8 @@ class PlaybackSnapshot {
     index: 0,
     rate: 1,
     volume: 1,
+    playOrder: PlayOrder.sequential,
+    repeatMode: PlaybackRepeatMode.all,
   );
 
   final PlaybackProcessing processing;
@@ -65,6 +90,12 @@ class PlaybackSnapshot {
 
   final double volume;
 
+  /// 播放顺序（顺序 / 随机）。
+  final PlayOrder playOrder;
+
+  /// 循环模式（不循环 / 列表循环 / 单曲循环）。
+  final PlaybackRepeatMode repeatMode;
+
   /// 最近一次未恢复的播放失败；播放重新正常（或换曲成功装载）后自动清空。
   final PlaybackFailure? failure;
 
@@ -78,6 +109,8 @@ class PlaybackSnapshot {
     double? rate,
     double? volume,
     PlaybackFailure? failure,
+    PlayOrder? playOrder,
+    PlaybackRepeatMode? repeatMode,
     bool clearFailure = false,
   }) {
     return PlaybackSnapshot(
@@ -89,6 +122,8 @@ class PlaybackSnapshot {
       index: index ?? this.index,
       rate: rate ?? this.rate,
       volume: volume ?? this.volume,
+      playOrder: playOrder ?? this.playOrder,
+      repeatMode: repeatMode ?? this.repeatMode,
       failure: clearFailure ? null : (failure ?? this.failure),
     );
   }

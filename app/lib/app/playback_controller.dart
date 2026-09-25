@@ -21,6 +21,9 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
   List<String> _trackIds = const <String>[];
   List<int> _resolvedSourceIndices = const <int>[];
   List<Track> _sourceQueue = const <Track>[];
+  PlayOrder _playOrder = PlayOrder.sequential;
+  PlaybackRepeatMode _repeatMode = PlaybackRepeatMode.all;
+  List<Track> _originalSourceQueue = const <Track>[];
   int _nextSourceIndex = 0;
   int _queueGeneration = 0;
   Future<void>? _prefetchFuture;
@@ -71,27 +74,57 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
     _handler = handler;
     final StreamSubscription<PlaybackSnapshot> subscription = handler.snapshots
         .listen((PlaybackSnapshot snapshot) {
-          state = snapshot;
-          _recordPlay(snapshot);
-          unawaited(_ensureAhead());
+          final PlaybackSnapshot enriched = snapshot.copyWith(
+            playOrder: _playOrder,
+            repeatMode: _repeatMode,
+          );
+          state = enriched;
+          _recordPlay(enriched);
+          if (snapshot.processing == PlaybackProcessing.completed &&
+              _repeatMode == PlaybackRepeatMode.one) {
+            unawaited(handler.seek(Duration.zero).then((_) => handler.play()));
+          } else {
+            unawaited(_ensureAhead());
+          }
         });
     ref.onDispose(subscription.cancel);
-    return handler.currentSnapshot;
+    return handler.currentSnapshot.copyWith(
+      playOrder: _playOrder,
+      repeatMode: _repeatMode,
+    );
   }
 
   /// 优先解析用户点击的歌曲并立即播放，只在后台预取后续两首直链。
   ///
   /// 旧实现会先串行解析整个列表；夸克曲库每首都要请求一次下载地址，导致点击后
   /// 长时间无响应。现在队列从点击项开始循环排列，并随播放推进按需追加。
-  Future<void> playTracks(List<Track> tracks, {int startIndex = 0}) async {
+  /// 优先解析用户点击的歌曲并立即播放，只在后台预取后续两首直链。
+  ///
+  /// 支持传入 [shuffle] 直接以随机顺序起播。
+  Future<void> playTracks(
+    List<Track> tracks, {
+    int startIndex = 0,
+    bool shuffle = false,
+  }) async {
     if (tracks.isEmpty) {
       return;
     }
+    _originalSourceQueue = List<Track>.unmodifiable(tracks);
     final int normalized = startIndex.clamp(0, tracks.length - 1);
-    _sourceQueue = <Track>[
-      ...tracks.skip(normalized),
-      ...tracks.take(normalized),
-    ];
+    if (shuffle) {
+      _playOrder = PlayOrder.shuffle;
+      final Track start = tracks[normalized];
+      final List<Track> rest =
+          tracks.where((Track t) => t.id != start.id).toList()..shuffle();
+      _sourceQueue = <Track>[start, ...rest];
+    } else {
+      _playOrder = PlayOrder.sequential;
+      _sourceQueue = <Track>[
+        ...tracks.skip(normalized),
+        ...tracks.take(normalized),
+      ];
+    }
+    state = state.copyWith(playOrder: _playOrder, repeatMode: _repeatMode);
     await _restartEngineFrom(0);
   }
 
@@ -141,6 +174,60 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
   Future<void> previous() => handler.skipToPrevious();
 
   Future<void> seek(Duration position) => handler.seek(position);
+
+  /// 切换随机播放状态（顺序 ↔ 随机）。
+  void toggleShuffle() {
+    if (_playOrder == PlayOrder.sequential) {
+      _playOrder = PlayOrder.shuffle;
+      if (_sourceQueue.isNotEmpty) {
+        if (_originalSourceQueue.isEmpty) {
+          _originalSourceQueue = List<Track>.of(_sourceQueue);
+        }
+        final int currentIdx = queueDisplayIndex.clamp(
+          0,
+          _sourceQueue.length - 1,
+        );
+        final Track current = _sourceQueue[currentIdx];
+        final List<Track> remainder =
+            _sourceQueue.where((Track t) => t.id != current.id).toList()
+              ..shuffle();
+        _sourceQueue = <Track>[current, ...remainder];
+        unawaited(_restartEngineFrom(0));
+      }
+    } else {
+      _playOrder = PlayOrder.sequential;
+      if (_originalSourceQueue.isNotEmpty) {
+        final int currentIdx = queueDisplayIndex.clamp(
+          0,
+          _sourceQueue.length - 1,
+        );
+        final String currentId = _sourceQueue[currentIdx].id;
+        final int originalIdx = _originalSourceQueue.indexWhere(
+          (Track t) => t.id == currentId,
+        );
+        if (originalIdx != -1) {
+          _sourceQueue = <Track>[
+            ..._originalSourceQueue.skip(originalIdx),
+            ..._originalSourceQueue.take(originalIdx),
+          ];
+        } else {
+          _sourceQueue = List<Track>.of(_originalSourceQueue);
+        }
+        unawaited(_restartEngineFrom(0));
+      }
+    }
+    state = state.copyWith(playOrder: _playOrder);
+  }
+
+  /// 切换循环模式（列表循环 → 单曲循环 → 不循环 → 列表循环）。
+  void cycleRepeatMode() {
+    _repeatMode = switch (_repeatMode) {
+      PlaybackRepeatMode.all => PlaybackRepeatMode.one,
+      PlaybackRepeatMode.one => PlaybackRepeatMode.off,
+      PlaybackRepeatMode.off => PlaybackRepeatMode.all,
+    };
+    state = state.copyWith(repeatMode: _repeatMode);
+  }
 
   Future<void> setVolume(double volume) => handler.setVolume(volume);
 
@@ -217,9 +304,20 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
   }
 
   Future<_Resolved?> _resolveNext(int generation) async {
+    if (_sourceQueue.isEmpty) {
+      return null;
+    }
     final TrackResolver resolver = ref.read(trackResolverProvider);
-    while (generation == _queueGeneration &&
-        _nextSourceIndex < _sourceQueue.length) {
+    int attempts = 0;
+    while (generation == _queueGeneration && attempts < _sourceQueue.length) {
+      if (_nextSourceIndex >= _sourceQueue.length) {
+        if (_repeatMode == PlaybackRepeatMode.all) {
+          _nextSourceIndex = 0;
+        } else {
+          return null;
+        }
+      }
+      attempts++;
       final int sourceIndex = _nextSourceIndex;
       final Track track = _sourceQueue[_nextSourceIndex++];
       try {
@@ -232,8 +330,9 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
         _lastResolveError = error;
         if (sourceIndex == _startSourceIndex) {
           // 点的就是这一首：立刻给提示。否则用户只看到"点了没反应"，
-          // 而后面几十首挨个尝试要跑很久。
+          // 而后面几十首挨个尝试要跑很久。仅上报一次，不重复刷屏。
           _reportResolveFailure(sourceIndex);
+          _startSourceIndex = -1;
         }
         debugPrint('[playback] 跳过无法解析的曲目「${track.title}」: $error');
       }

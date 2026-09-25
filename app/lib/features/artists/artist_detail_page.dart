@@ -18,7 +18,9 @@ class ArtistDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<List<Track>> tracks = ref.watch(artistTracksProvider(artist));
+    final AsyncValue<List<Track>> tracks = ref.watch(
+      artistTracksProvider(artist),
+    );
 
     return tracks.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -65,25 +67,25 @@ class ArtistDetailPage extends ConsumerWidget {
             if (index == 0) {
               return _ArtistHeader(
                 artist: artist,
-                songCount: list.length,
+                tracks: list,
                 albumCount: groups.length,
               );
             }
             return switch (items[index - 1]) {
               _AlbumGroupItem item => _AlbumGroupHeader(
-                  artist: artist,
-                  album: item.album,
-                  tracks: item.tracks,
-                ),
+                artist: artist,
+                album: item.album,
+                tracks: item.tracks,
+              ),
               _TrackItem item => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: _ArtistTrackRow(
-                    track: item.track,
-                    index: item.index,
-                    queue: item.queue,
-                    startIndex: item.startIndex,
-                  ),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: _ArtistTrackRow(
+                  track: item.track,
+                  index: item.index,
+                  queue: item.queue,
+                  startIndex: item.startIndex,
                 ),
+              ),
             };
           },
         );
@@ -137,22 +139,20 @@ class _TrackItem extends _ArtistItem {
   final int startIndex;
 }
 
-/// 艺术家头：头像 + 名字 + 「N 首歌曲 · M 张专辑」。
-class _ArtistHeader extends StatelessWidget {
+/// 艺术家头：头像 + 名字 + 「N 首歌曲 · M 张专辑」+ 播放/随机按钮。
+class _ArtistHeader extends ConsumerWidget {
   const _ArtistHeader({
     required this.artist,
-    required this.songCount,
+    required this.tracks,
     required this.albumCount,
   });
 
   final String artist;
-
-  final int songCount;
-
+  final List<Track> tracks;
   final int albumCount;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final TextTheme text = Theme.of(context).textTheme;
     final ColorScheme scheme = Theme.of(context).colorScheme;
 
@@ -178,12 +178,41 @@ class _ArtistHeader extends StatelessWidget {
                   artist,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: text.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                  style: text.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '$songCount 首歌曲 · $albumCount 张专辑',
-                  style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                  '${tracks.length} 首歌曲 · $albumCount 张专辑',
+                  style: text.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: <Widget>[
+                    FilledButton.icon(
+                      onPressed: tracks.isEmpty
+                          ? null
+                          : () => ref
+                                .read(playbackProvider.notifier)
+                                .playTracks(tracks),
+                      icon: const Icon(Icons.play_arrow, size: 18),
+                      label: const Text('播放全部'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: tracks.isEmpty
+                          ? null
+                          : () => ref
+                                .read(playbackProvider.notifier)
+                                .playTracks(tracks, shuffle: true),
+                      icon: const Icon(Icons.shuffle, size: 18),
+                      label: const Text('随机播放'),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -219,7 +248,8 @@ class _AlbumGroupHeader extends ConsumerWidget {
             tooltip: '播放这张专辑',
             iconSize: 18,
             icon: const Icon(Icons.play_circle_outline),
-            onPressed: () => ref.read(playbackProvider.notifier).playTracks(tracks),
+            onPressed: () =>
+                ref.read(playbackProvider.notifier).playTracks(tracks),
           ),
           IconButton(
             tooltip: '打开专辑',
@@ -254,9 +284,12 @@ class _ArtistTrackRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final List<String> playingIds = ref.watch(playbackProvider.notifier).trackIds;
+    final List<String> playingIds = ref
+        .watch(playbackProvider.notifier)
+        .trackIds;
     final int playingIndex = ref.watch(playbackProvider).index;
-    final bool isPlaying = playingIndex >= 0 &&
+    final bool isPlaying =
+        playingIndex >= 0 &&
         playingIndex < playingIds.length &&
         playingIds[playingIndex] == track.id;
 
@@ -265,7 +298,9 @@ class _ArtistTrackRow extends ConsumerWidget {
       index: index,
       showAlbum: false,
       isPlaying: isPlaying,
-      onTap: () => ref.read(playbackProvider.notifier).playTracks(queue, startIndex: startIndex),
+      onTap: () => ref
+          .read(playbackProvider.notifier)
+          .playTracks(queue, startIndex: startIndex),
     );
   }
 }

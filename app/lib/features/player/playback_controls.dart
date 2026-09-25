@@ -27,7 +27,20 @@ class PlaybackControls extends ConsumerWidget {
     final double playSize = large ? 60 : 40;
     // 只有"首次装载"才让按钮变成转圈：缓冲中仍然允许暂停。
     final bool loading = snapshot.processing == PlaybackProcessing.loading;
+    final bool isShuffle = snapshot.playOrder == PlayOrder.shuffle;
+    final bool isRepeat = snapshot.repeatMode != PlaybackRepeatMode.off;
+    final ColorScheme scheme = Theme.of(context).colorScheme;
 
+    final IconData repeatIcon = switch (snapshot.repeatMode) {
+      PlaybackRepeatMode.all => Icons.repeat_rounded,
+      PlaybackRepeatMode.one => Icons.repeat_one_rounded,
+      PlaybackRepeatMode.off => Icons.repeat_rounded,
+    };
+    final String repeatTooltip = switch (snapshot.repeatMode) {
+      PlaybackRepeatMode.all => '列表循环',
+      PlaybackRepeatMode.one => '单曲循环',
+      PlaybackRepeatMode.off => '顺序播放（播完停止）',
+    };
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -42,6 +55,16 @@ class PlaybackControls extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            IconButton(
+              onPressed: controller.toggleShuffle,
+              iconSize: large ? 24 : 18,
+              tooltip: isShuffle ? '随机播放：开' : '随机播放：关',
+              color: isShuffle
+                  ? scheme.primary
+                  : scheme.onSurfaceVariant.withValues(alpha: 0.6),
+              icon: const Icon(Icons.shuffle_rounded),
+            ),
+            SizedBox(width: large ? 16 : 6),
             IconButton(
               onPressed: controller.previous,
               iconSize: iconSize,
@@ -72,12 +95,22 @@ class PlaybackControls extends ConsumerWidget {
                       ),
               ),
             ),
-            SizedBox(width: large ? 22 : 10),
+            SizedBox(width: large ? 20 : 10),
             IconButton(
               onPressed: controller.next,
               iconSize: iconSize,
               tooltip: '下一首',
               icon: const Icon(Icons.skip_next_rounded),
+            ),
+            SizedBox(width: large ? 16 : 6),
+            IconButton(
+              onPressed: controller.cycleRepeatMode,
+              iconSize: large ? 24 : 18,
+              tooltip: repeatTooltip,
+              color: isRepeat
+                  ? scheme.primary
+                  : scheme.onSurfaceVariant.withValues(alpha: 0.6),
+              icon: Icon(repeatIcon),
             ),
           ],
         ),
@@ -177,14 +210,17 @@ class _SeekBarState extends State<_SeekBar> {
     final TextTheme text = theme.textTheme;
     final bool enabled = widget.duration > Duration.zero;
 
-    final double maxSeconds =
-        math.max(widget.duration.inMilliseconds / 1000, 1.0);
+    final double maxSeconds = math.max(
+      widget.duration.inMilliseconds / 1000,
+      1.0,
+    );
     final double rawSeconds =
         _dragSeconds ?? _settleSeconds ?? widget.position.inMilliseconds / 1000;
     final double value = rawSeconds.clamp(0, maxSeconds).toDouble();
     final Duration shown = Duration(milliseconds: (value * 1000).round());
 
-    final TextStyle base = (widget.large ? text.bodySmall : text.labelSmall) ??
+    final TextStyle base =
+        (widget.large ? text.bodySmall : text.labelSmall) ??
         const TextStyle(fontSize: 12);
     final TextStyle timeStyle = base.copyWith(
       color: scheme.onSurfaceVariant,
@@ -196,7 +232,11 @@ class _SeekBarState extends State<_SeekBar> {
       children: <Widget>[
         SizedBox(
           width: widget.large ? 56 : 44,
-          child: Text(_clock(shown), style: timeStyle, textAlign: TextAlign.right),
+          child: Text(
+            _clock(shown),
+            style: timeStyle,
+            textAlign: TextAlign.right,
+          ),
         ),
         Expanded(
           child: SliderTheme(

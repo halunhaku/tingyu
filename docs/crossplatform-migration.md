@@ -1020,3 +1020,32 @@ ExoPlayer 泛型错误（`Source error`）或 libmpv 英文消息，未对明文
   - `test/ai_settings_page_test.dart`（2 项通过）。
 - `flutter test`：全套 152 项测试全绿；ASCII 路径静态分析 `flutter analyze` 零告警。
 - Linux debug 桌面端冒烟验证：直跳 `/settings/ai` 成功加载并正常渲染。
+
+---
+
+## 29. 播放模式（随机 / 顺序）与循环控制补全（2026-09-25）
+
+**背景**：原 Flutter 播放层缺少随机播放（Shuffle）与循环模式控制（播完停止 / 列表循环 / 单曲循环），队列被硬编码为单一顺序无限循环，且传送器界面上缺少控制按钮。
+
+**方案**：
+
+1. **数据模型与快照 (`lib/playback/playback_snapshot.dart`)**：
+   - 引入 `PlayOrder { sequential, shuffle }`；
+   - 引入 `PlaybackRepeatMode { off, all, one }`（避免与 Flutter 3.27+ material 的 `RepeatMode` 产生重名导入冲突）；
+   - 快照携带 `playOrder` 与 `repeatMode` 响应式同步到 UI。
+
+2. **控制器逻辑与队列重排 (`lib/app/playback_controller.dart`)**：
+   - `toggleShuffle()`：在顺序与随机间切换；进入随机时保留当前播放曲目为首项并打乱其余曲目，退出随机时基于 `_originalSourceQueue` 恢复原始曲库顺序；
+   - `cycleRepeatMode()`：在「列表循环 → 单曲循环 → 顺序播完停止 → 列表循环」间三态轮转；
+   - `playTracks(..., shuffle: true)`：支持直接以随机打乱顺序起播；
+   - 单曲循环结束时自动重播当前曲；播完停止模式在到达末尾后不再无限循环。
+
+3. **界面层完整接入 (`lib/features/player/playback_controls.dart` 等)**：
+   - `PlaybackControls`：在核心播放区两侧增设 Shuffle（随机）与 Repeat（循环模式）图标按钮，单曲循环显示带 `1` 的图标并高亮主题色；
+   - 专辑页 (`AlbumDetailPage`)、艺术家页 (`ArtistDetailPage`)、歌单页 (`PlaylistPage`) 头部统一增设「随机播放」快捷操作按钮。
+
+**验证**：
+
+- 单元测试：新增 `test/playback_controller_modes_test.dart`（3 项通过，覆盖循环切换、随机与还原原序、直接随机起播）。
+- `flutter test`：全套 156 项测试全部绿灯通过；ASCII 镜像路径静态分析零告警。
+- 本地 Release 产物已编译并覆盖安装到系统，启动测试平稳。

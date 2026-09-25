@@ -21,7 +21,9 @@ class AlbumDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<List<Track>> tracks = ref.watch(albumTracksProvider(albumKey));
+    final AsyncValue<List<Track>> tracks = ref.watch(
+      albumTracksProvider(albumKey),
+    );
 
     return tracks.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -82,8 +84,10 @@ class _AlbumHeader extends ConsumerWidget {
     final ColorScheme scheme = Theme.of(context).colorScheme;
     final Track? cover = _firstWithCover(tracks);
     final int? year = _firstYear(tracks);
-    final double totalSeconds =
-        tracks.fold<double>(0, (double sum, Track track) => sum + track.duration);
+    final double totalSeconds = tracks.fold<double>(
+      0,
+      (double sum, Track track) => sum + track.duration,
+    );
 
     final String stats = <String>[
       if (year != null) '$year年',
@@ -114,19 +118,25 @@ class _AlbumHeader extends ConsumerWidget {
                       albumKey.album,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: text.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                      style: text.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       albumKey.artist,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: text.titleSmall?.copyWith(color: scheme.onSurfaceVariant),
+                      style: text.titleSmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       stats,
-                      style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                      style: text.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Wrap(
@@ -134,13 +144,22 @@ class _AlbumHeader extends ConsumerWidget {
                       runSpacing: 8,
                       children: <Widget>[
                         FilledButton.icon(
-                          onPressed: () =>
-                              ref.read(playbackProvider.notifier).playTracks(tracks),
+                          onPressed: () => ref
+                              .read(playbackProvider.notifier)
+                              .playTracks(tracks),
                           icon: const Icon(Icons.play_arrow, size: 18),
                           label: const Text('播放全部'),
                         ),
+                        FilledButton.tonalIcon(
+                          onPressed: () => ref
+                              .read(playbackProvider.notifier)
+                              .playTracks(tracks, shuffle: true),
+                          icon: const Icon(Icons.shuffle, size: 18),
+                          label: const Text('随机播放'),
+                        ),
                         OutlinedButton.icon(
-                          onPressed: () => showAddToPlaylistDialog(context, ref, tracks),
+                          onPressed: () =>
+                              showAddToPlaylistDialog(context, ref, tracks),
                           icon: const Icon(Icons.playlist_add, size: 18),
                           label: const Text('添加到播放列表'),
                         ),
@@ -178,9 +197,12 @@ class _AlbumTrackRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final List<String> playingIds = ref.watch(playbackProvider.notifier).trackIds;
+    final List<String> playingIds = ref
+        .watch(playbackProvider.notifier)
+        .trackIds;
     final int playingIndex = ref.watch(playbackProvider).index;
-    final bool isPlaying = playingIndex >= 0 &&
+    final bool isPlaying =
+        playingIndex >= 0 &&
         playingIndex < playingIds.length &&
         playingIds[playingIndex] == track.id;
 
@@ -189,7 +211,9 @@ class _AlbumTrackRow extends ConsumerWidget {
       index: index,
       showAlbum: false,
       isPlaying: isPlaying,
-      onTap: () => ref.read(playbackProvider.notifier).playTracks(queue, startIndex: startIndex),
+      onTap: () => ref
+          .read(playbackProvider.notifier)
+          .playTracks(queue, startIndex: startIndex),
     );
   }
 }
