@@ -110,7 +110,9 @@ class SourcesPage extends ConsumerWidget {
                 leading: const Icon(Icons.folder),
                 title: const Text('本地目录'),
                 subtitle: Text(
-                  Platform.isAndroid || Platform.isIOS ? '选择本机上的音乐文件夹' : '选择电脑上的音乐文件夹',
+                  Platform.isAndroid || Platform.isIOS
+                      ? '选择本机上的音乐文件夹'
+                      : '选择电脑上的音乐文件夹',
                 ),
                 onTap: () {
                   Navigator.pop(dialogContext);
@@ -210,7 +212,9 @@ class SourcesPage extends ConsumerWidget {
     final String tail = treeUri.split('/').last;
     final String decoded = Uri.decodeComponent(tail);
     final int colon = decoded.indexOf(':');
-    return _displayNameOfPath(colon >= 0 ? decoded.substring(colon + 1) : decoded);
+    return _displayNameOfPath(
+      colon >= 0 ? decoded.substring(colon + 1) : decoded,
+    );
   }
 
   /// 取目录路径的最后一段作为来源名（`/a/b/音乐` → `音乐`）。
@@ -382,7 +386,7 @@ class SourcesPage extends ConsumerWidget {
       await ref.read(sourceSyncProvider.notifier).sync(source);
     }
     if (context.mounted) {
-      context.go('/source/$sourceId');
+      context.push('/source/$sourceId');
     }
   }
 }
@@ -446,7 +450,7 @@ class SourceTile extends ConsumerWidget {
           IconButton(
             tooltip: '打开',
             icon: const Icon(Icons.chevron_right),
-            onPressed: () => context.go('/source/${source.id}'),
+            onPressed: () => context.push('/source/${source.id}'),
           ),
           IconButton(
             tooltip: '删除来源',
@@ -457,12 +461,14 @@ class SourceTile extends ConsumerWidget {
       ),
     );
   }
-
 }
 
 /// 重新登录夸克来源（手机卡片与桌面行共用）。
-Future<void> _reloginQuarkSource(BuildContext context, WidgetRef ref, MusicSource source) =>
-    reloginQuarkSource(context, ref, source);
+Future<void> _reloginQuarkSource(
+  BuildContext context,
+  WidgetRef ref,
+  MusicSource source,
+) => reloginQuarkSource(context, ref, source);
 
 /// 删除来源：连同凭据与系统授权一起归还（手机卡片与桌面行共用）。
 Future<void> _confirmDeleteSource(
@@ -534,7 +540,7 @@ class _SourceCard extends ConsumerWidget {
       clipBehavior: Clip.antiAlias,
       color: colors.surfaceContainerLow,
       child: InkWell(
-        onTap: () => context.go('/source/${source.id}'),
+        onTap: () => context.push('/source/${source.id}'),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
           child: Column(
@@ -561,7 +567,7 @@ class _SourceCard extends ConsumerWidget {
                       if (action == _SourceMenuAction.delete) {
                         _confirmDeleteSource(context, ref, source);
                       } else {
-                        context.go('/source/${source.id}');
+                        context.push('/source/${source.id}');
                       }
                     },
                     itemBuilder: (BuildContext context) =>

@@ -15,7 +15,11 @@ import '../shared/cover_art.dart';
 ///
 /// 对齐旧版 `ManualMatchSheet`，但打开时**不**自动搜索——夸克曲目的文件名
 /// 经常是噪声，一打开就搜会打出一堆无关结果。占位专辑/歌手不预填进输入框。
-Future<void> showManualMatchDialog(BuildContext context, WidgetRef ref, Track track) async {
+Future<void> showManualMatchDialog(
+  BuildContext context,
+  WidgetRef ref,
+  Track track,
+) async {
   await showDialog<void>(
     context: context,
     builder: (BuildContext dialogContext) => _ManualMatchDialog(track: track),
@@ -32,9 +36,15 @@ class _ManualMatchDialog extends ConsumerStatefulWidget {
 }
 
 class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
-  late final TextEditingController _title = TextEditingController(text: widget.track.title);
-  late final TextEditingController _artist = TextEditingController(text: _editableArtist(widget.track.artist));
-  late final TextEditingController _album = TextEditingController(text: _editableAlbum(widget.track.album));
+  late final TextEditingController _title = TextEditingController(
+    text: widget.track.title,
+  );
+  late final TextEditingController _artist = TextEditingController(
+    text: _editableArtist(widget.track.artist),
+  );
+  late final TextEditingController _album = TextEditingController(
+    text: _editableAlbum(widget.track.album),
+  );
 
   final QQMusicProvider _qq = QQMusicProvider();
   final NetEaseProvider _netease = NetEaseProvider();
@@ -49,7 +59,8 @@ class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
   static String _editableArtist(String artist) =>
       artist.trim().isEmpty || artist == '未知艺术家' ? '' : artist;
 
-  static String _editableAlbum(String album) => isPlaceholderAlbum(album) ? '' : album;
+  static String _editableAlbum(String album) =>
+      isPlaceholderAlbum(album) ? '' : album;
 
   @override
   void dispose() {
@@ -77,8 +88,18 @@ class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
     final String artist = _artist.text.trim();
     final String album = _album.text.trim();
     final List<MetadataCandidate> results = <MetadataCandidate>[
-      ...await _qq.searchCandidates(title, artist: artist, album: album, limit: 8),
-      ...await _netease.searchCandidates(title, artist: artist, album: album, limit: 5),
+      ...await _qq.searchCandidates(
+        title,
+        artist: artist,
+        album: album,
+        limit: 8,
+      ),
+      ...await _netease.searchCandidates(
+        title,
+        artist: artist,
+        album: album,
+        limit: 5,
+      ),
     ];
     if (!mounted) {
       return;
@@ -94,13 +115,19 @@ class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
 
   Future<void> _apply(MetadataCandidate candidate) async {
     setState(() => _applying = true);
-    final Duration duration = Duration(milliseconds: (widget.track.duration * 1000).round());
+    final Duration duration = Duration(
+      milliseconds: (widget.track.duration * 1000).round(),
+    );
 
     String? coverPath;
     if (candidate.coverUrl != null) {
-      final Uint8List? bytes = await ImageDownloader().download(candidate.coverUrl!);
+      final Uint8List? bytes = await ImageDownloader().download(
+        candidate.coverUrl!,
+      );
       if (bytes != null) {
-        coverPath = await ref.read(coverStoreProvider).save(widget.track.id, bytes);
+        coverPath = await ref
+            .read(coverStoreProvider)
+            .save(widget.track.id, bytes);
       }
     }
 
@@ -115,12 +142,18 @@ class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
     );
     if (lyrics == null && candidate.provider == 'netease') {
       lyrics = await _netease.fetchLyrics(
-        LyricsQuery(title: candidate.title, artist: candidate.artist, album: candidate.album),
+        LyricsQuery(
+          title: candidate.title,
+          artist: candidate.artist,
+          album: candidate.album,
+        ),
         candidate: candidate,
       );
     }
 
-    await ref.read(trackRepositoryProvider).applyEnrichment(
+    await ref
+        .read(trackRepositoryProvider)
+        .applyEnrichment(
           id: widget.track.id,
           title: candidate.title,
           artist: candidate.artist.isEmpty ? null : candidate.artist,
@@ -221,37 +254,43 @@ class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
               child: _searching
                   ? const Center(child: CircularProgressIndicator())
                   : _candidates.isEmpty
-                      ? Center(
-                          child: Text(
-                            _error ??
-                                (_didSearch ? '没有找到候选，换个关键词试试' : '先填写歌名，再点搜索'),
-                            style: Theme.of(context).textTheme.bodySmall,
+                  ? Center(
+                      child: Text(
+                        _error ??
+                            (_didSearch ? '没有找到候选，换个关键词试试' : '先填写歌名，再点搜索'),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _candidates.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        final MetadataCandidate candidate = _candidates[index];
+                        return ListTile(
+                          dense: true,
+                          leading: CoverArt(
+                            coverArtUrl: candidate.coverUrl,
+                            size: 40,
+                            radius: 4,
                           ),
-                        )
-                      : ListView.builder(
-                          itemCount: _candidates.length,
-                          itemBuilder: (BuildContext context, int index) {
-                            final MetadataCandidate candidate = _candidates[index];
-                            return ListTile(
-                              dense: true,
-                              leading: CoverArt(
-                                coverArtUrl: candidate.coverUrl,
-                                size: 40,
-                                radius: 4,
-                              ),
-                              title: Text(candidate.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                              subtitle: Text(
-                                '${candidate.artist} · ${candidate.album} · ${candidate.provider}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: TextButton(
-                                onPressed: _applying ? null : () => _apply(candidate),
-                                child: const Text('使用'),
-                              ),
-                            );
-                          },
-                        ),
+                          title: Text(
+                            candidate.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            '${candidate.artist} · ${candidate.album} · ${candidate.provider}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: TextButton(
+                            onPressed: _applying
+                                ? null
+                                : () => _apply(candidate),
+                            child: const Text('使用'),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),

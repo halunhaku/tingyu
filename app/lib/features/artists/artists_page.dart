@@ -15,7 +15,8 @@ import '../shared/empty_state.dart';
 /// 不显式标注 `FutureProviderFamily<Uint8List?, String>`：Riverpod 3 把该类型
 /// 挪到了 `package:flutter_riverpod/misc.dart`，这里靠推断保持主入口 import。
 final artistAvatarProvider = FutureProvider.family<Uint8List?, String>(
-  (Ref ref, String artist) => ref.watch(artistAvatarStoreProvider).avatar(artist),
+  (Ref ref, String artist) =>
+      ref.watch(artistAvatarStoreProvider).avatar(artist),
 );
 
 /// 艺术家头像：命中头像缓存显示图片，否则回落到名字首字占位。
@@ -30,7 +31,9 @@ class ArtistAvatar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<Uint8List?> avatar = ref.watch(artistAvatarProvider(artist));
+    final AsyncValue<Uint8List?> avatar = ref.watch(
+      artistAvatarProvider(artist),
+    );
 
     return ClipOval(
       child: SizedBox(
@@ -87,7 +90,8 @@ class ArtistsPage extends ConsumerWidget {
                 IconButton(
                   tooltip: '返回曲库',
                   icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.go('/library'),
+                  onPressed: () =>
+                      context.canPop() ? context.pop() : context.go('/library'),
                 ),
               Expanded(child: Text('艺术家', style: text.titleLarge)),
               artists.maybeWhen(
@@ -127,7 +131,9 @@ class ArtistsPage extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     subtitle: Text('${artist.trackCount} 首'),
-                    onTap: () => context.go('/artists/${Uri.encodeComponent(artist.name)}'),
+                    onTap: () => context.push(
+                      '/artists/${Uri.encodeComponent(artist.name)}',
+                    ),
                   );
                 },
               );

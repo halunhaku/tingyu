@@ -171,9 +171,7 @@ class _QuarkQrLoginPageState extends State<QuarkQrLoginPage> {
       }
       if (mounted) {
         setState(
-          () => _status = opened
-              ? '已打开夸克 App，请在里面点确认'
-              : '没找到夸克 App，请先安装后再点按钮',
+          () => _status = opened ? '已打开夸克 App，请在里面点确认' : '没找到夸克 App，请先安装后再点按钮',
         );
       }
     } on Object catch (error) {

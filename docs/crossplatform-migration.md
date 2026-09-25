@@ -1049,3 +1049,32 @@ ExoPlayer 泛型错误（`Source error`）或 libmpv 英文消息，未对明文
 - 单元测试：新增 `test/playback_controller_modes_test.dart`（3 项通过，覆盖循环切换、随机与还原原序、直接随机起播）。
 - `flutter test`：全套 156 项测试全部绿灯通过；ASCII 镜像路径静态分析零告警。
 - 本地 Release 产物已编译并覆盖安装到系统，启动测试平稳。
+
+---
+
+## 30. 移动端返回手势与二级页面导航补全（2026-09-25）
+
+**问题**：Android 全面屏手势下返回行为不符合原生预期。
+
+1. **缺少边缘滑动返回**：`pageTransitionsTheme` 未配置，Android 默认使用的转场没有交互式「右划返回」；
+2. **二级页面无法逐级返回**：专辑详情、艺术家详情、来源详情、设置、正在播放等页面全部用 `context.go(...)` 打开，`go` 是**替换**当前路由而不是入栈，导航栈深度恒为 1 —— `canPop()` 永远为 false，系统返回直接退出应用，且页面上没有返回按钮；
+3. **正在播放页仍显示底部导航**：全屏舞台下 Tab 栏与迷你播放条没有隐藏。
+
+**方案**：
+
+| 层面 | 改动 |
+|---|---|
+| 转场动画 | `lib/app/theme.dart`：`pageTransitionsTheme` 指定 Android = `PredictiveBackPageTransitionsBuilder`（Android 14+ 预测式返回），iOS/macOS = `CupertinoPageTransitionsBuilder`（边缘右划返回），桌面保持 `ZoomPageTransitionsBuilder` |
+| 路由语义 | 顶层 Tab 之间继续用 `context.go`（不压栈 → 系统返回退出应用）；所有二级/三级入口改为 `context.push`（入栈 → 系统返回与边缘滑动都能逐级 pop）：专辑列表/详情、艺术家列表/详情、歌单详情、来源列表/详情、设置、AI 设置、正在播放（迷你条与桌面播放条） |
+| 返回按钮 | `AlbumDetailPage` / `ArtistDetailPage` 补上 `Scaffold`+`AppBar`+`BackButton`（此前完全没有返回入口，只能靠系统返回）；`PlaylistPage` / `SourcePage` / `SettingsPage` 在 `context.canPop()` 为真时显示 `BackButton` |
+| 空态兜底 | 详情页空态按钮改为 `context.canPop() ? context.pop() : context.go(列表页)`，深链直达时也能退回列表 |
+| 全屏舞台 | `MobileShell`：`/now-playing` 下 `bottomNavigationBar` 置空，隐藏 Tab 栏与迷你播放条 |
+
+**验证**：
+
+- 新增 `test/navigation_gesture_test.dart`（3 项通过）：
+  1. 四个根 Tab 之间 `go()` 切换后 `canPop()` 恒为 false（系统返回直接回桌面）；
+  2. 曲库 →（push）设置 →（push）AI 识别，`canPop()` 逐级为 true，`BackButton` 两次逐级 pop 回曲库；
+  3. 曲库 → 专辑列表 → 专辑详情，详情页自带返回按钮，逐级 pop 回曲库。
+- `flutter test`：全套 160 项全绿；ASCII 镜像 `flutter analyze` 零告警。
+- Release 重新构建并覆盖安装到本机，启动冒烟无异常。

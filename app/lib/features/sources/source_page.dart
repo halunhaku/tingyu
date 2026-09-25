@@ -49,6 +49,10 @@ class SourcePage extends ConsumerWidget {
                 children: <Widget>[
                   Row(
                     children: <Widget>[
+                      if (context.canPop()) ...<Widget>[
+                        BackButton(onPressed: () => context.pop()),
+                        const SizedBox(width: 8),
+                      ],
                       Expanded(
                         child: Text(
                           value.name,

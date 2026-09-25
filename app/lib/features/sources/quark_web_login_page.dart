@@ -112,7 +112,10 @@ class _QuarkWebLoginPageState extends State<QuarkWebLoginPage> {
       // 默认 false：桌面登录页按 360px 排版，二维码被媒体查询藏掉，只剩两个空输入框。
       await controllerPlatform.setUseWideViewPort(true);
       if (cookiePlatform is AndroidWebViewCookieManager) {
-        await cookiePlatform.setAcceptThirdPartyCookies(controllerPlatform, true);
+        await cookiePlatform.setAcceptThirdPartyCookies(
+          controllerPlatform,
+          true,
+        );
       }
     }
   }
@@ -200,7 +203,6 @@ class _QuarkWebLoginPageState extends State<QuarkWebLoginPage> {
   Future<String> _userAgent() async {
     return QuarkDriveClient.userAgent;
   }
-
 
   Future<void> _probeCookies() async {
     if (_checking || _busy || !mounted) {

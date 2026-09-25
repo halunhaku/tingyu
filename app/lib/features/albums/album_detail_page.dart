@@ -25,7 +25,7 @@ class AlbumDetailPage extends ConsumerWidget {
       albumTracksProvider(albumKey),
     );
 
-    return tracks.when(
+    final Widget content = tracks.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (Object error, StackTrace stack) => EmptyState(
         icon: Icons.error_outline,
@@ -39,7 +39,8 @@ class AlbumDetailPage extends ConsumerWidget {
             title: '没有可播放的曲目',
             message: '${albumKey.album} · ${albumKey.artist}',
             action: TextButton(
-              onPressed: () => context.go('/albums'),
+              onPressed: () =>
+                  context.canPop() ? context.pop() : context.go('/albums'),
               child: const Text('返回专辑列表'),
             ),
           );
@@ -66,6 +67,17 @@ class AlbumDetailPage extends ConsumerWidget {
           },
         );
       },
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: BackButton(
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/albums'),
+        ),
+        title: Text(albumKey.album),
+      ),
+      body: content,
     );
   }
 }

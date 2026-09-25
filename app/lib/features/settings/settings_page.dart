@@ -25,7 +25,17 @@ class SettingsPage extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       children: <Widget>[
-        Text('设置', style: Theme.of(context).textTheme.titleLarge),
+        if (context.canPop()) ...<Widget>[
+          Row(
+            children: <Widget>[
+              BackButton(onPressed: () => context.pop()),
+              const SizedBox(width: 8),
+              Text('设置', style: Theme.of(context).textTheme.titleLarge),
+            ],
+          ),
+        ] else ...<Widget>[
+          Text('设置', style: Theme.of(context).textTheme.titleLarge),
+        ],
         const SizedBox(height: 12),
         _Section(
           title: '曲库',
@@ -80,7 +90,7 @@ class SettingsPage extends ConsumerWidget {
                 ),
               ),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.go('/settings/ai'),
+              onTap: () => context.push('/settings/ai'),
             ),
           ],
         ),

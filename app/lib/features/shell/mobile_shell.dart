@@ -29,20 +29,26 @@ class MobileShell extends ConsumerWidget {
 
     return Scaffold(
       body: SafeArea(top: fullBleed == false, bottom: false, child: child),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          const MiniPlayer(),
-          NavigationBar(
-            selectedIndex: _selectedIndex(path),
-            onDestinationSelected: (int index) => context.go(_tabs[index].path),
-            destinations: <Widget>[
-              for (final _MobileTab tab in _tabs)
-                NavigationDestination(icon: Icon(tab.icon), label: tab.label),
-            ],
-          ),
-        ],
-      ),
+      bottomNavigationBar: fullBleed
+          ? null
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                const MiniPlayer(),
+                NavigationBar(
+                  selectedIndex: _selectedIndex(path),
+                  onDestinationSelected: (int index) =>
+                      context.go(_tabs[index].path),
+                  destinations: <Widget>[
+                    for (final _MobileTab tab in _tabs)
+                      NavigationDestination(
+                        icon: Icon(tab.icon),
+                        label: tab.label,
+                      ),
+                  ],
+                ),
+              ],
+            ),
     );
   }
 
@@ -52,7 +58,9 @@ class MobileShell extends ConsumerWidget {
   /// 专辑 / 艺术家 / 正在播放 / 设置 / 来源详情等页面不匹配任何 Tab，
   /// 退回曲库（0），Tab 栏保持可见。
   static int _selectedIndex(String path) {
-    final String normalized = path.startsWith('/playlist/') ? '/playlists' : path;
+    final String normalized = path.startsWith('/playlist/')
+        ? '/playlists'
+        : path;
     for (int i = 0; i < _tabs.length; i++) {
       final String tabPath = _tabs[i].path;
       if (normalized == tabPath || normalized.startsWith('$tabPath/')) {
@@ -64,7 +72,11 @@ class MobileShell extends ConsumerWidget {
 }
 
 class _MobileTab {
-  const _MobileTab({required this.path, required this.label, required this.icon});
+  const _MobileTab({
+    required this.path,
+    required this.label,
+    required this.icon,
+  });
 
   final String path;
 

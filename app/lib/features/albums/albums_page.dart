@@ -46,11 +46,13 @@ class AlbumsPage extends ConsumerWidget {
                 IconButton(
                   tooltip: '返回曲库',
                   icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.go('/library'),
+                  onPressed: () =>
+                      context.canPop() ? context.pop() : context.go('/library'),
                 ),
               Expanded(child: Text('专辑', style: text.titleLarge)),
               albums.maybeWhen(
-                data: (List<AlbumSummary> list) => Text('${list.length} 张', style: text.bodySmall),
+                data: (List<AlbumSummary> list) =>
+                    Text('${list.length} 张', style: text.bodySmall),
                 orElse: () => const SizedBox.shrink(),
               ),
             ],
@@ -74,10 +76,12 @@ class AlbumsPage extends ConsumerWidget {
               }
               return LayoutBuilder(
                 builder: (BuildContext context, BoxConstraints constraints) {
-                  final double available = constraints.maxWidth - _sidePadding * 2;
-                  final int columns = ((available + _spacing) / (_minTile + _spacing))
-                      .floor()
-                      .clamp(1, 12);
+                  final double available =
+                      constraints.maxWidth - _sidePadding * 2;
+                  final int columns =
+                      ((available + _spacing) / (_minTile + _spacing))
+                          .floor()
+                          .clamp(1, 12);
                   final double tile = math.max(
                     _minTile,
                     (available - _spacing * (columns - 1)) / columns,
@@ -125,7 +129,7 @@ class _AlbumTile extends StatelessWidget {
     final ColorScheme scheme = Theme.of(context).colorScheme;
 
     return InkWell(
-      onTap: () => context.go(
+      onTap: () => context.push(
         '/albums/${Uri.encodeComponent(album.artist)}/${Uri.encodeComponent(album.album)}',
       ),
       borderRadius: BorderRadius.circular(8),
@@ -149,7 +153,9 @@ class _AlbumTile extends StatelessWidget {
                   album.artist,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                  style: text.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -157,7 +163,9 @@ class _AlbumTile extends StatelessWidget {
                   album.year?.toString() ?? '${album.trackCount} 首',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                  style: text.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),

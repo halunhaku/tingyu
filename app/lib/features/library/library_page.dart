@@ -66,7 +66,7 @@ class LibraryPage extends ConsumerWidget {
                 IconButton(
                   tooltip: '设置',
                   icon: const Icon(Icons.settings_outlined),
-                  onPressed: () => context.go('/settings'),
+                  onPressed: () => context.push('/settings'),
                 ),
             ],
           ),
@@ -81,7 +81,7 @@ class LibraryPage extends ConsumerWidget {
               children: <Widget>[
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => context.go('/artists'),
+                    onPressed: () => context.push('/artists'),
                     icon: const Icon(Icons.person_outline, size: 18),
                     label: const Text('艺术家'),
                   ),
@@ -89,7 +89,7 @@ class LibraryPage extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => context.go('/albums'),
+                    onPressed: () => context.push('/albums'),
                     icon: const Icon(Icons.album_outlined, size: 18),
                     label: const Text('专辑'),
                   ),

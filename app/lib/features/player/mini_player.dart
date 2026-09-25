@@ -27,9 +27,13 @@ class MiniPlayer extends ConsumerWidget {
 
     final List<String> ids = controller.trackIds;
     final int index = snapshot.index;
-    final String? trackId = (index >= 0 && index < ids.length) ? ids[index] : null;
+    final String? trackId = (index >= 0 && index < ids.length)
+        ? ids[index]
+        : null;
     // 曲目行仍在读取或读取失败时回退到播放条目，迷你条不显示加载态。
-    final Track? track = trackId == null ? null : ref.watch(trackByIdProvider(trackId)).value;
+    final Track? track = trackId == null
+        ? null
+        : ref.watch(trackByIdProvider(trackId)).value;
     final PlaybackItem? item = controller.currentItem;
 
     if (ids.isEmpty && item == null) {
@@ -41,14 +45,16 @@ class MiniPlayer extends ConsumerWidget {
     final String title = track?.title ?? item?.title ?? '未在播放';
     final String artist = track?.artist ?? item?.artist ?? '';
     final Uri? artUri = item?.artUri;
-    final String? remoteArt = (artUri != null && (artUri.scheme == 'http' || artUri.scheme == 'https'))
+    final String? remoteArt =
+        (artUri != null &&
+            (artUri.scheme == 'http' || artUri.scheme == 'https'))
         ? artUri.toString()
         : null;
 
     return Material(
       color: scheme.surfaceContainerHigh,
       child: InkWell(
-        onTap: () => context.go('/now-playing'),
+        onTap: () => context.push('/now-playing'),
         child: SizedBox(
           height: height,
           child: Row(
@@ -70,13 +76,17 @@ class MiniPlayer extends ConsumerWidget {
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: text.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                      style: text.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     Text(
                       artist,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                      style: text.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),

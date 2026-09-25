@@ -35,6 +35,10 @@ class PlaylistPage extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
           child: Row(
             children: <Widget>[
+              if (context.canPop()) ...<Widget>[
+                BackButton(onPressed: () => context.pop()),
+                const SizedBox(width: 8),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

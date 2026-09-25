@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 /// 旧版 `Color.appleMusicRed`（0.98, 0.14, 0.24）。
@@ -13,6 +14,15 @@ ThemeData buildTingyuTheme(Brightness brightness) {
   return base.copyWith(
     scaffoldBackgroundColor: scheme.surface,
     visualDensity: VisualDensity.compact,
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: <TargetPlatform, PageTransitionsBuilder>{
+        TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+        TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+      },
+    ),
     dividerTheme: DividerThemeData(
       color: scheme.outlineVariant.withValues(alpha: 0.4),
       thickness: 1,

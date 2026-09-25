@@ -25,22 +25,30 @@ class PlayerBar extends ConsumerWidget {
 
     final List<String> ids = controller.trackIds;
     final int index = snapshot.index;
-    final String? trackId = (index >= 0 && index < ids.length) ? ids[index] : null;
-    final Track? track = trackId == null ? null : ref.watch(trackByIdProvider(trackId)).value;
+    final String? trackId = (index >= 0 && index < ids.length)
+        ? ids[index]
+        : null;
+    final Track? track = trackId == null
+        ? null
+        : ref.watch(trackByIdProvider(trackId)).value;
     // 队列由外部设置时没有 id 映射，用引擎条目兜底。
     final PlaybackItem? item = controller.currentItem;
     final bool hasTrack = track != null || item != null;
     final String title = track?.title ?? item?.title ?? '未在播放';
     final String artist = track?.artist ?? item?.artist ?? '';
     final Uri? artUri = item?.artUri;
-    final String? remoteArt = (artUri != null && (artUri.scheme == 'http' || artUri.scheme == 'https'))
+    final String? remoteArt =
+        (artUri != null &&
+            (artUri.scheme == 'http' || artUri.scheme == 'https'))
         ? artUri.toString()
         : null;
 
     final Duration duration = snapshot.duration;
     final double progress = duration.inMilliseconds <= 0
         ? 0
-        : (snapshot.position.inMilliseconds / duration.inMilliseconds).clamp(0, 1).toDouble();
+        : (snapshot.position.inMilliseconds / duration.inMilliseconds)
+              .clamp(0, 1)
+              .toDouble();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -67,7 +75,9 @@ class PlayerBar extends ConsumerWidget {
                   ),
                   const SizedBox(width: 10),
                   ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: showFullTitles ? 200 : 110),
+                    constraints: BoxConstraints(
+                      maxWidth: showFullTitles ? 200 : 110,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
@@ -83,9 +93,8 @@ class PlayerBar extends ConsumerWidget {
                             artist,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: scheme.onSurfaceVariant),
                           ),
                       ],
                     ),
@@ -99,7 +108,9 @@ class PlayerBar extends ConsumerWidget {
                   IconButton(
                     tooltip: snapshot.playing ? '暂停' : '播放',
                     icon: Icon(
-                      snapshot.playing ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                      snapshot.playing
+                          ? Icons.pause_circle_filled
+                          : Icons.play_circle_filled,
                       size: 34,
                     ),
                     onPressed: hasTrack ? controller.togglePlayPause : null,
@@ -117,8 +128,11 @@ class PlayerBar extends ConsumerWidget {
                         value: progress,
                         onChanged: hasTrack && duration.inMilliseconds > 0
                             ? (double value) => controller.seek(
-                                  Duration(milliseconds: (value * duration.inMilliseconds).round()),
-                                )
+                                Duration(
+                                  milliseconds:
+                                      (value * duration.inMilliseconds).round(),
+                                ),
+                              )
                             : null,
                       ),
                     ),
@@ -140,7 +154,9 @@ class PlayerBar extends ConsumerWidget {
                   IconButton(
                     tooltip: '正在播放',
                     icon: const Icon(Icons.open_in_full),
-                    onPressed: hasTrack ? () => context.go('/now-playing') : null,
+                    onPressed: hasTrack
+                        ? () => context.push('/now-playing')
+                        : null,
                   ),
                 ],
               );
@@ -151,7 +167,6 @@ class PlayerBar extends ConsumerWidget {
     );
   }
 }
-
 
 /// 固定宽度 + 等宽数字，避免 1/9 字形宽度差把进度条左右拽动。
 class _TimeLabel extends StatelessWidget {
@@ -170,8 +185,8 @@ class _TimeLabel extends StatelessWidget {
         maxLines: 1,
         textAlign: align,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
-            ),
+          fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+        ),
       ),
     );
   }

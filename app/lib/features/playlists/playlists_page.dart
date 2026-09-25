@@ -26,7 +26,10 @@ class PlaylistsPage extends ConsumerWidget {
           child: Row(
             children: <Widget>[
               Expanded(
-                child: Text('歌单', style: Theme.of(context).textTheme.titleLarge),
+                child: Text(
+                  '歌单',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
               ),
               FilledButton.tonalIcon(
                 onPressed: () => _createPlaylist(context, ref),
@@ -39,8 +42,11 @@ class PlaylistsPage extends ConsumerWidget {
         Expanded(
           child: playlists.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (Object error, StackTrace stack) =>
-                EmptyState(icon: Icons.error_outline, title: '歌单读取失败', message: '$error'),
+            error: (Object error, StackTrace stack) => EmptyState(
+              icon: Icons.error_outline,
+              title: '歌单读取失败',
+              message: '$error',
+            ),
             data: (List<Playlist> list) {
               if (list.isEmpty) {
                 return EmptyState(
@@ -54,7 +60,10 @@ class PlaylistsPage extends ConsumerWidget {
                 );
               }
               return ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 itemCount: list.length,
                 separatorBuilder: (_, _) => const Divider(height: 1),
                 itemBuilder: (BuildContext context, int index) =>
@@ -68,12 +77,21 @@ class PlaylistsPage extends ConsumerWidget {
   }
 
   /// 新建歌单；id 与「添加到播放列表…」里的就地新建保持同一套约定。
-  static Future<void> _createPlaylist(BuildContext context, WidgetRef ref) async {
-    final String? name = await promptPlaylistName(context, title: '新建歌单', confirmLabel: '创建');
+  static Future<void> _createPlaylist(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final String? name = await promptPlaylistName(
+      context,
+      title: '新建歌单',
+      confirmLabel: '创建',
+    );
     if (name == null || name.trim().isEmpty) {
       return;
     }
-    await ref.read(playlistRepositoryProvider).create(
+    await ref
+        .read(playlistRepositoryProvider)
+        .create(
           id: 'pl-${DateTime.now().microsecondsSinceEpoch}',
           name: name.trim(),
         );
@@ -88,7 +106,9 @@ class _PlaylistTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<List<Track>> tracks = ref.watch(playlistTracksProvider(playlist.id));
+    final AsyncValue<List<Track>> tracks = ref.watch(
+      playlistTracksProvider(playlist.id),
+    );
     final String subtitle = tracks.when(
       loading: () => '读取中…',
       error: (Object error, StackTrace stack) => '曲目读取失败',
@@ -104,7 +124,7 @@ class _PlaylistTile extends ConsumerWidget {
         icon: const Icon(Icons.more_vert),
         onPressed: () => _showMenu(context, ref),
       ),
-      onTap: () => context.go('/playlist/${playlist.id}'),
+      onTap: () => context.push('/playlist/${playlist.id}'),
       onLongPress: () => _showMenu(context, ref),
     );
   }
@@ -117,7 +137,11 @@ class _PlaylistTile extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             ListTile(
-              title: Text(playlist.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+              title: Text(
+                playlist.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             const Divider(height: 1),
             ListTile(
@@ -150,7 +174,9 @@ class _PlaylistTile extends ConsumerWidget {
         if (name == null || name.trim().isEmpty) {
           return;
         }
-        await ref.read(playlistRepositoryProvider).rename(playlist.id, name.trim());
+        await ref
+            .read(playlistRepositoryProvider)
+            .rename(playlist.id, name.trim());
       case 'delete':
         final bool? confirmed = await showDialog<bool>(
           context: context,

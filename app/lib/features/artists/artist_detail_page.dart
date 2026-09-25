@@ -22,7 +22,7 @@ class ArtistDetailPage extends ConsumerWidget {
       artistTracksProvider(artist),
     );
 
-    return tracks.when(
+    final Widget content = tracks.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (Object error, StackTrace stack) => EmptyState(
         icon: Icons.error_outline,
@@ -36,7 +36,8 @@ class ArtistDetailPage extends ConsumerWidget {
             title: '没有这位艺术家的曲目',
             message: artist,
             action: TextButton(
-              onPressed: () => context.go('/artists'),
+              onPressed: () =>
+                  context.canPop() ? context.pop() : context.go('/artists'),
               child: const Text('返回艺术家列表'),
             ),
           );
@@ -90,6 +91,17 @@ class ArtistDetailPage extends ConsumerWidget {
           },
         );
       },
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: BackButton(
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/artists'),
+        ),
+        title: Text(artist),
+      ),
+      body: content,
     );
   }
 }
@@ -255,7 +267,7 @@ class _AlbumGroupHeader extends ConsumerWidget {
             tooltip: '打开专辑',
             iconSize: 18,
             icon: const Icon(Icons.album_outlined),
-            onPressed: () => context.go(
+            onPressed: () => context.push(
               '/albums/${Uri.encodeComponent(artist)}/${Uri.encodeComponent(album)}',
             ),
           ),
