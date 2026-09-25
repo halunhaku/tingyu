@@ -982,3 +982,41 @@ ExoPlayer 泛型错误（`Source error`）或 libmpv 英文消息，未对明文
 - 扩充 `test/playback_controller_resolve_failure_test.dart`（离线网络异常与目录授权失效在控制器的中文快照验证）。
 - `flutter test`：130 项全绿；纯 ASCII 镜像下 `flutter analyze` 零告警。
 - Linux debug 桌面二进制重新构建并通过冒烟运行。
+
+---
+
+## 28. AI 智能识别与曲库清洗迁移（2026-09-25）
+
+**背景**：旧版 Swift 实现了 `AIService` 与 `AIMetadataParser`，支持接入 OpenAI 兼容的大语言模型（内置 DeepSeek、Qwen、Kimi、OpenAI、Ollama 预设）对乱码/复杂文件名进行批量清洗识别。该能力在 Flutter 跨平台迁移中落地。
+
+**方案**：
+
+1. **协议层 (`lib/sources/ai/ai_config.dart` · `ai_client.dart`)**：
+   - 沿用工程现有的 `Dio`，实现标准 OpenAI `/chat/completions` 请求；
+   - 支持动态鉴权（有 key 注入 `Bearer` 头，本地 Ollama 免密时不注入）；
+   - 异常映射：401 认证失败、429 限流、5xx 服务端异常、网络断连超时及畸形结构解析失败；
+   - 内置 `testConnection()` 发送快速探测。
+
+2. **元数据解析器 (`lib/sources/ai/ai_metadata_parser.dart`)**：
+   - 注入资深音乐专家 System Prompt，约束大模型输出严格 JSON 数组；
+   - 自动截取 JSON 边界，剥离 ```` ```json ```` 外壳与模型回复闲聊，容错缺失字段并复用 `ParsedSongInfo`。
+
+3. **配置存储与洗库服务 (`lib/sources/ai/ai_settings_repository.dart` · `ai_library_refactor_service.dart`)**：
+   - 基于系统安全存储（`SecureStore`）加密存储完整配置与 API 密钥，且自动无缝读取旧版 Swift 遗留的 `tingyu_ai_api_key`；
+   - 洗库服务按批次（默认 25 首）拉取曲目，调用 AI 识别；仅在标题/歌手/专辑发生有效变化时写回数据库，并可选联动 `LibraryEnrichmentService` 自动重新下载新封面与歌词；
+   - 支持外部中途取消、单批次失败容错及 300ms 批次间限流防封禁。
+
+4. **UI 与路由集成 (`lib/features/settings/ai_settings_page.dart` · `router.dart` · `settings_page.dart`)**：
+   - 注册 `/settings/ai` 路由；在主设置页新增「智能」区块与磁贴；
+   - 支持服务商预设切换（自动带出端点与模型）、密钥显隐、连通性实时测试、整库清洗进度条与中途取消。
+
+**验证**：
+
+- 单元测试：
+  - `test/ai_client_test.dart`（8 项通过）；
+  - `test/ai_metadata_parser_test.dart`（5 项通过）；
+  - `test/ai_settings_repository_test.dart`（4 项通过）；
+  - `test/ai_library_refactor_service_test.dart`（3 项通过）；
+  - `test/ai_settings_page_test.dart`（2 项通过）。
+- `flutter test`：全套 152 项测试全绿；ASCII 路径静态分析 `flutter analyze` 零告警。
+- Linux debug 桌面端冒烟验证：直跳 `/settings/ai` 成功加载并正常渲染。

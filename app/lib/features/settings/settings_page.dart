@@ -7,6 +7,7 @@ import '../../app/providers.dart';
 import '../../data/models/library_summaries.dart';
 import '../../data/db/database.dart';
 import '../sources/source_sync.dart';
+import '../../sources/ai/ai_config.dart';
 
 /// 设置页：库统计、数据位置、播放引擎信息，以及来源管理与批量维护入口。
 class SettingsPage extends ConsumerWidget {
@@ -20,6 +21,7 @@ class SettingsPage extends ConsumerWidget {
     final AsyncValue<List<AlbumSummary>> albums = ref.watch(albumsProvider);
     final AsyncValue<List<ArtistSummary>> artists = ref.watch(artistsProvider);
 
+    final AsyncValue<AISettings> aiSettings = ref.watch(aiSettingsProvider);
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       children: <Widget>[
@@ -53,7 +55,8 @@ class SettingsPage extends ConsumerWidget {
               subtitle: const Text('逐个重新扫描并合并入库'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () async {
-                final List<MusicSource> list = sources.value ?? const <MusicSource>[];
+                final List<MusicSource> list =
+                    sources.value ?? const <MusicSource>[];
                 for (final MusicSource source in list) {
                   await ref.read(sourceSyncProvider.notifier).sync(source);
                 }
@@ -62,10 +65,36 @@ class SettingsPage extends ConsumerWidget {
           ],
         ),
         _Section(
+          title: '智能',
+          children: <Widget>[
+            ListTile(
+              dense: true,
+              leading: const Icon(Icons.auto_awesome),
+              title: const Text('AI 识别与清洗'),
+              subtitle: Text(
+                aiSettings.when(
+                  data: (AISettings s) =>
+                      s.isEnabled ? '${s.preset.displayName} · 已启用' : '未启用',
+                  loading: () => '加载中…',
+                  error: (_, _) => '配置异常',
+                ),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.go('/settings/ai'),
+            ),
+          ],
+        ),
+        _Section(
           title: '播放',
           children: <Widget>[
-            _InfoRow(label: '播放引擎', value: ref.read(audioHandlerProvider).engineName),
-            const _InfoRow(label: '系统媒体会话', value: 'Now Playing / 媒体键 / 锁屏（audio_service）'),
+            _InfoRow(
+              label: '播放引擎',
+              value: ref.read(audioHandlerProvider).engineName,
+            ),
+            const _InfoRow(
+              label: '系统媒体会话',
+              value: 'Now Playing / 媒体键 / 锁屏（audio_service）',
+            ),
           ],
         ),
         _Section(
@@ -78,7 +107,10 @@ class SettingsPage extends ConsumerWidget {
                 return _InfoRow(label: '数据目录', value: path);
               },
             ),
-            const _InfoRow(label: '曲库文件', value: 'library.sqlite（SQLite / drift）'),
+            const _InfoRow(
+              label: '曲库文件',
+              value: 'library.sqlite（SQLite / drift）',
+            ),
             const _InfoRow(label: '封面缓存', value: 'covers/（只存文件名，二进制落盘）'),
           ],
         ),
@@ -87,7 +119,13 @@ class SettingsPage extends ConsumerWidget {
           children: <Widget>[
             const _InfoRow(label: '版本', value: '0.1.0 (Flutter 预览版)'),
             // 构建戳：开发期用来确认"手机上装的到底是哪一次构建"。
-            const _InfoRow(label: '构建', value: String.fromEnvironment('BUILD_STAMP', defaultValue: '本地构建')),
+            const _InfoRow(
+              label: '构建',
+              value: String.fromEnvironment(
+                'BUILD_STAMP',
+                defaultValue: '本地构建',
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
               child: Text(
@@ -159,11 +197,16 @@ class _InfoRow extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
-          Expanded(child: SelectableText(value, style: Theme.of(context).textTheme.bodySmall)),
+          Expanded(
+            child: SelectableText(
+              value,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
         ],
       ),
     );

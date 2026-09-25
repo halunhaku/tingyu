@@ -21,6 +21,11 @@ import '../sources/scraper/netease_provider.dart';
 import '../sources/scraper/qq_music_provider.dart';
 import 'playback_controller.dart';
 import 'track_resolver.dart';
+import '../data/secure_store.dart';
+import '../sources/ai/ai_client.dart';
+import '../sources/ai/ai_config.dart';
+import '../sources/ai/ai_library_refactor_service.dart';
+import '../sources/ai/ai_settings_repository.dart';
 
 // ---------------------------------------------------------------- 数据层
 
@@ -281,6 +286,46 @@ final Provider<TingyuAudioHandler> audioHandlerProvider =
         'audioHandlerProvider 必须在 ProviderScope.overrides 中注入',
       ),
     );
+
+final Provider<SecureStore> secureStoreProvider = Provider<SecureStore>(
+  (Ref ref) => SecureStore(),
+);
+
+final Provider<AISettingsRepository> aiSettingsRepositoryProvider =
+    Provider<AISettingsRepository>(
+      (Ref ref) => AISettingsRepository(store: ref.watch(secureStoreProvider)),
+    );
+
+class AISettingsNotifier extends AsyncNotifier<AISettings> {
+  @override
+  Future<AISettings> build() {
+    return ref.watch(aiSettingsRepositoryProvider).load();
+  }
+  Future<void> save(AISettings settings) async {
+    state = AsyncValue<AISettings>.data(settings);
+    await ref.read(aiSettingsRepositoryProvider).save(settings);
+  }
+}
+
+final AsyncNotifierProvider<AISettingsNotifier, AISettings> aiSettingsProvider =
+    AsyncNotifierProvider<AISettingsNotifier, AISettings>(
+      AISettingsNotifier.new,
+    );
+
+final Provider<AILibraryRefactorService> aiLibraryRefactorServiceProvider =
+    Provider<AILibraryRefactorService>((Ref ref) {
+      final AISettings settings =
+          ref.watch(aiSettingsProvider).value ?? const AISettings();
+      return AILibraryRefactorService(
+        tracks: ref.watch(trackRepositoryProvider),
+        client: AIClient(
+          baseUrl: settings.baseUrl,
+          model: settings.model,
+          apiKey: settings.apiKey,
+        ),
+        enrichmentService: ref.watch(enrichmentServiceProvider),
+      );
+    });
 
 /// 静音曲目时用的占位专辑值（与旧版一致）。
 const Set<String> placeholderAlbumNames = <String>{'未知专辑', '夸克曲库', 'WebDAV 曲库'};

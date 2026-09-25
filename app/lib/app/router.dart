@@ -10,6 +10,7 @@ import '../features/player/now_playing_page.dart';
 import '../features/playlists/playlist_page.dart';
 import '../features/playlists/playlists_page.dart';
 import '../features/settings/settings_page.dart';
+import '../features/settings/ai_settings_page.dart';
 import '../features/shell/app_shell.dart';
 import '../features/shell/mobile_shell.dart';
 import '../features/sources/source_page.dart';
@@ -73,6 +74,10 @@ GoRouter createRouter({
           ),
           GoRoute(path: '/sources', builder: (_, _) => const SourcesPage()),
           GoRoute(path: '/settings', builder: (_, _) => const SettingsPage()),
+          GoRoute(
+            path: '/settings/ai',
+            builder: (_, _) => const AISettingsPage(),
+          ),
           GoRoute(
             path: '/now-playing',
             builder: (_, _) => const NowPlayingPage(),

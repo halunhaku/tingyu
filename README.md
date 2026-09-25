@@ -75,8 +75,8 @@
 - 旧版曲库可用 `tools/legacy-export/` 一次性导出后导入。
 
 ### 5. 与上一版 SwiftUI 实现的差异
-- **已对齐**：曲库 / 最近添加 / 收藏、专辑与艺术家浏览、播放列表、播放条与全屏舞台、歌词、队列、来源管理与同步、人工匹配、设置页。
-- **尚未迁移**：AI 洗库（旧版 `AIService`）、macOS 原生三件套（WidgetKit 小组件、App Intents / Siri、AirPlay 路由选择器）——见 `docs/crossplatform-migration.md` §18 的 M6。
+- **已对齐**：曲库 / 最近添加 / 收藏、专辑与艺术家浏览、播放列表、播放条与全屏舞台、歌词、队列、来源管理与同步、人工匹配、设置页、AI 智能识别与洗库（`AIService` / `AIMetadataParser` / `AISettingsPage`）。
+- **尚未迁移**：macOS 原生三件套（WidgetKit 小组件、App Intents / Siri、AirPlay 路由选择器）——见 `docs/crossplatform-migration.md` §18 的 M6。
 
 ---
 
