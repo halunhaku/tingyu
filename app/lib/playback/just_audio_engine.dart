@@ -5,6 +5,7 @@ import 'package:just_audio/just_audio.dart' as ja;
 import 'playback_engine.dart';
 import 'playback_item.dart';
 import 'playback_snapshot.dart';
+import 'playback_error_formatter.dart';
 
 /// 移动（Android / iOS）播放引擎，基于 `just_audio`（ExoPlayer / AVPlayer）。
 ///
@@ -129,16 +130,11 @@ final class JustAudioEngine extends PlaybackEngineBase {
   /// "起播 / 预取追加 / 自动切下一首"多处，逐处 try/catch 只会漏掉其中一侧。
   void _fail(Object error) {
     _failure = PlaybackFailure(
-      message: _describe(error),
+      message: PlaybackErrorFormatter.format(error),
       title: currentItem?.title,
     );
     _sync();
   }
-
-  static String _describe(Object error) => switch (error) {
-    ja.PlayerException(:final String? message) => message ?? '无法加载音频',
-    _ => error.toString(),
-  };
 
   void _sync() {
     final ja.ProcessingState processingState = _player.processingState;

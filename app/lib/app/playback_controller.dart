@@ -7,6 +7,7 @@ import '../data/db/database.dart';
 import '../playback/playback_item.dart';
 import '../playback/playback_snapshot.dart';
 import '../playback/tingyu_audio_handler.dart';
+import '../playback/playback_error_formatter.dart';
 import 'providers.dart';
 import 'track_resolver.dart';
 
@@ -251,8 +252,9 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
         : '';
     final Object? error = _lastResolveError;
     debugPrint('[playback] 无法播放「$title」: ${error ?? '未知原因'}');
+    final String reason = PlaybackErrorFormatter.format(error);
     final PlaybackFailure reported = PlaybackFailure(
-      message: error == null ? '无法加载曲目' : '无法播放：$error',
+      message: error == null ? '无法加载曲目' : '无法播放：$reason',
       title: title.isEmpty ? null : title,
     );
     state = state.copyWith(failure: reported);

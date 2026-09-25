@@ -850,7 +850,7 @@ release 包同样正常播放。合并后的清单经 `build/app/intermediates/m
    真机实测：在来源列表点「同步」（移除 1 首）后，详情页**立刻**显示
    「2 首 · 已同步（新增 0 / 更新 0 / 移除 1）」，不必再杀进程重进。
    回归测试 `test/source_by_id_provider_test.dart`（换成 `FutureProvider` 即失败，实测过）。
-4. 原遗留仍在：失败文案是引擎原文（`PlatformException(Error: java.lang.IllegalArgumentException, …)`），没有归纳成中文。
+4. **原遗留已解决**（见 §27）：失败文案已通过 `PlaybackErrorFormatter` 归纳为简明中文（明文拦截 / 404 / 网络不可达 / 非法参数 / 格式损坏等），并剥离 `PlatformException` 外壳。
 
 ---
 
@@ -930,3 +930,55 @@ UUID，会随应用更新变化。若存绝对路径，每次更新后的扫描�
 **验证**：`flutter analyze` 干净、`flutter test` 114 项全绿（本次是纯布局调整，按约定以真机截图核验为准）；
 真机（Xiaomi 24031PN0DC / release 包）逐项核过：状态文案不再折行、⋮ 菜单是「打开 / 删除来源」、
 点卡片本体进详情页、同步与重新登录按钮位置正常；桌面构建与启动正常（桌面分支未改动）。
+
+---
+
+## 26. 非完整来源扫描不再误删曲库（2026-09-25）
+
+**问题**：来源同步把每次扫描都当作完整快照。目录暂时不可访问、子目录读取失败、用户取消扫描或达到
+文件数上限时，扫描结果只包含部分甚至零首曲目；合并层仍删除所有“本次未见”的旧曲目，并级联删除收藏状态
+和播放列表引用。
+
+**修复**：
+
+- `SourceScanResult` 与各来源扫描结果显式携带 `cancelled`、`truncated`、`skipped` 完整性信息，
+  `isAuthoritative` 仅在扫描未取消、未截断且没有跳过条目时为真。
+- 本地文件系统把根目录不存在和子目录读取失败计入跳过项；SAF、WebDAV、夸克扫描在达到文件数上限时
+  标记为截断。所有来源适配器统一传播这些状态。
+- `TrackRepository.mergeScan(removeMissing:)` 只在权威完整快照下删除未见曲目；非完整扫描仍正常新增和更新
+  已扫描曲目，但保留未见曲目、收藏和播放列表引用。
+- 来源同步后的曲目数改为按数据库实际结果重算；状态文案明确显示“部分同步，未扫描曲目已保留”。
+
+**验证**：
+
+- 新增端到端同步回归：本地来源目录暂时不存在时，旧曲目、收藏、播放列表引用和来源曲目数全部保留。
+- 新增合并层及 Local / SAF / WebDAV / 夸克扫描边界测试，覆盖跳过、取消、截断与完整扫描。
+- `flutter test`：119 项全绿；`flutter analyze`：在纯 ASCII 临时工作区无问题。
+- Linux debug 应用真实进程烟测：先扫描 1 首 WAV 入库，再删除整个来源目录并用同一数据库重启；
+  第二次输出 `merge=+0/~0/-0`，曲库仍为 `tracks=1`。
+
+---
+
+## 27. M5 播放失败文案中文化与异常归类（2026-09-25）
+
+**问题**：§23 中虽然打通了播放失败在 UI (SnackBar) 弹出提示的通道，但 `PlaybackFailure.message`
+直接透传底层的 `PlatformException`（如 `PlatformException(Error: java.lang.IllegalArgumentException, ...)`）、
+ExoPlayer 泛型错误（`Source error`）或 libmpv 英文消息，未对明文拦截、文件不存在、网络不可达等常见失败做中文归类。
+
+**方案**（`lib/playback/playback_error_formatter.dart`）：
+
+- 统一由 `PlaybackErrorFormatter.format(Object? error)` 进行分析与归类：
+  1. **保留成熟领域业务异常**：`FolderPermissionLostException`、`QuarkException`、`WebDavException` 优先使用自带的明确中文提示；
+  2. **强类型异常映射**：`FileSystemException`（errno 2 / 13）分别映射为「音频文件不存在或已被移动」与「没有访问权限」；`SocketException` / `HandshakeException` / `HttpException` 映射为「网络连接失败，请检查网络设置」；
+  3. **底层引擎原文归类**：剥离 `PlatformException` 与 `Exception:` 技术外壳；若自身已含中文则直接展示；英文原文按关键词归类为明文 HTTP 拦截、404/文件丢失、401/403 权限异常、429/503 频控、网络故障、参数非法、格式损坏与通用资源错误。
+- 在三处播放失败源头统一接入：
+  - `JustAudioEngine._fail`（移动端 ExoPlayer / AVPlayer）；
+  - `MediaKitEngine._fail`（桌面端 libmpv）；
+  - `PlaybackController._reportResolveFailure`（解析直链与校验阶段）。
+
+**验证**：
+
+- 新增单元测试 `test/playback_error_formatter_test.dart`（9 组，覆盖明文拦截、404、网络不可达、权限、流控、参数非法、格式损坏、Source error 与中文保留）。
+- 扩充 `test/playback_controller_resolve_failure_test.dart`（离线网络异常与目录授权失效在控制器的中文快照验证）。
+- `flutter test`：130 项全绿；纯 ASCII 镜像下 `flutter analyze` 零告警。
+- Linux debug 桌面二进制重新构建并通过冒烟运行。

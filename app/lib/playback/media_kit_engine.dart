@@ -5,6 +5,7 @@ import 'package:media_kit/media_kit.dart';
 import 'playback_engine.dart';
 import 'playback_item.dart';
 import 'playback_snapshot.dart';
+import 'playback_error_formatter.dart';
 
 /// 桌面（macOS / Windows / Linux）播放引擎，基于 `media_kit`（libmpv）。
 ///
@@ -56,7 +57,10 @@ final class MediaKitEngine extends PlaybackEngineBase {
     _failure = null;
     try {
       await _player.open(
-        Playlist(items.map(_toMedia).toList(growable: false), index: startIndex),
+        Playlist(
+          items.map(_toMedia).toList(growable: false),
+          index: startIndex,
+        ),
         play: false,
       );
     } on Object catch (error) {
@@ -116,7 +120,10 @@ final class MediaKitEngine extends PlaybackEngineBase {
 
   /// 记录一次失败并立即播报；失败以快照字段向上传递，不抛给调用方。
   void _fail(String message) {
-    _failure = PlaybackFailure(message: message, title: currentItem?.title);
+    _failure = PlaybackFailure(
+      message: PlaybackErrorFormatter.format(message),
+      title: currentItem?.title,
+    );
     _sync();
   }
 
