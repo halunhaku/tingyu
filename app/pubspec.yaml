@@ -1,7 +1,7 @@
 name: tingyu
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.1.0+9122137
+version: 2.0.0-preview+1
 
 environment:
   sdk: ^3.13.2
