@@ -1,0 +1,81 @@
+import 'dart:io';
+
+import 'package:drift/native.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:sqlite3/sqlite3.dart' as sqlite;
+import 'package:tingyu/data/db/database.dart';
+import 'package:tingyu/data/repositories/track_repository.dart';
+
+void main() {
+  test(
+    '打开已有未设版本号、含 idx_tracks_source 与旧版 sources 表的 SQLite 时不崩溃且自动迁移',
+    () async {
+      final Directory temp = await Directory.systemTemp.createTemp(
+        'tingyu_db_test_',
+      );
+      addTearDown(() => temp.delete(recursive: true));
+      final File dbFile = File(p.join(temp.path, 'legacy_crash.sqlite'));
+
+      // 模拟出问题的用户实际数据库状态：
+      final sqlite.Database raw = sqlite.sqlite3.open(dbFile.path);
+      raw.execute('''
+      CREATE TABLE tracks (
+        id TEXT PRIMARY KEY,
+        source_id TEXT NOT NULL,
+        title TEXT NOT NULL DEFAULT '',
+        artist TEXT NOT NULL DEFAULT '未知艺术家',
+        album TEXT NOT NULL DEFAULT '未知专辑',
+        duration REAL NOT NULL DEFAULT 0,
+        file_format TEXT NOT NULL DEFAULT 'mp3',
+        file_path_or_url TEXT NOT NULL DEFAULT '',
+        file_size INTEGER NOT NULL DEFAULT 0,
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        play_count INTEGER NOT NULL DEFAULT 0,
+        date_added TEXT NOT NULL
+      );
+    ''');
+      raw.execute('CREATE INDEX idx_tracks_source ON tracks(source_id);');
+      raw.execute('''
+      INSERT INTO tracks (id, source_id, title, date_added)
+      VALUES ('t-1', 'src-quark-1', '一路向北', '2026-09-01T00:00:00.000Z');
+    ''');
+      raw.execute('''
+      CREATE TABLE sources (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        local_folder_path TEXT,
+        webdav_url TEXT,
+        webdav_username TEXT,
+        webdav_root_path TEXT,
+        quark_folder_fid TEXT,
+        quark_account_name TEXT,
+        sync_status TEXT NOT NULL DEFAULT '未同步',
+        last_synced_at TEXT,
+        track_count INTEGER NOT NULL DEFAULT 0
+      );
+    ''');
+      raw.execute('''
+      INSERT INTO sources (id, name, kind, sync_status, track_count)
+      VALUES ('src-quark-1', '我的夸克云盘', 'quark', '已同步', 178);
+    ''');
+      raw.close();
+      final TingyuDatabase db = TingyuDatabase(NativeDatabase(dbFile));
+      addTearDown(db.close);
+
+      final List<MusicSource> sources = await db.select(db.musicSources).get();
+      expect(sources, hasLength(1));
+      expect(sources.single.id, 'src-quark-1');
+      expect(sources.single.name, '我的夸克云盘');
+      expect(sources.single.kind, 'quark');
+
+      final TrackRepository tracks = TrackRepository(db);
+      final List<Track> allTracks = await tracks.all();
+      expect(allTracks, hasLength(1));
+      await tracks.updateCoverArt(allTracks.single.id, path: 'covers/test.jpg');
+      final Track updated = (await tracks.byId(allTracks.single.id))!;
+      expect(updated.coverArtPath, 'covers/test.jpg');
+    },
+  );
+}
