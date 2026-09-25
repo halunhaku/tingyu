@@ -30,7 +30,12 @@ final class _MockEngine extends PlaybackEngineBase {
   Future<void> setQueue(List<PlaybackItem> items, {int startIndex = 0}) async {
     _queue = List<PlaybackItem>.of(items);
     _index = startIndex;
-    emit(_snapshot = _snapshot.copyWith(index: startIndex));
+    emit(
+      _snapshot = _snapshot.copyWith(
+        index: startIndex,
+        position: Duration.zero,
+      ),
+    );
   }
 
   @override
@@ -210,6 +215,39 @@ void main() {
       await controller.playTracks(tracks, shuffle: true);
       expect(controller.state.playOrder, PlayOrder.shuffle);
       expect(controller.sourceQueue, hasLength(4));
+    });
+
+    test('播放中切换 toggleShuffle 不会重启播放，且保留当前播放进度', () async {
+      final ProviderContainer container = _container();
+      final PlaybackController controller = container.read(
+        playbackProvider.notifier,
+      );
+
+      final List<Track> tracks = <Track>[
+        _track('t1', '歌1'),
+        _track('t2', '歌2'),
+        _track('t3', '歌3'),
+      ];
+
+      await controller.playTracks(tracks, startIndex: 0);
+      await controller.seek(const Duration(seconds: 45));
+
+      expect(controller.state.position, const Duration(seconds: 45));
+      expect(controller.state.playing, isTrue);
+
+      // 切换随机播放
+      controller.toggleShuffle();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      // 验证：播放状态依然是 playing，且进度依然是 45 秒，绝不能被重置为 0
+      expect(controller.state.position, const Duration(seconds: 45));
+      expect(controller.state.playing, isTrue);
+      expect(controller.state.playOrder, PlayOrder.shuffle);
+
+      // 再次切换关闭随机
+      controller.toggleShuffle();
+      expect(controller.state.position, const Duration(seconds: 45));
+      expect(controller.state.playing, isTrue);
+      expect(controller.state.playOrder, PlayOrder.sequential);
     });
   });
 }

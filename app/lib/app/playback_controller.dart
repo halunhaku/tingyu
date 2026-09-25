@@ -176,7 +176,11 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
   Future<void> seek(Duration position) => handler.seek(position);
 
   /// 切换随机播放状态（顺序 ↔ 随机）。
+  ///
+  /// 切换时仅重排后续待播队列并更新后台预取，**绝不中断当前正在播放的曲目**，
+  /// 也不重置当前播放进度。
   void toggleShuffle() {
+    ++_queueGeneration;
     if (_playOrder == PlayOrder.sequential) {
       _playOrder = PlayOrder.shuffle;
       if (_sourceQueue.isNotEmpty) {
@@ -192,7 +196,15 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
             _sourceQueue.where((Track t) => t.id != current.id).toList()
               ..shuffle();
         _sourceQueue = <Track>[current, ...remainder];
-        unawaited(_restartEngineFrom(0));
+        _nextSourceIndex = 1;
+        _resolvedSourceIndices = List<int>.unmodifiable(<int>[0]);
+        if (_queue.isNotEmpty) {
+          final int engineIdx = state.index.clamp(0, _queue.length - 1);
+          _queue = List<PlaybackItem>.unmodifiable(<PlaybackItem>[
+            _queue[engineIdx],
+          ]);
+          _trackIds = List<String>.unmodifiable(<String>[current.id]);
+        }
       }
     } else {
       _playOrder = PlayOrder.sequential;
@@ -213,10 +225,19 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
         } else {
           _sourceQueue = List<Track>.of(_originalSourceQueue);
         }
-        unawaited(_restartEngineFrom(0));
+        _nextSourceIndex = 1;
+        _resolvedSourceIndices = List<int>.unmodifiable(<int>[0]);
+        if (_queue.isNotEmpty) {
+          final int engineIdx = state.index.clamp(0, _queue.length - 1);
+          _queue = List<PlaybackItem>.unmodifiable(<PlaybackItem>[
+            _queue[engineIdx],
+          ]);
+          _trackIds = List<String>.unmodifiable(<String>[currentId]);
+        }
       }
     }
     state = state.copyWith(playOrder: _playOrder);
+    unawaited(_ensureAhead());
   }
 
   /// 切换循环模式（列表循环 → 单曲循环 → 不循环 → 列表循环）。
