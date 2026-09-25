@@ -7,6 +7,7 @@ class SourceScanResult {
     required this.tracks,
     this.skipped = 0,
     this.cancelled = false,
+    this.truncated = false,
   });
 
   final List<ScannedTrack> tracks;
@@ -14,7 +15,14 @@ class SourceScanResult {
   /// 因权限/网络/解析问题被跳过的条目数（不阻断整体扫描）。
   final int skipped;
 
+  /// 调用方主动中止，结果只包含取消前已经发现的曲目。
   final bool cancelled;
+
+  /// 达到扫描数量上限，来源里可能还有未枚举的曲目。
+  final bool truncated;
+
+  /// 只有完整快照才能证明“未出现的旧曲目确实已被删除”。
+  bool get isAuthoritative => !cancelled && !truncated && skipped == 0;
 }
 
 /// 一个可扫描、可播放的来源（本地目录 / WebDAV / Quark）。

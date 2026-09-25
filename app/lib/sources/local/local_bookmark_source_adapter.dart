@@ -51,12 +51,14 @@ class LocalBookmarkSourceAdapter implements SourceAdapter {
     return SourceScanResult(
       tracks: result.tracks
           .map(
-            (ScannedTrack track) =>
-                track.withPath(p.relative(track.filePathOrUrl, from: root.path)),
+            (ScannedTrack track) => track.withPath(
+              p.relative(track.filePathOrUrl, from: root.path),
+            ),
           )
           .toList(growable: false),
-      skipped: result.unreadableFiles,
+      skipped: result.unreadableFiles + result.unreadableDirectories,
       cancelled: result.cancelled,
+      truncated: result.truncated,
     );
   }
 

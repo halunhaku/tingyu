@@ -42,7 +42,9 @@ void _reportUnhandled(Object error, StackTrace stack) {
     SocketException(:final OSError? osError) => osError,
     _ => null,
   };
-  debugPrint('[unhandled] $error${osError == null ? '' : ' ($osError)'}\n$stack');
+  debugPrint(
+    '[unhandled] $error${osError == null ? '' : ' ($osError)'}\n$stack',
+  );
 }
 
 /// `main` 的真正主体。
@@ -83,14 +85,15 @@ Future<void> _run() async {
   }
 
   final PlaybackEngine engine = createPlaybackEngine();
-  final TingyuAudioHandler handler = await AudioService.init<TingyuAudioHandler>(
-    builder: () => TingyuAudioHandler(engine),
-    config: const AudioServiceConfig(
-      androidNotificationChannelId: 'com.halunhaku.tingyu.audio',
-      androidNotificationChannelName: '听屿播放',
-      androidNotificationOngoing: true,
-    ),
-  );
+  final TingyuAudioHandler handler =
+      await AudioService.init<TingyuAudioHandler>(
+        builder: () => TingyuAudioHandler(engine),
+        config: const AudioServiceConfig(
+          androidNotificationChannelId: 'com.halunhaku.tingyu.audio',
+          androidNotificationChannelName: '听屿播放',
+          androidNotificationOngoing: true,
+        ),
+      );
 
   await _runDataHarness();
 
@@ -115,7 +118,8 @@ class TingyuApp extends StatefulWidget {
 class _TingyuAppState extends State<TingyuApp> {
   late final GoRouter _router = createRouter(
     // 调试用：`TINGYU_DEBUG_ROUTE=/albums` 可直接打开某个页面（截图/排查用）。
-    initialLocation: Platform.environment['TINGYU_DEBUG_ROUTE']?.trim().isNotEmpty ?? false
+    initialLocation:
+        Platform.environment['TINGYU_DEBUG_ROUTE']?.trim().isNotEmpty ?? false
         ? Platform.environment['TINGYU_DEBUG_ROUTE']!.trim()
         : '/library',
     // 与旧版一致：移动端与桌面端是两套布局（移动端底部 Tab + 迷你播放条）。
@@ -138,11 +142,11 @@ class _TingyuAppState extends State<TingyuApp> {
     if (!Platform.isMacOS) {
       return app;
     }
-    final ProviderContainer container = ProviderScope.containerOf(context, listen: false);
-    return PlatformMenuBar(
-      menus: _menus(container, _router),
-      child: app,
+    final ProviderContainer container = ProviderScope.containerOf(
+      context,
+      listen: false,
     );
+    return PlatformMenuBar(menus: _menus(container, _router), child: app);
   }
 
   /// macOS 菜单栏：播放控制与页面跳转（对齐旧版 `CommandMenu("播放控制")`）。
@@ -153,7 +157,10 @@ class _TingyuAppState extends State<TingyuApp> {
         menus: <PlatformMenuItem>[
           PlatformMenuItem(
             label: '设置…',
-            shortcut: const SingleActivator(LogicalKeyboardKey.comma, meta: true),
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.comma,
+              meta: true,
+            ),
             onSelected: () => router.go('/settings'),
           ),
           PlatformMenuItem(
@@ -162,7 +169,10 @@ class _TingyuAppState extends State<TingyuApp> {
           ),
           PlatformMenuItem(
             label: '退出听屿',
-            shortcut: const SingleActivator(LogicalKeyboardKey.keyQ, meta: true),
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyQ,
+              meta: true,
+            ),
             onSelected: () => exit(0),
           ),
         ],
@@ -173,17 +183,25 @@ class _TingyuAppState extends State<TingyuApp> {
           PlatformMenuItem(
             label: '播放 / 暂停',
             shortcut: const SingleActivator(LogicalKeyboardKey.space),
-            onSelected: () => container.read(playbackProvider.notifier).togglePlayPause(),
+            onSelected: () =>
+                container.read(playbackProvider.notifier).togglePlayPause(),
           ),
           PlatformMenuItem(
             label: '下一首',
-            shortcut: const SingleActivator(LogicalKeyboardKey.arrowRight, meta: true),
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.arrowRight,
+              meta: true,
+            ),
             onSelected: () => container.read(playbackProvider.notifier).next(),
           ),
           PlatformMenuItem(
             label: '上一首',
-            shortcut: const SingleActivator(LogicalKeyboardKey.arrowLeft, meta: true),
-            onSelected: () => container.read(playbackProvider.notifier).previous(),
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.arrowLeft,
+              meta: true,
+            ),
+            onSelected: () =>
+                container.read(playbackProvider.notifier).previous(),
           ),
         ],
       ),
@@ -192,27 +210,43 @@ class _TingyuAppState extends State<TingyuApp> {
         menus: <PlatformMenuItem>[
           PlatformMenuItem(
             label: '曲库',
-            shortcut: const SingleActivator(LogicalKeyboardKey.digit1, meta: true),
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.digit1,
+              meta: true,
+            ),
             onSelected: () => router.go('/library'),
           ),
           PlatformMenuItem(
             label: '专辑',
-            shortcut: const SingleActivator(LogicalKeyboardKey.digit2, meta: true),
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.digit2,
+              meta: true,
+            ),
             onSelected: () => router.go('/albums'),
           ),
           PlatformMenuItem(
             label: '艺术家',
-            shortcut: const SingleActivator(LogicalKeyboardKey.digit3, meta: true),
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.digit3,
+              meta: true,
+            ),
             onSelected: () => router.go('/artists'),
           ),
           PlatformMenuItem(
             label: '收藏',
-            shortcut: const SingleActivator(LogicalKeyboardKey.digit4, meta: true),
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.digit4,
+              meta: true,
+            ),
             onSelected: () => router.go('/favorites'),
           ),
           PlatformMenuItem(
             label: '正在播放',
-            shortcut: const SingleActivator(LogicalKeyboardKey.keyN, meta: true, shift: true),
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyN,
+              meta: true,
+              shift: true,
+            ),
             onSelected: () => router.go('/now-playing'),
           ),
         ],
@@ -229,15 +263,18 @@ class _TingyuAppState extends State<TingyuApp> {
 /// 该入口在前端完全落地后移除。
 Future<void> _runDataHarness() async {
   final String scanDir = Platform.environment['TINGYU_DEBUG_SCAN_DIR'] ?? '';
-  final String legacyJson = Platform.environment['TINGYU_DEBUG_LEGACY_JSON'] ?? '';
+  final String legacyJson =
+      Platform.environment['TINGYU_DEBUG_LEGACY_JSON'] ?? '';
   if (scanDir.isEmpty && legacyJson.isEmpty) {
     return;
   }
 
   final TingyuDatabase db = TingyuDatabase();
+  final TrackRepository tracks = TrackRepository(db);
   try {
     if (legacyJson.isNotEmpty) {
-      final LegacyImportReport report = await LegacyLibraryImporter(db).importFile(File(legacyJson));
+      final LegacyImportReport report = await LegacyLibraryImporter(db)
+          .importFile(File(legacyJson));
       debugPrint('[data] import $report');
     }
 
@@ -253,23 +290,32 @@ Future<void> _runDataHarness() async {
         ),
       );
       final Stopwatch stopwatch = Stopwatch()..start();
-      final LocalScanResult scan = await LocalLibraryScanner().scan(Directory(scanDir));
-      final MergeResult merge = await TrackRepository(db).mergeScan(sourceId: sourceId, scanned: scan.tracks);
+      final LocalScanResult scan = await LocalLibraryScanner().scan(
+        Directory(scanDir),
+      );
+      final MergeResult merge = await tracks.mergeScan(
+        sourceId: sourceId,
+        scanned: scan.tracks,
+        removeMissing: scan.isAuthoritative,
+      );
       stopwatch.stop();
-      debugPrint('[data] scan files=${scan.tracks.length} unreadable=${scan.unreadableFiles} '
-          'elapsed=${stopwatch.elapsedMilliseconds}ms merge=+${merge.added}/~${merge.updated}/-${merge.removed}');
+      debugPrint(
+        '[data] scan files=${scan.tracks.length} unreadable=${scan.unreadableFiles} '
+        'elapsed=${stopwatch.elapsedMilliseconds}ms merge=+${merge.added}/~${merge.updated}/-${merge.removed}',
+      );
       await sources.updateSyncStatus(
         sourceId,
-        status: '已同步',
+        status: scan.isAuthoritative ? '已同步' : '部分同步，未扫描曲目已保留',
         syncedAt: DateTime.now().toUtc(),
-        trackCount: scan.tracks.length,
+        trackCount: (await tracks.bySource(sourceId)).length,
       );
     }
 
-    final TrackRepository tracks = TrackRepository(db);
-    debugPrint('[data] library tracks=${(await tracks.all()).length} '
-        'sources=${(await SourceRepository(db).all()).length} '
-        'albums=${(await tracks.albums()).length} artists=${(await tracks.artists()).length}');
+    debugPrint(
+      '[data] library tracks=${(await tracks.all()).length} '
+      'sources=${(await SourceRepository(db).all()).length} '
+      'albums=${(await tracks.albums()).length} artists=${(await tracks.artists()).length}',
+    );
   } finally {
     await db.close();
   }
@@ -300,10 +346,12 @@ Future<void> _runVerifyHarness(TingyuAudioHandler handler) async {
   );
 
   final List<PlaybackItem> items = sources
-      .map((String source) => PlaybackItem.fromUri(
-            source.contains('://') ? Uri.parse(source) : Uri.file(source),
-            httpHeaders: _debugHeaders(),
-          ))
+      .map(
+        (String source) => PlaybackItem.fromUri(
+          source.contains('://') ? Uri.parse(source) : Uri.file(source),
+          httpHeaders: _debugHeaders(),
+        ),
+      )
       .toList(growable: false);
 
   await handler.setQueue(items);

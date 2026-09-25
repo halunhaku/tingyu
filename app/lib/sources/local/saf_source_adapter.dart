@@ -45,6 +45,7 @@ class SafSourceAdapter implements SourceAdapter {
     final List<ScannedTrack> tracks = <ScannedTrack>[];
     int skipped = 0;
     bool cancelled = false;
+    bool truncated = false;
 
     final List<_SafDirectory> queue = <_SafDirectory>[
       const _SafDirectory(depth: 0),
@@ -61,7 +62,10 @@ class SafSourceAdapter implements SourceAdapter {
 
       final List<SafEntry> children;
       try {
-        children = await TingyuSaf.listChildren(treeUri, parentDocumentId: directory.documentId);
+        children = await TingyuSaf.listChildren(
+          treeUri,
+          parentDocumentId: directory.documentId,
+        );
       } on Object {
         // 单个目录读不到（权限被撤销 / 提供方异常）不阻断整体扫描。
         skipped++;
@@ -77,7 +81,12 @@ class SafSourceAdapter implements SourceAdapter {
           continue;
         }
         if (entry.isDirectory) {
-          queue.add(_SafDirectory(documentId: entry.documentId, depth: directory.depth + 1));
+          queue.add(
+            _SafDirectory(
+              documentId: entry.documentId,
+              depth: directory.depth + 1,
+            ),
+          );
           continue;
         }
         if (!LocalLibraryScanner.isSupported(entry.name)) {
@@ -88,12 +97,18 @@ class SafSourceAdapter implements SourceAdapter {
         tracks.add(track);
         onProgress?.call(tracks.length, track.title);
         if (tracks.length >= maxFiles) {
+          truncated = true;
           break;
         }
       }
     }
 
-    return SourceScanResult(tracks: tracks, skipped: skipped, cancelled: cancelled);
+    return SourceScanResult(
+      tracks: tracks,
+      skipped: skipped,
+      cancelled: cancelled,
+      truncated: truncated,
+    );
   }
 
   @override
@@ -105,7 +120,10 @@ class SafSourceAdapter implements SourceAdapter {
   ScannedTrack _toTrack(SafEntry entry) {
     final String stem = p.basenameWithoutExtension(entry.name);
     final ParsedSongInfo parsed = SmartTitleParser.parse(stem);
-    final String extension = p.extension(entry.name).toLowerCase().replaceFirst('.', '');
+    final String extension = p
+        .extension(entry.name)
+        .toLowerCase()
+        .replaceFirst('.', '');
     return ScannedTrack(
       filePathOrUrl: entry.uri,
       title: parsed.title.isEmpty ? stem : parsed.title,

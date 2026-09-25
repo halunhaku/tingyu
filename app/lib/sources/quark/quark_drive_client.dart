@@ -64,12 +64,19 @@ class QuarkParseError extends QuarkException {
 
 /// 一次递归扫描的结果。
 class QuarkScanResult {
-  const QuarkScanResult(this.tracks, {this.cancelled = false});
+  const QuarkScanResult(
+    this.tracks, {
+    this.cancelled = false,
+    this.truncated = false,
+  });
 
   final List<ScannedTrack> tracks;
 
   /// 调用方在扫描途中要求中止。
   final bool cancelled;
+
+  /// 达到 [QuarkDriveClient.scan] 的曲目数量上限。
+  final bool truncated;
 }
 
 /// 夸克网盘 API 客户端，对齐旧版 `Sources/Services/Quark/QuarkDriveClient.swift`。
@@ -297,6 +304,7 @@ class QuarkDriveClient {
     final List<(String, int)> queue = <(String, int)>[(folderFid, 0)];
     final Set<String> visitedFids = <String>{};
     bool cancelled = false;
+    bool truncated = false;
 
     while (queue.isNotEmpty && tracks.length < maxFiles) {
       if (isCancelled?.call() ?? false) {
@@ -353,6 +361,7 @@ class QuarkDriveClient {
         );
 
         if (tracks.length >= maxFiles) {
+          truncated = true;
           break;
         }
       }
@@ -361,7 +370,7 @@ class QuarkDriveClient {
       await Future<void>.delayed(folderDelay);
     }
 
-    return QuarkScanResult(tracks, cancelled: cancelled);
+    return QuarkScanResult(tracks, cancelled: cancelled, truncated: truncated);
   }
 
   // MARK: - 直链解析

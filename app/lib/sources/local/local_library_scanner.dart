@@ -13,7 +13,9 @@ class LocalScanResult {
   const LocalScanResult({
     required this.tracks,
     required this.unreadableFiles,
+    required this.unreadableDirectories,
     required this.cancelled,
+    required this.truncated,
   });
 
   final List<ScannedTrack> tracks;
@@ -21,7 +23,18 @@ class LocalScanResult {
   /// 统计/读取失败、未能生成任何事实的文件数（不影响其余文件入库）。
   final int unreadableFiles;
 
+  /// 无法枚举的目录数；根目录不存在也计为一个。
+  final int unreadableDirectories;
+
   final bool cancelled;
+
+  final bool truncated;
+
+  bool get isAuthoritative =>
+      !cancelled &&
+      !truncated &&
+      unreadableFiles == 0 &&
+      unreadableDirectories == 0;
 }
 
 /// 本地音乐目录扫描，对齐旧版 `Sources/Services/Library/LocalLibraryScanner.swift`。
@@ -30,7 +43,7 @@ class LocalScanResult {
 /// 上千个文件时主线程不会被解析阻塞（M2 验收条件）。
 class LocalLibraryScanner {
   LocalLibraryScanner({CoverStore? coverStore, this.maxFiles = 5000})
-      : _coverStore = coverStore ?? CoverStore();
+    : _coverStore = coverStore ?? CoverStore();
 
   /// 与旧版 Swift 的 `supportedExtensions` 保持一致。
   static const Set<String> supportedExtensions = <String>{
@@ -50,8 +63,9 @@ class LocalLibraryScanner {
   /// 单次扫描的文件数上限，防止误选根目录时把内存打满。
   final int maxFiles;
 
-  static bool isSupported(String path) =>
-      supportedExtensions.contains(p.extension(path).toLowerCase().replaceFirst('.', ''));
+  static bool isSupported(String path) => supportedExtensions.contains(
+    p.extension(path).toLowerCase().replaceFirst('.', ''),
+  );
 
   Future<LocalScanResult> scan(
     Directory root, {
@@ -59,31 +73,66 @@ class LocalLibraryScanner {
     bool Function()? isCancelled,
     int batchSize = 64,
   }) async {
-    final List<String> files = _collectFiles(root);
+    final _CollectedFiles collected = _collectFiles(root);
+    if (collected.files.isEmpty) {
+      return LocalScanResult(
+        tracks: const <ScannedTrack>[],
+        unreadableFiles: 0,
+        unreadableDirectories: collected.unreadableDirectories,
+        cancelled: isCancelled?.call() ?? false,
+        truncated: collected.truncated,
+      );
+    }
     final String coversDirectory = (await _coverStore.coversDirectory()).path;
 
     final List<ScannedTrack> tracks = <ScannedTrack>[];
     int unreadable = 0;
 
-    for (int start = 0; start < files.length; start += batchSize) {
+    for (int start = 0; start < collected.files.length; start += batchSize) {
       if (isCancelled?.call() ?? false) {
-        return LocalScanResult(tracks: tracks, unreadableFiles: unreadable, cancelled: true);
+        return LocalScanResult(
+          tracks: tracks,
+          unreadableFiles: unreadable,
+          unreadableDirectories: collected.unreadableDirectories,
+          cancelled: true,
+          truncated: collected.truncated,
+        );
       }
-      final List<String> batch = files.sublist(start, math.min(start + batchSize, files.length));
-      final _BatchResult result = await Isolate.run(() => _scanBatch(batch, coversDirectory));
+      final List<String> batch = collected.files.sublist(
+        start,
+        math.min(start + batchSize, collected.files.length),
+      );
+      final _BatchResult result = await Isolate.run(
+        () => _scanBatch(batch, coversDirectory),
+      );
       tracks.addAll(result.tracks);
       unreadable += result.unreadable;
-      onProgress?.call(math.min(start + batch.length, files.length), files.length, batch.last);
+      onProgress?.call(
+        math.min(start + batch.length, collected.files.length),
+        collected.files.length,
+        batch.last,
+      );
     }
 
-    return LocalScanResult(tracks: tracks, unreadableFiles: unreadable, cancelled: false);
+    return LocalScanResult(
+      tracks: tracks,
+      unreadableFiles: unreadable,
+      unreadableDirectories: collected.unreadableDirectories,
+      cancelled: false,
+      truncated: collected.truncated,
+    );
   }
 
-  List<String> _collectFiles(Directory root) {
+  _CollectedFiles _collectFiles(Directory root) {
     final List<String> files = <String>[];
     if (!root.existsSync()) {
-      return files;
+      return const _CollectedFiles(
+        files: <String>[],
+        unreadableDirectories: 1,
+        truncated: false,
+      );
     }
+    int unreadableDirectories = 0;
     final List<Directory> pending = <Directory>[root];
     while (pending.isNotEmpty) {
       final Directory dir = pending.removeLast();
@@ -92,6 +141,7 @@ class LocalLibraryScanner {
         // 不跟随符号链接，避免自引用目录导致无限递归。
         entries = dir.listSync(followLinks: false);
       } on FileSystemException {
+        unreadableDirectories++;
         continue;
       }
       for (final FileSystemEntity entry in entries) {
@@ -104,14 +154,36 @@ class LocalLibraryScanner {
           files.add(entry.path);
           if (files.length >= maxFiles) {
             files.sort();
-            return files;
+            return _CollectedFiles(
+              files: files,
+              unreadableDirectories: unreadableDirectories,
+              truncated: true,
+            );
           }
         }
       }
     }
     files.sort();
-    return files;
+    return _CollectedFiles(
+      files: files,
+      unreadableDirectories: unreadableDirectories,
+      truncated: false,
+    );
   }
+}
+
+class _CollectedFiles {
+  const _CollectedFiles({
+    required this.files,
+    required this.unreadableDirectories,
+    required this.truncated,
+  });
+
+  final List<String> files;
+
+  final int unreadableDirectories;
+
+  final bool truncated;
 }
 
 class _BatchResult {
@@ -139,7 +211,10 @@ _BatchResult _scanBatch(List<String> paths, String coversDirectory) {
 ScannedTrack _scanFile(String path, String coversDirectory) {
   final File file = File(path);
   final FileStat stat = file.statSync();
-  final String extension = p.extension(path).toLowerCase().replaceFirst('.', '');
+  final String extension = p
+      .extension(path)
+      .toLowerCase()
+      .replaceFirst('.', '');
 
   String title = p.basenameWithoutExtension(path);
   String artist = ScannedTrack.unknownArtist;
@@ -171,7 +246,11 @@ ScannedTrack _scanFile(String path, String coversDirectory) {
     sampleRate = metadata.sampleRate;
     lyrics = _nonEmpty(metadata.lyrics);
     if (metadata.pictures.isNotEmpty) {
-      coverArtPath = _writeCover(coversDirectory, path, metadata.pictures.first.bytes);
+      coverArtPath = _writeCover(
+        coversDirectory,
+        path,
+        metadata.pictures.first.bytes,
+      );
     }
   } on MetadataParserException {
     // 该容器/标签不被支持（如裸 AAC）：保留文件名与文件事实，其余留空由后续补全。
@@ -200,7 +279,10 @@ ScannedTrack _scanFile(String path, String coversDirectory) {
 }
 
 String? _writeCover(String coversDirectory, String path, List<int> bytes) {
-  final String name = CoverStore.fileNameFor(path, extension: bytes.length >= 8 && bytes[0] == 0x89 ? '.png' : '.jpg');
+  final String name = CoverStore.fileNameFor(
+    path,
+    extension: bytes.length >= 8 && bytes[0] == 0x89 ? '.png' : '.jpg',
+  );
   File(p.join(coversDirectory, name)).writeAsBytesSync(bytes, flush: false);
   return name;
 }

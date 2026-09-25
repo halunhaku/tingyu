@@ -131,6 +131,48 @@ void main() {
     expect(playlistTracks.single.filePathOrUrl, '/music/a.flac');
   });
 
+  test('非权威扫描只增量合并，不删除未见曲目和播放列表引用', () async {
+    await tracks.mergeScan(
+      sourceId: 'src-1',
+      scanned: <ScannedTrack>[
+        scan('/music/a.flac'),
+        scan('/music/b.flac', title: '必须保留'),
+      ],
+    );
+    final String preservedId = TrackRepository.idFor(
+      sourceId: 'src-1',
+      filePathOrUrl: '/music/b.flac',
+    );
+    await tracks.setFavorite(preservedId, value: true);
+    final PlaylistRepository playlists = PlaylistRepository(db);
+    await playlists.create(id: 'pl-1', name: '收藏夹');
+    await playlists.addTrack('pl-1', preservedId);
+
+    final MergeResult result = await tracks.mergeScan(
+      sourceId: 'src-1',
+      scanned: <ScannedTrack>[
+        scan('/music/a.flac', size: 2048),
+        scan('/music/c.flac', title: '新曲目'),
+      ],
+      removeMissing: false,
+    );
+
+    expect(result.added, 1);
+    expect(result.updated, 1);
+    expect(result.removed, 0);
+    final List<Track> stored = await tracks.bySource('src-1');
+    expect(stored.map((Track track) => track.filePathOrUrl).toSet(), <String>{
+      '/music/a.flac',
+      '/music/b.flac',
+      '/music/c.flac',
+    });
+    expect(
+      stored.singleWhere((Track track) => track.id == preservedId).isFavorite,
+      isTrue,
+    );
+    expect(await playlists.tracksOf('pl-1'), hasLength(1));
+  });
+
   test('占位元数据会被后到的真实值替换，但不会覆盖已有值', () async {
     await tracks.mergeScan(
       sourceId: 'src-1',

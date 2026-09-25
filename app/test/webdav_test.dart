@@ -41,10 +41,15 @@ class _FakeAdapter implements HttpClientAdapter {
   /// 返回非 null 时该请求以传输层错误结束。
   DioException? Function(RequestOptions options)? failure;
 
-  List<String> get requestedPaths => requests.map((RequestOptions options) => options.uri.path).toList();
+  List<String> get requestedPaths =>
+      requests.map((RequestOptions options) => options.uri.path).toList();
 
   @override
-  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
     requests.add(options);
     final DioException? error = failure?.call(options);
     if (error != null) {
@@ -54,17 +59,23 @@ class _FakeAdapter implements HttpClientAdapter {
     if (route == null) {
       throw StateError('测试未配置路由: ${options.method} ${options.uri.path}');
     }
-    return ResponseBody.fromString(route.body, route.status, headers: <String, List<String>>{
-      Headers.contentTypeHeader: <String>['application/xml; charset=utf-8'],
-    });
+    return ResponseBody.fromString(
+      route.body,
+      route.status,
+      headers: <String, List<String>>{
+        Headers.contentTypeHeader: <String>['application/xml; charset=utf-8'],
+      },
+    );
   }
 
   @override
   void close({bool force = false}) {}
 }
 
-WebDavClient _client(_FakeAdapter adapter, {Duration throttle = Duration.zero}) =>
-    WebDavClient(dio: Dio()..httpClientAdapter = adapter, throttle: throttle);
+WebDavClient _client(
+  _FakeAdapter adapter, {
+  Duration throttle = Duration.zero,
+}) => WebDavClient(dio: Dio()..httpClientAdapter = adapter, throttle: throttle);
 
 Future<SourceScanResult> _scan(
   WebDavClient client, {
@@ -72,17 +83,16 @@ Future<SourceScanResult> _scan(
   int maxFiles = 5000,
   void Function(int done, String name)? onProgress,
   bool Function()? isCancelled,
-}) =>
-    client.scan(
-      rootUrl: _rootUri,
-      sourceId: 'webdav-1',
-      username: _username,
-      password: _password,
-      maxDepth: maxDepth,
-      maxFiles: maxFiles,
-      onProgress: onProgress,
-      isCancelled: isCancelled,
-    );
+}) => client.scan(
+  rootUrl: _rootUri,
+  sourceId: 'webdav-1',
+  username: _username,
+  password: _password,
+  maxDepth: maxDepth,
+  maxFiles: maxFiles,
+  onProgress: onProgress,
+  isCancelled: isCancelled,
+);
 
 String _entry({
   required String href,
@@ -92,11 +102,17 @@ String _entry({
   String? etag,
   String? lastModified,
 }) {
-  final StringBuffer buffer = StringBuffer('<d:response><d:href>')..write(href)..write('</d:href><d:propstat><d:prop>');
+  final StringBuffer buffer = StringBuffer('<d:response><d:href>')
+    ..write(href)
+    ..write('</d:href><d:propstat><d:prop>');
   if (displayName != null) {
     buffer.write('<d:displayname>$displayName</d:displayname>');
   }
-  buffer.write(collection ? '<d:resourcetype><d:collection/></d:resourcetype>' : '<d:resourcetype/>');
+  buffer.write(
+    collection
+        ? '<d:resourcetype><d:collection/></d:resourcetype>'
+        : '<d:resourcetype/>',
+  );
   if (length != null) {
     buffer.write('<d:getcontentlength>$length</d:getcontentlength>');
   }
@@ -107,7 +123,9 @@ String _entry({
     buffer.write('<d:getlastmodified>$lastModified</d:getlastmodified>');
   }
   buffer.write('<d:getcontenttype>application/octet-stream</d:getcontenttype>');
-  buffer.write('</d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>');
+  buffer.write(
+    '</d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>',
+  );
   return buffer.toString();
 }
 
@@ -187,7 +205,10 @@ void main() {
       expect(items[1].isDirectory, isTrue);
 
       final WebDavItem file = items[2];
-      expect(file.href, '/dav/Music/%E6%99%B4%E5%A4%A9-%E5%91%A8%E6%9D%B0%E4%BC%A6.mp3');
+      expect(
+        file.href,
+        '/dav/Music/%E6%99%B4%E5%A4%A9-%E5%91%A8%E6%9D%B0%E4%BC%A6.mp3',
+      );
       expect(file.displayName, '晴天-周杰伦.mp3');
       expect(file.isDirectory, isFalse);
       expect(file.contentLength, 5242880);
@@ -202,12 +223,14 @@ void main() {
     });
 
     test('忽略前缀大小写与默认命名空间', () {
-      const String upper = '<?xml version="1.0" encoding="utf-8"?>'
+      const String upper =
+          '<?xml version="1.0" encoding="utf-8"?>'
           '<D:multistatus xmlns:D="DAV:">'
           '<D:response><D:href>/dav/a.mp3</D:href>'
           '<D:propstat><D:prop><D:getetag>"e"</D:getetag></D:prop></D:propstat>'
           '</D:response></D:multistatus>';
-      const String plain = '<?xml version="1.0" encoding="utf-8"?>'
+      const String plain =
+          '<?xml version="1.0" encoding="utf-8"?>'
           '<multistatus xmlns="DAV:">'
           '<response><href>/dav/b/</href>'
           '<propstat><prop><resourcetype><collection/></resourcetype></prop></propstat>'
@@ -227,43 +250,77 @@ void main() {
 
     test('已是绝对 URL 时原样使用', () {
       expect(
-        WebDavClient.resolveItemUrl('https://cdn.example.com/music/a%20b.mp3', baseUrl: root, currentDirUrl: currentDir)?.toString(),
+        WebDavClient.resolveItemUrl(
+          'https://cdn.example.com/music/a%20b.mp3',
+          baseUrl: root,
+          currentDirUrl: currentDir,
+        )?.toString(),
         'https://cdn.example.com/music/a%20b.mp3',
       );
     });
 
     test('站绝对路径拼 scheme + host + port，中文与空格补编码', () {
       expect(
-        WebDavClient.resolveItemUrl('/dav/Music/中文 歌.mp3', baseUrl: root, currentDirUrl: currentDir)?.toString(),
+        WebDavClient.resolveItemUrl(
+          '/dav/Music/中文 歌.mp3',
+          baseUrl: root,
+          currentDirUrl: currentDir,
+        )?.toString(),
         'https://dav.example.com:8443/dav/Music/%E4%B8%AD%E6%96%87%20%E6%AD%8C.mp3',
       );
       expect(
-        WebDavClient.resolveItemUrl('/dav/a%20b.mp3', baseUrl: root, currentDirUrl: currentDir)?.toString(),
+        WebDavClient.resolveItemUrl(
+          '/dav/a%20b.mp3',
+          baseUrl: root,
+          currentDirUrl: currentDir,
+        )?.toString(),
         'https://dav.example.com:8443/dav/a%20b.mp3',
       );
       expect(
-        WebDavClient.resolveItemUrl('/dav/x.mp3', baseUrl: Uri.parse('https://dav.example.com/dav/'), currentDirUrl: currentDir)?.toString(),
+        WebDavClient.resolveItemUrl(
+          '/dav/x.mp3',
+          baseUrl: Uri.parse('https://dav.example.com/dav/'),
+          currentDirUrl: currentDir,
+        )?.toString(),
         'https://dav.example.com/dav/x.mp3',
       );
     });
 
     test('相对路径按当前目录解析', () {
       expect(
-        WebDavClient.resolveItemUrl('Deep/Finale.mp3', baseUrl: root, currentDirUrl: currentDir)?.toString(),
+        WebDavClient.resolveItemUrl(
+          'Deep/Finale.mp3',
+          baseUrl: root,
+          currentDirUrl: currentDir,
+        )?.toString(),
         'https://dav.example.com:8443/dav/Music/Deep/Finale.mp3',
       );
       expect(
-        WebDavClient.resolveItemUrl('../other/a.mp3', baseUrl: root, currentDirUrl: currentDir)?.toString(),
+        WebDavClient.resolveItemUrl(
+          '../other/a.mp3',
+          baseUrl: root,
+          currentDirUrl: currentDir,
+        )?.toString(),
         'https://dav.example.com:8443/dav/other/a.mp3',
       );
     });
 
     test('空 href 返回 null', () {
-      expect(WebDavClient.resolveItemUrl('   ', baseUrl: root, currentDirUrl: currentDir), isNull);
+      expect(
+        WebDavClient.resolveItemUrl(
+          '   ',
+          baseUrl: root,
+          currentDirUrl: currentDir,
+        ),
+        isNull,
+      );
     });
 
     test('normalizePath 先 percent-decode 再去首尾斜杠', () {
-      expect(WebDavClient.normalizePath('/dav/%E4%B8%AD%E6%96%87/'), '/dav/中文/');
+      expect(
+        WebDavClient.normalizePath('/dav/%E4%B8%AD%E6%96%87/'),
+        '/dav/中文/',
+      );
       expect(WebDavClient.normalizePath('dav'), '/dav/');
       expect(WebDavClient.normalizePath('/dav/'), '/dav/');
       // 旧版这里得到 "//"，会让"从服务器根目录扫描"静默失败；本实现修正为 '/'。
@@ -283,12 +340,37 @@ void main() {
           _multistatus(<String>[
             _entry(href: '/dav/', displayName: '/dav/', collection: true),
             _entry(href: '/dav/Music/', displayName: 'Music', collection: true),
-            _entry(href: '/dav/@eaDir/', displayName: '@eaDir', collection: true),
-            _entry(href: '/dav/%23recycle/', displayName: '#recycle', collection: true),
-            _entry(href: '/dav/.Trash/', displayName: '.Trash', collection: true),
-            _entry(href: '/other/loose.mp3', displayName: 'loose.mp3', length: 4096, etag: 'out'),
-            _entry(href: '/dav/.hidden.mp3', displayName: '.hidden.mp3', length: 4096),
-            _entry(href: '/dav/cover.jpg', displayName: 'cover.jpg', length: 4096),
+            _entry(
+              href: '/dav/@eaDir/',
+              displayName: '@eaDir',
+              collection: true,
+            ),
+            _entry(
+              href: '/dav/%23recycle/',
+              displayName: '#recycle',
+              collection: true,
+            ),
+            _entry(
+              href: '/dav/.Trash/',
+              displayName: '.Trash',
+              collection: true,
+            ),
+            _entry(
+              href: '/other/loose.mp3',
+              displayName: 'loose.mp3',
+              length: 4096,
+              etag: 'out',
+            ),
+            _entry(
+              href: '/dav/.hidden.mp3',
+              displayName: '.hidden.mp3',
+              length: 4096,
+            ),
+            _entry(
+              href: '/dav/cover.jpg',
+              displayName: 'cover.jpg',
+              length: 4096,
+            ),
           ]),
         ),
         '/dav/Music/': _FakeResponse(
@@ -302,16 +384,25 @@ void main() {
               etag: 'etag-1',
               lastModified: 'Fri, 12 Sep 2025 03:04:05 GMT',
             ),
-            _entry(href: '/dav/Music/%E4%B8%AD%E6%96%87%E6%AD%8C.mp3', length: 1048576),
-            _entry(href: 'https://dav.example.com:8443/dav/Music/Deep/', displayName: 'Deep', collection: true),
-            _entry(href: '/dav/Music/notes.txt', displayName: 'notes.txt', length: 12),
+            _entry(
+              href: '/dav/Music/%E4%B8%AD%E6%96%87%E6%AD%8C.mp3',
+              length: 1048576,
+            ),
+            _entry(
+              href: 'https://dav.example.com:8443/dav/Music/Deep/',
+              displayName: 'Deep',
+              collection: true,
+            ),
+            _entry(
+              href: '/dav/Music/notes.txt',
+              displayName: 'notes.txt',
+              length: 12,
+            ),
           ]),
         ),
         '/dav/Music/Deep/': _FakeResponse(
           200,
-          _multistatus(<String>[
-            _entry(href: 'Finale.mp3', length: 2048),
-          ]),
+          _multistatus(<String>[_entry(href: 'Finale.mp3', length: 2048)]),
         ),
       });
     });
@@ -323,7 +414,10 @@ void main() {
       for (final RequestOptions options in adapter.requests) {
         expect(options.method, 'PROPFIND');
         expect(options.headers['Depth'], '1');
-        expect(options.headers[Headers.contentTypeHeader], 'application/xml; charset=utf-8');
+        expect(
+          options.headers[Headers.contentTypeHeader],
+          'application/xml; charset=utf-8',
+        );
         expect(options.headers['Authorization'], _authHeader);
         expect(options.data, WebDavClient.propfindBody);
       }
@@ -340,15 +434,24 @@ void main() {
       );
 
       // @eaDir / #recycle / .Trash 从未被请求，说明没被当成目录递归。
-      expect(adapter.requestedPaths, <String>['/dav/', '/dav/Music/', '/dav/Music/Deep/']);
+      expect(adapter.requestedPaths, <String>[
+        '/dav/',
+        '/dav/Music/',
+        '/dav/Music/Deep/',
+      ]);
       expect(result.skipped, 0);
       expect(result.cancelled, isFalse);
+      expect(result.truncated, isFalse);
+      expect(result.isAuthoritative, isTrue);
 
-      expect(result.tracks.map((ScannedTrack track) => track.filePathOrUrl).toList(), <String>[
-        'https://dav.example.com:8443/dav/Music/%E6%99%B4%E5%A4%A9-%E5%91%A8%E6%9D%B0%E4%BC%A6.mp3',
-        'https://dav.example.com:8443/dav/Music/%E4%B8%AD%E6%96%87%E6%AD%8C.mp3',
-        'https://dav.example.com:8443/dav/Music/Deep/Finale.mp3',
-      ]);
+      expect(
+        result.tracks.map((ScannedTrack track) => track.filePathOrUrl).toList(),
+        <String>[
+          'https://dav.example.com:8443/dav/Music/%E6%99%B4%E5%A4%A9-%E5%91%A8%E6%9D%B0%E4%BC%A6.mp3',
+          'https://dav.example.com:8443/dav/Music/%E4%B8%AD%E6%96%87%E6%AD%8C.mp3',
+          'https://dav.example.com:8443/dav/Music/Deep/Finale.mp3',
+        ],
+      );
 
       final ScannedTrack first = result.tracks[0];
       expect(first.title, '晴天');
@@ -372,25 +475,40 @@ void main() {
     });
 
     test('maxDepth 限制递归层级', () async {
-      final SourceScanResult result = await _scan(_client(adapter), maxDepth: 0);
+      final SourceScanResult result = await _scan(
+        _client(adapter),
+        maxDepth: 0,
+      );
 
       expect(adapter.requestedPaths, <String>['/dav/']);
       expect(result.tracks, isEmpty);
     });
 
     test('maxFiles 截断已发现的曲目', () async {
-      final SourceScanResult result = await _scan(_client(adapter), maxFiles: 1);
+      final SourceScanResult result = await _scan(
+        _client(adapter),
+        maxFiles: 1,
+      );
 
       expect(adapter.requestedPaths, <String>['/dav/', '/dav/Music/']);
-      expect(result.tracks.map((ScannedTrack track) => track.title).toList(), <String>['晴天']);
+      expect(
+        result.tracks.map((ScannedTrack track) => track.title).toList(),
+        <String>['晴天'],
+      );
+      expect(result.truncated, isTrue);
+      expect(result.isAuthoritative, isFalse);
     });
 
     test('isCancelled 立刻返回且不发起请求', () async {
-      final SourceScanResult result = await _scan(_client(adapter), isCancelled: () => true);
+      final SourceScanResult result = await _scan(
+        _client(adapter),
+        isCancelled: () => true,
+      );
 
       expect(result.cancelled, isTrue);
       expect(result.tracks, isEmpty);
       expect(adapter.requests, isEmpty);
+      expect(result.isAuthoritative, isFalse);
     });
 
     test('每个目录之间沿用旧版 120ms 限流', () async {
@@ -404,7 +522,9 @@ void main() {
 
   group('错误映射', () {
     test('401 → WebDavUnauthorized', () async {
-      final _FakeAdapter adapter = _FakeAdapter(<String, _FakeResponse>{'/dav/': const _FakeResponse(401, '')});
+      final _FakeAdapter adapter = _FakeAdapter(<String, _FakeResponse>{
+        '/dav/': const _FakeResponse(401, ''),
+      });
 
       await expectLater(
         _scan(_client(adapter)),
@@ -419,7 +539,9 @@ void main() {
     });
 
     test('403 → WebDavForbidden', () async {
-      final _FakeAdapter adapter = _FakeAdapter(<String, _FakeResponse>{'/dav/': const _FakeResponse(403, '')});
+      final _FakeAdapter adapter = _FakeAdapter(<String, _FakeResponse>{
+        '/dav/': const _FakeResponse(403, ''),
+      });
 
       await expectLater(
         _scan(_client(adapter)),
@@ -434,17 +556,28 @@ void main() {
     });
 
     test('429 → 默认流控文案', () async {
-      final _FakeAdapter adapter = _FakeAdapter(<String, _FakeResponse>{'/dav/': const _FakeResponse(429, '')});
+      final _FakeAdapter adapter = _FakeAdapter(<String, _FakeResponse>{
+        '/dav/': const _FakeResponse(429, ''),
+      });
 
       await expectLater(
         _scan(_client(adapter)),
-        throwsA(isA<WebDavRateLimited>().having((WebDavRateLimited error) => error.message, 'message', WebDavRateLimited.flowControlMessage)),
+        throwsA(
+          isA<WebDavRateLimited>().having(
+            (WebDavRateLimited error) => error.message,
+            'message',
+            WebDavRateLimited.flowControlMessage,
+          ),
+        ),
       );
     });
 
     test('503 且响应体不含 BlockedTemporarily → 临时流控文案', () async {
       final _FakeAdapter adapter = _FakeAdapter(<String, _FakeResponse>{
-        '/dav/': const _FakeResponse(503, '<html><body>Service Unavailable</body></html>'),
+        '/dav/': const _FakeResponse(
+          503,
+          '<html><body>Service Unavailable</body></html>',
+        ),
       });
 
       await expectLater(
@@ -461,7 +594,10 @@ void main() {
 
     test('503 且响应体含 BlockedTemporarily → 临时封禁文案', () async {
       final _FakeAdapter adapter = _FakeAdapter(<String, _FakeResponse>{
-        '/dav/': const _FakeResponse(503, '<error><code>BlockedTemporarily</code></error>'),
+        '/dav/': const _FakeResponse(
+          503,
+          '<error><code>BlockedTemporarily</code></error>',
+        ),
       });
 
       await expectLater(
@@ -477,14 +613,24 @@ void main() {
     });
 
     test('根目录 500 → WebDavServerError', () async {
-      final _FakeAdapter adapter = _FakeAdapter(<String, _FakeResponse>{'/dav/': const _FakeResponse(500, '')});
+      final _FakeAdapter adapter = _FakeAdapter(<String, _FakeResponse>{
+        '/dav/': const _FakeResponse(500, ''),
+      });
 
       await expectLater(
         _scan(_client(adapter)),
         throwsA(
           isA<WebDavServerError>()
-              .having((WebDavServerError error) => error.statusCode, 'statusCode', 500)
-              .having((WebDavServerError error) => error.message, 'message', 'WebDAV 服务器返回错误 (500): HTTP 500'),
+              .having(
+                (WebDavServerError error) => error.statusCode,
+                'statusCode',
+                500,
+              )
+              .having(
+                (WebDavServerError error) => error.message,
+                'message',
+                'WebDAV 服务器返回错误 (500): HTTP 500',
+              ),
         ),
       );
     });
@@ -495,8 +641,17 @@ void main() {
           200,
           _multistatus(<String>[
             _entry(href: '/dav/', displayName: '/dav/', collection: true),
-            _entry(href: '/dav/Broken/', displayName: 'Broken', collection: true),
-            _entry(href: '/dav/ok.mp3', displayName: 'ok.mp3', length: 10, etag: 'ok'),
+            _entry(
+              href: '/dav/Broken/',
+              displayName: 'Broken',
+              collection: true,
+            ),
+            _entry(
+              href: '/dav/ok.mp3',
+              displayName: 'ok.mp3',
+              length: 10,
+              etag: 'ok',
+            ),
           ]),
         ),
         '/dav/Broken/': const _FakeResponse(500, ''),
@@ -504,65 +659,133 @@ void main() {
 
       final SourceScanResult result = await _scan(_client(adapter));
 
-      expect(result.tracks.map((ScannedTrack track) => track.title).toList(), <String>['ok']);
+      expect(
+        result.tracks.map((ScannedTrack track) => track.title).toList(),
+        <String>['ok'],
+      );
       expect(result.skipped, 1);
+      expect(result.isAuthoritative, isFalse);
     });
 
     test('根目录传输失败 → WebDavNetworkError；子目录失败只跳过', () async {
-      final _FakeAdapter rootFailure = _FakeAdapter(<String, _FakeResponse>{'/dav/': const _FakeResponse(200, '')})
-        ..failure = (RequestOptions options) => DioException.connectionError(requestOptions: options, reason: 'Connection refused');
+      final _FakeAdapter rootFailure =
+          _FakeAdapter(<String, _FakeResponse>{
+              '/dav/': const _FakeResponse(200, ''),
+            })
+            ..failure = (RequestOptions options) =>
+                DioException.connectionError(
+                  requestOptions: options,
+                  reason: 'Connection refused',
+                );
 
       await expectLater(
         _scan(_client(rootFailure)),
         throwsA(
           isA<WebDavNetworkError>()
-              .having((WebDavNetworkError error) => error.message, 'message', startsWith('网络连接失败: '))
-              .having((WebDavNetworkError error) => error.message, 'message', contains('Connection refused')),
+              .having(
+                (WebDavNetworkError error) => error.message,
+                'message',
+                startsWith('网络连接失败: '),
+              )
+              .having(
+                (WebDavNetworkError error) => error.message,
+                'message',
+                contains('Connection refused'),
+              ),
         ),
       );
 
-      final _FakeAdapter childFailure = _FakeAdapter(<String, _FakeResponse>{
-        '/dav/': _FakeResponse(
-          200,
-          _multistatus(<String>[
-            _entry(href: '/dav/', displayName: '/dav/', collection: true),
-            _entry(href: '/dav/Broken/', displayName: 'Broken', collection: true),
-            _entry(href: '/dav/ok.mp3', displayName: 'ok.mp3', length: 10, etag: 'ok'),
-          ]),
-        ),
-      })
-        ..failure = (RequestOptions options) =>
-            options.uri.path == '/dav/Broken/' ? DioException.connectionError(requestOptions: options, reason: 'Connection refused') : null;
+      final _FakeAdapter childFailure =
+          _FakeAdapter(<String, _FakeResponse>{
+              '/dav/': _FakeResponse(
+                200,
+                _multistatus(<String>[
+                  _entry(href: '/dav/', displayName: '/dav/', collection: true),
+                  _entry(
+                    href: '/dav/Broken/',
+                    displayName: 'Broken',
+                    collection: true,
+                  ),
+                  _entry(
+                    href: '/dav/ok.mp3',
+                    displayName: 'ok.mp3',
+                    length: 10,
+                    etag: 'ok',
+                  ),
+                ]),
+              ),
+            })
+            ..failure = (RequestOptions options) =>
+                options.uri.path == '/dav/Broken/'
+                ? DioException.connectionError(
+                    requestOptions: options,
+                    reason: 'Connection refused',
+                  )
+                : null;
 
       final SourceScanResult result = await _scan(_client(childFailure));
 
-      expect(result.tracks.map((ScannedTrack track) => track.title).toList(), <String>['ok']);
+      expect(
+        result.tracks.map((ScannedTrack track) => track.title).toList(),
+        <String>['ok'],
+      );
       expect(result.skipped, 1);
+      expect(result.isAuthoritative, isFalse);
     });
 
     test('异常 toString 返回与旧版逐字一致的中文文案', () {
       expect(const WebDavUnauthorized().toString(), 'WebDAV 认证失败，请检查账号和应用专用密码');
-      expect(const WebDavForbidden().toString(), 'WebDAV 拒绝访问该目录 (403 Forbidden)');
-      expect(const WebDavRateLimited.temporaryFlowControl().toString(), WebDavRateLimited.flowControlMessage);
-      expect(const WebDavRateLimited.blocked().toString(), WebDavRateLimited.blockedMessage);
-      expect(WebDavServerError(502).toString(), 'WebDAV 服务器返回错误 (502): HTTP 502');
+      expect(
+        const WebDavForbidden().toString(),
+        'WebDAV 拒绝访问该目录 (403 Forbidden)',
+      );
+      expect(
+        const WebDavRateLimited.temporaryFlowControl().toString(),
+        WebDavRateLimited.flowControlMessage,
+      );
+      expect(
+        const WebDavRateLimited.blocked().toString(),
+        WebDavRateLimited.blockedMessage,
+      );
+      expect(
+        WebDavServerError(502).toString(),
+        'WebDAV 服务器返回错误 (502): HTTP 502',
+      );
       expect(WebDavNetworkError('超时').toString(), '网络连接失败: 超时');
     });
   });
 
   group('testConnection', () {
     test('Depth 0 探测，2xx 为 true', () async {
-      final _FakeAdapter adapter = _FakeAdapter(<String, _FakeResponse>{'/dav/': const _FakeResponse(207, '')});
+      final _FakeAdapter adapter = _FakeAdapter(<String, _FakeResponse>{
+        '/dav/': const _FakeResponse(207, ''),
+      });
 
-      expect(await _client(adapter).testConnection(url: _rootUri, username: _username, password: _password), isTrue);
+      expect(
+        await _client(adapter).testConnection(
+          url: _rootUri,
+          username: _username,
+          password: _password,
+        ),
+        isTrue,
+      );
       expect(adapter.requests.single.headers['Depth'], '0');
       expect(adapter.requests.single.headers['Authorization'], _authHeader);
     });
 
     test('非 2xx 为 false', () async {
-      final _FakeAdapter adapter = _FakeAdapter(<String, _FakeResponse>{'/dav/': const _FakeResponse(401, '')});
+      final _FakeAdapter adapter = _FakeAdapter(<String, _FakeResponse>{
+        '/dav/': const _FakeResponse(401, ''),
+      });
 
-      expect(await _client(adapter).testConnection(url: _rootUri, username: _username, password: _password), isFalse);
+      expect(
+        await _client(adapter).testConnection(
+          url: _rootUri,
+          username: _username,
+          password: _password,
+        ),
+        isFalse,
+      );
     });
   });
 
@@ -572,12 +795,17 @@ void main() {
     setUp(() {
       adapter = WebDavSourceAdapter(
         sourceId: 'webdav-1',
-        credentials: WebDavCredentials(rootUrl: _baseUrl, username: _username, password: _password),
+        credentials: WebDavCredentials(
+          rootUrl: _baseUrl,
+          username: _username,
+          password: _password,
+        ),
       );
     });
 
     test('open() 产出带 Basic 鉴权头的 PlaybackItem', () async {
-      const String url = 'https://dav.example.com:8443/dav/Music/%E4%B8%AD%E6%96%87%E6%AD%8C.mp3';
+      const String url =
+          'https://dav.example.com:8443/dav/Music/%E4%B8%AD%E6%96%87%E6%AD%8C.mp3';
 
       final PlaybackItem item = await adapter.open(url);
 
@@ -593,15 +821,26 @@ void main() {
           200,
           _multistatus(<String>[
             _entry(href: '/dav/', displayName: '/dav/', collection: true),
-            _entry(href: '/dav/%E6%99%B4%E5%A4%A9.mp3', displayName: '晴天.mp3', length: 10),
+            _entry(
+              href: '/dav/%E6%99%B4%E5%A4%A9.mp3',
+              displayName: '晴天.mp3',
+              length: 10,
+            ),
           ]),
         ),
       });
 
       final SourceAdapter source = WebDavSourceAdapter(
         sourceId: 'webdav-1',
-        credentials: WebDavCredentials(rootUrl: _baseUrl, username: _username, password: _password),
-        client: WebDavClient(dio: Dio()..httpClientAdapter = http, throttle: Duration.zero),
+        credentials: WebDavCredentials(
+          rootUrl: _baseUrl,
+          username: _username,
+          password: _password,
+        ),
+        client: WebDavClient(
+          dio: Dio()..httpClientAdapter = http,
+          throttle: Duration.zero,
+        ),
       );
 
       final SourceScanResult result = await source.scan();
@@ -609,7 +848,10 @@ void main() {
       expect(source.sourceId, 'webdav-1');
       expect(http.requests.single.headers['Authorization'], _authHeader);
       expect(result.tracks.single.title, '晴天');
-      expect(result.tracks.single.filePathOrUrl, 'https://dav.example.com:8443/dav/%E6%99%B4%E5%A4%A9.mp3');
+      expect(
+        result.tracks.single.filePathOrUrl,
+        'https://dav.example.com:8443/dav/%E6%99%B4%E5%A4%A9.mp3',
+      );
     });
   });
 }

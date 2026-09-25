@@ -70,7 +70,7 @@
 - 单曲可「重新匹配」，在多候选中人工挑一个覆盖。
 
 ### 4. 数据与凭据
-- 曲库落在 drift(SQLite)：`tracks` / `music_sources` / `playlists`；扫描按 `filePathOrUrl` 合并，分别统计新增 / 更新 / 移除；
+- 曲库落在 drift(SQLite)：`tracks` / `music_sources` / `playlists`；扫描按 `filePathOrUrl` 合并，分别统计新增 / 更新 / 移除；只有完整扫描会移除未见曲目，取消、截断或跳过条目的非完整扫描会保留旧曲目及其收藏、歌单引用；
 - 夸克 Cookie、WebDAV 密码等凭据进系统安全存储（Keychain / DPAPI / libsecret）；
 - 旧版曲库可用 `tools/legacy-export/` 一次性导出后导入。
 

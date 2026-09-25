@@ -63,7 +63,11 @@ class QuarkSourceAdapter implements SourceAdapter {
       isCancelled: isCancelled,
     );
 
-    return SourceScanResult(tracks: result.tracks, cancelled: result.cancelled);
+    return SourceScanResult(
+      tracks: result.tracks,
+      cancelled: result.cancelled,
+      truncated: result.truncated,
+    );
   }
 
   /// 把库里的 `quark://<fid>` 解析成带鉴权头的直链条目。

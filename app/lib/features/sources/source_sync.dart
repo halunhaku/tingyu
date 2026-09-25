@@ -6,6 +6,7 @@ import '../../app/providers.dart';
 import '../../app/source_adapters.dart';
 import '../../data/db/database.dart';
 import '../../data/models/library_summaries.dart';
+import '../../data/repositories/source_repository.dart';
 import '../../sources/source_adapter.dart';
 
 /// 单个来源的同步状态（驱动来源页与侧栏的进度展示）。
@@ -69,19 +70,21 @@ class SourceSyncController extends Notifier<Map<String, SourceSyncState>> {
 
       final MergeResult merge = await ref
           .read(trackRepositoryProvider)
-          .mergeScan(sourceId: source.id, scanned: scan.tracks);
-
-      final String status = scan.cancelled
-          ? '已取消（已入库 ${merge.added} 首）'
-          : '已同步（新增 ${merge.added} / 更新 ${merge.updated} / 移除 ${merge.removed}）';
-      await ref
-          .read(sourceRepositoryProvider)
-          .updateSyncStatus(
-            source.id,
-            status: status,
-            syncedAt: DateTime.now().toUtc(),
-            trackCount: scan.tracks.length,
+          .mergeScan(
+            sourceId: source.id,
+            scanned: scan.tracks,
+            removeMissing: scan.isAuthoritative,
           );
+
+      final SourceRepository sources = ref.read(sourceRepositoryProvider);
+      final int trackCount = await sources.trackCount(source.id);
+      final String status = _syncStatus(scan, merge);
+      await sources.updateSyncStatus(
+        source.id,
+        status: status,
+        syncedAt: DateTime.now().toUtc(),
+        trackCount: trackCount,
+      );
       _set(
         source.id,
         SourceSyncState(message: status, done: scan.tracks.length),
@@ -151,6 +154,25 @@ class SourceSyncController extends Notifier<Map<String, SourceSyncState>> {
         total: done,
       ),
     );
+  }
+
+  static String _syncStatus(SourceScanResult scan, MergeResult merge) {
+    if (scan.isAuthoritative) {
+      return '已同步（新增 ${merge.added} / 更新 ${merge.updated} / 移除 ${merge.removed}）';
+    }
+    if (scan.cancelled) {
+      return '已取消（保留未扫描曲目；新增 ${merge.added} / 更新 ${merge.updated}）';
+    }
+    if (scan.truncated && scan.skipped > 0) {
+      return '部分同步（达到数量上限，跳过 ${scan.skipped} 项；保留未扫描曲目；'
+          '新增 ${merge.added} / 更新 ${merge.updated}）';
+    }
+    if (scan.truncated) {
+      return '部分同步（达到数量上限；保留未扫描曲目；'
+          '新增 ${merge.added} / 更新 ${merge.updated}）';
+    }
+    return '部分同步（跳过 ${scan.skipped} 项；保留未扫描曲目；'
+        '新增 ${merge.added} / 更新 ${merge.updated}）';
   }
 
   static String _describe(Object error) {

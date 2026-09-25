@@ -34,14 +34,17 @@ class LocalSourceAdapter implements SourceAdapter {
     );
     return SourceScanResult(
       tracks: result.tracks,
-      skipped: result.unreadableFiles,
+      skipped: result.unreadableFiles + result.unreadableDirectories,
       cancelled: result.cancelled,
+      truncated: result.truncated,
     );
   }
 
   @override
   Future<PlaybackItem> open(String filePathOrUrl) async {
     final Uri parsed = Uri.tryParse(filePathOrUrl) ?? Uri.file(filePathOrUrl);
-    return PlaybackItem.fromUri(parsed.scheme.isEmpty ? Uri.file(filePathOrUrl) : parsed);
+    return PlaybackItem.fromUri(
+      parsed.scheme.isEmpty ? Uri.file(filePathOrUrl) : parsed,
+    );
   }
 }

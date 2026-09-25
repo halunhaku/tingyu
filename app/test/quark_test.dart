@@ -671,6 +671,8 @@ void main() {
 
       expect(result.cancelled, isFalse);
       expect(result.skipped, 0);
+      expect(result.truncated, isFalse);
+      expect(result.isAuthoritative, isTrue);
       expect(
         result.tracks.map((ScannedTrack t) => t.filePathOrUrl).toList(),
         <String>['quark://file-root', 'quark://file-nested'],
@@ -740,6 +742,8 @@ void main() {
             .toList(),
         <String>['0', 'f1'],
       );
+      expect(result.truncated, isTrue);
+      expect(result.isAuthoritative, isFalse);
     });
 
     test('取消：isCancelled 命中时立刻返回已扫到的结果', () async {
@@ -753,6 +757,7 @@ void main() {
       expect(result.cancelled, isTrue);
       expect(result.tracks, isEmpty);
       expect(requests, isEmpty);
+      expect(result.isAuthoritative, isFalse);
     });
 
     test('缺凭据时抛出未认证异常', () async {

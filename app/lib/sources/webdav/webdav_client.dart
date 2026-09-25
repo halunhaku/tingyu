@@ -41,7 +41,8 @@ class WebDavRateLimited extends WebDavException {
   const WebDavRateLimited.blocked() : super(blockedMessage);
 
   /// 旧版 503 默认文案。
-  static const String flowControlMessage = '坚果云提示请求过于频繁 (503 临时流控)，请等待 5-10 分钟自动解封';
+  static const String flowControlMessage =
+      '坚果云提示请求过于频繁 (503 临时流控)，请等待 5-10 分钟自动解封';
 
   /// 响应体里带 `BlockedTemporarily` 时改用这条。
   static const String blockedMessage = '坚果云提示请求过于频繁（临时封禁中），请稍候 5-10 分钟自动解封';
@@ -49,13 +50,14 @@ class WebDavRateLimited extends WebDavException {
   /// 对应 Swift 里 `String(data: data, encoding: .utf8)?.contains("BlockedTemporarily")`。
   static WebDavRateLimited forResponseBody(String? body) =>
       body != null && body.contains('BlockedTemporarily')
-          ? const WebDavRateLimited.blocked()
-          : const WebDavRateLimited.temporaryFlowControl();
+      ? const WebDavRateLimited.blocked()
+      : const WebDavRateLimited.temporaryFlowControl();
 }
 
 /// 非 2xx 且非 401/403/429/503。
 class WebDavServerError extends WebDavException {
-  WebDavServerError(this.statusCode) : super('WebDAV 服务器返回错误 ($statusCode): HTTP $statusCode');
+  WebDavServerError(this.statusCode)
+    : super('WebDAV 服务器返回错误 ($statusCode): HTTP $statusCode');
 
   final int statusCode;
 }
@@ -67,7 +69,9 @@ class WebDavNetworkError extends WebDavException {
   /// 原始错误，保留排查线索；文案只取其中的描述部分。
   final Object cause;
 
-  static String _describe(Object error) => error is DioException ? error.message ?? error.toString() : error.toString();
+  static String _describe(Object error) => error is DioException
+      ? error.message ?? error.toString()
+      : error.toString();
 }
 
 /// WebDAV 客户端，对齐旧版 `Sources/Services/WebDAV/WebDAVClient.swift`。
@@ -80,10 +84,11 @@ class WebDavNetworkError extends WebDavException {
 /// - 新增可选的 `isCancelled`（旧版没有取消），供 `SourceAdapter.scan` 契约使用。
 class WebDavClient {
   WebDavClient({Dio? dio, this.throttle = const Duration(milliseconds: 120)})
-      : _dio = dio ?? _defaultDio();
+    : _dio = dio ?? _defaultDio();
 
   /// 旧版 `WebDAVClient.propfindBody`（Swift 多行字面量的缩进已被剥掉，这里逐字复刻）。
-  static const String propfindBody = '<?xml version="1.0" encoding="utf-8"?>\n'
+  static const String propfindBody =
+      '<?xml version="1.0" encoding="utf-8"?>\n'
       '<d:propfind xmlns:d="DAV:">\n'
       '  <d:prop>\n'
       '    <d:displayname />\n'
@@ -104,11 +109,11 @@ class WebDavClient {
   final Duration throttle;
 
   static Dio _defaultDio() => Dio(
-        BaseOptions(
-          connectTimeout: const Duration(seconds: 15),
-          receiveTimeout: const Duration(seconds: 60),
-        ),
-      );
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 60),
+    ),
+  );
 
   /// 连接测试：`Depth: 0` 探测根目录，2xx 即成功。
   ///
@@ -121,7 +126,11 @@ class WebDavClient {
   }) async {
     final Response<Uint8List> response;
     try {
-      response = await _propfind(url, depth: '0', authorization: basicAuthHeader(username, password));
+      response = await _propfind(
+        url,
+        depth: '0',
+        authorization: basicAuthHeader(username, password),
+      );
     } on DioException catch (error) {
       throw WebDavNetworkError(error);
     }
@@ -151,6 +160,7 @@ class WebDavClient {
 
     int skipped = 0;
     bool cancelled = false;
+    bool truncated = false;
 
     while (!cancelled && queue.isNotEmpty && tracks.length < maxFiles) {
       final (Uri currentDirUrl, int depth) = queue.removeAt(0);
@@ -164,7 +174,11 @@ class WebDavClient {
 
       final Response<Uint8List> response;
       try {
-        response = await _propfind(currentDirUrl, depth: '1', authorization: authorization);
+        response = await _propfind(
+          currentDirUrl,
+          depth: '1',
+          authorization: authorization,
+        );
       } on DioException catch (error) {
         // 根目录失败就整体失败；更深的目录只是被跳过。
         if (depth == 0) {
@@ -213,7 +227,11 @@ class WebDavClient {
           break;
         }
 
-        final Uri? itemUrl = resolveItemUrl(item.href, baseUrl: rootUrl, currentDirUrl: currentDirUrl);
+        final Uri? itemUrl = resolveItemUrl(
+          item.href,
+          baseUrl: rootUrl,
+          currentDirUrl: currentDirUrl,
+        );
         if (itemUrl == null) {
           continue;
         }
@@ -232,7 +250,9 @@ class WebDavClient {
 
         // 3. 跳过垃圾/隐藏项（群晖 @eaDir、#recycle、.Trash 等）。
         final String lastSegment = lastPathSegment(itemUrl);
-        if (lastSegment.startsWith('.') || lastSegment.startsWith('@') || lastSegment.startsWith('#')) {
+        if (lastSegment.startsWith('.') ||
+            lastSegment.startsWith('@') ||
+            lastSegment.startsWith('#')) {
           continue;
         }
 
@@ -251,7 +271,9 @@ class WebDavClient {
 
         // displayname 优先；缺失或全空白时退回文件名（已是 percent-decoded）。
         final String displayName = item.displayName?.trim() ?? '';
-        final String rawName = displayName.isNotEmpty ? displayName : fileNameStem(lastSegment);
+        final String rawName = displayName.isNotEmpty
+            ? displayName
+            : fileNameStem(lastSegment);
 
         final ParsedSongInfo parsed = SmartTitleParser.parse(rawName);
         onProgress?.call(tracks.length + 1, parsed.title);
@@ -261,7 +283,9 @@ class WebDavClient {
             filePathOrUrl: itemUrl.toString(),
             title: parsed.title,
             artist: parsed.artist,
-            album: parsed.album == ScannedTrack.unknownAlbum ? 'WebDAV 曲库' : parsed.album,
+            album: parsed.album == ScannedTrack.unknownAlbum
+                ? 'WebDAV 曲库'
+                : parsed.album,
             duration: 0,
             fileFormat: extension,
             fileSize: item.contentLength,
@@ -270,12 +294,18 @@ class WebDavClient {
         );
 
         if (tracks.length >= maxFiles) {
+          truncated = true;
           break;
         }
       }
     }
 
-    return SourceScanResult(tracks: tracks, skipped: skipped, cancelled: cancelled);
+    return SourceScanResult(
+      tracks: tracks,
+      skipped: skipped,
+      cancelled: cancelled,
+      truncated: truncated,
+    );
   }
 
   /// 规范化目录路径：percent-decode → 去首尾斜杠 → 包成 `/x/y/`。
@@ -285,7 +315,9 @@ class WebDavClient {
   /// `https://dav.jianguoyun.com/dav/` 这类带路径的根目录不受影响）。
   static String normalizePath(String path) {
     final String decoded = _percentDecode(path);
-    final String trimmed = decoded.replaceFirst(RegExp(r'^/+'), '').replaceFirst(RegExp(r'/+$'), '');
+    final String trimmed = decoded
+        .replaceFirst(RegExp(r'^/+'), '')
+        .replaceFirst(RegExp(r'/+$'), '');
     return trimmed.isEmpty ? '/' : '/$trimmed/';
   }
 
@@ -294,7 +326,11 @@ class WebDavClient {
   /// 与旧版的差异：旧版用 `addingPercentEncoding` 手工补编码（含 `%` 时额外放行 `%`），
   /// 这里直接交给 Dart 的 `Uri` —— 它同样只转义非法字符，并且会保留已有的 `%XX` 转义
   /// （不需要 `%` 特例）。无法解析时与旧版一样返回 `null`，调用方跳过该条目。
-  static Uri? resolveItemUrl(String href, {required Uri baseUrl, required Uri currentDirUrl}) {
+  static Uri? resolveItemUrl(
+    String href, {
+    required Uri baseUrl,
+    required Uri currentDirUrl,
+  }) {
     final String clean = href.trim();
     if (clean.isEmpty) {
       return null;
@@ -308,7 +344,9 @@ class WebDavClient {
 
     if (clean.startsWith('/')) {
       final String scheme = baseUrl.scheme.isEmpty ? 'http' : baseUrl.scheme;
-      final String authority = baseUrl.hasPort ? '$scheme://${baseUrl.host}:${baseUrl.port}' : '$scheme://${baseUrl.host}';
+      final String authority = baseUrl.hasPort
+          ? '$scheme://${baseUrl.host}:${baseUrl.port}'
+          : '$scheme://${baseUrl.host}';
       return Uri.tryParse('$authority$clean');
     }
     try {
@@ -342,10 +380,16 @@ class WebDavClient {
   /// 扩展名（不含点），取不到时返回空串（旧版 `pathExtension`）。
   static String fileExtension(String segment) {
     final int dot = segment.lastIndexOf('.');
-    return dot > 0 && dot < segment.length - 1 ? segment.substring(dot + 1) : '';
+    return dot > 0 && dot < segment.length - 1
+        ? segment.substring(dot + 1)
+        : '';
   }
 
-  Future<Response<Uint8List>> _propfind(Uri url, {required String depth, required String authorization}) {
+  Future<Response<Uint8List>> _propfind(
+    Uri url, {
+    required String depth,
+    required String authorization,
+  }) {
     return _dio.request<Uint8List>(
       url.toString(),
       data: propfindBody,
@@ -364,7 +408,8 @@ class WebDavClient {
   }
 
   /// 旧版 `String(data:, encoding: .utf8)`：这里宽松解码，非法字节退化成 U+FFFD。
-  static String _decodeUtf8(List<int> bytes) => utf8.decode(bytes, allowMalformed: true);
+  static String _decodeUtf8(List<int> bytes) =>
+      utf8.decode(bytes, allowMalformed: true);
 
   static String _percentDecode(String value) {
     try {

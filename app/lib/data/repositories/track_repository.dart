@@ -152,9 +152,13 @@ class TrackRepository {
   }
 
   /// 把一次扫描结果合并进库。
+  ///
+  /// [removeMissing] 只能用于完整、权威的来源快照。取消、截断或跳过条目的
+  /// 扫描必须传 false，否则短暂的权限/网络故障会误删曲目及其播放列表引用。
   Future<MergeResult> mergeScan({
     required String sourceId,
     required List<ScannedTrack> scanned,
+    bool removeMissing = true,
   }) {
     return _db.transaction<MergeResult>(() async {
       final List<Track> existing = await (_db.select(
@@ -188,10 +192,12 @@ class TrackRepository {
         }
       }
 
-      final List<String> removedIds = existing
-          .where((Track track) => !seen.contains(track.filePathOrUrl))
-          .map((Track track) => track.id)
-          .toList(growable: false);
+      final List<String> removedIds = removeMissing
+          ? existing
+                .where((Track track) => !seen.contains(track.filePathOrUrl))
+                .map((Track track) => track.id)
+                .toList(growable: false)
+          : const <String>[];
       if (removedIds.isNotEmpty) {
         // 播放列表条目的清理由外键级联完成（见 schema 中的 references）。
         await (_db.delete(
