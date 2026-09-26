@@ -1224,6 +1224,7 @@ Riverpod 因此认定"状态变了"→ **每个 watcher 都重建**：曲库/专
 | Android 正式签名 | `build.gradle.kts` 支持 `app/android/key.properties`（不入库）；没有密钥时退回 debug 签名并打印一行说明。此前 release APK 一律用 debug 密钥签名，而 CI 会把该 APK 发到 GitHub Release |
 | CI | 构建矩阵补 **iOS**（`--no-codesign`，只做"能编过"的验证）；release job 仍只打包四大平台 |
 | CI 触发条件 | `on.push` 此前只写了 `tags: ['v*']` 而没写 `branches` —— GitHub 的规则是"只写 tags 不写 branches 时分支推送不触发"，于是 46e440c 之后 main 上的每次推送都**静默不跑 CI**（Actions 里只剩 tag 推送与手动 dispatch）。补上 `branches: [main]` 后推送即跑；这一条是本次推送时才发现并修复的 |
+| Android 签名脚本 | Kotlin DSL 里不能写全限定名 `java.util.Properties()`：`java` 会先解析到 Gradle 的 java 扩展，脚本直接编译失败（CI 的 Android 构建上暴露）。改为文件顶部 `import java.util.Properties` |
 | 桌面标题 | Linux/Windows 窗口标题改成「听屿」（macOS/Android 早已是中文）；MSVC 源码里的宽串用 `\u` 转义，不依赖源文件编码 |
 | 元数据 | `pubspec.yaml` 的 description 从模板占位改为项目描述 |
 | 清理 | 仓库根目录的 0 字节文件 `0`（未被忽略、`git add -A` 会入库）已删除 |
@@ -1248,6 +1249,22 @@ Riverpod 因此认定"状态变了"→ **每个 watcher 都重建**：曲库/专
   「十一月的萧邦」10/10），专辑页合计从 `--:--` 变成 `43:07`，单曲为 4:12 / 4:05 / 5:17 …
   这些数字与该专辑的实际曲长一致。
 - 迁移在**真实库的副本**上验证（user_version 1→2、四个索引就位、196 首与歌单引用不动），再对真实库执行。
+
+### 31.9.1 首次真正跑起来的 CI（2026-09-26）
+
+修好触发条件后，CI 第一次完整跑了这套改动（run 36228957719），逐项结果：
+
+| job | 结果 | 意义 |
+|---|---|---|
+| analyze + test（Ubuntu） | ✅ | ASCII 路径下 `flutter analyze` 零告警、`flutter test` 233 项全绿、drift 生成代码无漂移 |
+| build (macos) | ✅ | |
+| build (ios, `--no-codesign`) | ✅ | 本机（Linux）无法验证的那一项，就此补上：iOS 侧**能编过** |
+| build (windows) | ✅ | |
+| build (linux) | ✅ | |
+| build (android) | ❌ → 已修 | 暴露了 Android 签名脚本的 Kotlin DSL 写法错误（见下表），修复后复跑 |
+| GitHub Release | ⏭️ skipped | 非 tag 推送，符合预期 |
+
+结论：除了 Android 那处脚本写法，其余平台与测试链路在这次改动后都是绿的；Android 修好后复跑通过。
 
 ### 31.10 未做（明确记录，避免"以为做了"）
 
