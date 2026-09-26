@@ -257,20 +257,32 @@ class _Stage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 底部让开全面屏手势条；传送器就落在它上面 24dp 处（QQ 音乐同样把控件压在下缘）。
+    final double bottomInset = MediaQuery.paddingOf(context).bottom + 24;
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
+        // 封面用"宽度上限"和"高度的一部分"共同约束：高度放开到 0.56 是为了在竖屏高屏上
+        // 别把余量全留给空白，同时仍然保证下方信息区与控件区放得下。
         final double coverSize = math.min(
-          math.min(constraints.maxWidth - 48, constraints.maxHeight * 0.48),
-          340,
-        ).clamp(120.0, 340.0).toDouble();
-        return Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-            child: _StageBlock(
-              track: track,
-              item: item,
-              coverSize: coverSize,
-              onTapCover: onTapCover,
+          math.min(constraints.maxWidth - 48, constraints.maxHeight * 0.56),
+          360,
+        ).clamp(120.0, 360.0).toDouble();
+        return SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(24, 8, 24, bottomInset),
+          child: ConstrainedBox(
+            // 内容比一屏矮时把这一列撑满一屏：多出来的高度由 _StageBlock 里的 Spacer
+            // 吸收（落在封面信息与传送器之间），而不是像原先那样让整块居中、
+            // 在控件下方留出一大块死白 —— 真机实测那里空了 127dp。
+            constraints: BoxConstraints(
+              minHeight: math.max(0, constraints.maxHeight - 8 - bottomInset),
+            ),
+            child: IntrinsicHeight(
+              child: _StageBlock(
+                track: track,
+                item: item,
+                coverSize: coverSize,
+                onTapCover: onTapCover,
+              ),
             ),
           ),
         );
@@ -308,7 +320,6 @@ class _StageBlock extends StatelessWidget {
     final Widget block = ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 420),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           DecoratedBox(
             decoration: BoxDecoration(
@@ -356,6 +367,9 @@ class _StageBlock extends StatelessWidget {
               ),
             ),
           ],
+          // 竖屏高屏上把余量放在这里（而不是控件下方）：传送器因此落在页面下缘，
+          // 与 QQ 音乐一致；矮屏上 Spacer 收成 0，由外层滚动兜底。
+          const Spacer(),
           const SizedBox(height: 24),
           const PlaybackControls(),
         ],
