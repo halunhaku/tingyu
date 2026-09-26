@@ -52,7 +52,22 @@ static void my_application_activate(GApplication* application) {
     gtk_window_set_title(window, "听屿");
   }
 
-  gtk_window_set_default_size(window, 1280, 720);
+  // 窗口尺寸；`TINGYU_DEBUG_WINDOW=390x844` 可以按手机尺寸起窗 ——
+  // 正在播放页的窄屏布局（`width < 720`）与手机外壳的排版能在桌面上直接看/截图，
+  // 不必等真机。解析失败或未设置时用默认尺寸。
+  int window_width = 1280;
+  int window_height = 720;
+  const gchar* debug_size = g_getenv("TINGYU_DEBUG_WINDOW");
+  if (debug_size != nullptr) {
+    int parsed_width = 0;
+    int parsed_height = 0;
+    if (sscanf(debug_size, "%dx%d", &parsed_width, &parsed_height) == 2 &&
+        parsed_width > 0 && parsed_height > 0) {
+      window_width = parsed_width;
+      window_height = parsed_height;
+    }
+  }
+  gtk_window_set_default_size(window, window_width, window_height);
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(

@@ -172,6 +172,8 @@ keyPassword=…
 | `TINGYU_DEBUG_SCAN_DIR=<目录>` | 在真实进程里跑一次「扫描 → 合并入库」并打印结果 |
 | `TINGYU_DEBUG_LEGACY_JSON=<文件>` | 导入旧版导出的曲库 JSON |
 | `TINGYU_DEBUG_SOURCES=<a,b,...>` | 启动即载入队列并播放，便于脚本化验证播放链路 |
+| `TINGYU_DEBUG_WINDOW=390x844` | 按指定尺寸起窗（Linux runner）；配合下一项可在桌面上核对手机排版 |
+| `TINGYU_DEBUG_MOBILE_SHELL=1` | 在桌面上强制走手机外壳（底部 Tab + 迷你条），用于手机排版截图 |
 
 ### CI
 `.github/workflows/flutter.yml`：推到 `main` 或改动 `app/**` 的 PR 在 Ubuntu 上跑

@@ -357,7 +357,7 @@ class _StageBlock extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 24),
-          const PlaybackControls(large: true),
+          const PlaybackControls(),
         ],
       ),
     );

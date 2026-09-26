@@ -142,7 +142,12 @@ class _TingyuAppState extends State<TingyuApp> {
         ? Platform.environment['TINGYU_DEBUG_ROUTE']!.trim()
         : '/library',
     // 与旧版一致：移动端与桌面端是两套布局（移动端底部 Tab + 迷你播放条）。
-    mobile: Platform.isAndroid || Platform.isIOS,
+    // `TINGYU_DEBUG_MOBILE_SHELL=1` 在桌面上强制走手机外壳：配合
+    // `TINGYU_DEBUG_WINDOW=390x844` 就能在台式机上核对手机排版与截图（真机回归的补充）。
+    mobile:
+        Platform.isAndroid ||
+        Platform.isIOS ||
+        Platform.environment['TINGYU_DEBUG_MOBILE_SHELL'] == '1',
   );
 
   @override
