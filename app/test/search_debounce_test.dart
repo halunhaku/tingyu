@@ -190,4 +190,33 @@ void main() {
     await pumpEventQueue();
     expect(service.calls, 1, reason: '释放后不该再发第二首的请求');
   });
+  test('自动补全：一次最多补上限数量的曲目', () async {
+    final TingyuDatabase db = openTestDatabase();
+    addTearDown(db.close);
+    final TrackRepository tracks = TrackRepository(db);
+    // 100 首：封面、歌词、时长全缺（夸克整库就是这种状态）。
+    await tracks.mergeScan(
+      sourceId: 's',
+      scanned: <ScannedTrack>[
+        for (int i = 0; i < 100; i++) _scan('t$i'),
+      ],
+    );
+
+    final _CountingService service = _CountingService(tracks: tracks);
+    final ProviderContainer container = ProviderContainer(
+      overrides: [
+        databaseProvider.overrideWithValue(db),
+        enrichmentServiceProvider.overrideWithValue(service),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(autoLibraryEnrichmentProvider.future);
+
+    expect(
+      service.calls,
+      autoEnrichmentLimit,
+      reason: '一次会话最多补 $autoEnrichmentLimit 首，剩下的留给下次或手动补全',
+    );
+  });
 }

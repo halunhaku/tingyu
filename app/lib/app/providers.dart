@@ -366,6 +366,10 @@ final Provider<_SessionOnceGuard> _autoEnrichmentGuardProvider =
     Provider<_SessionOnceGuard>((Ref ref) => _SessionOnceGuard());
 
 /// 首次打开曲库时自动遍历缺失元数据的歌曲，与原生 macOS 的 onAppear 行为一致。
+///
+/// 一次最多补 [autoEnrichmentLimit] 首：缺时长的曲目（夸克 / WebDAV 整库都没有时长）
+/// 会让待办从几十条涨到几百条，串行跑完既久又是对上游的一轮密集请求。
+/// 剩下的留给下次会话或用户在来源页手动「补全」。
 final FutureProvider<void> autoLibraryEnrichmentProvider = FutureProvider<void>(
   (Ref ref) async {
     if (!ref.watch(_autoEnrichmentGuardProvider).take()) {
@@ -379,12 +383,21 @@ final FutureProvider<void> autoLibraryEnrichmentProvider = FutureProvider<void>(
       // 没有缺失元数据的歌：连 service 都不用建（它持有各家网络客户端）。
       return;
     }
+    // 封面 → 歌词 → 时长：前者是列表里最显眼的缺失，后者只影响一个数字。
+    pending.sort(
+      (Track a, Track b) => _enrichmentPriority(a).compareTo(
+        _enrichmentPriority(b),
+      ),
+    );
+    final List<Track> batch = pending
+        .take(autoEnrichmentLimit)
+        .toList(growable: false);
     final LibraryEnrichmentService service = ref.watch(
       enrichmentServiceProvider,
     );
     bool cancelled = false;
     ref.onDispose(() => cancelled = true);
-    for (final Track track in pending) {
+    for (final Track track in batch) {
       if (cancelled) {
         // provider 已释放（页面离开 / 容器销毁）：剩下的曲目不再发请求。
         return;
@@ -397,6 +410,20 @@ final FutureProvider<void> autoLibraryEnrichmentProvider = FutureProvider<void>(
     }
   },
 );
+
+/// 自动补全的每会话上限。
+const int autoEnrichmentLimit = 60;
+
+/// 越小越先补：先补列表里看得见的（封面），再补歌词，最后补时长。
+int _enrichmentPriority(Track track) {
+  if (track.coverArtPath == null && track.coverArtUrl == null) {
+    return 0;
+  }
+  if (track.lyrics == null || track.lyrics!.isEmpty) {
+    return 1;
+  }
+  return 2;
+}
 
 final Provider<ArtistAvatarStore> artistAvatarStoreProvider =
     Provider<ArtistAvatarStore>(
@@ -472,4 +499,7 @@ bool trackNeedsEnrichment(Track track) =>
     track.coverArtPath == null ||
     (track.lyrics == null || track.lyrics!.isEmpty) ||
     track.artist == '未知艺术家' ||
-    isPlaceholderAlbum(track.album);
+    isPlaceholderAlbum(track.album) ||
+    // 时长为 0：夸克 / WebDAV 的目录接口不报时长，搜索来源的候选里带 ——
+    // 不补的话整库都显示 `--:--`（播放时也能补，但那只覆盖听过的歌）。
+    track.duration <= 0;

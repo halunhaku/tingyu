@@ -93,6 +93,8 @@ class LibraryEnrichmentService {
         lyrics: track.lyrics,
         hasCover: track.coverArtPath != null || track.coverArtUrl != null,
         duration: Duration(milliseconds: (track.duration * 1000).round()),
+        // 库里那一行没有时长（夸克 / WebDAV 的目录接口不报）：允许用搜索结果补上。
+        fillMissingDuration: track.duration <= 0,
       ),
     );
 
@@ -105,6 +107,12 @@ class LibraryEnrichmentService {
     String? coverArtPath;
     if (result.coverBytes != null) {
       coverArtPath = await covers.save(result.coverBytes!);
+    }
+
+    // 时长只在库里还没有时写入（`updateDurationIfUnknown` 自带这个判断），
+    // 这样上游搜索结果的时长不会盖掉播放时从解码器拿到的真实时长。
+    if (result.duration != null) {
+      await tracks.updateDurationIfUnknown(track.id, result.duration!);
     }
 
     await tracks.applyEnrichment(

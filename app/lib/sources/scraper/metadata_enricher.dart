@@ -12,6 +12,7 @@ class EnrichmentInput {
     this.lyrics,
     this.hasCover = false,
     this.duration = Duration.zero,
+    this.fillMissingDuration = false,
   });
 
   /// 文件名解析出来的标题（可能是"歌手 - 歌名"这类脏字符串）。
@@ -27,6 +28,13 @@ class EnrichmentInput {
   final bool hasCover;
 
   final Duration duration;
+
+  /// 允许用搜索来源的时长补齐"库里还没有时长"的曲目。
+  ///
+  /// 由调用方显式要求（数据层知道库里那一行是不是 0），而不是从 [duration] 的默认值
+  /// 推断：`duration` 缺省为 0 是"这次不关心时长"，不能当成"这首歌时长未知"，
+  /// 否则元数据齐备的曲目也会因为时长缺省而多打一次网络请求。
+  final bool fillMissingDuration;
 }
 
 /// 富化结果：只描述"该写回什么"，不碰数据库与文件系统。
@@ -38,6 +46,7 @@ class EnrichmentResult {
     this.lyrics,
     this.coverUrl,
     this.coverBytes,
+    this.duration,
     this.isSkipped = false,
   });
 
@@ -56,6 +65,9 @@ class EnrichmentResult {
 
   final Uint8List? coverBytes;
 
+  /// 匹配到的曲目时长；仅在库里还没有时长（夸克 / WebDAV 的目录接口不报时长）时给出。
+  final Duration? duration;
+
   final bool isSkipped;
 
   bool get hasChanges =>
@@ -63,7 +75,8 @@ class EnrichmentResult {
       artist != null ||
       album != null ||
       lyrics != null ||
-      coverBytes != null;
+      coverBytes != null ||
+      duration != null;
 }
 
 /// 元数据富化编排（对齐 `Sources/Services/Scraper/MetadataEnricher.swift` 的第 1–5 步）。
@@ -125,8 +138,12 @@ class MetadataEnricher {
     }
 
     final String? title = _looksMessy(input.title) ? queryTitle : null;
+    // 时长未知也算"需要联网"：夸克/WebDAV 的目录接口不报时长，入库只能写 0，
+    // 而搜索来源的候选里带时长 —— 这是不播放也能补齐时长的唯一途径。
+    final bool needsDuration = input.fillMissingDuration;
     final bool needsSearch =
         !input.hasCover ||
+        needsDuration ||
         _placeholderArtist(input.artist) ||
         _placeholderAlbum(input.album);
     if (!needsSearch && input.hasCover && (input.lyrics?.isNotEmpty ?? false)) {
@@ -140,8 +157,9 @@ class MetadataEnricher {
 
     Uint8List? coverBytes;
     String? coverUrl;
+    Duration? duration;
 
-    // 2. 主搜索来源：歌手 / 专辑 / 封面
+    // 2. 主搜索来源：歌手 / 专辑 / 封面 / 时长
     if (needsSearch) {
       final MetadataCandidate? candidate = await searcher.search(
         queryTitle,
@@ -157,6 +175,11 @@ class MetadataEnricher {
         if (!input.hasCover && candidate.coverUrl != null) {
           coverBytes = await downloader.download(candidate.coverUrl!);
           coverUrl = candidate.coverUrl;
+        }
+        // 只在库里还没时长时补：已有真实时长的曲目不该被上游的时长覆盖
+        // （播放时从解码器拿到的那份才是准的）。
+        if (needsDuration && candidate.duration > Duration.zero) {
+          duration = candidate.duration;
         }
       }
     }
@@ -235,6 +258,7 @@ class MetadataEnricher {
           : null,
       coverUrl: coverUrl,
       coverBytes: coverBytes,
+      duration: duration,
     );
   }
 

@@ -336,4 +336,48 @@ void main() {
     expect(result.artist, '周杰伦');
     expect(result.lyrics, '[00:01.00]歌词');
   });
+  test('时长未知且被显式要求时才用候选时长补齐', () async {
+    final _FakeSearcher searcher = _FakeSearcher(
+      const MetadataCandidate(
+        provider: 'qqmusic',
+        title: '晴天',
+        artist: '周杰伦',
+        album: '叶惠美',
+        duration: Duration(minutes: 4, seconds: 29),
+      ),
+    );
+    final MetadataEnricher enricher = MetadataEnricher(
+      searcher: searcher,
+      lyricsProvider: _FakeLyricsProvider('词'),
+      downloader: _downloaderReturning(_FakeHttpAdapter(coverBytes)),
+    );
+
+    // 库里已经有时长：不覆盖（播放时从解码器拿到的那份才是准的）。
+    final EnrichmentResult keeps = await enricher.enrich(
+      const EnrichmentInput(
+        title: '晴天',
+        artist: '周杰伦',
+        album: '叶惠美',
+        hasCover: true,
+        lyrics: '词',
+        duration: Duration(minutes: 4, seconds: 30),
+      ),
+    );
+    expect(keeps.duration, isNull);
+    expect(searcher.calls, 0, reason: '元数据齐备且不要求补时长时依旧不出网');
+
+    // 库里没有时长（夸克/WebDAV 的目录接口不报）：补上。
+    final EnrichmentResult fills = await enricher.enrich(
+      const EnrichmentInput(
+        title: '晴天',
+        artist: '周杰伦',
+        album: '叶惠美',
+        hasCover: true,
+        lyrics: '词',
+        fillMissingDuration: true,
+      ),
+    );
+    expect(fills.duration, const Duration(minutes: 4, seconds: 29));
+    expect(fills.hasChanges, isTrue);
+  });
 }
