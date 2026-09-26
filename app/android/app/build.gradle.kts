@@ -1,18 +1,26 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// 正式签名：密钥不入库，从 `app/android/key.properties`（已在 .gitignore 中）或
-// 环境变量读。没有密钥时退回 debug 签名 —— 让 `flutter run --release` 与 CI 仍能跑通，
+// 正式签名：密钥不入库，从 `app/android/key.properties`（已在 .gitignore 中）读。
+// 没有密钥时退回 debug 签名 —— 让 `flutter run --release` 与 CI 仍能跑通，
 // 但产物不能用于分发（debug 密钥一泄露就能被人签名覆盖安装）。
-val keystoreProperties = java.util.Properties()
+//
+// 必须 `import java.util.Properties`，不能写 `java.util.Properties()`：
+// 在 Kotlin DSL 脚本里 `java` 会先解析到 Gradle 的 java 扩展而不是包名，
+// 写成全限定名会直接编译失败（CI 的 Android 构建上踩过）。
+val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 val hasReleaseKeystore = keystorePropertiesFile.exists()
 
 if (hasReleaseKeystore) {
-    keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
+    keystorePropertiesFile.inputStream().use { stream ->
+        keystoreProperties.load(stream)
+    }
 }
 
 android {
