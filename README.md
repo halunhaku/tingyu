@@ -158,7 +158,12 @@ keyPassword=…
 ```
 
 有该文件时 `flutter build apk --release` 用正式密钥签名；没有时退回 debug 签名并打印一行提示
-（产物仍可用于本机 `flutter run --release`，但不能分发）。
+（产物仍可用于本机 `flutter run --release`）。
+
+> ⚠️ **GitHub Release 里的 APK 是 debug 签名**：CI 没有密钥，按上面的规则退回 debug 签名。
+> 它能装能用，但（1）不适合正式分发，（2）将来换成正式密钥后无法覆盖安装（签名不一致，
+> 用户需先卸载）。要发正式签名的包，请在本机放好 `key.properties` 后构建 APK，手动替换
+> Release 里的那一个。macOS / Windows / Linux 产物不受影响。
 
 ### 调试入口（`main.dart` 读取的环境变量）
 | 变量 | 作用 |
