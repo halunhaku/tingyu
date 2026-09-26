@@ -1266,6 +1266,11 @@ Riverpod 因此认定"状态变了"→ **每个 watcher 都重建**：曲库/专
 
 结论：除了 Android 那处脚本写法，其余平台与测试链路在这次改动后都是绿的；Android 修好后复跑通过。
 
+随后又把已弃用的 action 升到当前大版本（checkout v4→v7、setup-java v4→v6、upload-artifact v4→v7、
+download-artifact v4→v8；`softprops/action-gh-release` 留在 v2，它只在 tag 推送时运行、合并前无法验证），
+复跑（run 36229962216）**六个 job 全绿、零 annotation**：Node 20 的弃用提示消失，
+`analyze + test` 里的三件事（drift 生成代码无漂移 / `flutter analyze` / `flutter test`）逐条 ✓。
+
 ### 31.10 未做（明确记录，避免"以为做了"）
 
 - **Windows / Linux 的全局键盘快捷键**：桌面快捷键目前只有 macOS 菜单栏。做成跨平台需要
