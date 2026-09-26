@@ -1223,6 +1223,7 @@ Riverpod 因此认定"状态变了"→ **每个 watcher 都重建**：曲库/专
 |---|---|
 | Android 正式签名 | `build.gradle.kts` 支持 `app/android/key.properties`（不入库）；没有密钥时退回 debug 签名并打印一行说明。此前 release APK 一律用 debug 密钥签名，而 CI 会把该 APK 发到 GitHub Release |
 | CI | 构建矩阵补 **iOS**（`--no-codesign`，只做"能编过"的验证）；release job 仍只打包四大平台 |
+| CI 触发条件 | `on.push` 此前只写了 `tags: ['v*']` 而没写 `branches` —— GitHub 的规则是"只写 tags 不写 branches 时分支推送不触发"，于是 46e440c 之后 main 上的每次推送都**静默不跑 CI**（Actions 里只剩 tag 推送与手动 dispatch）。补上 `branches: [main]` 后推送即跑；这一条是本次推送时才发现并修复的 |
 | 桌面标题 | Linux/Windows 窗口标题改成「听屿」（macOS/Android 早已是中文）；MSVC 源码里的宽串用 `\u` 转义，不依赖源文件编码 |
 | 元数据 | `pubspec.yaml` 的 description 从模板占位改为项目描述 |
 | 清理 | 仓库根目录的 0 字节文件 `0`（未被忽略、`git add -A` 会入库）已删除 |

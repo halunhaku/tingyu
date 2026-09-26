@@ -169,9 +169,13 @@ keyPassword=…
 | `TINGYU_DEBUG_SOURCES=<a,b,...>` | 启动即载入队列并播放，便于脚本化验证播放链路 |
 
 ### CI
-`.github/workflows/flutter.yml`：改动 `app/**` 时在 Ubuntu 上跑 `dart run build_runner build` 校验 drift
-生成代码无漂移、`flutter analyze` 与 `flutter test`，随后跑构建矩阵 —— macOS / Windows / Linux / Android
-的 `--release` 产物，外加 iOS 的 `--no-codesign` 编译校验（未签名产物不进入 GitHub Release）。
+`.github/workflows/flutter.yml`：推到 `main` 或改动 `app/**` 的 PR 在 Ubuntu 上跑
+`dart run build_runner build` 校验 drift 生成代码无漂移、`flutter analyze` 与 `flutter test`，
+随后跑构建矩阵 —— macOS / Windows / Linux / Android 的 `--release` 产物，外加 iOS 的
+`--no-codesign` 编译校验（未签名产物不进入 GitHub Release）；推 `v*` tag 时额外发 Release。
+
+> 注意 `on.push` 必须同时写 `branches` 与 `tags`：只写 `tags` 会让分支推送**完全不触发**
+> 这个 workflow（GitHub 的行为，已在 §31.8 记录踩坑经过）。
 
 > 本机跑 `flutter analyze` 时，若仓库路径含非 ASCII 字符，analysis server 的 LSP 通道会解析崩溃；
 > 用 `dart analyze` 得到同样的结论。
