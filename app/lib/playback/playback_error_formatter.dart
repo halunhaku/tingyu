@@ -71,13 +71,29 @@ abstract final class PlaybackErrorFormatter {
     final String raw = _extractRawMessage(error);
     final String clean = _cleanTechnicalPrefix(raw);
 
-    // 4. 若剥离后自身已包含明确的中文描述，直接展示，避免覆盖上游业务语义
+    // 4. 归一化后的文本载荷
+    final String lower = clean.toLowerCase();
+
+    // libmpv 的报错常是「英文句式 + 本地化 errno 尾巴」，例如
+    // `Cannot open file '/x.mp3': 没有那个文件或目录` —— 整体含中文，若先走下面的
+    // 「已含中文则直接展示」就会原样透出，读起来中英混杂。这里按前缀先行归一。
+    if (lower.contains('cannot open file') ||
+        lower.contains('failed to open')) {
+      if (lower.contains('no such file') || clean.contains('没有那个文件')) {
+        return _notFound;
+      }
+      if (lower.contains('permission denied') || clean.contains('权限')) {
+        return _permissionDenied;
+      }
+      return _sourceError;
+    }
+
+    // 自身已包含明确的中文描述，直接展示，避免覆盖上游业务语义。
     if (_containsChinese(clean)) {
       return clean;
     }
 
     // 5. 英文/底层技术错误分类映射
-    final String lower = clean.toLowerCase();
 
     // 明文 HTTP 拦截
     if (lower.contains('cleartext') && lower.contains('not permitted')) {

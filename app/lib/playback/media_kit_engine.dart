@@ -39,6 +39,9 @@ final class MediaKitEngine extends PlaybackEngineBase {
   /// 最近一次未恢复的失败；装载成功或重新出声后清空。
   PlaybackFailure? _failure;
 
+  /// 上一次同步时的播放位置，用于判断「音频确实在推进」。
+  Duration _lastPosition = Duration.zero;
+
   @override
   List<PlaybackItem> get items => _items;
 
@@ -55,6 +58,7 @@ final class MediaKitEngine extends PlaybackEngineBase {
   Future<void> setQueue(List<PlaybackItem> items, {int startIndex = 0}) async {
     _items = List<PlaybackItem>.unmodifiable(items);
     _failure = null;
+    _lastPosition = Duration.zero;
     try {
       await _player.open(
         Playlist(
@@ -74,6 +78,7 @@ final class MediaKitEngine extends PlaybackEngineBase {
   Future<void> addToQueue(PlaybackItem item) async {
     _items = List<PlaybackItem>.unmodifiable(<PlaybackItem>[..._items, item]);
     _failure = null;
+    _lastPosition = Duration.zero;
     try {
       await _player.add(_toMedia(item));
     } on Object catch (error) {
@@ -129,8 +134,15 @@ final class MediaKitEngine extends PlaybackEngineBase {
 
   void _sync() {
     final PlayerState state = _player.state;
-    // 有确定时长说明当前媒体确实装载成功，之前那次失败可以撤下来了。
-    if (state.duration > Duration.zero) {
+    // 撤下失败提示的唯一依据是「确实重新出声了」：正在播放且播放位置在前进。
+    //
+    // 不能用「duration > 0」判断 —— mpv 装载失败时 state.duration 还停留在上一首，
+    // 于是 _fail() 里紧接着的这次 _sync() 会立刻把刚记下的失败抹掉：直链过期、
+    // 中途断网、解码失败在桌面端全部静默，用户只看到"点了没反应/自动跳下一首"。
+    // 也不能只看 playing：装载失败后它仍可能报 true。
+    final bool progressing = state.playing && state.position > _lastPosition;
+    _lastPosition = state.position;
+    if (_failure != null && progressing) {
       _failure = null;
     }
     emit(

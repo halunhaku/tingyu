@@ -439,10 +439,13 @@ void main() {
         '/dav/Music/',
         '/dav/Music/Deep/',
       ]);
-      expect(result.skipped, 0);
+      // /other/loose.mp3 落在根目录之外（服务端返回了兄弟目录条目）：这类条目
+      // 无法映射进本次快照，必须计入 skipped —— 否则扫描仍被判为权威，一次
+      // 「成功」的同步就会按这份不完整的清单删掉整个来源的曲目。
+      expect(result.skipped, 1);
       expect(result.cancelled, isFalse);
       expect(result.truncated, isFalse);
-      expect(result.isAuthoritative, isTrue);
+      expect(result.isAuthoritative, isFalse);
 
       expect(
         result.tracks.map((ScannedTrack track) => track.filePathOrUrl).toList(),
@@ -853,5 +856,71 @@ void main() {
         'https://dav.example.com:8443/dav/%E6%99%B4%E5%A4%A9.mp3',
       );
     });
+  });
+
+  test('子目录 403 → 跳过该目录但不中断整次扫描', () async {
+    final _FakeAdapter adapter = _FakeAdapter(<String, _FakeResponse>{
+      '/dav/': _FakeResponse(
+        200,
+        _multistatus(<String>[
+          _entry(href: '/dav/', displayName: '/dav/', collection: true),
+          _entry(
+            href: '/dav/Private/',
+            displayName: 'Private',
+            collection: true,
+          ),
+          _entry(
+            href: '/dav/ok.mp3',
+            displayName: 'ok.mp3',
+            length: 10,
+            etag: 'ok',
+          ),
+        ]),
+      ),
+      '/dav/Private/': const _FakeResponse(403, ''),
+    });
+
+    final SourceScanResult result = await _scan(_client(adapter));
+
+    expect(
+      result.tracks.map((ScannedTrack track) => track.title).toList(),
+      <String>['ok'],
+      reason: '一个受限子目录不应让整个来源的同步永久失败',
+    );
+    expect(result.skipped, 1);
+    expect(result.isAuthoritative, isFalse);
+  });
+
+  test('丢弃无法映射到根目录内的条目时计入 skipped，扫描不再被判为权威', () async {
+    final _FakeAdapter adapter = _FakeAdapter(<String, _FakeResponse>{
+      '/dav/': _FakeResponse(
+        200,
+        _multistatus(<String>[
+          _entry(href: '/dav/', displayName: '/dav/', collection: true),
+          // 反向代理把前缀重写掉：解析出来落在根目录之外，只能丢弃
+          _entry(
+            href: '/Music/ghost.mp3',
+            displayName: 'ghost.mp3',
+            length: 10,
+            etag: 'g',
+          ),
+          _entry(
+            href: '/dav/ok.mp3',
+            displayName: 'ok.mp3',
+            length: 10,
+            etag: 'ok',
+          ),
+        ]),
+      ),
+    });
+
+    final SourceScanResult result = await _scan(_client(adapter));
+
+    expect(
+      result.tracks.map((ScannedTrack track) => track.title).toList(),
+      <String>['ok'],
+    );
+    expect(result.skipped, 1, reason: '被静默丢弃的条目必须计数，否则零结果的「成功同步」会触发整库误删');
+    expect(result.isAuthoritative, isFalse);
   });
 }

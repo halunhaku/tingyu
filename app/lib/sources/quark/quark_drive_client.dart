@@ -62,6 +62,17 @@ class QuarkParseError extends QuarkException {
   QuarkParseError(String detail) : super('夸克数据解析失败: $detail');
 }
 
+/// 一次目录列举的结果。
+class QuarkFolderListing {
+  const QuarkFolderListing(this.items, {this.complete = true});
+
+  final List<QuarkItem> items;
+
+  /// 是否把这个目录的条目**全部**取到了。false 表示触到了翻页上限、服务端还有
+  /// 没取回的页；调用方必须按「非完整快照」处理，否则会把没枚举到的曲目当成已删除。
+  final bool complete;
+}
+
 /// 一次递归扫描的结果。
 class QuarkScanResult {
   const QuarkScanResult(
@@ -208,15 +219,44 @@ class QuarkDriveClient {
 
   // MARK: - 目录与文件列举
 
-  /// 列出目录内容；`fid == '0'` 表示根目录。
+  /// 单页条目数：服务端上限，改动前需确认接口仍支持。
+  static const int _pageSize = 100;
+
+  /// 单个目录最多翻 [QuarkFolderListing] 多少页，防止服务端始终返回满页时死循环。
+  static const int _maxPages = 100;
+
+  /// 列出目录内容（自动翻页）；`fid == '0'` 表示根目录。
   ///
-  /// 结构不符（缺 `data.list`、非 JSON）时返回空列表，与旧版一致。
-  Future<List<QuarkItem>> listFolder({
+  /// 旧实现只请求 `_page=1`：目录里第 `_pageSize` 条之后的条目永远拿不到，而扫描
+  /// 侧又把结果当成权威快照，于是「同步成功」既会少歌、又会把已入库的曲目判为已删除。
+  /// 结构不符（缺 `data.list`、非 JSON）时按空列表处理，与旧版一致。
+  Future<QuarkFolderListing> listFolder({
     String fid = '0',
     required QuarkSession session,
   }) async {
+    final List<QuarkItem> items = <QuarkItem>[];
+    for (int page = 1; page <= _maxPages; page++) {
+      final List<QuarkItem> pageItems = await _listFolderPage(
+        fid: fid,
+        page: page,
+        session: session,
+      );
+      items.addAll(pageItems);
+      if (pageItems.length < _pageSize) {
+        return QuarkFolderListing(items);
+      }
+    }
+    // 翻满上限仍是整页：目录比我们愿意取回的更大，如实标记为不完整。
+    return QuarkFolderListing(items, complete: false);
+  }
+
+  Future<List<QuarkItem>> _listFolderPage({
+    required String fid,
+    required int page,
+    required QuarkSession session,
+  }) async {
     final String url =
-        '$_pcHost/1/clouddrive/file/sort?pr=ucpro&fr=pc&uc_param_str=&pdir_fid=$fid&_page=1&_size=100&_fetch_total=1&_sort=file_type:asc,file_name:asc';
+        '$_pcHost/1/clouddrive/file/sort?pr=ucpro&fr=pc&uc_param_str=&pdir_fid=$fid&_page=$page&_size=$_pageSize&_fetch_total=1&_sort=file_type:asc,file_name:asc';
 
     final _QuarkResponse response = await _send(url, session: session);
     if (response.statusCode == 401 || response.statusCode == 403) {
@@ -319,12 +359,16 @@ class QuarkDriveClient {
         continue;
       }
 
-      final List<QuarkItem> items = await listFolder(
+      final QuarkFolderListing listing = await listFolder(
         fid: currentFid,
         session: session,
       );
+      if (!listing.complete) {
+        // 目录没枚举完：本次结果不是完整快照，绝不能据此删除已入库曲目。
+        truncated = true;
+      }
 
-      for (final QuarkItem item in items) {
+      for (final QuarkItem item in listing.items) {
         if (item.isFolder) {
           if (depth + 1 <= maxDepth && !visitedFids.contains(item.id)) {
             queue.add((item.id, depth + 1));

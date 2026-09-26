@@ -341,7 +341,8 @@ Future<void> _runVerifyHarness(TingyuAudioHandler handler) async {
     (snapshot) => debugPrint(
       '[snapshot] engine=${handler.engineName} processing=${snapshot.processing.name} '
       'playing=${snapshot.playing} position=${snapshot.position.inMilliseconds}ms '
-      'duration=${snapshot.duration.inMilliseconds}ms index=${snapshot.index}',
+      'duration=${snapshot.duration.inMilliseconds}ms index=${snapshot.index} '
+      'failure=${snapshot.failure?.message ?? '-'}',
     ),
   );
 

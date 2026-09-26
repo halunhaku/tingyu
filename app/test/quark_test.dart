@@ -256,10 +256,10 @@ void main() {
       requests: requests,
     );
 
-    final List<QuarkItem> items = await client.listFolder(
+    final List<QuarkItem> items = (await client.listFolder(
       fid: 'root-fid',
       session: _session(),
-    );
+    )).items;
 
     expect(items.map((QuarkItem i) => i.id).toList(), <String>[
       'dir-1',
@@ -302,12 +302,20 @@ void main() {
       await _buildClient(
         (_) async => _jsonBody(<String, Object?>{'status': 200}),
       ).listFolder(session: _session()),
-      isEmpty,
+      isA<QuarkFolderListing>().having(
+        (QuarkFolderListing l) => l.items,
+        'items',
+        isEmpty,
+      ),
     );
     expect(
       await _buildClient((_) async => ResponseBody.fromString('not json', 200))
           .listFolder(session: _session()),
-      isEmpty,
+      isA<QuarkFolderListing>().having(
+        (QuarkFolderListing l) => l.items,
+        'items',
+        isEmpty,
+      ),
     );
   });
 
@@ -840,5 +848,56 @@ void main() {
       throwsA(isA<QuarkUnauthenticated>()),
     );
     expect(adapter.sourceId, 'src-1');
+  });
+
+  test('listFolder 翻页取全：超过单页上限时继续请求下一页', () async {
+    final List<RequestOptions> requests = <RequestOptions>[];
+    final QuarkDriveClient client = _buildClient((
+      RequestOptions options,
+    ) async {
+      final String page = options.uri.queryParameters['_page'] ?? '1';
+      final List<Map<String, Object?>> list = page == '1'
+          ? List<Map<String, Object?>>.generate(
+              100,
+              (int i) => <String, Object?>{
+                'fid': 'p1-$i',
+                'file_name': 'p1-$i.mp3',
+                'file_type': 1,
+                'size': 1,
+              },
+            )
+          : <Map<String, Object?>>[
+              <String, Object?>{
+                'fid': 'p2-0',
+                'file_name': 'p2-0.mp3',
+                'file_type': 1,
+                'size': 1,
+              },
+            ];
+      return _jsonBody(<String, Object?>{
+        'status': 200,
+        'data': <String, Object?>{
+          'list': list,
+          'metadata': <String, Object?>{'_total': 101},
+        },
+      });
+    }, requests: requests);
+
+    final List<QuarkItem> items = (await client.listFolder(
+      fid: '0',
+      session: _session(),
+    )).items;
+
+    expect(
+      items,
+      hasLength(101),
+      reason: '单页只有 100 条时必须继续翻页，否则大目录里第 101 条以后的曲目被静默丢弃',
+    );
+    expect(
+      requests
+          .map((RequestOptions r) => r.uri.queryParameters['_page'])
+          .toList(),
+      <String>['1', '2'],
+    );
   });
 }

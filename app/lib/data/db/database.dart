@@ -55,23 +55,8 @@ class TingyuDatabase extends _$TingyuDatabase {
         }
       }
 
-      // 兼容与迁移：若存在旧版 sources 表，无缝迁移至 music_sources
-      if (existingTables.contains('sources')) {
-        await customStatement('''
-              INSERT OR IGNORE INTO music_sources (
-                id, name, kind, local_folder_path,
-                webdav_url, webdav_username, webdav_root_path,
-                quark_folder_fid, quark_account_name,
-                sync_status, last_synced_at, track_count
-              )
-              SELECT
-                id, name, kind, local_folder_path,
-                webdav_url, webdav_username, webdav_root_path,
-                quark_folder_fid, quark_account_name,
-                sync_status, last_synced_at, track_count
-              FROM sources
-            ''');
-      }
+      // 兼容与迁移：若存在旧版 sources 表，无缝迁移至 music_sources。
+      await _migrateLegacySources();
     },
     beforeOpen: (OpeningDetails details) async {
       // 播放列表条目对曲目的引用需要外键约束才会级联清理。
@@ -80,28 +65,42 @@ class TingyuDatabase extends _$TingyuDatabase {
       await _ensureColumns('tracks', tracks.$columns);
       await _ensureColumns('music_sources', musicSources.$columns);
 
-      // 额外保底：若在非 onCreate 路径下依然有未迁移的 legacy sources，补充迁移
-      final List<QueryRow> legacy = await customSelect(
-        "SELECT count(*) AS c FROM sqlite_master WHERE type = 'table' AND name = 'sources'",
-      ).get();
-      if (legacy.isNotEmpty && (legacy.first.read<int?>('c') ?? 0) > 0) {
-        await customStatement('''
-              INSERT OR IGNORE INTO music_sources (
-                id, name, kind, local_folder_path,
-                webdav_url, webdav_username, webdav_root_path,
-                quark_folder_fid, quark_account_name,
-                sync_status, last_synced_at, track_count
-              )
-              SELECT
-                id, name, kind, local_folder_path,
-                webdav_url, webdav_username, webdav_root_path,
-                quark_folder_fid, quark_account_name,
-                sync_status, last_synced_at, track_count
-              FROM sources
-            ''');
-      }
+      // 额外保底：若在非 onCreate 路径下依然有未迁移的 legacy sources，补充迁移。
+      await _migrateLegacySources();
     },
   );
+
+  /// 把旧版 `sources` 表的内容搬进 `music_sources`，**搬完立刻删表**。
+  ///
+  /// 删表是关键：迁移是 INSERT OR IGNORE 且只在主键冲突时跳过，只要 legacy 表还在，
+  /// 每次冷启动都会再跑一遍 —— 用户在界面里删掉的来源会被原样插回来（凭据与目录
+  /// 授权此时已经清了，于是变成一个永远删不掉的僵尸来源）。
+  Future<void> _migrateLegacySources() async {
+    final List<QueryRow> legacy = await customSelect(
+      "SELECT count(*) AS c FROM sqlite_master WHERE type = 'table' AND name = 'sources'",
+    ).get();
+    if (legacy.isEmpty || (legacy.first.read<int?>('c') ?? 0) == 0) {
+      return;
+    }
+    // 旧表的列集合可能比下面这份清单少：先按实际存在的列做一次补齐，避免
+    // 任意一个缺列让整段迁移 SQL 失败，从而永远删不掉旧表。
+    await _ensureColumns('sources', musicSources.$columns);
+    await customStatement('''
+      INSERT OR IGNORE INTO music_sources (
+        id, name, kind, local_folder_path, local_bookmark,
+        webdav_url, webdav_username, webdav_root_path,
+        quark_folder_fid, quark_account_name,
+        sync_status, last_synced_at, track_count
+      )
+      SELECT
+        id, name, kind, local_folder_path, local_bookmark,
+        webdav_url, webdav_username, webdav_root_path,
+        quark_folder_fid, quark_account_name,
+        sync_status, last_synced_at, track_count
+      FROM sources
+    ''');
+    await customStatement('DROP TABLE IF EXISTS sources');
+  }
 
   Future<void> _ensureColumns(
     String tableName,

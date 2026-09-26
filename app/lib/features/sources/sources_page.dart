@@ -329,7 +329,7 @@ class SourcesPage extends ConsumerWidget {
   ) async {
     final List<QuarkItem> folders;
     try {
-      folders = (await client.listFolder(session: session))
+      folders = (await client.listFolder(session: session)).items
           .where((QuarkItem item) => item.isFolder)
           .toList();
     } on Object catch (error) {

@@ -169,4 +169,24 @@ void main() {
       );
     });
   });
+
+  test('libmpv 的中英混杂错误按尾巴归一，不再原样透出', () {
+    // 实测自桌面端（libmpv 本地化 errno 尾巴）
+    expect(
+      PlaybackErrorFormatter.format(
+        "Cannot open file '/tmp/nope.mp3': 没有那个文件或目录",
+      ),
+      '音频文件不存在或已被移动',
+    );
+    expect(
+      PlaybackErrorFormatter.format(
+        "Cannot open file '/root/secret.mp3': 权限不够",
+      ),
+      '没有文件或目录的访问权限',
+    );
+    expect(
+      PlaybackErrorFormatter.format("Cannot open file '/x/weird.mp3'"),
+      '音频资源读取失败',
+    );
+  });
 }

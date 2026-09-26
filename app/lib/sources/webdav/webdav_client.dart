@@ -195,7 +195,14 @@ class WebDavClient {
         throw const WebDavUnauthorized();
       }
       if (status == 403) {
-        throw const WebDavForbidden();
+        // 根目录被拒 = 账号、应用专用密码或根路径不对，整次同步没有意义；
+        // 子目录被拒只是那一个目录进不去（群晖的权限目录、他人共享目录、
+        // 反代规则），此前会拖垮整个来源 —— 用户只能去改权限或删掉来源。
+        if (depth == 0) {
+          throw const WebDavForbidden();
+        }
+        skipped++;
+        continue;
       }
       if (status == 429 || status == 503) {
         throw WebDavRateLimited.forResponseBody(_decodeUtf8(body));
@@ -233,6 +240,8 @@ class WebDavClient {
           currentDirUrl: currentDirUrl,
         );
         if (itemUrl == null) {
+          // 拿不准它指向哪里，只能丢弃；必须计数，否则扫描仍被判为权威快照。
+          skipped++;
           continue;
         }
 
@@ -244,7 +253,10 @@ class WebDavClient {
         }
 
         // 2. 严格边界：条目必须在 rootUrl 目录之内（拒绝父目录/兄弟目录）。
+        //    反向代理重写前缀、根 URL 少了尾斜杠时，整个目录的条目都会落在这里，
+        //    若不计入 skipped，一次「成功」的同步就会把该来源的曲目全部删掉。
         if (!itemPath.startsWith(normalizedRootPath)) {
+          skipped++;
           continue;
         }
 
@@ -257,9 +269,14 @@ class WebDavClient {
         }
 
         if (item.isDirectory) {
-          if (!visitedPaths.contains(itemPath) && depth + 1 <= maxDepth) {
-            visitedPaths.add(itemPath);
-            queue.add((itemUrl, depth + 1));
+          if (!visitedPaths.contains(itemPath)) {
+            if (depth + 1 <= maxDepth) {
+              visitedPaths.add(itemPath);
+              queue.add((itemUrl, depth + 1));
+            } else {
+              // 深度上限之外还有目录没走：本次不是完整快照。
+              truncated = true;
+            }
           }
           continue;
         }

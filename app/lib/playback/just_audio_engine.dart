@@ -42,8 +42,11 @@ final class JustAudioEngine extends PlaybackEngineBase {
 
   List<PlaybackItem> _items = const <PlaybackItem>[];
 
-  /// 最近一次未恢复的失败；装载成功或播放进入 ready 后清空。
+  /// 最近一次未恢复的失败；真正重新出声（进度在前进）后清空。
   PlaybackFailure? _failure;
+
+  /// 上一次同步时的播放位置，用于判断「音频确实在推进」。
+  Duration _lastPosition = Duration.zero;
 
   @override
   List<PlaybackItem> get items => _items;
@@ -63,6 +66,7 @@ final class JustAudioEngine extends PlaybackEngineBase {
   Future<void> setQueue(List<PlaybackItem> items, {int startIndex = 0}) async {
     _items = List<PlaybackItem>.unmodifiable(items);
     _failure = null;
+    _lastPosition = Duration.zero;
     try {
       await _player.setAudioSources(
         items.map(_toAudioSource).toList(growable: false),
@@ -79,6 +83,7 @@ final class JustAudioEngine extends PlaybackEngineBase {
   Future<void> addToQueue(PlaybackItem item) async {
     _items = List<PlaybackItem>.unmodifiable(<PlaybackItem>[..._items, item]);
     _failure = null;
+    _lastPosition = Duration.zero;
     try {
       await _player.addAudioSource(_toAudioSource(item));
     } on Object catch (error) {
@@ -138,7 +143,12 @@ final class JustAudioEngine extends PlaybackEngineBase {
 
   void _sync() {
     final ja.ProcessingState processingState = _player.processingState;
-    if (processingState == ja.ProcessingState.ready) {
+    // 与桌面引擎同理：撤下失败提示要看「是否真的重新出声」，不能只看 processingState
+    // —— 装载失败时它可能仍是上一首留下的 ready，会把刚报的失败立刻抹掉。
+    final bool progressing =
+        _player.playing && _player.position > _lastPosition;
+    _lastPosition = _player.position;
+    if (_failure != null && progressing) {
       _failure = null;
     }
     emit(
