@@ -29,8 +29,25 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
   Future<void>? _prefetchFuture;
   String? _lastRecordedId;
 
+  /// 引擎队列是否已经装好（`setQueue` 返回后为 true）。
+  ///
+  /// 重建期间旧会话仍在推进：不设这道闸，预取会把解析结果追加到**旧**引擎队列上、
+  /// 或者把 `_nextSourceIndex` 在重建脚下往前推，结果是新会话悄悄少一首歌，或者
+  /// `_queue` / `_trackIds` / `_resolvedSourceIndices` 与引擎队列错位。
+  bool _queueArmed = false;
+
+  /// 控制器侧记下的失败（取直链、授权校验）。
+  ///
+  /// 必须自己存一份：引擎快照里的 `failure` 属于引擎，`snapshot.copyWith` 的
+  /// `failure ?? this.failure` 读的是引擎那份 null，会把这里的失败在下一次
+  /// 引擎 tick（~60ms 后）直接擦掉。
+  PlaybackFailure? _pendingFailure;
+
   /// 本次起播第一个要解析的曲目（用户点的那一首）。
   int _startSourceIndex = 0;
+
+  /// 已经上报过时长的曲目 id，避免每个进度 tick 都写一次库。
+  String? _durationRecordedId;
 
   /// 最近一次解析失败的原因（取直链、校验授权）。
   Object? _lastResolveError;
@@ -74,12 +91,24 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
     _handler = handler;
     final StreamSubscription<PlaybackSnapshot> subscription = handler.snapshots
         .listen((PlaybackSnapshot snapshot) {
+          // 引擎开始播放我们已排队的曲目后，控制器侧的解析失败就过期了（新会话已
+          // 起播）。判定必须带上「引擎下标落在 _queue 内」：失败发生在重建期间，
+          // 那一刻是空队列，而**旧**会话的引擎还在 playing=true 地 tick，只看
+          // playing 会把刚报的失败立刻擦掉（等于没报）。
+          if (snapshot.playing &&
+              snapshot.failure == null &&
+              snapshot.index >= 0 &&
+              snapshot.index < _queue.length) {
+            _pendingFailure = null;
+          }
           final PlaybackSnapshot enriched = snapshot.copyWith(
             playOrder: _playOrder,
             repeatMode: _repeatMode,
+            failure: snapshot.failure ?? _pendingFailure,
           );
           state = enriched;
           _recordPlay(enriched);
+          _recordDuration(enriched);
           unawaited(_onSnapshot(enriched));
         });
     ref.onDispose(subscription.cancel);
@@ -129,8 +158,13 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
         }
       case PlaybackRepeatMode.off:
         // just_audio 在播完后 playing 仍为 true（要显式 pause/stop 才变），
-        // 不暂停的话 UI 与系统媒体会话会一直显示"正在播放"，播放键点了没反应。
+        // 不暂停的话 UI 与系统媒体会话会一直显示"正在播放"。
+        //
+        // 另外必须回到 0：引擎停在 completed 上时 `play()` 是空操作（just_audio
+        // 文档明说），`seekToNext()` 也没有下一首，暂停后就永远出不了声 —— 用户看到
+        // "播放键点了没反应"。seek(0) 后 play() 至少能把最后一首重放出来。
         await handler.pause();
+        await handler.seek(Duration.zero);
     }
   }
 
@@ -146,9 +180,11 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
     }
     ++_queueGeneration;
     _prefetchFuture = null;
+    _queueArmed = false;
     // 本轮已全部解析完；这一遍重放期间不需要再预取。
     _nextSourceIndex = _sourceQueue.length;
     await handler.setQueue(List<PlaybackItem>.of(_queue), startIndex: 0);
+    _queueArmed = true;
     await handler.play();
   }
 
@@ -194,8 +230,7 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
       final int resolved = _resolvedSourceIndices.indexOf(index);
       if (resolved >= 0 && resolved < _queue.length) {
         await handler.seek(Duration.zero);
-        final List<PlaybackItem> items = List<PlaybackItem>.of(_queue);
-        await handler.setQueue(items, startIndex: resolved);
+        await _swapEngineQueue(resolved);
         await handler.play();
         unawaited(_ensureAhead());
         return;
@@ -207,23 +242,54 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
       return;
     }
     await handler.seek(Duration.zero);
-    final List<PlaybackItem> items = List<PlaybackItem>.of(_queue);
-    await handler.setQueue(items, startIndex: index);
+    await _swapEngineQueue(index);
     await handler.play();
     unawaited(_ensureAhead());
+  }
+
+  /// 用控制器侧已解析的队列重装引擎，并定位到 [startIndex]。
+  ///
+  /// 这里刻意**不**提升 `_queueGeneration`（重装用的就是当前这份队列），因此必须
+  /// 自己处理"预取还在飞"：先闸住预取、等在飞的那一次落地，再复制队列去 setQueue。
+  /// 否则它会在 setQueue 期间把新条目追加到**旧**引擎队列上 —— 引擎队列替换后那一首
+  /// 就没了，而 `_queue` / `_trackIds` / `_resolvedSourceIndices` 里还有，三份平行
+  /// 数组从此与引擎错位。
+  Future<void> _swapEngineQueue(int startIndex) async {
+    _queueArmed = false;
+    final Future<void>? pending = _prefetchFuture;
+    if (pending != null) {
+      await pending;
+    }
+    await handler.setQueue(List<PlaybackItem>.of(_queue), startIndex: startIndex);
+    _queueArmed = true;
   }
 
   Future<void> togglePlayPause() async {
     if (state.playing) {
       await handler.pause();
-    } else {
-      await handler.play();
+      return;
     }
+    if (state.processing == PlaybackProcessing.completed) {
+      // 播完停下后再按播放键：引擎停在 completed 上，`play()` 是空操作
+      // （just_audio 文档明说；libmpv 同理会 eof 停住）。必须先把位置拨回去，
+      // 否则这个键永远是死的。整轮播完的场景直接重放已解析队列，比只重播最后一首
+      // 更符合"再听一遍"的预期。
+      if (_repeatMode == PlaybackRepeatMode.all && _queue.isNotEmpty) {
+        await _replayResolvedQueue();
+        return;
+      }
+      await handler.seek(Duration.zero);
+    }
+    await handler.play();
   }
 
   Future<void> pause() => handler.pause();
 
   Future<void> next() async {
+    // 先把这一轮的预取跑完，再判断"是不是到了队尾"：解析还在飞的时候
+    // `_nextSourceIndex` 已经被推过队尾而 `_queue` 还没追加，此刻判断会把"下一首
+    // 正在路上"误判成"整轮已播完"，于是重放一个只剩当前首的队列。
+    await _ensureAhead(minimumAhead: 1);
     // 队尾按「下一首」：列表循环重放已解析的队列回到第 1 首；其余模式交给引擎
     // （顺序播放会停在最后一首，单曲循环由播完事件处理）。
     if (_repeatMode == PlaybackRepeatMode.all &&
@@ -232,7 +298,6 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
       await _replayResolvedQueue();
       return;
     }
-    await _ensureAhead(minimumAhead: 1);
     await handler.skipToNext();
   }
 
@@ -294,6 +359,9 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
       PlaybackRepeatMode.off => PlaybackRepeatMode.all,
     };
     state = state.copyWith(repeatMode: _repeatMode);
+    // 立即下发给引擎：单曲循环只有引擎自己循环才是无缝的（ExoPlayer/AVPlayer 与
+    // libmpv 默认都只在列表末尾报 completed），等作曲末再 seek(0) 会有一声空档。
+    unawaited(handler.applyRepeatMode(_repeatMode));
   }
 
   Future<void> setVolume(double volume) => handler.setVolume(volume);
@@ -301,6 +369,7 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
   Future<void> _restartEngineFrom(int sourceIndex) async {
     final int generation = ++_queueGeneration;
     _prefetchFuture = null;
+    _queueArmed = false;
     _nextSourceIndex = sourceIndex;
     _startSourceIndex = sourceIndex;
     _queue = const <PlaybackItem>[];
@@ -308,6 +377,8 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
     _resolvedSourceIndices = const <int>[];
     _lastRecordedId = null;
     _lastResolveError = null;
+    // 新会话开始，上一轮记下的解析失败不再适用。
+    _pendingFailure = null;
 
     final _Resolved? first = await _resolveNext(generation);
     if (first == null || generation != _queueGeneration) {
@@ -320,18 +391,27 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
     if (generation != _queueGeneration) {
       return;
     }
+    // 引擎队列已就位，预取才可以往它上面追加。
+    _queueArmed = true;
     await handler.play();
     unawaited(ref.read(enrichmentServiceProvider).enrichTrack(first.track));
     unawaited(_ensureAhead());
   }
 
   Future<void> _ensureAhead({int minimumAhead = _prefetchCount}) {
-    if (_sourceQueue.isEmpty || _nextSourceIndex >= _sourceQueue.length) {
+    // 引擎队列还没装好（重建中）时不预取：此刻追加会落到旧队列上，白跑一次解析。
+    if (!_queueArmed) {
       return Future<void>.value();
     }
+    // 已经有预取在飞：必须把它**返回**给调用方（而不是当成"无事可做"直接返回）。
+    // `_resolveNext` 是先把 `_nextSourceIndex` 推过队尾、再 await 解析的，所以
+    // "指针越界"并不代表"这一轮已经解析完"——`next()` 要等它落地才能判断队尾。
     final Future<void>? active = _prefetchFuture;
     if (active != null) {
       return active;
+    }
+    if (_sourceQueue.isEmpty || _nextSourceIndex >= _sourceQueue.length) {
+      return Future<void>.value();
     }
     final int generation = _queueGeneration;
     final Future<void> future = _prefetch(generation, minimumAhead);
@@ -345,6 +425,7 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
 
   Future<void> _prefetch(int generation, int minimumAhead) async {
     while (generation == _queueGeneration &&
+        _queueArmed &&
         _nextSourceIndex < _sourceQueue.length &&
         _queue.length - handler.currentSnapshot.index - 1 < minimumAhead) {
       final _Resolved? resolved = await _resolveNext(generation);
@@ -423,7 +504,36 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
       message: error == null ? '无法加载曲目' : '无法播放：$reason',
       title: title.isEmpty ? null : title,
     );
+    // 自己留一份：引擎随后的每份快照里 failure 都是 null，copyWith 会把这条抹掉。
+    _pendingFailure = reported;
     state = state.copyWith(failure: reported);
+  }
+
+  /// 把引擎解出来的真实时长补进曲库。
+  ///
+  /// 夸克 / WebDAV 的目录接口不报时长，扫描入库时只能写 0，界面于是整库都是 `--:--`；
+  /// 解码器给出的这一份是唯一可信来源。写库是 fire-and-forget（失败只影响"时长补全"
+  /// 这一个便利，不该打断播放），且**每首只写一次**：进度 tick 每 ~60ms 一份快照，
+  /// 逐个都写会把数据库写热。
+  void _recordDuration(PlaybackSnapshot snapshot) {
+    final int index = snapshot.index;
+    if (index < 0 || index >= _trackIds.length) {
+      return;
+    }
+    final String id = _trackIds[index];
+    if (id == _durationRecordedId) {
+      return;
+    }
+    // 时长还没探明（直链刚起播时是 0）就先不记，等它变成正数的那一份快照。
+    if (snapshot.duration <= Duration.zero) {
+      return;
+    }
+    _durationRecordedId = id;
+    unawaited(
+      ref
+          .read(trackRepositoryProvider)
+          .updateDurationIfUnknown(id, snapshot.duration),
+    );
   }
 
   void _recordPlay(PlaybackSnapshot snapshot) {

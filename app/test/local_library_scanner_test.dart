@@ -106,10 +106,45 @@ void main() {
       0,
     ]);
     final String name = await CoverStore(rootDirectory: () async => root)
-        .save('track-key', png);
+        .save(png);
 
     expect(name, endsWith('.png'));
     expect(File(p.join(covers.path, name)).existsSync(), isTrue);
+  });
+
+  test('同一张封面重复保存共用同一个文件（一张专辑只落一份盘）', () async {
+    final CoverStore store = CoverStore(rootDirectory: () async => root);
+    final Directory covers = await store.coversDirectory();
+    final Uint8List png = Uint8List.fromList(<int>[
+      0x89,
+      0x50,
+      0x4E,
+      0x47,
+      0x0D,
+      0x0A,
+      0x1A,
+      0x0A,
+      1,
+      2,
+      3,
+    ]);
+
+    final String first = await store.save(png);
+    final String second = await store.save(
+      Uint8List.fromList(<int>[...png]),
+    );
+    expect(second, first);
+    expect(covers.listSync().whereType<File>(), hasLength(1));
+
+    // 换了封面：新内容落到新文件，旧图交由 pruneUnreferenced 回收。
+    final Uint8List other = Uint8List.fromList(<int>[...png, 9]);
+    final String changed = await store.save(other);
+    expect(changed, isNot(first));
+    expect(covers.listSync().whereType<File>(), hasLength(2));
+
+    final int removed = await store.pruneUnreferenced(<String>{changed});
+    expect(removed, 1);
+    expect(covers.listSync().whereType<File>(), hasLength(1));
   });
 
   test('maxFiles 截断并给出进度回调', () async {

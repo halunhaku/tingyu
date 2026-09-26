@@ -10,6 +10,11 @@ import 'package:drift/drift.dart';
 @TableIndex(name: 'idx_tracks_source', columns: {#sourceId})
 @TableIndex(name: 'idx_tracks_artist', columns: {#artist})
 @TableIndex(name: 'idx_tracks_album', columns: {#album})
+// 专辑页按 (artist, album) 归并；无索引时这是整表扫描 + 临时 B 树排序。
+@TableIndex(name: 'idx_tracks_artist_album', columns: {#artist, #album})
+// 「最近添加」按 dateAdded 倒序取前 100，收藏页按 isFavorite 过滤。
+@TableIndex(name: 'idx_tracks_date_added', columns: {#dateAdded})
+@TableIndex(name: 'idx_tracks_favorite', columns: {#isFavorite})
 class Tracks extends Table {
   TextColumn get id => text()();
 
@@ -123,6 +128,11 @@ class Playlists extends Table {
 }
 
 /// 播放列表条目：显式保存顺序，允许同一曲目重复出现。
+///
+/// `trackId` 上的索引不是可选优化：曲目被删除或整库合并时，SQLite 要用它来
+/// 定位级联删除的子行；缺索引时 `ON DELETE CASCADE` 退化成整表扫描
+/// （删 5000 首 × 每次扫 5000 行子表）。
+@TableIndex(name: 'idx_playlist_items_track', columns: {#trackId})
 class PlaylistItems extends Table {
   TextColumn get playlistId => text().references(Playlists, #id, onDelete: KeyAction.cascade)();
 

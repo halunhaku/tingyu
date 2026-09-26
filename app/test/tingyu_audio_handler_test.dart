@@ -51,16 +51,25 @@ final class _FakeEngine extends PlaybackEngineBase {
   Future<void> setVolume(double volume) async => commands.add('volume:$volume');
 
   @override
+  Future<void> setRepeatMode(PlaybackRepeatMode mode) async =>
+      commands.add('repeat:${mode.name}');
+
+  @override
   Future<void> skipToNext() async => commands.add('next');
 
   @override
   Future<void> skipToPrevious() async => commands.add('previous');
 
   @override
-  Future<void> dispose() async => closeSnapshotStream();
+  Future<void> dispose() async {
+    disposed = true;
+    await closeSnapshotStream();
+  }
 
   /// 供测试推送快照（`emit` 为 protected）。
   void push(PlaybackSnapshot snapshot) => emit(snapshot);
+
+  bool disposed = false;
 }
 
 PlaybackSnapshot _snapshot({
@@ -156,6 +165,49 @@ void main() {
     ]);
   });
 
+  test('循环模式转发给引擎', () async {
+    await handler.applyRepeatMode(PlaybackRepeatMode.one);
+
+    expect(engine.commands, <String>['repeat:one']);
+  });
+
+  test('新会话第一首即使下标与时长都没变，也要重新发布媒体元数据', () async {
+    await handler.setQueue(_items());
+    await push(_snapshot(duration: Duration.zero));
+    expect(handler.mediaItem.value?.title, 'a.flac');
+
+    // 新会话：第一首换了，但下标 0、时长同样未知 —— 只按 (下标, 时长) 去重会把
+    // 上一首的标题/艺术家/封面留在锁屏、MPRIS、SMTC 上。
+    final List<PlaybackItem> other = <PlaybackItem>[
+      PlaybackItem.fromUri(Uri.parse('file:///music/c.flac')),
+    ];
+    await handler.setQueue(other);
+    await push(_snapshot(duration: Duration.zero));
+
+    expect(handler.mediaItem.value?.title, 'c.flac');
+    expect(handler.mediaItem.value?.id, other.single.id);
+  });
+
+  test('追加一首只翻译新增的条目，不重建整条队列的元数据', () async {
+    final List<PlaybackItem> items = _items();
+    await handler.setQueue(<PlaybackItem>[items.first]);
+    await pumpEventQueue();
+    final MediaItem cached = handler.queue.value.single;
+
+    await handler.addToQueue(items.last);
+    await pumpEventQueue();
+
+    expect(
+      handler.queue.value.map((MediaItem item) => item.id).toList(),
+      <String>[items.first.id, items.last.id],
+    );
+    expect(
+      identical(handler.queue.value.first, cached),
+      isTrue,
+      reason: '队列里已有的 MediaItem 必须复用缓存，而不是每首歌都重新构造整条队列',
+    );
+  });
+
   test('媒体元数据只在曲目切换或时长首次可知时更新', () async {
     await handler.setQueue(_items());
     final List<MediaItem?> published = <MediaItem?>[];
@@ -182,6 +234,23 @@ void main() {
     expect(handler.mediaItem.value?.title, 'b.flac');
 
     await sub.cancel();
+  });
+
+  test('dispose 取消订阅并释放引擎，之后不再消费引擎事件', () async {
+    await handler.setQueue(_items());
+    await push(_snapshot(playing: true));
+    expect(handler.playbackState.value.playing, isTrue);
+
+    await handler.dispose();
+
+    expect(engine.disposed, isTrue, reason: '引擎必须被释放（原生播放器不会自己回收）');
+    engine.push(_snapshot(playing: false, position: const Duration(seconds: 1)));
+    await pumpEventQueue();
+    expect(
+      handler.playbackState.value.playing,
+      isTrue,
+      reason: 'dispose 之后订阅已取消，不该再收到引擎事件',
+    );
   });
 
   test('纯进度更新被节流，播放语义变化立即推送', () async {

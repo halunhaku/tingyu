@@ -58,6 +58,9 @@
 - **系统媒体会话**由 `audio_service` 一套 `AudioHandler` 打通：Android MediaSession + 前台服务、iOS 锁屏与控制中心、macOS Now Playing、Windows SMTC（`audio_service_win`）、Linux MPRIS（`audio_service_mpris`）。
 - 待播队列（列表内点击即插播）、时间轴歌词（自动滚动 + 当前行高亮 + 一键抓取）、迷你播放条与全屏「正在播放」舞台。
 - 加载失败不再静默：失败写进播放快照并在界面提示（`PlaybackFailure`）。
+- 循环/随机是真的下发给引擎的（`LoopMode.one` / `PlaylistMode.single`），不是只在界面上换图标；
+  播完停止后再按播放键会从头重放，不会卡在"点了没反应"。
+- 界面不会跟着进度条一起重画：进度 tick 只重建进度条本身（详见 §31.3）。
 
 ### 2. 三种音乐来源，原生直连
 - **本地文件夹**：桌面直接读文件系统路径；**Android** 走 SAF 目录授权（持久化 tree URI，`content://` 直接交给 ExoPlayer）；**iOS** 走系统文档选择器 + 安全作用域书签。两端的原生桥都是仓库内的本地插件 **`app/packages/tingyu_saf`**。
@@ -70,7 +73,9 @@
 - 单曲可「重新匹配」，在多候选中人工挑一个覆盖。
 
 ### 4. 数据与凭据
-- 曲库落在 drift(SQLite)：`tracks` / `music_sources` / `playlists`；扫描按 `filePathOrUrl` 合并，分别统计新增 / 更新 / 移除；只有完整扫描会移除未见曲目，取消、截断或跳过条目的非完整扫描会保留旧曲目及其收藏、歌单引用；
+- 曲库落在 drift(SQLite)：`tracks` / `music_sources` / `playlists`；扫描按 `filePathOrUrl` 合并（整轮一个 batch），分别统计新增 / 更新 / 移除；只有完整扫描会移除未见曲目，取消、截断、跳过条目、目录层级超限、响应无法解析都会让本次扫描**不具权威性**，从而保留旧曲目及其收藏、歌单引用；
+- 封面按内容哈希落盘（同一张专辑封面只存一份），完整同步后自动回收不再被引用的旧图；
+- 时长从解码器回填：夸克/WebDAV 的目录接口不报时长，播过一次之后界面就是真实时长；
 - 夸克 Cookie、WebDAV 密码等凭据进系统安全存储（Keychain / DPAPI / libsecret）；
 - 旧版曲库可用 `tools/legacy-export/` 一次性导出后导入。
 
@@ -103,7 +108,7 @@
 │  └─ screenshots/
 ├─ tools/legacy-export/                        # 旧版 SwiftUI 曲库的一次性导出工具
 ├─ legacy-swift/                               # 上一版 SwiftUI 实现：Sources/ · Tingyu.xcodeproj/ · project.yml，冻结保留
-└─ .github/workflows/flutter.yml               # analyze + test（含 drift 生成代码校验）+ 三平台构建
+└─ .github/workflows/flutter.yml               # analyze + test（含 drift 生成代码校验）+ 四平台构建（macOS / Windows / Linux / Android，另含 iOS 编译校验）
 ```
 
 ---
@@ -141,6 +146,19 @@ flutter build ios --release
 dart run build_runner build
 ```
 
+### Android 正式签名
+正式分发用的密钥不进仓库。把密钥信息写到 `app/android/key.properties`（已在 `.gitignore` 中）：
+
+```properties
+storeFile=/absolute/path/to/tingyu-release.jks
+storePassword=…
+keyAlias=tingyu
+keyPassword=…
+```
+
+有该文件时 `flutter build apk --release` 用正式密钥签名；没有时退回 debug 签名并打印一行提示
+（产物仍可用于本机 `flutter run --release`，但不能分发）。
+
 ### 调试入口（`main.dart` 读取的环境变量）
 | 变量 | 作用 |
 |---|---|
@@ -150,7 +168,12 @@ dart run build_runner build
 | `TINGYU_DEBUG_SOURCES=<a,b,...>` | 启动即载入队列并播放，便于脚本化验证播放链路 |
 
 ### CI
-`.github/workflows/flutter.yml`：改动 `app/**` 时在 Ubuntu 上跑 `dart run build_runner build` 校验 drift 生成代码无漂移、`flutter analyze` 与 `flutter test`，随后在 macOS / Windows / Linux 三平台跑 `--release` 构建。
+`.github/workflows/flutter.yml`：改动 `app/**` 时在 Ubuntu 上跑 `dart run build_runner build` 校验 drift
+生成代码无漂移、`flutter analyze` 与 `flutter test`，随后跑构建矩阵 —— macOS / Windows / Linux / Android
+的 `--release` 产物，外加 iOS 的 `--no-codesign` 编译校验（未签名产物不进入 GitHub Release）。
+
+> 本机跑 `flutter analyze` 时，若仓库路径含非 ASCII 字符，analysis server 的 LSP 通道会解析崩溃；
+> 用 `dart analyze` 得到同样的结论。
 
 ---
 
@@ -161,9 +184,12 @@ dart run build_runner build
 | **macOS 12+** | ✅ 主力验证平台：播放与系统媒体会话、曲库 / 专辑 / 艺术家 / 播放列表、全屏舞台与歌词、来源管理均已实机核验（本文截图即本机实拍） |
 | **Android** | ✅ 真机（Xiaomi 24031PN0DC / Android 16）验证：播放与后台播放、SAF 本地音乐入库与播放、夸克应用内登录、**播放失败提示**（引擎侧与取直链侧都已核过，§23） |
 | **iOS 15+** | ✅ 构建与模拟器运行验证通过；本地目录书签（安全作用域）已落地，真机端到端「选目录 → 入库 → 播放」待补（§24） |
-| **Windows / Linux** | ⚠️ CI 三平台 release 构建绿灯，尚未做实机运行验证 |
+| **Windows / Linux** | ⚠️ Linux 已在本机跑过 Release 包实机冒烟（曲库/专辑/来源页渲染、扫码入库、播放推进，见 §31.9）；Windows 仍只有 CI 构建验证 |
 
-里程碑进度：**M0–M5 已完成**；M6（macOS 原生增强：WidgetKit / App Intents / AirPlay）与 M7（各平台分发与签名）未开始。逐项结论、环境前提与遗留项见 [`docs/crossplatform-migration.md`](docs/crossplatform-migration.md) §18。
+里程碑进度：**M0–M5 已完成**；M6（macOS 原生增强：WidgetKit / App Intents / AirPlay）与 M7（各平台分发与签名）未开始。
+2026-09-26 做过一轮全面优化（数据丢失修复、播放正确性与重建风暴、封面去重 91%、索引迁移、来源重试、
+移动端搜索入口、CI 补 iOS 与 Android 正式签名），结论与"明确未做"的清单见
+[`docs/crossplatform-migration.md`](docs/crossplatform-migration.md) §31。
 
 ---
 

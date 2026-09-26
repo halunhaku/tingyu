@@ -80,6 +80,67 @@ void main() {
     },
   );
 
+  test('旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据', () async {
+    final Directory temp = await Directory.systemTemp.createTemp(
+      'tingyu_db_upgrade_',
+    );
+    addTearDown(() => temp.delete(recursive: true));
+    final File dbFile = File(p.join(temp.path, 'v1.sqlite'));
+
+    // 只带 v1 的四张表与旧索引：新索引的创建只能靠 onUpgrade 补上。
+    final sqlite.Database raw = sqlite.sqlite3.open(dbFile.path);
+    raw.execute('PRAGMA user_version = 1');
+    raw.execute('''
+      CREATE TABLE tracks (
+        id TEXT PRIMARY KEY,
+        source_id TEXT NOT NULL,
+        title TEXT NOT NULL DEFAULT '',
+        artist TEXT NOT NULL DEFAULT '未知艺术家',
+        album TEXT NOT NULL DEFAULT '未知专辑',
+        duration REAL NOT NULL DEFAULT 0,
+        file_format TEXT NOT NULL DEFAULT 'mp3',
+        file_path_or_url TEXT NOT NULL DEFAULT '',
+        file_size INTEGER NOT NULL DEFAULT 0,
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        play_count INTEGER NOT NULL DEFAULT 0,
+        date_added TEXT NOT NULL
+      );
+    ''');
+    raw.execute('CREATE INDEX idx_tracks_source ON tracks(source_id);');
+    raw.execute('CREATE INDEX idx_tracks_artist ON tracks(artist);');
+    raw.execute('CREATE INDEX idx_tracks_album ON tracks(album);');
+    raw.execute('''
+      INSERT INTO tracks (id, source_id, title, artist, album, file_path_or_url, date_added)
+      VALUES ('t-1', 'src-1', '晴天', '周杰伦', '叶惠美', '/music/晴天.mp3', '2026-09-01T00:00:00.000Z');
+    ''');
+    raw.close();
+
+    final TingyuDatabase db = TingyuDatabase(NativeDatabase(dbFile));
+    addTearDown(db.close);
+    // 触发迁移。
+    expect(await TrackRepository(db).all(), hasLength(1));
+
+    final List<String> indices =
+        (await db
+                .customSelect(
+                  "SELECT name FROM sqlite_master WHERE type = 'index'",
+                )
+                .get())
+            .map((row) => row.read<String>('name'))
+            .toList();
+    expect(indices, contains('idx_playlist_items_track'));
+    expect(indices, contains('idx_tracks_artist_album'));
+    expect(indices, contains('idx_tracks_date_added'));
+    expect(indices, contains('idx_tracks_favorite'));
+
+    final int version = (await db
+            .customSelect('PRAGMA user_version')
+            .get())
+        .first
+        .read<int>('user_version');
+    expect(version, 2);
+  });
+
   test('删除迁移过来的来源后重开数据库，不会被 legacy 表重新插回来', () async {
     final Directory temp = await Directory.systemTemp.createTemp(
       'tingyu_db_migrate_',

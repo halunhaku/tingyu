@@ -67,6 +67,7 @@ class QuarkSourceAdapter implements SourceAdapter {
       tracks: result.tracks,
       cancelled: result.cancelled,
       truncated: result.truncated,
+      truncationReason: result.truncationReason,
     );
   }
 

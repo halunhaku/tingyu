@@ -11,14 +11,18 @@ part 'database.g.dart';
 
 /// 曲线库数据库。
 ///
-/// `schemaVersion` 为 1；后续版本在 [migration] 里追加 `onUpgrade` 步骤。
+/// `schemaVersion` 变更史：
+/// - 1：`tracks` / `music_sources` / `playlists` / `playlist_items`。
+/// - 2：补齐热路径索引（`(artist, album)`、`date_added`、`is_favorite`、
+///   `playlist_items.track_id`）。老库不加索引也不会报错，只是专辑页与"按曲目删歌"
+///   会退化成整表扫描 —— 这正是「版本号不升、只改 schema.dart」修不好的那类问题。
 @DriftDatabase(tables: <Type>[Tracks, MusicSources, Playlists, PlaylistItems])
 class TingyuDatabase extends _$TingyuDatabase {
   TingyuDatabase([QueryExecutor? executor])
     : super(executor ?? openLibraryConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   /// 时间戳按文本存储：默认的 Unix 秒会丢掉毫秒，而旧库导出的 `dateAdded`
   /// / `lastPlayedAt` 带毫秒，往返导入导出会对不上。
@@ -29,34 +33,14 @@ class TingyuDatabase extends _$TingyuDatabase {
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
-      final List<QueryRow> tableRows = await customSelect(
-        "SELECT name FROM sqlite_master WHERE type = 'table'",
-      ).get();
-      final Set<String> existingTables = tableRows
-          .map((QueryRow r) => r.read<String>('name'))
-          .toSet();
-
-      final List<QueryRow> indexRows = await customSelect(
-        "SELECT name FROM sqlite_master WHERE type = 'index'",
-      ).get();
-      final Set<String> existingIndexes = indexRows
-          .map((QueryRow r) => r.read<String>('name'))
-          .toSet();
-
-      for (final DatabaseSchemaEntity entity in allSchemaEntities) {
-        if (entity is TableInfo) {
-          if (!existingTables.contains(entity.actualTableName)) {
-            await m.createTable(entity);
-          }
-        } else if (entity is Index) {
-          if (!existingIndexes.contains(entity.entityName)) {
-            await m.createIndex(entity);
-          }
-        }
-      }
-
+      await _createMissingEntities(m);
       // 兼容与迁移：若存在旧版 sources 表，无缝迁移至 music_sources。
       await _migrateLegacySources();
+    },
+    onUpgrade: (Migrator m, int from, int to) async {
+      // 只做"补差"：老库可能由更早的版本（甚至旧版 Swift 应用）建出来，
+      // 缺表、缺索引、缺列都可能同时存在，逐版本写死 SQL 反而不如按声明补差稳。
+      await _createMissingEntities(m);
     },
     beforeOpen: (OpeningDetails details) async {
       // 播放列表条目对曲目的引用需要外键约束才会级联清理。
@@ -69,6 +53,38 @@ class TingyuDatabase extends _$TingyuDatabase {
       await _migrateLegacySources();
     },
   );
+
+  /// 按 `allSchemaEntities` 与 `sqlite_master` 的差集补齐缺失的表与索引。
+  ///
+  /// onCreate 与 onUpgrade 共用同一段逻辑：库可能是旧版 Swift 应用直接留下的
+  /// （表在、索引不在），也可能是被上一次迁移改过一半的，任何一处缺失都要能补上。
+  Future<void> _createMissingEntities(Migrator m) async {
+    final List<QueryRow> tableRows = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type = 'table'",
+    ).get();
+    final Set<String> existingTables = tableRows
+        .map((QueryRow r) => r.read<String>('name'))
+        .toSet();
+
+    final List<QueryRow> indexRows = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type = 'index'",
+    ).get();
+    final Set<String> existingIndexes = indexRows
+        .map((QueryRow r) => r.read<String>('name'))
+        .toSet();
+
+    for (final DatabaseSchemaEntity entity in allSchemaEntities) {
+      if (entity is TableInfo) {
+        if (!existingTables.contains(entity.actualTableName)) {
+          await m.createTable(entity);
+        }
+      } else if (entity is Index) {
+        if (!existingIndexes.contains(entity.entityName)) {
+          await m.createIndex(entity);
+        }
+      }
+    }
+  }
 
   /// 把旧版 `sources` 表的内容搬进 `music_sources`，**搬完立刻删表**。
   ///

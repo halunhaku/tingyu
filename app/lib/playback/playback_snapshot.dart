@@ -134,4 +134,46 @@ class PlaybackSnapshot {
       'position: ${position.inMilliseconds}ms, duration: ${duration.inMilliseconds}ms, '
       'buffered: ${buffered.inMilliseconds}ms, index: $index, rate: $rate, volume: $volume'
       '${failure == null ? '' : ', failure: ${failure!.message}'})';
+
+  /// 按值比较，**包括** [failure]。
+  ///
+  /// 引擎的进度事件每 ~60ms（media_kit）/ ~200ms（just_audio）推一份新快照，
+  /// 若只按实例比较，Riverpod 会把每一次推进都当成"状态变了"，所有 watcher
+  /// （迷你条、进度条、歌词……）跟着每次 tick 重建。这里做值比较后，只有真正
+  /// 变化的快照才会让 `updateShouldNotify` 成立。
+  ///
+  /// [failure] 只比字段而不复用 [PlaybackFailure] 的相等性：那个类的文档约定
+  /// "新实例就是新的一次失败"，UI 靠 `identical` 去重提示，不能改成值相等。
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PlaybackSnapshot &&
+          other.processing == processing &&
+          other.playing == playing &&
+          other.position == position &&
+          other.duration == duration &&
+          other.buffered == buffered &&
+          other.index == index &&
+          other.rate == rate &&
+          other.volume == volume &&
+          other.playOrder == playOrder &&
+          other.repeatMode == repeatMode &&
+          other.failure?.message == failure?.message &&
+          other.failure?.title == failure?.title;
+
+  @override
+  int get hashCode => Object.hash(
+    processing,
+    playing,
+    position,
+    duration,
+    buffered,
+    index,
+    rate,
+    volume,
+    playOrder,
+    repeatMode,
+    failure?.message,
+    failure?.title,
+  );
 }

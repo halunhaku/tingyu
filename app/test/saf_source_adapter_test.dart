@@ -84,6 +84,55 @@ void main() {
     expect(result.isAuthoritative, isFalse);
   });
 
+  test('目录层级超过 maxDepth 时标记截断，不能作为删除依据', () async {
+    messenger.setMockMethodCallHandler(channel, (MethodCall call) async {
+      if (call.method == 'hasPermission') {
+        return true;
+      }
+      if (call.method == 'listChildren') {
+        final Map<Object?, Object?> arguments =
+            call.arguments! as Map<Object?, Object?>;
+        // 根目录有歌 + 一层子目录，子目录里有更深一层（第二层会被层级上限挡住）。
+        if (arguments['parentDocumentId'] == 'nested') {
+          return <Object?>[
+            _entry(
+              documentId: 'deep-dir',
+              uri: 'content://tree/deep-dir',
+              name: 'Deep',
+              isDirectory: true,
+            ),
+          ];
+        }
+        return <Object?>[
+          _entry(
+            documentId: 'song-1',
+            uri: 'content://tree/song-1',
+            name: '歌手 - 歌曲.mp3',
+          ),
+          _entry(
+            documentId: 'nested',
+            uri: 'content://tree/nested',
+            name: 'Nested',
+            isDirectory: true,
+          ),
+        ];
+      }
+      throw PlatformException(code: 'unexpected_method', message: call.method);
+    });
+
+    final SourceScanResult result = await SafSourceAdapter(
+      sourceId: 'src-1',
+      treeUri: 'content://tree/root',
+      maxDepth: 1,
+    ).scan();
+
+    // 第二层目录整棵没扫：若还按权威快照处理，里面已入库的曲目会被判为已删除。
+    expect(result.tracks, hasLength(1));
+    expect(result.truncated, isTrue);
+    expect(result.truncationReason, '目录层级超过 1 层');
+    expect(result.isAuthoritative, isFalse);
+  });
+
   test('取消扫描时结果不是权威快照', () async {
     messenger.setMockMethodCallHandler(channel, (MethodCall call) async {
       if (call.method == 'hasPermission') {

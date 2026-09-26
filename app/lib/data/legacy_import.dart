@@ -196,7 +196,7 @@ class LegacyLibraryImporter {
       return null;
     }
     final Uint8List bytes = base64Decode(base64);
-    return _coverStore.save(trackId, bytes);
+    return _coverStore.save(bytes);
   }
 
   static List<Map<String, dynamic>> _objects(Object? value) {

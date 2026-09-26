@@ -36,12 +36,20 @@ class SecureStore {
   /// 最近一次操作是否走了文件回退（设置页展示用）。
   static bool usedFallback = false;
 
+  /// 凭据写入次数。
+  ///
+  /// `SourceAdapterCache` 用它判断"密码/Cookie 换过了，缓存的来源实例不能再复用"：
+  /// 缓存的适配器把凭据与客户端一起拿着（WebDAV 的 Basic 头、夸克的 Cookie），
+  /// 换了凭据却继续用旧实例，会一直用旧密码（或被撤销的 Cookie）去请求。
+  static int credentialEpoch = 0;
+
   final FlutterSecureStorage _storage;
 
   static String accountFor(String prefix, String sourceId) =>
       '${prefix}_$sourceId';
 
   Future<void> write(String account, String value) async {
+    credentialEpoch++;
     try {
       await _storage.write(key: account, value: value);
       usedFallback = false;
@@ -91,6 +99,7 @@ class SecureStore {
   }
 
   Future<void> delete(String account) async {
+    credentialEpoch++;
     try {
       await _storage.delete(key: account);
     } on PlatformException catch (error) {

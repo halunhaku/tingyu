@@ -1,10 +1,11 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:xml/xml.dart';
 
 import '../../data/models/scanned_track.dart';
+import '../http_retry.dart';
 import '../local/local_library_scanner.dart';
 import '../scraper/smart_title_parser.dart';
 import '../source_adapter.dart';
@@ -83,8 +84,15 @@ class WebDavNetworkError extends WebDavException {
 ///   `timeoutIntervalForResource = 60s` 映射为 `receiveTimeout`。
 /// - 新增可选的 `isCancelled`（旧版没有取消），供 `SourceAdapter.scan` 契约使用。
 class WebDavClient {
-  WebDavClient({Dio? dio, this.throttle = const Duration(milliseconds: 120)})
-    : _dio = dio ?? _defaultDio();
+  WebDavClient({
+    Dio? dio,
+    this.throttle = const Duration(milliseconds: 120),
+    HttpRetry? retry,
+  }) : _dio = dio ?? _defaultDio(),
+       _retry = retry ?? const HttpRetry();
+
+  /// 幂等请求的重试策略（测试注入零延迟，避免用例真的等退避）。
+  final HttpRetry _retry;
 
   /// 旧版 `WebDAVClient.propfindBody`（Swift 多行字面量的缩进已被剥掉，这里逐字复刻）。
   static const String propfindBody =
@@ -161,6 +169,7 @@ class WebDavClient {
     int skipped = 0;
     bool cancelled = false;
     bool truncated = false;
+    String? truncationReason;
 
     while (!cancelled && queue.isNotEmpty && tracks.length < maxFiles) {
       final (Uri currentDirUrl, int depth) = queue.removeAt(0);
@@ -276,6 +285,7 @@ class WebDavClient {
             } else {
               // 深度上限之外还有目录没走：本次不是完整快照。
               truncated = true;
+              truncationReason ??= '目录层级超过 $maxDepth 层';
             }
           }
           continue;
@@ -312,6 +322,7 @@ class WebDavClient {
 
         if (tracks.length >= maxFiles) {
           truncated = true;
+          truncationReason ??= '达到 $maxFiles 首上限';
           break;
         }
       }
@@ -322,6 +333,7 @@ class WebDavClient {
       skipped: skipped,
       cancelled: cancelled,
       truncated: truncated,
+      truncationReason: truncationReason,
     );
   }
 
@@ -407,20 +419,39 @@ class WebDavClient {
     required String depth,
     required String authorization,
   }) {
-    return _dio.request<Uint8List>(
-      url.toString(),
-      data: propfindBody,
-      options: Options(
-        method: 'PROPFIND',
-        contentType: 'application/xml; charset=utf-8',
-        responseType: ResponseType.bytes,
-        // 状态码全部交给自己判定，语义与旧版一致。
-        validateStatus: (int? status) => true,
-        headers: <String, dynamic>{
-          'Depth': depth,
-          'Authorization': authorization,
-        },
+    // PROPFIND 是幂等的：坚果云流控（429）、服务端 5xx、连接抖动都值得重试，
+    // 而不是让用户对着"同步失败"反复手点（旧版一次失败就整次扫描失败）。
+    return _retry.run<Response<Uint8List>>(
+      run: (int attempt) => _dio.request<Uint8List>(
+        url.toString(),
+        data: propfindBody,
+        options: Options(
+          method: 'PROPFIND',
+          contentType: 'application/xml; charset=utf-8',
+          responseType: ResponseType.bytes,
+          // 状态码全部交给自己判定，语义与旧版一致。
+          validateStatus: (int? status) => true,
+          headers: <String, dynamic>{
+            'Depth': depth,
+            'Authorization': authorization,
+          },
+        ),
       ),
+      shouldRetry: (Object? error, Response<Uint8List>? result) {
+        if (error is DioException) {
+          // 服务端明确回了状态码时不在这里重试：状态码语义交给调用方，
+          // 只有"连接都没建立起来"这类才重放。
+          return error.response == null;
+        }
+        return HttpRetry.retryableStatus(result?.statusCode);
+      },
+      onRetry:
+          (int attempt, Object? error, Response<Uint8List>? result, Duration delay) {
+            debugPrint(
+              '[webdav] 第 $attempt 次失败（${error ?? 'HTTP ${result?.statusCode}'}），'
+              '${delay.inMilliseconds}ms 后重试',
+            );
+          },
     );
   }
 

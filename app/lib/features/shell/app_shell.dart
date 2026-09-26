@@ -88,6 +88,7 @@ class _Sidebar extends ConsumerWidget {
                 suffixIcon: !hasQuery
                     ? null
                     : IconButton(
+                        tooltip: '清除搜索',
                         icon: const Icon(Icons.close, size: 16),
                         onPressed: () {
                           searchController.clear();
@@ -97,6 +98,7 @@ class _Sidebar extends ConsumerWidget {
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               ),
               onChanged: (String value) {
+                // 即时文本 + 防抖查询由 SearchQueryController 一起处理。
                 ref.read(searchQueryProvider.notifier).set(value);
                 if (value.trim().isNotEmpty && path != '/library') {
                   context.go('/library');
@@ -240,7 +242,37 @@ class _PlaylistList extends ConsumerWidget {
     final AsyncValue<List<Playlist>> playlists = ref.watch(playlistsProvider);
     return playlists.when(
       loading: () => const SizedBox.shrink(),
-      error: (Object error, StackTrace stack) => const SizedBox.shrink(),
+      error: (Object error, StackTrace stack) => Padding(
+        // 侧栏不再把错误吞成空白：读失败时给一行紧凑提示 + 重试，
+        // 否则歌单会「凭空消失」，用户只能重启应用。
+        padding: const EdgeInsets.fromLTRB(12, 2, 4, 6),
+        child: Row(
+          children: <Widget>[
+            Icon(
+              Icons.error_outline,
+              size: 14,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                '播放列表读取失败',
+                style: Theme.of(context).textTheme.bodySmall,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            IconButton(
+              iconSize: 14,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              tooltip: '重试',
+              onPressed: () => ref.invalidate(playlistsProvider),
+              icon: const Icon(Icons.refresh),
+            ),
+          ],
+        ),
+      ),
       data: (List<Playlist> list) {
         if (list.isEmpty) {
           return const _SidebarHint('尚未创建播放列表');

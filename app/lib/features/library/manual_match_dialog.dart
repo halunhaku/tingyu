@@ -127,7 +127,7 @@ class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
       if (bytes != null) {
         coverPath = await ref
             .read(coverStoreProvider)
-            .save(widget.track.id, bytes);
+            .save(bytes);
       }
     }
 

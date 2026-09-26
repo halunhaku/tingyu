@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
@@ -55,16 +56,16 @@ class SourceSyncController extends Notifier<Map<String, SourceSyncState>> {
     }
     _set(source.id, const SourceSyncState(running: true, message: '正在准备…'));
     try {
-      final SourceAdapter adapter = await buildSourceAdapter(ref, source);
+      final SourceAdapter adapter = await ref
+          .read(sourceAdapterCacheProvider)
+          .of(source);
       final SourceScanResult scan = await adapter.scan(
+        // 扫描阶段拿不到"总数"：来源要么边翻页边发现条目（夸克/WebDAV），要么只知道
+        // 已读到的文件数。这里如实只报进度数（total 留 0 → 进度条走不确定态），
+        // 而不是把 done 同时当成 total —— 那会让进度条自始至终停在 100%。
         onProgress: (int done, String name) => _set(
           source.id,
-          SourceSyncState(
-            running: true,
-            message: name,
-            done: done,
-            total: done,
-          ),
+          SourceSyncState(running: true, message: '已扫描 $done 首 · $name', done: done),
         ),
       );
 
@@ -91,6 +92,11 @@ class SourceSyncController extends Notifier<Map<String, SourceSyncState>> {
       );
       // 与原生 macOS 一致：新入库曲目在后台自动补齐，不要求用户再点一次按钮。
       unawaited(enrichSource(source.id));
+      if (scan.isAuthoritative) {
+        // 完整同步是清理封面缓存的好时机：内容寻址后换封面会留下旧图，
+        // 历史上的重复副本也只有这种"权威快照"时刻才能确定没人再引用。
+        unawaited(_pruneCovers());
+      }
       return merge;
     } on Object catch (error) {
       final String message = _describe(error);
@@ -156,6 +162,27 @@ class SourceSyncController extends Notifier<Map<String, SourceSyncState>> {
     );
   }
 
+  /// 清理不再被任何曲目引用的封面文件。
+  ///
+  /// 只删"确实没人引用"的文件：任何一次完整同步之后调用它，会自动清掉换封面、
+  /// 换来源留下的孤儿图，以及历史上按 key 命名时代留下的重复副本。
+  Future<void> _pruneCovers() async {
+    try {
+      final Set<String> keep = await ref
+          .read(trackRepositoryProvider)
+          .coverNamesInUse();
+      final int removed = await ref
+          .read(coverStoreProvider)
+          .pruneUnreferenced(keep);
+      if (removed > 0) {
+        debugPrint('[sources] 清理无引用封面 $removed 个');
+      }
+    } on Object catch (error) {
+      // 清理是尽力而为：删不掉封面不该让一次成功的同步变成失败。
+      debugPrint('[sources] 清理封面缓存失败: $error');
+    }
+  }
+
   static String _syncStatus(SourceScanResult scan, MergeResult merge) {
     if (scan.isAuthoritative) {
       return '已同步（新增 ${merge.added} / 更新 ${merge.updated} / 移除 ${merge.removed}）';
@@ -163,12 +190,11 @@ class SourceSyncController extends Notifier<Map<String, SourceSyncState>> {
     if (scan.cancelled) {
       return '已取消（保留未扫描曲目；新增 ${merge.added} / 更新 ${merge.updated}）';
     }
-    if (scan.truncated && scan.skipped > 0) {
-      return '部分同步（达到数量上限，跳过 ${scan.skipped} 项；保留未扫描曲目；'
-          '新增 ${merge.added} / 更新 ${merge.updated}）';
-    }
+    // 截断的原因由各来源自己给（数量上限 / 层级上限 / 响应无法解析）：笼统写成
+    // "达到数量上限"会把"目录层级超过上限"这类原因盖掉，用户对着提示也改不对设置。
     if (scan.truncated) {
-      return '部分同步（达到数量上限；保留未扫描曲目；'
+      final String reason = scan.truncationReason ?? '来源内容未枚举完';
+      return '部分同步（$reason；保留未扫描曲目；'
           '新增 ${merge.added} / 更新 ${merge.updated}）';
     }
     return '部分同步（跳过 ${scan.skipped} 项；保留未扫描曲目；'

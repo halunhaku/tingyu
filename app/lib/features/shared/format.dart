@@ -20,18 +20,3 @@ String formatDuration(Duration duration) {
   }
   return '$minutes:$seconds';
 }
-
-/// 文件大小（同步状态展示用）。
-String formatBytes(int bytes) {
-  if (bytes <= 0) {
-    return '0 B';
-  }
-  const List<String> units = <String>['B', 'KB', 'MB', 'GB', 'TB'];
-  double value = bytes.toDouble();
-  int unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit++;
-  }
-  return '${value.toStringAsFixed(value >= 100 || unit == 0 ? 0 : 1)} ${units[unit]}';
-}

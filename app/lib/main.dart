@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui' show PlatformDispatcher;
+import 'dart:ui' show AppExitResponse, AppExitType, PlatformDispatcher;
 
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
@@ -97,6 +97,25 @@ Future<void> _run() async {
 
   await _runDataHarness();
 
+  // 桌面端退出前释放原生播放器与快照订阅。
+  //
+  // 此前 `TingyuAudioHandler.dispose()` 没有任何调用方：关窗后 mpv/ExoPlayer 实例与
+  // 引擎订阅一直留着，靠进程结束兜底（真机上表现为下次启动前的音频设备残留）。
+  // macOS 的「退出听屿」菜单也改成走同一个出口，保证这条路径一样会被执行。
+  late final AppLifecycleListener lifecycle;
+  lifecycle = AppLifecycleListener(
+    onExitRequested: () async {
+      try {
+        await handler.dispose();
+      } on Object catch (error) {
+        debugPrint('[lifecycle] 释放播放器失败: $error');
+      } finally {
+        lifecycle.dispose();
+      }
+      return AppExitResponse.exit;
+    },
+  );
+
   runApp(
     ProviderScope(
       overrides: [audioHandlerProvider.overrideWithValue(handler)],
@@ -173,7 +192,11 @@ class _TingyuAppState extends State<TingyuApp> {
               LogicalKeyboardKey.keyQ,
               meta: true,
             ),
-            onSelected: () => exit(0),
+            // 走 AppLifecycleListener 的退出出口（dispose 播放器），不要直接 exit(0)：
+            // 那样会跳过引擎与系统媒体会话的释放。
+            onSelected: () => unawaited(
+              ServicesBinding.instance.exitApplication(AppExitType.cancelable),
+            ),
           ),
         ],
       ),
@@ -182,7 +205,12 @@ class _TingyuAppState extends State<TingyuApp> {
         menus: <PlatformMenuItem>[
           PlatformMenuItem(
             label: '播放 / 暂停',
-            shortcut: const SingleActivator(LogicalKeyboardKey.space),
+            // 不再是空格：macOS 的菜单 key equivalent 在文本输入之前派发（AppKit 的
+            // 菜单匹配先于响应链），侧栏搜索框里按空格会被菜单吃掉，打不出空格。
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyP,
+              meta: true,
+            ),
             onSelected: () =>
                 container.read(playbackProvider.notifier).togglePlayPause(),
           ),

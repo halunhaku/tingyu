@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart';
 
 import 'playback_engine.dart';
@@ -103,6 +104,13 @@ final class MediaKitEngine extends PlaybackEngineBase {
   @override
   Future<void> setVolume(double volume) => _player.setVolume(volume);
 
+  /// libmpv 的单曲循环（`PlaylistMode.single`）由 mpv 自己循环，转场无缝；列表循环
+  /// 与不循环都用 `none`，列表回绕交给控制器在 completed 时重建队列。
+  @override
+  Future<void> setRepeatMode(PlaybackRepeatMode mode) => _player.setPlaylistMode(
+    mode == PlaybackRepeatMode.one ? PlaylistMode.single : PlaylistMode.none,
+  );
+
   @override
   Future<void> skipToNext() => _player.next();
 
@@ -147,7 +155,7 @@ final class MediaKitEngine extends PlaybackEngineBase {
     }
     emit(
       PlaybackSnapshot(
-        processing: _processingOf(state),
+        processing: processingOf(state),
         playing: state.playing,
         position: state.position,
         duration: state.duration,
@@ -160,7 +168,10 @@ final class MediaKitEngine extends PlaybackEngineBase {
     );
   }
 
-  PlaybackProcessing _processingOf(PlayerState state) {
+  /// 纯函数，只吃 libmpv 推来的 [PlayerState]；`@visibleForTesting` 是为了在
+  /// 没有原生库的单元测试里守住"未知时长不等于还在加载"。
+  @visibleForTesting
+  static PlaybackProcessing processingOf(PlayerState state) {
     if (state.playlist.medias.isEmpty) {
       return PlaybackProcessing.idle;
     }
@@ -170,9 +181,9 @@ final class MediaKitEngine extends PlaybackEngineBase {
     if (state.completed) {
       return PlaybackProcessing.completed;
     }
-    if (state.duration == Duration.zero) {
-      return PlaybackProcessing.loading;
-    }
+    // duration 未知 ≠ 还在加载：夸克 / WebDAV 这类直链没有 Content-Length，
+    // mpv 的 state.duration 会整首都是 0；按 loading 处理会让播放键整首歌都停在
+    // 转圈图标上（用户以为没播）。队列里有条目、又不在缓冲/播完，就是可播放的。
     return PlaybackProcessing.ready;
   }
 }

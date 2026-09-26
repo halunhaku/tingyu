@@ -1,8 +1,10 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../data/models/scanned_track.dart';
+import '../http_retry.dart';
 import '../local/local_library_scanner.dart';
 import '../scraper/smart_title_parser.dart';
 import 'quark_session.dart';
@@ -64,13 +66,21 @@ class QuarkParseError extends QuarkException {
 
 /// 一次目录列举的结果。
 class QuarkFolderListing {
-  const QuarkFolderListing(this.items, {this.complete = true});
+  const QuarkFolderListing(
+    this.items, {
+    this.complete = true,
+    this.incompleteReason,
+  });
 
   final List<QuarkItem> items;
 
   /// 是否把这个目录的条目**全部**取到了。false 表示触到了翻页上限、服务端还有
-  /// 没取回的页；调用方必须按「非完整快照」处理，否则会把没枚举到的曲目当成已删除。
+  /// 没取回的页，或响应结构无法解析；调用方必须按「非完整快照」处理，否则会把
+  /// 没枚举到的曲目当成已删除。
   final bool complete;
+
+  /// [complete] 为 false 的原因，用于同步状态文案。
+  final String? incompleteReason;
 }
 
 /// 一次递归扫描的结果。
@@ -79,6 +89,7 @@ class QuarkScanResult {
     this.tracks, {
     this.cancelled = false,
     this.truncated = false,
+    this.truncationReason,
   });
 
   final List<ScannedTrack> tracks;
@@ -86,8 +97,29 @@ class QuarkScanResult {
   /// 调用方在扫描途中要求中止。
   final bool cancelled;
 
-  /// 达到 [QuarkDriveClient.scan] 的曲目数量上限。
+  /// 结果没有覆盖整个目录树（数量上限、层级上限、响应不可解析）。
   final bool truncated;
+
+  /// [truncated] 的具体原因。
+  final String? truncationReason;
+}
+
+/// 服务端返回的一页目录内容。
+class _QuarkFolderPage {
+  const _QuarkFolderPage({
+    required this.items,
+    this.total,
+    this.malformed = false,
+  });
+
+  final List<QuarkItem> items;
+
+  /// 服务端自报的条目总数（`_fetch_total=1` 时才有）。
+  final int? total;
+
+  /// 响应缺少 `data.list` 这类必需结构。**不能**当成"空目录"：那会让一次
+  /// 结构异常的响应把整个目录的曲目判为已删除。
+  final bool malformed;
 }
 
 /// 夸克网盘 API 客户端，对齐旧版 `Sources/Services/Quark/QuarkDriveClient.swift`。
@@ -99,9 +131,14 @@ class QuarkDriveClient {
     Dio? dio,
     DateTime Function()? clock,
     Duration? folderDelay,
+    HttpRetry? retry,
   }) : _dio = dio ?? Dio(_baseOptions()),
        _clock = clock ?? DateTime.now,
-       folderDelay = folderDelay ?? defaultFolderDelay;
+       folderDelay = folderDelay ?? defaultFolderDelay,
+       _retry = retry ?? const HttpRetry();
+
+  /// 幂等请求的重试策略（测试注入零延迟，避免用例真的等退避）。
+  final HttpRetry _retry;
 
   /// 旧版 `URLSessionConfiguration.timeoutIntervalForRequest`。
   static const Duration requestTimeout = Duration(seconds: 20);
@@ -229,28 +266,52 @@ class QuarkDriveClient {
   ///
   /// 旧实现只请求 `_page=1`：目录里第 `_pageSize` 条之后的条目永远拿不到，而扫描
   /// 侧又把结果当成权威快照，于是「同步成功」既会少歌、又会把已入库的曲目判为已删除。
-  /// 结构不符（缺 `data.list`、非 JSON）时按空列表处理，与旧版一致。
+  ///
+  /// 三种情况都会返回 `complete: false`（宁可少删，也不能错删）：
+  /// 翻满 [_maxPages] 仍是整页、服务端自报总数比取回的多、响应结构无法解析。
   Future<QuarkFolderListing> listFolder({
     String fid = '0',
     required QuarkSession session,
   }) async {
     final List<QuarkItem> items = <QuarkItem>[];
+    int? total;
     for (int page = 1; page <= _maxPages; page++) {
-      final List<QuarkItem> pageItems = await _listFolderPage(
+      final _QuarkFolderPage pageResult = await _listFolderPage(
         fid: fid,
         page: page,
         session: session,
       );
-      items.addAll(pageItems);
-      if (pageItems.length < _pageSize) {
+      if (pageResult.malformed) {
+        return QuarkFolderListing(
+          items,
+          complete: false,
+          incompleteReason: '服务端返回了无法解析的目录内容',
+        );
+      }
+      total ??= pageResult.total;
+      items.addAll(pageResult.items);
+      if (pageResult.items.length < _pageSize) {
+        // 服务端自报的总数与实际取回的对不上：条目在翻页过程中变化，或服务端
+        // 静默截断了结果。同样按不完整处理。
+        if (total != null && items.length < total) {
+          return QuarkFolderListing(
+            items,
+            complete: false,
+            incompleteReason: '目录未取全（${items.length}/$total 项）',
+          );
+        }
         return QuarkFolderListing(items);
       }
     }
     // 翻满上限仍是整页：目录比我们愿意取回的更大，如实标记为不完整。
-    return QuarkFolderListing(items, complete: false);
+    return QuarkFolderListing(
+      items,
+      complete: false,
+      incompleteReason: '目录超过 $_maxPages 页未取完',
+    );
   }
 
-  Future<List<QuarkItem>> _listFolderPage({
+  Future<_QuarkFolderPage> _listFolderPage({
     required String fid,
     required int page,
     required QuarkSession session,
@@ -290,13 +351,15 @@ class QuarkDriveClient {
     }
     final Object? data = json?['data'];
     if (data is! Map<String, dynamic>) {
-      return <QuarkItem>[];
+      // 老实现把这里当成"空目录"，于是一次异常响应就能删掉整个目录的曲目。
+      return const _QuarkFolderPage(items: <QuarkItem>[], malformed: true);
     }
     final Object? list = data['list'];
     if (list is! List) {
-      return <QuarkItem>[];
+      return const _QuarkFolderPage(items: <QuarkItem>[], malformed: true);
     }
 
+    final int? total = _asInt(data['total']);
     final List<QuarkItem> items = <QuarkItem>[];
     for (final Object? entry in list) {
       if (entry is! Map<String, dynamic>) {
@@ -322,7 +385,9 @@ class QuarkDriveClient {
         ),
       );
     }
-    return items;
+    // 条目被逐条丢弃（缺 fid / file_name）时页内数量会小于 total，交由调用方
+    // 用 total 兜底判定完整性。
+    return _QuarkFolderPage(items: items, total: total);
   }
 
   // MARK: - 递归扫描音频
@@ -345,6 +410,7 @@ class QuarkDriveClient {
     final Set<String> visitedFids = <String>{};
     bool cancelled = false;
     bool truncated = false;
+    String? truncationReason;
 
     while (queue.isNotEmpty && tracks.length < maxFiles) {
       if (isCancelled?.call() ?? false) {
@@ -352,9 +418,6 @@ class QuarkDriveClient {
         break;
       }
       final (String currentFid, int depth) = queue.removeAt(0);
-      if (depth > maxDepth) {
-        continue;
-      }
       if (!visitedFids.add(currentFid)) {
         continue;
       }
@@ -366,11 +429,16 @@ class QuarkDriveClient {
       if (!listing.complete) {
         // 目录没枚举完：本次结果不是完整快照，绝不能据此删除已入库曲目。
         truncated = true;
+        truncationReason ??= listing.incompleteReason;
       }
 
       for (final QuarkItem item in listing.items) {
         if (item.isFolder) {
-          if (depth + 1 <= maxDepth && !visitedFids.contains(item.id)) {
+          if (depth + 1 > maxDepth) {
+            // 上限之外的目录整棵跳过：不记档就会让「同步成功」把里面的歌删掉。
+            truncated = true;
+            truncationReason ??= '目录层级超过 $maxDepth 层';
+          } else if (!visitedFids.contains(item.id)) {
             queue.add((item.id, depth + 1));
           }
           continue;
@@ -406,6 +474,7 @@ class QuarkDriveClient {
 
         if (tracks.length >= maxFiles) {
           truncated = true;
+          truncationReason ??= '达到 $maxFiles 首上限';
           break;
         }
       }
@@ -414,7 +483,12 @@ class QuarkDriveClient {
       await Future<void>.delayed(folderDelay);
     }
 
-    return QuarkScanResult(tracks, cancelled: cancelled, truncated: truncated);
+    return QuarkScanResult(
+      tracks,
+      cancelled: cancelled,
+      truncated: truncated,
+      truncationReason: truncationReason,
+    );
   }
 
   // MARK: - 直链解析
@@ -565,6 +639,33 @@ class QuarkDriveClient {
     required QuarkSession session,
     bool jsonBody = false,
     Object? body,
+  }) async {
+    // 列目录 / 取直链都是幂等的：网盘风控（429）、服务端 5xx、连接抖动值得重放。
+    // 旧实现一次失败就让整次扫描或播放报错，用户只能反复手点。
+    return _retry.run<_QuarkResponse>(
+      run: (int attempt) => _sendOnce(
+        endpoint,
+        session: session,
+        jsonBody: jsonBody,
+        body: body,
+      ),
+      shouldRetry: (Object? error, _QuarkResponse? result) =>
+          result == null || HttpRetry.retryableStatus(result.statusCode),
+      onRetry:
+          (int attempt, Object? error, _QuarkResponse? result, Duration delay) {
+            debugPrint(
+              '[quark] 第 $attempt 次失败（${error ?? 'HTTP ${result?.statusCode}'}），'
+              '${delay.inMilliseconds}ms 后重试',
+            );
+          },
+    );
+  }
+
+  Future<_QuarkResponse> _sendOnce(
+    String endpoint, {
+    required QuarkSession session,
+    required bool jsonBody,
+    required Object? body,
   }) async {
     try {
       final Response<dynamic> response = await _dio.request<dynamic>(

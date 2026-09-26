@@ -53,6 +53,9 @@ final class _IdleEngine extends PlaybackEngineBase {
   @override
   Future<void> skipToPrevious() async {}
 
+  /// 模拟真实引擎照常推送进度事件（`emit` 为 protected）。
+  void push(PlaybackSnapshot snapshot) => emit(snapshot);
+
   @override
   Future<void> dispose() async => closeSnapshotStream();
 }
@@ -103,17 +106,21 @@ Track _track(String id, String title) => Track(
   playCount: 0,
 );
 
-ProviderContainer _container() {
+ProviderContainer _container() => _containerAndEngine(_UnreachableResolver.new).$1;
+
+/// 同时拿到容器与其中的引擎：验证"引擎照常 tick 时失败仍在"需要手动推快照。
+(ProviderContainer, _IdleEngine) _containerAndEngine(
+  TrackResolver Function(Ref ref) resolver,
+) {
+  final _IdleEngine engine = _IdleEngine();
   final ProviderContainer container = ProviderContainer(
     overrides: [
-      audioHandlerProvider.overrideWithValue(TingyuAudioHandler(_IdleEngine())),
-      trackResolverProvider.overrideWith(
-        (Ref ref) => _UnreachableResolver(ref),
-      ),
+      audioHandlerProvider.overrideWithValue(TingyuAudioHandler(engine)),
+      trackResolverProvider.overrideWith((Ref ref) => resolver(ref)),
     ],
   );
   addTearDown(container.dispose);
-  return container;
+  return (container, engine);
 }
 
 void main() {
@@ -226,5 +233,43 @@ void main() {
     expect(failure, isNotNull);
     expect(failure!.title, '晴天');
     expect(failure.message, '无法播放：本地目录授权已失效，请重新选择音乐文件夹');
+  });
+
+  test('引擎随后推的快照不会把解析失败擦掉（旧会话仍在 tick）', () async {
+    final (ProviderContainer container, _IdleEngine engine) =
+        _containerAndEngine(_UnreachableResolver.new);
+
+    await container.read(playbackProvider.notifier).playTracks(<Track>[
+      _track('t1', '伊斯坦堡'),
+    ]);
+    expect(container.read(playbackProvider).failure?.title, '伊斯坦堡');
+    // 等控制器的订阅真的挂上引擎的快照流（`snapshots` 是 async* 包装的广播流，
+    // 广播事件不会为还没订阅的监听者补发）。
+    await pumpEventQueue();
+
+    // 真实引擎不会因为"解析失败"就停下：旧会话仍在 playing=true 地推事件。
+    // 引擎快照里的 failure 是 null，控制器的失败必须自己留着。
+    engine.push(
+      const PlaybackSnapshot(
+        processing: PlaybackProcessing.ready,
+        playing: true,
+        position: Duration(milliseconds: 60),
+        duration: Duration(seconds: 240),
+        buffered: Duration(milliseconds: 60),
+        index: 0,
+        rate: 1,
+        volume: 1,
+      ),
+    );
+    // 引擎的 snapshots 是 async* 包装的广播流，事件要等事件循环真的转起来才到。
+    await pumpEventQueue();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    expect(
+      container.read(playbackProvider).failure?.title,
+      '伊斯坦堡',
+      reason: '引擎的 failure 为 null，不能把控制器侧记下的失败覆盖掉',
+    );
+    expect(container.read(playbackProvider).failure?.message, contains('夸克网络连接异常'));
   });
 }

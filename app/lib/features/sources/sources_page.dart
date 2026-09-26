@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
 import '../../data/db/database.dart';
+import '../../app/source_adapters.dart';
 import '../../data/secure_store.dart';
 import '../../sources/quark/quark_auth.dart';
 import '../../sources/quark/quark_drive_client.dart';
@@ -497,6 +498,8 @@ Future<void> _confirmDeleteSource(
     return;
   }
   await ref.read(sourceRepositoryProvider).delete(source.id);
+  // 缓存的适配器跟着来源一起丢掉：它还持有已删除来源的 URL 凭据与直链缓存。
+  ref.read(sourceAdapterCacheProvider).evict(source.id);
   await SecureStore().delete(
     SecureStore.accountFor(SecureStore.quarkCookiePrefix, source.id),
   );

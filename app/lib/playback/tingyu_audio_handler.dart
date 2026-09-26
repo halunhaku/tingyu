@@ -33,9 +33,18 @@ final class TingyuAudioHandler extends BaseAudioHandler
 
   List<PlaybackItem> _items = const <PlaybackItem>[];
 
+  /// 与 [_items] 平行的 [MediaItem] 缓存。
+  ///
+  /// 以前每次 `addToQueue` 都把整条队列重新翻译一遍再整条 publish：懒解析队列是
+  /// 逐首追加的，于是 O(n²) 次分配 + 每次平台通道都要搬运整条列表。现在只在
+  /// `setQueue` 重建、`addToQueue` 追加一个。
+  List<MediaItem> _mediaItems = const <MediaItem>[];
+
   PlaybackSnapshot? _lastPushed;
 
   DateTime _lastPushAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  String? _lastMediaItemId;
 
   int? _lastMediaItemIndex;
 
@@ -59,7 +68,13 @@ final class TingyuAudioHandler extends BaseAudioHandler
   /// 替换队列并定位到 [startIndex]（不自动播放）。
   Future<void> setQueue(List<PlaybackItem> items, {int startIndex = 0}) async {
     _items = List<PlaybackItem>.unmodifiable(items);
-    queue.add(_items.map(_toMediaItem).toList(growable: false));
+    _mediaItems = _items.map(_toMediaItem).toList(growable: false);
+    // 新会话：即便下标与时长跟上一次会话完全相同，也要重新发布一次元数据 ——
+    // 否则锁屏 / MPRIS / SMTC 会一直挂着上一轮的标题与封面。
+    _lastMediaItemId = null;
+    _lastMediaItemIndex = null;
+    _lastMediaItemDuration = null;
+    queue.add(_mediaItems);
     await _engine.setQueue(_items, startIndex: startIndex);
     _broadcast(_engine.current);
   }
@@ -68,7 +83,12 @@ final class TingyuAudioHandler extends BaseAudioHandler
   Future<void> addToQueue(PlaybackItem item) async {
     await _engine.addToQueue(item);
     _items = List<PlaybackItem>.unmodifiable(<PlaybackItem>[..._items, item]);
-    queue.add(_items.map(_toMediaItem).toList(growable: false));
+    // 只翻译新增的这一个，然后把缓存整条推给系统（列表本身是引用复制，代价远小于
+    // 每首歌都重新构造全部 MediaItem）。
+    _mediaItems = <MediaItem>[..._mediaItems, _toMediaItem(item)];
+    queue.add(_mediaItems);
+    // 不清 `_lastMediaItem*`：去重键里已经带了曲目 id，追加不会让"当前这首"变样，
+    // 清了反而会在每次预取追加时把同一份元数据再推一次给平台通道。
     _broadcast(_engine.current);
   }
 
@@ -92,6 +112,13 @@ final class TingyuAudioHandler extends BaseAudioHandler
 
   /// 音量不属于 `audio_service` 的 [AudioHandler] 契约，仅供 UI 直接调用。
   Future<void> setVolume(double volume) => _engine.setVolume(volume);
+
+  /// 循环模式转发给引擎；单曲循环由引擎自己无缝循环，见 [PlaybackEngine.setRepeatMode]。
+  ///
+  /// 名字刻意不叫 `setRepeatMode`：`audio_service` 的 [AudioHandler] 已经占用了那个
+  /// 名字（系统媒体会话下发的 [AudioServiceRepeatMode]），两者语义不同不能合并。
+  Future<void> applyRepeatMode(PlaybackRepeatMode mode) =>
+      _engine.setRepeatMode(mode);
 
   @override
   Future<void> stop() async {
@@ -148,21 +175,29 @@ final class TingyuAudioHandler extends BaseAudioHandler
     );
   }
 
-  /// 当前曲目的元数据只在曲目切换或时长首次可知时更新，避免刷屏。
+  /// 当前曲目的元数据只在「换了一首」或时长首次可知时更新，避免刷屏。
+  ///
+  /// 去重键必须带上 [PlaybackItem.id]：新会话的第一首常常还没有时长（0 / 未知），
+  /// 只比 (下标, 时长) 会被判定成"没变"，锁屏 / MPRIS / SMTC 就一直挂着上一首歌的
+  /// 标题、艺术家和封面。
   void _syncMediaItem(PlaybackSnapshot snapshot) {
     final int index = snapshot.index;
     if (index < 0 || index >= _items.length) {
       return;
     }
+    final PlaybackItem item = _items[index];
     final Duration? duration = snapshot.duration == Duration.zero
-        ? _items[index].duration
+        ? item.duration
         : snapshot.duration;
-    if (_lastMediaItemIndex == index && _lastMediaItemDuration == duration) {
+    if (_lastMediaItemId == item.id &&
+        _lastMediaItemIndex == index &&
+        _lastMediaItemDuration == duration) {
       return;
     }
+    _lastMediaItemId = item.id;
     _lastMediaItemIndex = index;
     _lastMediaItemDuration = duration;
-    mediaItem.add(_toMediaItem(_items[index], duration: duration));
+    mediaItem.add(_toMediaItem(item, duration: duration));
   }
 
   static MediaItem _toMediaItem(PlaybackItem item, {Duration? duration}) {

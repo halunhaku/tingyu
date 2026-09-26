@@ -51,6 +51,14 @@ abstract interface class PlaybackEngine {
 
   Future<void> setVolume(double volume);
 
+  /// 设置循环模式。
+  ///
+  /// 单曲循环必须下发给引擎：ExoPlayer / AVPlayer 与 libmpv 默认都只在**列表末尾**
+  /// 报 `completed`，靠上层监听 completed 再 seek(0) 重播会有一声明显的静音空档，
+  /// 而且引擎内部的循环由它们自己做才是无缝的。列表循环与不循环都交回 [off]，
+  /// 由上层在 completed 时决定回绕还是停下。
+  Future<void> setRepeatMode(PlaybackRepeatMode mode);
+
   Future<void> skipToNext();
 
   Future<void> skipToPrevious();
@@ -73,6 +81,12 @@ abstract base class PlaybackEngineBase implements PlaybackEngine {
 
   @override
   PlaybackSnapshot get current => _snapshot;
+
+  /// 默认不改变引擎的循环行为，真实引擎各自覆盖（just_audio → LoopMode，media_kit →
+  /// PlaylistMode）。放在基类而不是强制每个实现，是因为引擎不支持时控制器的
+  /// completed 兜底（回到 0 重播）仍然成立，只是单曲循环会有一声静音空档。
+  @override
+  Future<void> setRepeatMode(PlaybackRepeatMode mode) async {}
 
   @protected
   void emit(PlaybackSnapshot snapshot) {

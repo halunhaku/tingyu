@@ -46,15 +46,13 @@ class SafSourceAdapter implements SourceAdapter {
     int skipped = 0;
     bool cancelled = false;
     bool truncated = false;
+    String? truncationReason;
 
     final List<_SafDirectory> queue = <_SafDirectory>[
       const _SafDirectory(depth: 0),
     ];
     while (queue.isNotEmpty && tracks.length < maxFiles && !cancelled) {
       final _SafDirectory directory = queue.removeAt(0);
-      if (directory.depth > maxDepth) {
-        continue;
-      }
       if (isCancelled?.call() ?? false) {
         cancelled = true;
         break;
@@ -81,12 +79,19 @@ class SafSourceAdapter implements SourceAdapter {
           continue;
         }
         if (entry.isDirectory) {
-          queue.add(
-            _SafDirectory(
-              documentId: entry.documentId,
-              depth: directory.depth + 1,
-            ),
-          );
+          if (directory.depth + 1 > maxDepth) {
+            // 层级上限之外的目录整棵跳过：必须记档，否则这次"同步成功"会把
+            // 里面的曲目判为已删除（见 SourceScanResult.isAuthoritative）。
+            truncated = true;
+            truncationReason ??= '目录层级超过 $maxDepth 层';
+          } else {
+            queue.add(
+              _SafDirectory(
+                documentId: entry.documentId,
+                depth: directory.depth + 1,
+              ),
+            );
+          }
           continue;
         }
         if (!LocalLibraryScanner.isSupported(entry.name)) {
@@ -98,6 +103,7 @@ class SafSourceAdapter implements SourceAdapter {
         onProgress?.call(tracks.length, track.title);
         if (tracks.length >= maxFiles) {
           truncated = true;
+          truncationReason ??= '达到 $maxFiles 首上限';
           break;
         }
       }
@@ -108,6 +114,7 @@ class SafSourceAdapter implements SourceAdapter {
       skipped: skipped,
       cancelled: cancelled,
       truncated: truncated,
+      truncationReason: truncationReason,
     );
   }
 

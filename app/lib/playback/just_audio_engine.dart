@@ -48,6 +48,9 @@ final class JustAudioEngine extends PlaybackEngineBase {
   /// 上一次同步时的播放位置，用于判断「音频确实在推进」。
   Duration _lastPosition = Duration.zero;
 
+  /// 已释放：`play()` 在释放后必须立刻返回（否则等 playing 事件会一直挂着）。
+  bool _disposed = false;
+
   @override
   List<PlaybackItem> get items => _items;
 
@@ -94,7 +97,40 @@ final class JustAudioEngine extends PlaybackEngineBase {
   }
 
   @override
-  Future<void> play() => _player.play();
+  Future<void> play() async {
+    // just_audio 的 play() 要等到播放暂停/停止才 complete（其文档明说），
+    // await 它等于把调用方挂在这首歌上：移动端"起播后补全元数据 + 预取后两首"
+    // 会整整推迟一首歌才跑。这里改成真正开始出声（playing 变 true）就返回；
+    // 出错不抛，仍由 _fail/_sync 走快照上报。
+    if (_disposed || _player.playing) {
+      return;
+    }
+    final Completer<void> started = Completer<void>();
+    final StreamSubscription<bool> subscription = _player.playingStream.listen((
+      bool playing,
+    ) {
+      if (playing && !started.isCompleted) {
+        started.complete();
+      }
+    });
+    try {
+      unawaited(
+        _player.play().catchError((Object error) {
+          if (!started.isCompleted) {
+            started.complete();
+          }
+          // 换队列/换曲打断上一次加载是正常噪声，不当失败；其余（音频会话拿不到、
+          // 平台拒绝）按类文档走快照上报，不向调用方抛。
+          if (error is! ja.PlayerInterruptedException) {
+            _fail(error);
+          }
+        }),
+      );
+      await started.future;
+    } finally {
+      await subscription.cancel();
+    }
+  }
 
   @override
   Future<void> pause() => _player.pause();
@@ -108,6 +144,14 @@ final class JustAudioEngine extends PlaybackEngineBase {
   @override
   Future<void> setVolume(double volume) => _player.setVolume(volume);
 
+  /// 单曲循环交给 ExoPlayer / AVPlayer 自己循环（无缝，且不会在曲末报 completed
+  /// 让 UI 闪一下"已播完"）；列表循环与不循环都用 off —— 列表回绕由控制器在
+  /// completed 时重建队列，这样还能顺带把三份平行数组截断。
+  @override
+  Future<void> setRepeatMode(PlaybackRepeatMode mode) => _player.setLoopMode(
+    mode == PlaybackRepeatMode.one ? ja.LoopMode.one : ja.LoopMode.off,
+  );
+
   @override
   Future<void> skipToNext() => _player.seekToNext();
 
@@ -116,6 +160,7 @@ final class JustAudioEngine extends PlaybackEngineBase {
 
   @override
   Future<void> dispose() async {
+    _disposed = true;
     for (final subscription in _subscriptions) {
       await subscription.cancel();
     }

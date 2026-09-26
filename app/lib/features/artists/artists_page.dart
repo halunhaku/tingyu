@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'dart:io' show Platform;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -42,7 +43,16 @@ class ArtistAvatar extends ConsumerWidget {
         child: avatar.maybeWhen(
           data: (Uint8List? bytes) => bytes == null || bytes.isEmpty
               ? _initial(context)
-              : Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true),
+              : Image.memory(
+                  bytes,
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                  // 头像最小只画到 44px，按显示尺寸解码，别把原图整张铺进内存。
+                  cacheWidth: math.max(
+                    1,
+                    (size * MediaQuery.devicePixelRatioOf(context)).round(),
+                  ),
+                ),
           // 拉取中或失败（离线、查不到）都先用首字占位，不再阻塞列表。
           orElse: () => _initial(context),
         ),

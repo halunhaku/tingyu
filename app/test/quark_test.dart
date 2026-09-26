@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tingyu/data/models/scanned_track.dart';
 import 'package:tingyu/playback/playback_item.dart';
+import 'package:tingyu/sources/http_retry.dart';
 import 'package:tingyu/sources/quark/quark_auth.dart';
 import 'package:tingyu/sources/quark/quark_cookie_store.dart';
 import 'package:tingyu/sources/quark/quark_drive_client.dart';
@@ -67,7 +68,13 @@ QuarkDriveClient _buildClient(
   final List<RequestOptions> log = requests ?? <RequestOptions>[];
   final Dio dio = Dio(BaseOptions(validateStatus: (int? status) => true));
   dio.httpClientAdapter = _FakeHttpAdapter(handler, log);
-  return QuarkDriveClient(dio: dio, clock: clock, folderDelay: Duration.zero);
+  return QuarkDriveClient(
+    dio: dio,
+    clock: clock,
+    folderDelay: Duration.zero,
+    // 重试照旧发生，只是不真等退避：测试既覆盖重放路径，又不必为退避空转。
+    retry: const HttpRetry(baseDelay: Duration.zero),
+  );
 }
 
 ResponseBody _jsonBody(
@@ -668,7 +675,7 @@ void main() {
       maxFiles: maxFiles,
     );
 
-    test('BFS 深度受限：maxDepth=1 只扫根目录与一层子目录', () async {
+    test('BFS 深度受限：maxDepth=1 只扫根目录与一层子目录，且不再算作权威快照', () async {
       final List<RequestOptions> requests = <RequestOptions>[];
       final List<String> progress = <String>[];
       final QuarkSourceAdapter adapter = adapterWith(requests, maxDepth: 1);
@@ -679,8 +686,11 @@ void main() {
 
       expect(result.cancelled, isFalse);
       expect(result.skipped, 0);
-      expect(result.truncated, isFalse);
-      expect(result.isAuthoritative, isTrue);
+      // f11 在第 2 层、被层级上限挡住：里面的歌这次拿不到。若仍按权威快照处理，
+      // 这些曲目会被 mergeScan 判为"已删除"而从曲库里消失（连带歌单引用）。
+      expect(result.truncated, isTrue);
+      expect(result.truncationReason, '目录层级超过 1 层');
+      expect(result.isAuthoritative, isFalse);
       expect(
         result.tracks.map((ScannedTrack t) => t.filePathOrUrl).toList(),
         <String>['quark://file-root', 'quark://file-nested'],
@@ -751,6 +761,61 @@ void main() {
         <String>['0', 'f1'],
       );
       expect(result.truncated, isTrue);
+      expect(result.truncationReason, '达到 2 首上限');
+      expect(result.isAuthoritative, isFalse);
+    });
+
+    test('响应结构异常（200 但没有 data.list）不算权威快照，也不删库', () async {
+      final List<RequestOptions> requests = <RequestOptions>[];
+      final QuarkSourceAdapter adapter = QuarkSourceAdapter(
+        sourceId: 'src-1',
+        folderFid: '0',
+        // 老实现把这种响应当成"空目录"：一次异常响应就能让整个来源的曲目被删掉。
+        client: _buildClient(
+          (RequestOptions options) async =>
+              _jsonBody(<String, Object?>{'status': 200, 'data': null}),
+          requests: requests,
+        ),
+        cookieStore: _FakeCookieStore(_cookie),
+      );
+
+      final SourceScanResult result = await adapter.scan();
+
+      expect(result.tracks, isEmpty);
+      expect(result.truncated, isTrue);
+      expect(result.truncationReason, '服务端返回了无法解析的目录内容');
+      expect(result.isAuthoritative, isFalse);
+    });
+
+    test('服务端自报总数比取回的多：按不完整快照处理', () async {
+      final QuarkSourceAdapter adapter = QuarkSourceAdapter(
+        sourceId: 'src-1',
+        folderFid: '0',
+        client: _buildClient(
+          (RequestOptions options) async => _jsonBody(<String, Object?>{
+            'status': 200,
+            'data': <String, Object?>{
+              // 只回 1 条，却自报 5 条：静默截断的结果不能当完整快照用。
+              'total': 5,
+              'list': <Map<String, Object?>>[
+                <String, Object?>{
+                  'fid': 'file-root',
+                  'file_name': '周杰伦 - 晴天.mp3',
+                  'file_type': 1,
+                  'format_type': 'mp3',
+                },
+              ],
+            },
+          }),
+        ),
+        cookieStore: _FakeCookieStore(_cookie),
+      );
+
+      final SourceScanResult result = await adapter.scan();
+
+      expect(result.tracks, hasLength(1));
+      expect(result.truncated, isTrue);
+      expect(result.truncationReason, '目录未取全（1/5 项）');
       expect(result.isAuthoritative, isFalse);
     });
 

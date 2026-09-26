@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:audio_metadata_reader/audio_metadata_reader.dart';
 import 'package:path/path.dart' as p;
@@ -288,11 +289,16 @@ ScannedTrack _scanFile(String path, String coversDirectory) {
 }
 
 String? _writeCover(String coversDirectory, String path, List<int> bytes) {
-  final String name = CoverStore.fileNameFor(
-    path,
-    extension: bytes.length >= 8 && bytes[0] == 0x89 ? '.png' : '.jpg',
+  // 与 CoverStore 用同一个内容寻址命名：同一张专辑封面在每首歌里都嵌了一份，
+  // 按内容命名才能让整张专辑共用盘上的同一个文件。
+  final String name = CoverStore.coverNameFor(
+    bytes is Uint8List ? bytes : Uint8List.fromList(bytes),
   );
-  File(p.join(coversDirectory, name)).writeAsBytesSync(bytes, flush: false);
+  final File file = File(p.join(coversDirectory, name));
+  // 扫描是重复发生的：内容没变就不要重写盘（5000 首的重复扫描会白写几百 MB）。
+  if (!file.existsSync() || file.lengthSync() != bytes.length) {
+    file.writeAsBytesSync(bytes, flush: false);
+  }
   return name;
 }
 

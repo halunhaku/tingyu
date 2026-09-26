@@ -84,19 +84,54 @@ class TrackRepository {
         .write(TracksCompanion(isFavorite: Value<bool>(value)));
   }
 
-  Future<void> recordPlay(String id, {DateTime? at}) async {
-    final Track? track = await byId(id);
-    if (track == null) {
-      return;
-    }
-    await (_db.update(
-      _db.tracks,
-    )..where(($TracksTable t) => t.id.equals(id))).write(
-      TracksCompanion(
-        playCount: Value<int>(track.playCount + 1),
-        lastPlayedAt: Value<DateTime>((at ?? DateTime.now()).toUtc()),
-      ),
+  /// 记一次播放。
+  ///
+  /// 计数用 SQL 自增，不再"读出来加一再写回去"：后者在两次播放几乎同时上报时
+  /// 会丢计数，也让每次播放多一次跨 isolate 的往返。
+  Future<void> recordPlay(String id, {DateTime? at}) {
+    return _db.customUpdate(
+      'UPDATE tracks SET play_count = play_count + 1, last_played_at = ? '
+      'WHERE id = ?',
+      variables: <Variable<Object>>[
+        Variable<String>((at ?? DateTime.now()).toUtc().toIso8601String()),
+        Variable<String>(id),
+      ],
+      updates: <ResultSetImplementation>{_db.tracks},
     );
+  }
+
+  /// 只在库里还没有时长时写入。
+  ///
+  /// 夸克 / WebDAV 的目录接口不给时长（旧版同样写 0），界面因此一直显示 `--:--`。
+  /// 播放器开始播放后从解码器拿到的时长是唯一可信来源，顺手补上：下次打开曲库、
+  /// 队列和锁屏都能显示真实时长，而不是让用户看着一排 `--:--`。
+  Future<void> updateDurationIfUnknown(String id, Duration duration) {
+    final double seconds = duration.inMilliseconds / 1000;
+    if (seconds <= 0) {
+      return Future<void>.value();
+    }
+    return (_db.update(_db.tracks)
+          ..where(
+            ($TracksTable t) => t.id.equals(id) & t.duration.equals(0),
+          ))
+        .write(TracksCompanion(duration: Value<double>(seconds)));
+  }
+
+  /// 当前仍被引用的封面文件名（封面缓存清理用）。
+  Future<Set<String>> coverNamesInUse() async {
+    final Set<String> names = <String>{};
+    for (final QueryRow row in await _db
+        .customSelect(
+          'SELECT DISTINCT cover_art_path AS name FROM tracks '
+          'WHERE cover_art_path IS NOT NULL AND cover_art_path != \'\'',
+        )
+        .get()) {
+      final String? name = row.read<String?>('name');
+      if (name != null && name.isNotEmpty) {
+        names.add(name);
+      }
+    }
+    return names;
   }
 
   Future<void> updateLyrics(String id, String? lyrics) {
@@ -155,6 +190,9 @@ class TrackRepository {
   ///
   /// [removeMissing] 只能用于完整、权威的来源快照。取消、截断或跳过条目的
   /// 扫描必须传 false，否则短暂的权限/网络故障会误删曲目及其播放列表引用。
+  ///
+  /// 写入走 batch：drift 的每条独立语句都是一次跨 isolate 往返，逐条 await 时
+  /// 一次五千首的扫描要跑五千个来回；batch 把整轮合并压成一趟。
   Future<MergeResult> mergeScan({
     required String sourceId,
     required List<ScannedTrack> scanned,
@@ -169,8 +207,8 @@ class TrackRepository {
       };
 
       final Set<String> seen = <String>{};
-      int added = 0;
-      int updated = 0;
+      final List<TracksCompanion> inserts = <TracksCompanion>[];
+      final List<Track> updates = <Track>[];
 
       for (final ScannedTrack incoming in scanned) {
         final String path = incoming.filePathOrUrl;
@@ -179,16 +217,12 @@ class TrackRepository {
         }
         final Track? old = byPath[path];
         if (old == null) {
-          await _db.into(_db.tracks).insert(_insert(sourceId, incoming));
-          added++;
+          inserts.add(_insert(sourceId, incoming));
           continue;
         }
         final Track merged = _withFileFacts(old, incoming);
         if (merged != old) {
-          await (_db.update(
-            _db.tracks,
-          )..where(($TracksTable t) => t.id.equals(old.id))).write(merged);
-          updated++;
+          updates.add(merged);
         }
       }
 
@@ -198,16 +232,28 @@ class TrackRepository {
                 .map((Track track) => track.id)
                 .toList(growable: false)
           : const <String>[];
-      if (removedIds.isNotEmpty) {
-        // 播放列表条目的清理由外键级联完成（见 schema 中的 references）。
-        await (_db.delete(
-          _db.tracks,
-        )..where(($TracksTable t) => t.id.isIn(removedIds))).go();
-      }
+
+      await _db.batch((Batch batch) {
+        batch.insertAll(_db.tracks, inserts);
+        for (final Track track in updates) {
+          batch.update(
+            _db.tracks,
+            track,
+            where: ($TracksTable t) => t.id.equals(track.id),
+          );
+        }
+        if (removedIds.isNotEmpty) {
+          // 播放列表条目的清理由外键级联完成（见 schema 中的 references）。
+          batch.deleteWhere(
+            _db.tracks,
+            ($TracksTable t) => t.id.isIn(removedIds),
+          );
+        }
+      });
 
       return MergeResult(
-        added: added,
-        updated: updated,
+        added: inserts.length,
+        updated: updates.length,
         removed: removedIds.length,
       );
     });

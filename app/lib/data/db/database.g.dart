@@ -2673,9 +2673,25 @@ abstract class _$TingyuDatabase extends GeneratedDatabase {
     'idx_tracks_album',
     'CREATE INDEX idx_tracks_album ON tracks (album)',
   );
+  late final Index idxTracksArtistAlbum = Index(
+    'idx_tracks_artist_album',
+    'CREATE INDEX idx_tracks_artist_album ON tracks (artist, album)',
+  );
+  late final Index idxTracksDateAdded = Index(
+    'idx_tracks_date_added',
+    'CREATE INDEX idx_tracks_date_added ON tracks (date_added)',
+  );
+  late final Index idxTracksFavorite = Index(
+    'idx_tracks_favorite',
+    'CREATE INDEX idx_tracks_favorite ON tracks (is_favorite)',
+  );
   late final Index idxSourcesKind = Index(
     'idx_sources_kind',
     'CREATE INDEX idx_sources_kind ON music_sources (kind)',
+  );
+  late final Index idxPlaylistItemsTrack = Index(
+    'idx_playlist_items_track',
+    'CREATE INDEX idx_playlist_items_track ON playlist_items (track_id)',
   );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -2689,7 +2705,11 @@ abstract class _$TingyuDatabase extends GeneratedDatabase {
     idxTracksSource,
     idxTracksArtist,
     idxTracksAlbum,
+    idxTracksArtistAlbum,
+    idxTracksDateAdded,
+    idxTracksFavorite,
     idxSourcesKind,
+    idxPlaylistItemsTrack,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([

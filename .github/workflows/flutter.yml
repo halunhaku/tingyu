@@ -60,6 +60,13 @@ jobs:
             name: macos
             # 只收产物目录：`**/Release/**` 会把 Build/Intermediates 里的同名目录一起收进来（近 1GB）
             artifacts: app/build/macos/Build/Products/Release/**
+          - os: macos-14
+            target: ios
+            name: ios
+            # iOS 不支持 `--release` 的无签名构建产物分发；这里只验证"能编过"，
+            # 上传的是 .app（未签名），不参与 GitHub Release。
+            build_args: --no-codesign
+            artifacts: app/build/ios/iphoneos/Runner.app/**
           - os: windows-2022
             target: windows
             name: windows
@@ -93,8 +100,10 @@ jobs:
             libmpv-dev libsecret-1-dev libayatana-appindicator3-dev \
             ninja-build libgtk-3-dev pkg-config
       - run: flutter pub get
+      # 运行期需要的凭据（Android 签名密钥）在 CI 里没有，所以 release job 只做
+      # 未签名/调试签名的构建验证；正式分发用仓库 Secrets 走本地打包（见 README）。
       - name: Build
-        run: flutter build ${{ matrix.target }} --release
+        run: flutter build ${{ matrix.target }} --release ${{ matrix.build_args }}
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

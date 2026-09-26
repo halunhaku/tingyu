@@ -17,12 +17,30 @@ class PlaylistPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<Playlist>> playlists = ref.watch(playlistsProvider);
-    final Playlist? playlist = playlists.value
-        ?.where((Playlist item) => item.id == playlistId)
-        .firstOrNull;
     final AsyncValue<List<Track>> tracks = ref.watch(
       playlistTracksProvider(playlistId),
     );
+
+    // 首次打开时 playlistsProvider 还在建流（loading），此时 value 为 null。
+    // 曾经的写法把 loading 也当成「不存在」，真实歌单每次打开都会闪一下
+    // 「播放列表不存在」；只有真的拿到列表却查不到 id（被删了/深链写错）才算不存在。
+    if (!playlists.hasValue) {
+      if (playlists.hasError) {
+        return EmptyState(
+          icon: Icons.error_outline,
+          title: '歌单读取失败',
+          message: '${playlists.error}',
+          action: FilledButton(
+            onPressed: () => ref.invalidate(playlistsProvider),
+            child: const Text('重试'),
+          ),
+        );
+      }
+      return const Center(child: CircularProgressIndicator());
+    }
+    final Playlist? playlist = playlists.requireValue
+        .where((Playlist item) => item.id == playlistId)
+        .firstOrNull;
 
     if (playlist == null) {
       return const EmptyState(icon: Icons.queue_music, title: '播放列表不存在');

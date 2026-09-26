@@ -104,7 +104,7 @@ class LibraryEnrichmentService {
 
     String? coverArtPath;
     if (result.coverBytes != null) {
-      coverArtPath = await covers.save(track.id, result.coverBytes!);
+      coverArtPath = await covers.save(result.coverBytes!);
     }
 
     await tracks.applyEnrichment(

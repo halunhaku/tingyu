@@ -26,7 +26,10 @@ class TrackResolver {
     PlaybackItem base = PlaybackItem.fromUri(Uri.file(track.filePathOrUrl));
     if (source != null) {
       try {
-        final SourceAdapter adapter = await buildSourceAdapter(_ref, source);
+        // 走缓存：夸克每首歌都要换直链，重建适配器会把 5400s 的直链缓存清零。
+        final SourceAdapter adapter = await _ref
+            .read(sourceAdapterCacheProvider)
+            .of(source);
         base = await adapter.open(track.filePathOrUrl);
       } on Object catch (error) {
         debugPrint('[resolver] 解析来源「${source.name}」失败: $error');

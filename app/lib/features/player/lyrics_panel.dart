@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../data/db/database.dart';
 import '../../playback/playback_snapshot.dart';
+import '../shared/current_track.dart';
 import 'lrc_parser.dart';
 
 /// 歌词面板：按播放进度高亮当前行并自动滚动。
@@ -22,6 +23,12 @@ class _LyricsPanelState extends ConsumerState<LyricsPanel> {
 
   int _lastActiveIndex = -1;
 
+  /// 已解析的歌词文本与结果：面板每个 tick 都要按进度重算高亮，
+  /// 缓存下来免得每 tick 重新解析整份 LRC。
+  String? _parsedLyrics;
+
+  LrcDocument? _parsedDocument;
+
   bool _fetching = false;
 
   @override
@@ -32,17 +39,18 @@ class _LyricsPanelState extends ConsumerState<LyricsPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final PlaybackSnapshot snapshot = ref.watch(playbackProvider);
-    final List<String> ids = ref.watch(playbackProvider.notifier).trackIds;
-    final int index = snapshot.index;
-    final String? trackId = (index >= 0 && index < ids.length) ? ids[index] : null;
-    final Track? track = trackId == null ? null : ref.watch(trackByIdProvider(trackId)).value;
+    // 曲目来自当前播放身份（换曲才变），进度单独订阅：
+    // 这样进度 tick 只重建歌词行高亮，不会连带重建整张快照依赖。
+    final Track? track = ref.watch(currentTrackProvider);
+    final Duration position = ref.watch(
+      playbackProvider.select((PlaybackSnapshot snapshot) => snapshot.position),
+    );
 
     if (track == null) {
       return const _LyricsHint('未在播放');
     }
 
-    final LrcDocument document = LrcParser.parse(track.lyrics);
+    final LrcDocument document = _documentFor(track.lyrics);
     if (document.isEmpty) {
       return _LyricsHint(
         '暂无歌词',
@@ -53,10 +61,16 @@ class _LyricsPanelState extends ConsumerState<LyricsPanel> {
       );
     }
 
-    final int active = document.isSynced ? document.indexAt(snapshot.position) : -1;
+    final int active = document.isSynced ? document.indexAt(position) : -1;
     if (active != _lastActiveIndex && active >= 0) {
       _lastActiveIndex = active;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollTo(active));
+      // 面板被侧栏收起或切回封面时整棵子树已被移除，此时既没有滚动控制器
+      // 也不该再排滚动；`mounted` 与 `_scrollTo` 的挂载检查各挡一层。
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _scrollTo(active);
+        }
+      });
     }
 
     return ListView.builder(
@@ -82,7 +96,18 @@ class _LyricsPanelState extends ConsumerState<LyricsPanel> {
     );
   }
 
+  /// 解析结果按歌词文本缓存；换曲（或歌词被重新抓取）时连高亮进度一起重置。
+  LrcDocument _documentFor(String? lyrics) {
+    if (_parsedLyrics == lyrics && _parsedDocument != null) {
+      return _parsedDocument!;
+    }
+    _parsedLyrics = lyrics;
+    _lastActiveIndex = -1;
+    return _parsedDocument = LrcParser.parse(lyrics);
+  }
+
   void _scrollTo(int index) {
+    // 面板不可见时没有挂载的滚动视图，自动滚动就到此为止。
     if (!_scrollController.hasClients) {
       return;
     }

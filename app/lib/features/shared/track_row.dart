@@ -59,7 +59,16 @@ class TrackRow extends ConsumerWidget {
               SizedBox(
                 width: 28,
                 child: isPlaying
-                    ? Icon(Icons.graphic_eq, size: 16, color: scheme.primary)
+                    // 正在播放原先只是一个图标 + 主题色，读屏只会念出"曲目行"；
+                    // 这里补一句状态，键盘/读屏用户也能知道当前是哪一首。
+                    ? Semantics(
+                        label: '正在播放',
+                        child: Icon(
+                          Icons.graphic_eq,
+                          size: 16,
+                          color: scheme.primary,
+                        ),
+                      )
                     : Text(
                         index == null ? '' : '$index',
                         style: text.bodySmall?.copyWith(

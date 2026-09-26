@@ -1,10 +1,18 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+
+/// 解码宽度 = 显示尺寸 × 设备像素比。
+///
+/// 封面动辄几千像素，按原图解一次就是几十 MB 内存，而这里最小只画到 36px；
+/// 乘上像素比只为保住物理像素的清晰度。
+int _decodeWidth(BuildContext context, double size) =>
+    math.max(1, (size * MediaQuery.devicePixelRatioOf(context)).round());
 
 /// 封面：优先本地缓存（扫描/抓取落盘的图片），其次远端 URL，最后占位图。
 ///
@@ -30,6 +38,7 @@ class CoverArt extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final String? path = coverArtPath;
     if (path != null && path.isNotEmpty) {
+      // 路径解析保持异步（`CoverStore` 只管文件名）；这里不做任何同步 IO。
       final AsyncValue<File?> file = ref.watch(coverFileProvider(path));
       return ClipRRect(
         borderRadius: BorderRadius.circular(radius),
@@ -40,6 +49,7 @@ class CoverArt extends ConsumerWidget {
                   resolved,
                   width: size,
                   height: size,
+                  cacheWidth: _decodeWidth(context, size),
                   fit: BoxFit.cover,
                   errorBuilder: (_, _, _) => _Placeholder(size: size, radius: radius),
                 ),
@@ -72,6 +82,9 @@ class _RemoteOrPlaceholder extends StatelessWidget {
         imageUrl: remote,
         width: size,
         height: size,
+        // 解码与磁盘缓存都按显示尺寸存，别把原图整张读进内存。
+        memCacheWidth: _decodeWidth(context, size),
+        maxWidthDiskCache: _decodeWidth(context, size),
         fit: BoxFit.cover,
         placeholder: (_, _) => _Placeholder(size: size, radius: radius),
         errorWidget: (_, _, _) => _Placeholder(size: size, radius: radius),

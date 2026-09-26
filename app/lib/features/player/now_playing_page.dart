@@ -4,12 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../app/playback_controller.dart';
 import '../../app/providers.dart';
 import '../../playback/playback_item.dart';
 import '../../data/db/database.dart';
-import '../../playback/playback_snapshot.dart';
 import '../shared/cover_art.dart';
+import '../shared/current_track.dart';
 import '../shared/empty_state.dart';
 import 'fluid_background.dart';
 import 'lyrics_panel.dart';
@@ -52,15 +51,11 @@ class _NowPlayingPageState extends ConsumerState<NowPlayingPage> {
 
   @override
   Widget build(BuildContext context) {
-    final PlaybackSnapshot snapshot = ref.watch(playbackProvider);
-    final PlaybackController controller = ref.read(playbackProvider.notifier);
-
-    final List<String> ids = controller.trackIds;
-    final int index = snapshot.index;
-    final String? trackId = (index >= 0 && index < ids.length) ? ids[index] : null;
-    final Track? track =
-        trackId == null ? null : ref.watch(trackByIdProvider(trackId)).value;
-    final PlaybackItem? item = controller.currentItem;
+    // 只订阅"当前是哪一首"：进度 tick 不再重建封面舞台与光晕背景
+    // （传送器、歌词、队列各自订阅自己需要的部分）。
+    final CurrentTrackRef current = ref.watch(currentTrackRefProvider);
+    final Track? track = ref.watch(currentTrackProvider);
+    final PlaybackItem? item = current.item;
     final bool narrow = MediaQuery.sizeOf(context).width < 720;
 
     final Widget stageContent = (track == null && item == null)

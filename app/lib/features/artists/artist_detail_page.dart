@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
 import '../../data/db/database.dart';
+import '../shared/current_track.dart';
 import '../shared/empty_state.dart';
 import '../shared/track_row.dart';
 import 'artists_page.dart';
@@ -296,14 +297,8 @@ class _ArtistTrackRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final List<String> playingIds = ref
-        .watch(playbackProvider.notifier)
-        .trackIds;
-    final int playingIndex = ref.watch(playbackProvider).index;
-    final bool isPlaying =
-        playingIndex >= 0 &&
-        playingIndex < playingIds.length &&
-        playingIds[playingIndex] == track.id;
+    // 只订阅"这一行是不是正在播放的那一首"：进度 tick 不再重建整张列表。
+    final bool isPlaying = ref.watch(isCurrentTrackProvider(track.id));
 
     return TrackRow(
       track: track,

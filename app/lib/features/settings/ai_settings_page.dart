@@ -219,6 +219,7 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
                           hintText: '本地 Ollama 可留空',
                           border: const OutlineInputBorder(),
                           suffixIcon: IconButton(
+                            tooltip: _obscureKey ? '显示密钥' : '隐藏密钥',
                             icon: Icon(
                               _obscureKey
                                   ? Icons.visibility

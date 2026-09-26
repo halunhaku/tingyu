@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tingyu/data/models/scanned_track.dart';
 import 'package:tingyu/playback/playback_item.dart';
 import 'package:tingyu/sources/source_adapter.dart';
+import 'package:tingyu/sources/http_retry.dart';
 import 'package:tingyu/sources/webdav/webdav_client.dart';
 import 'package:tingyu/sources/webdav/webdav_source_adapter.dart';
 import 'package:tingyu/sources/webdav/webdav_xml_parser.dart';
@@ -75,7 +76,12 @@ class _FakeAdapter implements HttpClientAdapter {
 WebDavClient _client(
   _FakeAdapter adapter, {
   Duration throttle = Duration.zero,
-}) => WebDavClient(dio: Dio()..httpClientAdapter = adapter, throttle: throttle);
+}) => WebDavClient(
+  dio: Dio()..httpClientAdapter = adapter,
+  throttle: throttle,
+  // 重试照旧发生，只是不真等退避。
+  retry: const HttpRetry(baseDelay: Duration.zero),
+);
 
 Future<SourceScanResult> _scan(
   WebDavClient client, {

@@ -8,6 +8,7 @@ class SourceScanResult {
     this.skipped = 0,
     this.cancelled = false,
     this.truncated = false,
+    this.truncationReason,
   });
 
   final List<ScannedTrack> tracks;
@@ -18,8 +19,12 @@ class SourceScanResult {
   /// 调用方主动中止，结果只包含取消前已经发现的曲目。
   final bool cancelled;
 
-  /// 达到扫描数量上限，来源里可能还有未枚举的曲目。
+  /// 本次结果**没有覆盖来源的全部内容**（达到数量上限、目录层级超限、服务端响应
+  /// 无法解析等），因此不能据此判断"未出现的曲目已被删除"。
   final bool truncated;
+
+  /// [truncated] 的具体原因，用于给用户一句能对上号的说明。
+  final String? truncationReason;
 
   /// 只有完整快照才能证明“未出现的旧曲目确实已被删除”。
   bool get isAuthoritative => !cancelled && !truncated && skipped == 0;

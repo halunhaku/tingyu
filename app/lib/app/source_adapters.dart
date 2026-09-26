@@ -11,6 +11,7 @@ import '../sources/local/saf_source_adapter.dart';
 import '../sources/quark/quark_source_adapter.dart';
 import '../sources/source_adapter.dart';
 import '../sources/webdav/webdav_source_adapter.dart';
+import 'providers.dart';
 
 /// 按来源类型构造适配器；凭据（WebDAV 密码、Quark Cookie）从系统安全存储取。
 ///
@@ -55,6 +56,82 @@ Future<SourceAdapter> buildSourceAdapter(
       );
   }
 }
+
+/// 每个来源一个长驻适配器实例。
+///
+/// 为什么要缓存：夸克每次 `open()` 都要向网盘换一次直链，而直链在
+/// `QuarkDriveClient` 里按 fid 缓存 5400s —— 每首歌都重建适配器，等于这个缓存从来
+/// 没生效过，每次播放都要多打一次网盘接口（还会顺带多读一次系统安全存储）。
+///
+/// 失效条件写进指纹：来源行里参与构造的字段（URL / 账号 / 目录授权 / fid）+ 凭据
+/// 写入次数（[SecureStore.credentialEpoch]）。改了配置或重新登录，指纹就变，下次
+/// 取用时自动重建，不会把旧密码、旧 Cookie 一直用下去。
+class SourceAdapterCache {
+  SourceAdapterCache(this._ref);
+
+  final Ref _ref;
+
+  final Map<String, _CachedAdapter> _entries = <String, _CachedAdapter>{};
+
+  Future<SourceAdapter> of(MusicSource source) {
+    final String fingerprint = _fingerprint(source);
+    final _CachedAdapter? cached = _entries[source.id];
+    if (cached != null && cached.fingerprint == fingerprint) {
+      return cached.adapter;
+    }
+    // 缓存的是 Future 而不是实例：同时到达的多个解析请求共用同一次构造
+    // （安全存储读取 + 客户端装配），不会各建一个。
+    final Future<SourceAdapter> adapter = buildSourceAdapter(_ref, source);
+    final _CachedAdapter entry = _CachedAdapter(fingerprint, adapter);
+    _entries[source.id] = entry;
+    adapter.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {
+        // 构造失败不留在缓存里，否则这个来源会一直复用同一个失败结果。
+        if (identical(_entries[source.id], entry)) {
+          _entries.remove(source.id);
+        }
+      },
+    );
+    return adapter;
+  }
+
+  /// 来源被删除/重新登录时手动清理（不清理也只是占一个条目的内存）。
+  void evict(String sourceId) => _entries.remove(sourceId);
+
+  Future<SourceAdapter> ofId(String sourceId) async {
+    final MusicSource? source = await _ref
+        .read(sourceRepositoryProvider)
+        .byId(sourceId);
+    if (source == null) {
+      throw StateError('来源不存在: $sourceId');
+    }
+    return of(source);
+  }
+
+  static String _fingerprint(MusicSource source) => <Object?>[
+    source.kind,
+    source.localFolderPath,
+    source.localBookmark,
+    source.webdavUrl,
+    source.webdavUsername,
+    source.webdavRootPath,
+    source.quarkFolderFid,
+    SecureStore.credentialEpoch,
+  ].join('\u0000');
+}
+
+class _CachedAdapter {
+  const _CachedAdapter(this.fingerprint, this.adapter);
+
+  final String fingerprint;
+
+  final Future<SourceAdapter> adapter;
+}
+
+/// 适配器缓存；来源列表变化时无需重建（指纹会兜住）。
+final Provider<SourceAdapterCache> sourceAdapterCacheProvider =
+    Provider<SourceAdapterCache>((Ref ref) => SourceAdapterCache(ref));
 
 /// 本地目录的授权是否仍然有效：Android 查 SAF 持久化授权，iOS 解析安全作用域书签，
 /// 桌面只有路径本身（非空即算可用）。

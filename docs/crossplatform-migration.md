@@ -1078,3 +1078,165 @@ ExoPlayer 泛型错误（`Source error`）或 libmpv 英文消息，未对明文
   3. 曲库 → 专辑列表 → 专辑详情，详情页自带返回按钮，逐级 pop 回曲库。
 - `flutter test`：全套 160 项全绿；ASCII 镜像 `flutter analyze` 零告警。
 - Release 重新构建并覆盖安装到本机，启动冒烟无异常。
+
+---
+
+## 31. 全面优化（正确性 / 性能 / 健壮性 / 工程）（2026-09-26）
+
+一次覆盖全应用的优化，来源是三路只读审计（播放层、数据层、来源层、UI 层、工程脚手架）
+加上真实库（196 首 / 3 个来源 / 47 张专辑）的实机复现。下面按严重程度列出改动、证据与验证方式。
+所有结论都在本机 Linux Release 包 + Xvfb 里跑过真实进程验证（截图见下），不是只看代码。
+
+### 31.1 曲库被误删（严重，数据丢失）
+
+**问题**：`SourceScanResult.isAuthoritative` 决定合并时是否删除"本次没扫到的旧曲目"。
+夸克与 Android SAF 的扫描器在**碰到层级上限时静默丢弃整棵子树**，却仍返回 `truncated: false`：
+
+- `quark_drive_client.dart`：`if (depth > maxDepth) continue;`、子目录入队条件 `depth + 1 <= maxDepth`；
+- `saf_source_adapter.dart`：`if (directory.depth > maxDepth) continue;`。
+
+于是 maxDepth 之外的歌在库里被判为"已删除"，连同播放列表引用一起被外键级联清掉。
+WebDAV 的同款逻辑是对的（会置 `truncated = true`），说明这是两处遗漏而不是设计。
+
+夸克还有第二条同类路径：`_listFolderPage` 在**响应结构不符**（缺 `data.list`、非 JSON）
+时返回空列表，调用方据此认为"这是个空目录"→ 权威快照 → 整个目录的曲目被删。
+
+**修法**：
+
+| 位置 | 改动 |
+|---|---|
+| `quark_drive_client.dart` | 层级越界、翻页翻满、`total` 比取回的多、响应结构异常，四种情况统一 `complete: false` 并带上原因；`total`（请求里本来就带 `_fetch_total=1`）用于兜底校验 |
+| `saf_source_adapter.dart` | 层级越界时置 `truncated` + 原因 |
+| `webdav_client.dart` | 补齐 `truncationReason`（行为不变，只是文案更准） |
+| `source_adapter.dart` | 新增 `truncationReason`；`isAuthoritative` 语义不变 |
+| `source_sync.dart` | 同步状态文案改用来源给的具体原因（层级上限 / 数量上限 / 结构异常），不再一律写"达到数量上限" |
+| `test/quark_test.dart` | 原先**把旧行为钉死**的用例（`maxDepth=1 → truncated isFalse / isAuthoritative isTrue`）改为断言新行为，并新增"结构异常不算权威快照""total 对不上按不完整处理"两条回归用例 |
+| `test/saf_source_adapter_test.dart` | 新增层级越界用例 |
+
+### 31.2 播放正确性（单曲循环 / 播完停止 / 预取竞态 / 失败提示）
+
+四类只有真机才能暴露的缺陷，全部补测试（并确认过它们在修前会失败）：
+
+1. **单曲循环从来没生效**：循环模式只存在于控制器里，从未下发给引擎；而 `just_audio` 只在
+   **整个播放列表**播完时才报 `completed`（默认 `LoopMode.off`），队列里通常有 2–3 首预取，
+   所以除了最后一首以外都不会走进"重播当前曲"分支。现在 `PlaybackEngine` 增加
+   `setRepeatMode`：`just_audio` → `LoopMode.one`，`media_kit` → `PlaylistMode.single`。
+2. **播完停止后播放键与下一首都是死的（移动端）**：`just_audio` 在 `completed` 状态下
+   `play()` 直接成功返回但不重新出声，`seekToNext()` 也没有下一首。现在停止分支同时
+   `pause()` + `seek(0)`，`togglePlayPause()` 也会先处理 completed 状态。
+3. **预取与队列重建竞态**：重建队列期间旧会话的进度事件仍会触发 `_ensureAhead`，把新解析的
+   条目 append 到**旧引擎队列**，或把 `_nextSourceIndex` 提前推走 —— 结果是这一轮少放一首歌，
+   或三份平行数组与引擎队列错位（高亮、`next()` 判断、播放历史全指错）。现在用 `_queueArmed`
+   在 `setQueue` 返回前挡住预取，`playAt`/`next` 会先等在建的预取落地。
+4. **取直链失败的提示会被下一个进度 tick 抹掉**：控制器写入的 failure 被引擎快照的
+   `copyWith` 覆盖（引擎那份恒为 null）。现在控制器自己留一份 `_pendingFailure` 并参与合并，
+   只在"新会话开始/换到另一首真的在播"时清空。
+
+### 31.3 播放与列表性能（每个进度 tick 的全应用重建）
+
+引擎每 60ms（media_kit）/ 200ms（just_audio）推一份新快照，而 `PlaybackSnapshot` 没有值相等语义，
+Riverpod 因此认定"状态变了"→ **每个 watcher 都重建**：曲库/专辑/艺术家每一行、队列面板每一行、
+迷你条、播放条、歌词面板、正在播放页的封面舞台与流体背景。
+
+修法分三层，并用可测的断言固定下来（`test/ui_rebuild_seek_test.dart` 用
+`debugOnRebuildDirtyWidget` 数重建次数）：
+
+| 层 | 改动 | 修后每次 tick 的重建 |
+|---|---|---|
+| 快照 | `PlaybackSnapshot` 补 `==`/`hashCode`（`PlaybackFailure` 仍按实例身份比较，保住"同一失败只提示一次"的约定） | — |
+| 行/列表 | 曲库、专辑、艺术家行只订阅"这一行是不是当前曲目"（`isCurrentTrackProvider(id)`）；队列面板改为**一次**取全库建 id→Track 映射（原先每行一个 drift 流 = N 条 SQLite 订阅），行组件降级为 `StatelessWidget` | 0 行 / 0 封面 |
+| 播放界面 | 迷你条 / 播放条 / 传送器 / 正在播放页拆成"只订阅身份"的外层与"只订阅进度"的内层；进度条是唯一随 tick 重建的东西 | 0 封面 / 0 标题 / 0 按钮 |
+
+另外：播放条此前**边拖边 seek**（引擎位置和手指互相掰手腕，拇指会跳），现在复用
+`playback_controls.dart` 里已有的"拖动期间用本地值、松手才 seek"模式（提升为共享 `SeekBar`）。
+
+### 31.4 封面：91% 的字节是重复的
+
+实机封面缓存 353 个文件 / 62.6MB，按内容哈希去重后只需 **5.9MB（省 91%）**——
+一张专辑的内嵌封面在该专辑每首歌里都存了一份。改动：
+
+- `CoverStore.save(bytes)` 改为**内容寻址**（FNV-1a over bytes + 扩展名），已存在则跳过写入；
+- 本地扫描器在子 isolate 里用同一个 `CoverStore.coverNameFor`，重复扫描不再白写几百 MB；
+- 新增 `CoverStore.pruneUnreferenced(keep)` 与 `TrackRepository.coverNamesInUse()`，
+  在**完整同步**之后回收孤儿封面（换封面/换来源留下的旧图，以及历史上按 key 命名时代的重复副本）；
+- 封面组件按显示尺寸解码（`cacheWidth`/`memCacheWidth` × devicePixelRatio），
+  44px 缩略图不再按原图分辨率解码；艺术家头像同理。
+
+### 31.5 数据层
+
+- **schemaVersion 1 → 2**：补 `(artist, album)`、`date_added`、`is_favorite`、
+  `playlist_items.track_id` 四个索引，并补上真正的 `onUpgrade`（此前版本号钉死在 1，
+  任何索引/表/列的修正都永远到不了老库）。`playlist_items.track_id` 缺索引时，
+  曲目删除的 `ON DELETE CASCADE` 会退化成整表扫描。
+  实测查询计划（真实库）：专辑聚合 `SCAN tracks USING COVERING INDEX idx_tracks_artist_album`、
+  收藏 `SEARCH ... USING INDEX idx_tracks_favorite`、最近添加 `USING INDEX idx_tracks_date_added`。
+- **扫描合并走 batch**：`mergeScan` 原先逐条 await 插入/更新（drift 每条语句一次跨 isolate 往返），
+  现在整轮压成一个 batch。
+- **播放计数原子自增**：`recordPlay` 从"读出来 +1 写回"改为一条 SQL 自增（既省一次往返，也不丢并发计数）。
+- **时长回填**：夸克/WebDAV 的目录接口不给时长，扫描只能写 0，界面整库显示 `--:--`（191/196 首）。
+  现在播放器拿到解码器给出的真实时长后**每首只写一次**回库，下次打开就是真实时长。
+- 曲库库文件本身：迁移与索引变更都在真实库副本上验证过（196 首、歌单引用完整），再对真实库执行。
+
+### 31.6 来源层与网络
+
+- **每个来源一个长驻适配器**（`SourceAdapterCache`）：夸克的直链缓存（5400s）挂在客户端实例上，
+  而 `TrackResolver` 此前**每首歌都新建适配器**，等于这个缓存从未生效、每次播放都要多打一次网盘接口。
+  缓存指纹 = 参与构造的来源字段 + `SecureStore.credentialEpoch`（写入凭据即失效），
+  构造失败不留在缓存里；删除来源时显式 `evict`。
+- **幂等请求的重试与退避**（`HttpRetry`）：列目录 / PROPFIND / 取直链此前一次失败就让整次扫描或
+  播放失败。现在对 429/503/5xx 与连接层错误做 2 次指数退避重试（带抖动，避免多个来源同时重放），
+  401/403/404 一律不重试。
+- **同步进度不再恒为 100%**：`onProgress` 曾把 `done` 同时当成 `total`。扫描阶段拿不到总数
+  （夸克/WebDAV 是边翻页边发现），现在如实只报进度数与已扫描数量，进度条走不确定态。
+
+### 31.7 UI / UX
+
+- **手机端终于有搜索入口**：搜索框此前只存在于桌面侧栏，Android/iOS 上根本没有搜索。
+  曲库页在手机布局下自带搜索框（自己持有 controller，别处清空时同步），并且把防抖转发收进
+  `SearchQueryController`（两个入口少写一行就会变成"每敲一键查一次全库"或"搜不到"）。
+- 手机/桌面布局判断从 `dart:io Platform` 改为 `Theme.of(context).platform`：
+  前者只看宿主系统，在桌面跑 widget 测试时手机布局的代码路径根本无法验证。
+- **搜索结果不再无声截断**：命中 200 首以上时给一行"命中超过 200 首，仅显示前 200 首"。
+- **自动补全元数据不再每次启动全库跑一遍**：改为一个会话最多一次，且 provider 释放后停止遍历。
+- 歌单页加载中不再误报"播放列表不存在"，失败有独立错误态与重试；侧栏歌单加载失败也有一行提示 + 重试。
+- 手机端 `visualDensity` 用标准密度（`compact` 会把 Material 点击目标压到 48dp 以下），桌面保持原样。
+- macOS 菜单「播放 / 暂停」从**空格**改为 ⌘P：AppKit 的菜单 key equivalent 在文本输入之前派发，
+  侧栏搜索框里按空格会被菜单吃掉。
+- 删除确认死代码：`player_page.dart`、`formatBytes()`、`valueOrAbsent()`。
+
+### 31.8 工程脚手架
+
+| 项 | 改动 |
+|---|---|
+| Android 正式签名 | `build.gradle.kts` 支持 `app/android/key.properties`（不入库）；没有密钥时退回 debug 签名并打印一行说明。此前 release APK 一律用 debug 密钥签名，而 CI 会把该 APK 发到 GitHub Release |
+| CI | 构建矩阵补 **iOS**（`--no-codesign`，只做"能编过"的验证）；release job 仍只打包四大平台 |
+| 桌面标题 | Linux/Windows 窗口标题改成「听屿」（macOS/Android 早已是中文）；MSVC 源码里的宽串用 `\u` 转义，不依赖源文件编码 |
+| 元数据 | `pubspec.yaml` 的 description 从模板占位改为项目描述 |
+| 清理 | 仓库根目录的 0 字节文件 `0`（未被忽略、`git add -A` 会入库）已删除 |
+| 退出 | 桌面端退出走 `AppLifecycleListener`：此前 `TingyuAudioHandler.dispose()` **没有任何调用方**，关窗后原生播放器与快照订阅一直留到进程结束；macOS 的「退出听屿」菜单也改走同一出口 |
+
+### 31.9 验证
+
+- `dart analyze`：零问题（`flutter analyze` 在本机非 ASCII 路径下会因 analysis server 的 LSP 解析崩溃，改用 `dart analyze`）。
+- `flutter test`：**225 项全绿**（起点 173 项）。新增 12 个测试文件，覆盖：
+  快照相等语义、播放序列化与预取竞态、时长落库、just_audio 的 play() 语义、
+  media_kit 的 processing 映射、UI 重建次数与拖动 seek、搜索防抖与截断信号、
+  歌单状态、主题密度、移动端搜索、来源适配器缓存、HTTP 重试、索引迁移。
+  其中"修前会失败"的用例（循环模式下发、失败提示存活、预取竞态、重复扫描、层级截断）
+  都是先在旧代码上跑出失败再修的。
+- Linux Release 包在 Xvfb 里跑真实进程：曲库 196 首渲染正常、专辑封面正常、来源页正常、
+  `dart:io` 侧扫码入库正常；用 `TINGYU_DEBUG_SOURCES` 播了两首本地曲目，
+  快照从 `buffering` → `ready`、`position` 正常推进、`duration=8000ms`、无 failure、无未捕获异常。
+- 迁移在**真实库的副本**上验证（user_version 1→2、四个索引就位、196 首与歌单引用不动），再对真实库执行。
+
+### 31.10 未做（明确记录，避免"以为做了"）
+
+- **Windows / Linux 的全局键盘快捷键**：桌面快捷键目前只有 macOS 菜单栏。做成跨平台需要
+  "焦点在输入框时不抢键"的判断，本机无法验证 Windows/Linux 的输入路径，故未动。
+- **切 Tab 丢滚动位置**：两套外壳共用 `ShellRoute`，切 Tab 会重建页面（滚动位置丢失）。
+  改成 `StatefulShellRoute.indexedStack` 会与"二级页面保留 Tab 栏"的现有导航语义冲突，
+  影响 30 节刚定稿的返回手势行为，因此保留现状。
+- **iOS/Android 实机回归**：本次验证在 Linux 桌面完成，移动端结论来自单元/组件测试与代码路径分析。
+- **元数据补全没有并发化**：一轮补全仍是串行（每首 1–3 次请求到 QQ 音乐 / LRCLIB / 网易云）。
+  它已经从"每次打开曲库都跑"改成"一个会话最多一次 + provider 释放即停"，这是主要成本；
+  再往上加并发要面对这几家的限流与风控，收益不确定，故未做。
