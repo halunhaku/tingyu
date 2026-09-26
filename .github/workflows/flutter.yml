@@ -2,11 +2,17 @@ name: Flutter
 
 on:
   push:
+    # 必须同时写 branches：GitHub 的规则是"只写 tags 不写 branches 时，
+    # 分支推送不会触发这个 workflow"。此前只加了 tags，于是 main 上的每次推送
+    # 都静默不跑 CI（Actions 里只剩 tag 推送与手动 dispatch），
+    # 代码改动等于没有回归网。
+    branches:
+      - main
+    tags:
+      - 'v*'
     paths:
       - 'app/**'
       - '.github/workflows/flutter.yml'
-    tags:
-      - 'v*'
   pull_request:
     paths:
       - 'app/**'
