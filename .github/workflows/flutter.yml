@@ -32,7 +32,7 @@ jobs:
     name: analyze + test
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -89,10 +89,10 @@ jobs:
             artifacts: app/build/app/outputs/flutter-apk/app-release.apk
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Java 21
         if: matrix.target == 'apk'
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -113,7 +113,7 @@ jobs:
       - name: Build
         run: flutter build ${{ matrix.target }} --release ${{ matrix.build_args }}
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tingyu-${{ matrix.name }}
           path: ${{ matrix.artifacts }}
@@ -132,8 +132,10 @@ jobs:
       contents: write
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
+          # 显式匹配全部产物；解出的目录名仍是各 artifact 的名字（download-artifact 的默认行为）。
+          pattern: '*'
           path: release-artifacts
       - name: Prepare release packages
         run: |
