@@ -64,9 +64,11 @@ jobs:
             target: ios
             name: ios
             # iOS 不支持 `--release` 的无签名构建产物分发；这里只验证"能编过"，
-            # 上传的是 .app（未签名），不参与 GitHub Release。
+            # 上传的是未签名的 .app，不参与 GitHub Release。
             build_args: --no-codesign
-            artifacts: app/build/ios/iphoneos/Runner.app/**
+            # 用 `**` 覆盖 `iphoneos/Runner.app` 与 `Release-iphoneos/Runner.app` 两种布局；
+            # 这条路径无法在本机（Linux）验证，写窄了会让 CI 因找不到产物直接失败。
+            artifacts: app/build/ios/**/Runner.app/**
           - os: windows-2022
             target: windows
             name: windows
