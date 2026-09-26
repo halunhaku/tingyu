@@ -131,6 +131,31 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7
+        with:
+          # 发版正文取自附注 tag 的信息，需要完整的 tag 历史（用于自动定位上一个 tag）。
+          fetch-depth: 0
+      - name: Read tag notes as release body
+        id: notes
+        run: |
+          # 自动生成的 release notes 只列合并进来的 PR；本仓库是直接推 main 的，
+          # 生成出来只有一行 compare 链接。改用附注 tag 的信息作为正文，
+          # 并自动补上"与上一个 tag 的对比"链接。
+          PREV="$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || echo "")"
+          {
+            echo 'body<<TINGYU_NOTES_EOF'
+            git for-each-ref "refs/tags/${GITHUB_REF_NAME}" --format='%(contents)'
+            if [ -z "$(git for-each-ref "refs/tags/${GITHUB_REF_NAME}" --format='%(contents)')" ]; then
+              echo "本次发布内容见下方产物与提交记录（建议打附注 tag：git tag -a）。"
+            fi
+            echo
+            if [ -n "$PREV" ]; then
+              echo "**Full Changelog**: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${PREV}...${GITHUB_REF_NAME}"
+            else
+              echo "**Full Changelog**: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases"
+            fi
+            echo 'TINGYU_NOTES_EOF'
+          } >> "$GITHUB_OUTPUT"
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
@@ -158,6 +183,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
+          # 正文由上面的步骤给出；此时 generate_release_notes 会被 body 覆盖，故不再设置。
+          body: ${{ steps.notes.outputs.body }}
           draft: false
           prerelease: false
-          generate_release_notes: true
