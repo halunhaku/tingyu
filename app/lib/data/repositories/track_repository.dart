@@ -117,6 +117,27 @@ class TrackRepository {
         .write(TracksCompanion(duration: Value<double>(seconds)));
   }
 
+  /// 某个来源里每个文件已记录的事实（大小 + 修改时间）。
+  ///
+  /// 本地目录重复扫描时用它判断"这个文件没动过"，从而跳过标签解析与封面落盘。
+  Future<KnownFileFacts> fileFacts(String sourceId) async {
+    final List<QueryRow> rows = await _db
+        .customSelect(
+          'SELECT file_path_or_url AS path, file_size AS size, '
+          'last_modified AS modified FROM tracks WHERE source_id = ?',
+          variables: <Variable<Object>>[Variable<String>(sourceId)],
+          readsFrom: <ResultSetImplementation<dynamic, dynamic>>{_db.tracks},
+        )
+        .get();
+    return <String, ({int size, DateTime? modified})>{
+      for (final QueryRow row in rows)
+        row.read<String>('path'): (
+          size: row.read<int>('size'),
+          modified: row.read<DateTime?>('modified'),
+        ),
+    };
+  }
+
   /// 当前仍被引用的封面文件名（封面缓存清理用）。
   Future<Set<String>> coverNamesInUse() async {
     final Set<String> names = <String>{};

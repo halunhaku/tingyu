@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import '../../data/models/scanned_track.dart';
 import '../../playback/playback_item.dart';
 import '../source_adapter.dart';
 import 'local_library_scanner.dart';
@@ -10,6 +11,7 @@ class LocalSourceAdapter implements SourceAdapter {
     required this.sourceId,
     required this.folderPath,
     LocalLibraryScanner? scanner,
+    this.knownFacts,
   }) : _scanner = scanner ?? LocalLibraryScanner();
 
   @override
@@ -19,6 +21,11 @@ class LocalSourceAdapter implements SourceAdapter {
   final String folderPath;
 
   final LocalLibraryScanner _scanner;
+
+  /// 库里已记录的文件事实（由 app 层从曲库取）。为空则每次都完整解析。
+  ///
+  /// 用回调而不是直接依赖仓储：来源层只依赖 `data/` 的模型，不持有数据库句柄。
+  final Future<KnownFileFacts> Function()? knownFacts;
 
   @override
   Future<SourceScanResult> scan({
@@ -31,6 +38,7 @@ class LocalSourceAdapter implements SourceAdapter {
           ? null
           : (int done, int total, String path) => onProgress(done, path),
       isCancelled: isCancelled,
+      known: await knownFacts?.call() ?? noKnownFileFacts,
     );
     return SourceScanResult(
       tracks: result.tracks,

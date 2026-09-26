@@ -336,15 +336,21 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
         return;
       }
       final int from = _nextSourceIndex.clamp(0, _sourceQueue.length);
-      // 尾部这批曲目只是被打乱过，成员集合与原始队列的尾部一致：
-      // 按原始顺序把它们挑回来即可还原，且不会引入重复。
-      final Set<String> tailIds = _sourceQueue
-          .sublist(from)
-          .map((Track t) => t.id)
-          .toSet();
-      final List<Track> restored = _originalSourceQueue
-          .where((Track t) => tailIds.contains(t.id))
-          .toList(growable: false);
+      // 按**重数**还原，而不是按 id 集合筛原始队列：
+      // 歌单里同一首歌出现两次时，id 集合会把两份都留在尾部，尾部凭空多出一首
+      // （曲目行数变多、播放顺序也错）。这里逐个消耗"尾部里还欠几份"。
+      final Map<String, int> remaining = <String, int>{};
+      for (final Track track in _sourceQueue.sublist(from)) {
+        remaining[track.id] = (remaining[track.id] ?? 0) + 1;
+      }
+      final List<Track> restored = <Track>[];
+      for (final Track track in _originalSourceQueue) {
+        final int count = remaining[track.id] ?? 0;
+        if (count > 0) {
+          restored.add(track);
+          remaining[track.id] = count - 1;
+        }
+      }
       _sourceQueue = <Track>[..._sourceQueue.sublist(0, from), ...restored];
     }
     state = state.copyWith(playOrder: _playOrder);

@@ -45,14 +45,25 @@ Future<SourceAdapter> buildSourceAdapter(
       // 其余情况（桌面、以及从旧版迁移过来的路径）就是普通文件系统路径。
       final String? token = source.localBookmark;
       if (Platform.isAndroid && token != null && token.startsWith('content://')) {
+        // SAF 每次列举都要跨平台通道，且拿不到 mtime 的稳定口径，
+        // 不做"跳过未变文件"的优化（Android 的本地库通常也不大）。
         return SafSourceAdapter(sourceId: source.id, treeUri: token);
       }
       if (Platform.isIOS && token != null && token.isNotEmpty) {
-        return LocalBookmarkSourceAdapter(sourceId: source.id, bookmark: token);
+        return LocalBookmarkSourceAdapter(
+          sourceId: source.id,
+          bookmark: token,
+          knownFacts: () => ref
+              .read(trackRepositoryProvider)
+              .fileFacts(source.id),
+        );
       }
       return LocalSourceAdapter(
         sourceId: source.id,
         folderPath: source.localFolderPath ?? '',
+        knownFacts: () => ref
+            .read(trackRepositoryProvider)
+            .fileFacts(source.id),
       );
   }
 }

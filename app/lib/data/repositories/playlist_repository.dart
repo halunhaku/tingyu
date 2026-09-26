@@ -45,6 +45,27 @@ class PlaylistRepository {
     _db.playlists,
   )..where(($PlaylistsTable t) => t.id.equals(id))).go();
 
+  /// 每个播放列表的曲目数（一条 GROUP BY 查完全部歌单）。
+  ///
+  /// 列表页原先对每个歌单各跑一次 [tracksOf]（整表 JOIN 出 Track 行）只为打印"3 首"：
+  /// 歌单一多就是 N 次 JOIN，而这里只需要计数。
+  Future<Map<String, int>> trackCounts() =>
+      _trackCountQuery().get().then(_mapTrackCounts);
+
+  /// 曲目数随歌单内容变化实时推送。
+  Stream<Map<String, int>> watchTrackCounts() =>
+      _trackCountQuery().watch().map(_mapTrackCounts);
+
+  Selectable<QueryRow> _trackCountQuery() => _db.customSelect(
+    'SELECT playlist_id, COUNT(*) AS c FROM playlist_items GROUP BY playlist_id',
+    readsFrom: <ResultSetImplementation<dynamic, dynamic>>{_db.playlistItems},
+  );
+
+  static Map<String, int> _mapTrackCounts(List<QueryRow> rows) => <String, int>{
+    for (final QueryRow row in rows)
+      row.read<String>('playlist_id'): row.read<int>('c'),
+  };
+
   /// 按保存的顺序返回曲目。
   Future<List<Track>> tracksOf(String playlistId) async {
     final JoinedSelectStatement<HasResultSet, dynamic> query =

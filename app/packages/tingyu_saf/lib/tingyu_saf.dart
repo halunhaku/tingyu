@@ -53,6 +53,16 @@ class TingyuSaf {
 
   static const MethodChannel _channel = MethodChannel('tingyu/saf');
 
+  /// 单次目录列举的等待上限。
+  ///
+  /// 第三方 DocumentProvider（网盘挂载、文件管理器"虚拟目录"）卡住不返回时，
+  /// 扫描会**永远**停在那一层：取消检查发生在目录之间，于是用户只能杀进程。
+  /// 超时当作"这个目录读不出来"（扫描器会记 skipped 并继续，结果因而不算权威快照）。
+  static const Duration listTimeout = Duration(seconds: 30);
+
+  /// 轻量调用（权限查询、书签解析、授权释放）的上限。
+  static const Duration callTimeout = Duration(seconds: 15);
+
   /// 拉起系统目录选择器；用户取消返回 null。
   static Future<String?> pickDirectory() => _channel.invokeMethod<String>('pickDirectory');
 
@@ -73,38 +83,45 @@ class TingyuSaf {
   /// iOS：解析书签并开启安全作用域访问，返回目录绝对路径；书签失效返回 null。
   ///
   /// 安全作用域一直开到 [releaseBookmark]（或进程结束）：扫描与点播之间可能隔很久。
-  static Future<String?> resolveBookmark(String bookmark) =>
-      _channel.invokeMethod<String>('resolveBookmark', <String, Object?>{'bookmark': bookmark});
+  static Future<String?> resolveBookmark(String bookmark) => _channel
+      .invokeMethod<String>('resolveBookmark', <String, Object?>{
+        'bookmark': bookmark,
+      })
+      .timeout(callTimeout);
 
   /// iOS：关闭书签的安全作用域访问（删除来源时调用）。
-  static Future<void> releaseBookmark(String bookmark) =>
-      _channel.invokeMethod<bool>('releaseBookmark', <String, Object?>{'bookmark': bookmark});
+  static Future<void> releaseBookmark(String bookmark) => _channel
+      .invokeMethod<bool>('releaseBookmark', <String, Object?>{
+        'bookmark': bookmark,
+      })
+      .timeout(callTimeout);
 
   /// 该 tree URI 的读权限是否仍然有效（用户可能在系统设置里撤销）。
   static Future<bool> hasPermission(String treeUri) async {
-    final bool? granted = await _channel.invokeMethod<bool>(
-      'hasPermission',
-      <String, Object?>{'treeUri': treeUri},
-    );
+    final bool? granted = await _channel
+        .invokeMethod<bool>('hasPermission', <String, Object?>{'treeUri': treeUri})
+        .timeout(callTimeout);
     return granted ?? false;
   }
 
   /// 释放持久化授权（删除来源时调用）。
-  static Future<void> releasePermission(String treeUri) =>
-      _channel.invokeMethod<bool>('releasePermission', <String, Object?>{'treeUri': treeUri});
+  static Future<void> releasePermission(String treeUri) => _channel
+      .invokeMethod<bool>('releasePermission', <String, Object?>{
+        'treeUri': treeUri,
+      })
+      .timeout(callTimeout);
 
   /// 列出某个目录的子项；[parentDocumentId] 为空时列出授权目录本身的内容。
   static Future<List<SafEntry>> listChildren(
     String treeUri, {
     String? parentDocumentId,
   }) async {
-    final List<Object?>? raw = await _channel.invokeMethod<List<Object?>>(
-      'listChildren',
-      <String, Object?>{
-        'treeUri': treeUri,
-        'parentDocumentId': parentDocumentId,
-      },
-    );
+    final List<Object?>? raw = await _channel
+        .invokeMethod<List<Object?>>('listChildren', <String, Object?>{
+          'treeUri': treeUri,
+          'parentDocumentId': parentDocumentId,
+        })
+        .timeout(listTimeout);
     if (raw == null) {
       return const <SafEntry>[];
     }

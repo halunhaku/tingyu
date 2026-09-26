@@ -106,13 +106,15 @@ class _PlaylistTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<List<Track>> tracks = ref.watch(
-      playlistTracksProvider(playlist.id),
+    // 曲目数走一次聚合查询；原先每个歌单各 JOIN 全表只为了印一个数字。
+    final AsyncValue<Map<String, int>> counts = ref.watch(
+      playlistTrackCountsProvider,
     );
-    final String subtitle = tracks.when(
+    final String subtitle = counts.when(
       loading: () => '读取中…',
       error: (Object error, StackTrace stack) => '曲目读取失败',
-      data: (List<Track> list) => '${list.length} 首',
+      data: (Map<String, int> byPlaylist) =>
+          '${byPlaylist[playlist.id] ?? 0} 首',
     );
 
     return ListTile(

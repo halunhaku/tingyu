@@ -212,4 +212,60 @@ void main() {
     expect(weird.artist, ScannedTrack.unknownArtist);
     expect(result.unreadableFiles, 0);
   });
+  test('未变化的文件跳过标签解析，变化过的文件照常解析', () async {
+    await write(
+      'song.mp3',
+      buildTaggedMp3(title: '真标题', artist: '真歌手', album: '真专辑'),
+    );
+    final File file = File(p.join(root.path, 'song.mp3'));
+    final FileStat stat = file.statSync();
+
+    // 库里已经记下这份文件事实 → 本次不必再解析标签（重复同步不再逐文件读标签、写封面）。
+    final LocalScanResult unchanged = await scanner.scan(
+      root,
+      known: <String, ({int size, DateTime? modified})>{
+        file.path: (size: stat.size, modified: stat.modified),
+      },
+    );
+    expect(unchanged.tracks, hasLength(1));
+    expect(unchanged.tracks.single.title, 'song');
+    expect(unchanged.tracks.single.artist, ScannedTrack.unknownArtist);
+    expect(unchanged.tracks.single.duration, 0);
+    expect(unchanged.tracks.single.fileSize, stat.size);
+    expect(
+      unchanged.tracks.single.lastModified?.isAtSameMomentAs(stat.modified),
+      isTrue,
+    );
+
+    // 大小对不上（文件被改过）→ 重新解析，标签照旧读出来。
+    final LocalScanResult reparsed = await scanner.scan(
+      root,
+      known: <String, ({int size, DateTime? modified})>{
+        file.path: (size: stat.size + 1, modified: stat.modified),
+      },
+    );
+    expect(reparsed.tracks.single.title, '真标题');
+    expect(reparsed.tracks.single.artist, '真歌手');
+  });
+
+  test('修改时间不同（内容被替换）时重新解析', () async {
+    await write(
+      'song.mp3',
+      buildTaggedMp3(title: '新标题', artist: '新歌手', album: '新专辑'),
+    );
+    final File file = File(p.join(root.path, 'song.mp3'));
+    final FileStat stat = file.statSync();
+
+    final LocalScanResult result = await scanner.scan(
+      root,
+      known: <String, ({int size, DateTime? modified})>{
+        file.path: (
+          size: stat.size,
+          modified: stat.modified.subtract(const Duration(hours: 1)),
+        ),
+      },
+    );
+
+    expect(result.tracks.single.title, '新标题');
+  });
 }

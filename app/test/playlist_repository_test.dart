@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tingyu/data/db/database.dart';
 import 'package:tingyu/data/models/scanned_track.dart';
@@ -122,5 +124,30 @@ void main() {
     await sub.cancel();
 
     expect(emissions.last.first.name, '0 列表');
+  });
+
+  test('曲目数按歌单聚合，且随增删实时推送', () async {
+    await seedTracks(<String>['/m/a.flac', '/m/b.flac', '/m/c.flac']);
+    await playlists.create(id: 'pl-1', name: '一');
+    await playlists.create(id: 'pl-2', name: '二');
+    await playlists.addTrack('pl-1', idOf('/m/a.flac'));
+    await playlists.addTrack('pl-1', idOf('/m/b.flac'));
+    await playlists.addTrack('pl-2', idOf('/m/c.flac'));
+
+    expect(await playlists.trackCounts(), <String, int>{'pl-1': 2, 'pl-2': 1});
+
+    final List<Map<String, int>> emissions = <Map<String, int>>[];
+    final StreamSubscription<Map<String, int>> sub = playlists
+        .watchTrackCounts()
+        .listen(emissions.add);
+    addTearDown(sub.cancel);
+    await Future<void>.delayed(Duration.zero);
+
+    await playlists.addTrack('pl-2', idOf('/m/a.flac'));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    expect(emissions.last['pl-2'], 2);
+    // 空歌单不出现在聚合里，UI 用 `?? 0` 兜底。
+    expect(emissions.last.containsKey('pl-3'), isFalse);
   });
 }

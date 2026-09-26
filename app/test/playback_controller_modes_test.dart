@@ -199,6 +199,33 @@ void main() {
       ]);
     });
 
+    test('歌单里有重复曲目时，关闭随机不会多出一行', () async {
+      final ProviderContainer container = _container();
+      final PlaybackController controller = container.read(
+        playbackProvider.notifier,
+      );
+
+      // 同一首歌出现两次（歌单允许）：按 id 集合还原尾部时，两份都会被塞回尾部，
+      // 队列凭空变长、播放顺序也跟着错。
+      final List<Track> tracks = <Track>[
+        _track('t1', '歌1'),
+        _track('t2', '歌2'),
+        _track('t2', '歌2'),
+        _track('t3', '歌3'),
+      ];
+
+      await controller.playTracks(tracks, startIndex: 0);
+      controller.toggleShuffle();
+      controller.toggleShuffle();
+
+      expect(controller.sourceQueue.map((Track t) => t.id).toList(), <String>[
+        't1',
+        't2',
+        't2',
+        't3',
+      ]);
+    });
+
     test('playTracks 支持直接以 shuffle 模式起播', () async {
       final ProviderContainer container = _container();
       final PlaybackController controller = container.read(

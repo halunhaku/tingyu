@@ -97,6 +97,12 @@ final StreamProvider<List<Playlist>> playlistsProvider =
       (Ref ref) => ref.watch(playlistRepositoryProvider).watchAll(),
     );
 
+/// 歌单 id → 曲目数（一条 GROUP BY，代替"每个歌单各 JOIN 一次"）。
+final StreamProvider<Map<String, int>> playlistTrackCountsProvider =
+    StreamProvider<Map<String, int>>(
+      (Ref ref) => ref.watch(playlistRepositoryProvider).watchTrackCounts(),
+    );
+
 /// 侧栏搜索框的输入（未防抖）；空串表示不搜索。
 ///
 /// 输入框、清除按钮、页面标题都用它，所以敲键立刻有反应；

@@ -68,10 +68,17 @@ class LocalLibraryScanner {
     p.extension(path).toLowerCase().replaceFirst('.', ''),
   );
 
+  /// 扫描目录。
+  ///
+  /// [known] 是库里已经记下的文件事实（大小 + 修改时间）。两者都没变的文件直接按
+  /// "文件事实已知"处理，跳过标签解析与封面落盘 —— 曲库越大，重复扫描的收益越明显
+  /// （几千个文件原本每次同步都要把每个文件的标签与内嵌封面重新读一遍、写一遍）。
+  /// 合并层只覆盖"文件事实"，不会用这份稀疏结果覆盖已有的标题/封面/歌词。
   Future<LocalScanResult> scan(
     Directory root, {
     void Function(int done, int total, String path)? onProgress,
     bool Function()? isCancelled,
+    KnownFileFacts known = noKnownFileFacts,
     int batchSize = 64,
   }) async {
     final _CollectedFiles collected = _collectFiles(root);
@@ -104,7 +111,7 @@ class LocalLibraryScanner {
         math.min(start + batchSize, collected.files.length),
       );
       final _BatchResult result = await Isolate.run(
-        () => _scanBatch(batch, coversDirectory),
+        () => _scanBatch(batch, coversDirectory, known),
       );
       tracks.addAll(result.tracks);
       unreadable += result.unreadable;
@@ -196,12 +203,25 @@ class _BatchResult {
 }
 
 /// 在子 isolate 中执行：只依赖路径与封面目录，不触碰数据库。
-_BatchResult _scanBatch(List<String> paths, String coversDirectory) {
+_BatchResult _scanBatch(
+  List<String> paths,
+  String coversDirectory,
+  KnownFileFacts known,
+) {
   final List<ScannedTrack> tracks = <ScannedTrack>[];
   int unreadable = 0;
   for (final String path in paths) {
     try {
-      tracks.add(_scanFile(path, coversDirectory));
+      final FileStat stat = File(path).statSync();
+      final ({int size, DateTime? modified})? previous = known[path];
+      if (previous != null &&
+          previous.size == stat.size &&
+          _sameInstant(previous.modified, stat.modified)) {
+        // 文件没动过：标签、封面、时长都还是库里那一份，不必再解析一遍。
+        tracks.add(_unchangedTrack(path, stat));
+        continue;
+      }
+      tracks.add(_scanFile(path, coversDirectory, stat: stat));
     } on Object {
       // 单个文件无论如何都不该让整批（乃至整次扫描）失败：列目录与真正读取
       // 之间文件可能已被删除/改权限，任何异常都只记一次「读不了」。
@@ -211,9 +231,32 @@ _BatchResult _scanBatch(List<String> paths, String coversDirectory) {
   return _BatchResult(tracks, unreadable);
 }
 
-ScannedTrack _scanFile(String path, String coversDirectory) {
+/// 两次 stat 的时间是否表示同一时刻。
+///
+/// `DateTime.==` 还比较 `isUtc`：库里那份经过 drift 往返可能变成 UTC，而
+/// `FileStat.modified` 是本地时间，直接用 `==` 会让"没变过"永远判成"变了"。
+bool _sameInstant(DateTime? a, DateTime b) =>
+    a != null && a.isAtSameMomentAs(b);
+
+/// 文件没变化时的稀疏结果：只有文件事实，标签留空。
+///
+/// 合并层（`TrackRepository._withFileFacts`）对空标签的处理是"保留库里已有的值"，
+/// 所以这份稀疏结果不会把已解析的标题、时长、封面抹掉。
+ScannedTrack _unchangedTrack(String path, FileStat stat) => ScannedTrack(
+  filePathOrUrl: path,
+  title: p.basenameWithoutExtension(path),
+  fileFormat: p.extension(path).toLowerCase().replaceFirst('.', ''),
+  fileSize: stat.size,
+  lastModified: stat.modified,
+);
+
+ScannedTrack _scanFile(
+  String path,
+  String coversDirectory, {
+  FileStat? stat,
+}) {
   final File file = File(path);
-  final FileStat stat = file.statSync();
+  final FileStat fileStat = stat ?? file.statSync();
   final String extension = p
       .extension(path)
       .toLowerCase()
@@ -281,8 +324,8 @@ ScannedTrack _scanFile(String path, String coversDirectory) {
     bitrate: bitrate,
     sampleRate: sampleRate,
     fileFormat: extension.isEmpty ? 'mp3' : extension,
-    fileSize: stat.size,
-    lastModified: stat.modified,
+    fileSize: fileStat.size,
+    lastModified: fileStat.modified,
     coverArtPath: coverArtPath,
     lyrics: lyrics,
   );

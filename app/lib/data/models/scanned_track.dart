@@ -104,3 +104,12 @@ class ScannedTrack {
 
   final String? lyrics;
 }
+
+/// 库里已记录的文件事实：大小与修改时间都没变，标签就没必要再解析一遍。
+///
+/// 定义在模型层而不是扫描器里：数据层（判断"这个文件动过没有"）与来源层
+/// （决定要不要重新解析标签）都要用它，data 不该反过来依赖 sources。
+typedef KnownFileFacts = Map<String, ({int size, DateTime? modified})>;
+
+/// 没有已知事实（首次扫描 / 直接调用扫描器的调试入口）。
+const KnownFileFacts noKnownFileFacts = <String, ({int size, DateTime? modified})>{};

@@ -25,12 +25,16 @@ class LocalBookmarkSourceAdapter implements SourceAdapter {
     required this.sourceId,
     required this.bookmark,
     LocalLibraryScanner? scanner,
+    this.knownFacts,
   }) : _scanner = scanner ?? LocalLibraryScanner();
 
   /// 系统文档选择器授权的安全作用域书签（base64，存于 `music_sources.local_bookmark`）。
   final String bookmark;
 
   final LocalLibraryScanner _scanner;
+
+  /// 库里已记录的文件事实（键是**相对授权目录**的路径，见类文档）。
+  final Future<KnownFileFacts> Function()? knownFacts;
 
   @override
   final String sourceId;
@@ -41,12 +45,19 @@ class LocalBookmarkSourceAdapter implements SourceAdapter {
     bool Function()? isCancelled,
   }) async {
     final Directory root = await _root();
+    final KnownFileFacts relative = await knownFacts?.call() ?? noKnownFileFacts;
     final LocalScanResult result = await _scanner.scan(
       root,
       onProgress: onProgress == null
           ? null
           : (int done, int total, String path) => onProgress(done, path),
       isCancelled: isCancelled,
+      // 扫描器按绝对路径工作，库里的键是相对路径：这里补回根目录再交下去。
+      known: <String, ({int size, DateTime? modified})>{
+        for (final MapEntry<String, ({int size, DateTime? modified})> entry
+            in relative.entries)
+          p.join(root.path, entry.key): entry.value,
+      },
     );
     return SourceScanResult(
       tracks: result.tracks
