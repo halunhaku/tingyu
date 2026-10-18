@@ -263,7 +263,6 @@ $ flutter test --no-pub
 ---
 
 ## 8. 仍未验证的平台与原因（不夸大）
-
 | 平台 | 未验证内容 | 原因 | 降低风险的手段（已做 / 待做） |
 |---|---|---|---|
 | Android | 触控手势、系统返回、SAF 授权、安全区、真机字号与命中区 | 无 SDK、无设备 | 已做：平台能力分支组件测试；待做：装机跑一遍 `/library/songs → /search → /stage → /queue` |
@@ -295,3 +294,15 @@ cd app && flutter test --run-skipped -t golden --update-goldens
 
 调试用环境变量（`main.dart`，只影响本次进程、不写回用户设置）：
 `TINGYU_DEBUG_ROUTE`（直达某路由）、`TINGYU_DEBUG_THEME=dark|light`、`TINGYU_DEBUG_DENSITY=compact|comfortable`。
+
+### 8.1 尚存风险（按优先级）
+
+| 优先级 | 风险 | 影响面 | 现状 | 建议动作 |
+|---|---|---|---|---|
+| **P0** | Android 未真机验收 | 触控手势、系统返回、SAF 授权、安全区 | 组件级分支测试已覆盖「触控常显/长按/无 hover」；真机行为未知 | 装一台 Android 设备跑 `/library/songs → /search → /stage → /queue` + 添加本地目录授权一次 |
+| **P1** | macOS 未真机验收 | 菜单栏快捷键派发顺序（⌘1..4 与外壳 `CallbackShortcuts` 重叠时由 AppKit 先吃）、窗口标题栏内边距、安全区 | 菜单项与外壳快捷键已对齐同一张表；未点过 | 在 macOS 上点一遍「前往」菜单与 ⌘K/⌘F |
+| **P1** | CI 本轮未跑 | 五平台构建矩阵与 iOS 编译校验的可信度 | 配置审阅通过；未触发 | 推分支让 CI 跑一遍矩阵 |
+| **P2** | Windows DPI 只测了 150% | 100%/200% 下的取整与命中区 | 三档尺寸截图 + `dpr=2` 的组件测试通过 | 换 DPI 复跑 `windows-ui-screenshots.ps1` |
+| **P2** | 真机深色走查用的是显式主题覆盖，未跟随系统主题变化 | 主题切换的实时性（`themeMode` 跟随系统） | 亮/暗两套主题各自截图通过；切换路径未走 | 切系统主题看一次是否即时生效 |
+| **P2** | 歌单详情页的「有内容」形态没有真机截图 | 该页版式只剩组件测试与 golden 覆盖 | 用户库当前没有歌单，截图只能看到「不存在」态 | 建一个歌单后补一张截图 |
+| **P3** | Linux MPRIS 媒体会话 | 桌面媒体键/系统媒体面板 | 与 Windows 共用同一份源码 | CI 跑通后真机试听 |
