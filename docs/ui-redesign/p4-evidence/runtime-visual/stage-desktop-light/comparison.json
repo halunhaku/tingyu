@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "approvedPath": "F:\\project\\tingyu\\docs\\ui-redesign\\p4-quality\\runtime-baselines\\stage-desktop-light.png",
+  "actualPath": "F:\\project\\tingyu\\docs\\ui-redesign\\p4-evidence\\runtime-visual\\stage-desktop-light\\stage.png",
+  "diffPath": "F:\\project\\tingyu\\docs\\ui-redesign\\p4-evidence\\runtime-visual\\stage-desktop-light\\baseline.diff.png",
+  "approvedSha256": "d360293b454d689a5b510310887bf98ea174535394b1ae458c7c88d4c7d2b98b",
+  "actualSha256": "d360293b454d689a5b510310887bf98ea174535394b1ae458c7c88d4c7d2b98b",
+  "byteExact": true,
+  "sameDimensions": true,
+  "pixelExact": true,
+  "approvedWidth": 1898,
+  "approvedHeight": 1024,
+  "actualWidth": 1898,
+  "actualHeight": 1024,
+  "totalPixels": 1943552,
+  "differingPixels": 0,
+  "differingPercent": 0.0,
+  "maxChannelDelta": 0,
+  "meanAbsoluteDelta": 0.0,
+  "hasDifferenceBounds": false,
+  "differenceBounds": null
+}
