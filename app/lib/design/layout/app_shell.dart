@@ -17,6 +17,7 @@ import '../components/navigation.dart';
 import '../theme.dart';
 import '../tokens/metrics.dart';
 import '../tokens/tokens.dart';
+import '../tokens/voice_archive.dart';
 import 'form_factor.dart';
 
 /// 唯一应用外壳（`DESIGN.md` §5）。
@@ -204,6 +205,10 @@ class _TyAppShellState extends ConsumerState<TyAppShell> {
 
   /// `⌘F`：compact 跳到搜索 Tab（本页自带输入框），桌面聚焦侧栏搜索框。
   void _focusSearch() {
+    if (GoRouterState.of(context).uri.path == '/library/songs') {
+      _openPalette();
+      return;
+    }
     if (context.formFactor == FormFactor.compact) {
       _navigate('/search');
       return;
@@ -352,20 +357,37 @@ class _TyAppShellState extends ConsumerState<TyAppShell> {
     }
 
     final String path = GoRouterState.of(context).uri.path;
-    final Widget shell = switch (context.formFactor) {
-      FormFactor.compact => _buildCompact(path),
-      FormFactor.medium || FormFactor.expanded => _buildDesktop(path),
-    };
-    // `CallbackShortcuts` 只在「焦点在它子树里」时收到按键，而列表滚动后焦点可能
-    // 落回根 scope；所以外面套一个 autofocus 的 `Focus` 兜底（它不参与 Tab 遍历，
-    // 输入框一旦聚焦就能正常抢走按键）。
-    return CallbackShortcuts(
-      bindings: _shortcuts(),
-      child: Focus(autofocus: true, skipTraversal: true, child: shell),
+    Widget buildScopedShell(BuildContext themedContext) {
+      final Widget shell = switch (themedContext.formFactor) {
+        FormFactor.compact => _buildCompact(themedContext, path),
+        FormFactor.medium ||
+        FormFactor.expanded => _buildDesktop(themedContext, path),
+      };
+      // `CallbackShortcuts` 只在「焦点在它子树里」时收到按键，而列表滚动后焦点可能
+      // 落回根 scope；所以外面套一个 autofocus 的 `Focus` 兜底（它不参与 Tab 遍历，
+      // 输入框一旦聚焦就能正常抢走按键）。
+      return CallbackShortcuts(
+        bindings: _shortcuts(),
+        child: Focus(autofocus: true, skipTraversal: true, child: shell),
+      );
+    }
+
+    final Widget scopedShell = Builder(builder: buildScopedShell);
+    if (path != '/library/songs') {
+      return scopedShell;
+    }
+    final TyTokens inherited = context.ty;
+    return Theme(
+      data: TyTheme.build(
+        brightness: inherited.brightness,
+        density: inherited.density,
+        colors: VoiceArchiveColors.of(inherited.brightness),
+      ),
+      child: scopedShell,
     );
   }
 
-  Widget _buildCompact(String path) {
+  Widget _buildCompact(BuildContext context, String path) {
     final TyTokens ty = context.ty;
     // 舞台位于根 Navigator，compact 下不会经过这里；保留判断是为了
     // 「外壳里嵌了播放页」这种半屏分栏形态也不出错。
@@ -383,7 +405,9 @@ class _TyAppShellState extends ConsumerState<TyAppShell> {
         child: Column(
           children: <Widget>[
             // 曲库四段在 compact 合成一页：分段控件取代侧栏的「曲库」分组。
-            if (path.startsWith('/library/') && section >= 0)
+            if (path != '/library/songs' &&
+                path.startsWith('/library/') &&
+                section >= 0)
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                   TySpace.x16,
@@ -424,7 +448,7 @@ class _TyAppShellState extends ConsumerState<TyAppShell> {
     );
   }
 
-  Widget _buildDesktop(String path) {
+  Widget _buildDesktop(BuildContext context, String path) {
     final TyTokens ty = context.ty;
     final bool expanded = context.formFactor == FormFactor.expanded;
     final Widget navigation = expanded
@@ -439,6 +463,14 @@ class _TyAppShellState extends ConsumerState<TyAppShell> {
             selectedRoute: path,
             onNavigate: _navigate,
             footer: const <TyNavDestination>[_settings],
+            header: path == '/library/songs'
+                ? _LibrarySidebarBrand(
+                    sources:
+                        ref.watch(sourcesProvider).value ??
+                        const <MusicSource>[],
+                  )
+                : null,
+            showSearch: path != '/library/songs',
           )
         : TyNavRail(
             destinations: _primary,
@@ -592,5 +624,38 @@ class _TyAppShellState extends ConsumerState<TyAppShell> {
       return 3;
     }
     return 0;
+  }
+}
+
+class _LibrarySidebarBrand extends StatelessWidget {
+  const _LibrarySidebarBrand({required this.sources});
+
+  final List<MusicSource> sources;
+
+  @override
+  Widget build(BuildContext context) {
+    final TyTokens ty = context.ty;
+    final String sourceSummary = sources.isEmpty
+        ? '音乐时光，从这里开始'
+        : sources.take(3).map((MusicSource source) => source.name).join(' · ');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          '听屿',
+          style: ty.typography.titleXL.copyWith(
+            color: ty.colors.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: TySpace.x4),
+        Text(
+          sourceSummary,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: ty.typography.bodyS.copyWith(color: ty.colors.textTertiary),
+        ),
+      ],
+    );
   }
 }

@@ -96,24 +96,13 @@ void main() {
       expect(find.text('FAVORITES'), findsOneWidget);
     });
 
-    testWidgets('compact 四段曲库用分段控件切换，且不出现侧栏', (WidgetTester tester) async {
-      final ShellHarness harness = await pumpShell(
-        tester,
-        const Size(412, 915),
-      );
-      expect(find.byType(TySegmentedControl), findsOneWidget);
-      await tester.tap(
-        find.descendant(
-          of: find.byType(TySegmentedControl),
-          matching: find.text('专辑'),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(
-        harness.router.routeInformationProvider.value.uri.path,
-        '/library/albums',
-      );
-      expect(find.text('ALBUMS'), findsOneWidget);
+    testWidgets('compact 曲库页承担四段导航，外壳不重复渲染', (WidgetTester tester) async {
+      await pumpShell(tester, const Size(412, 915));
+      // 真实 LibraryPage 在迁移后的壳内显示四段导航；外壳本身不再画第二份。
+      // 页面内的切换行为由 library_page_redesign_test 锁定。
+      expect(find.byType(TySegmentedControl), findsNothing);
+      expect(find.text('LIBRARY'), findsOneWidget);
+      expect(find.byType(TySidebar), findsNothing);
     });
 
     testWidgets('compact 详情页隐藏底 Tab，但迷你播放条还在', (WidgetTester tester) async {
@@ -281,14 +270,7 @@ Track _track(String id, String title) => Track(
 void _railCoverage() {
   testWidgets('medium rail 六个目的地齐全', (WidgetTester tester) async {
     await pumpShell(tester, const Size(800, 600));
-    for (final String label in <String>[
-      '歌曲',
-      '专辑',
-      '艺术家',
-      '歌单',
-      '收藏',
-      '设置',
-    ]) {
+    for (final String label in <String>['歌曲', '专辑', '艺术家', '歌单', '收藏', '设置']) {
       expect(find.byTooltip(label), findsOneWidget, reason: 'rail 里没有「」');
     }
   });
@@ -297,13 +279,8 @@ void _railCoverage() {
 /// 从 expanded 缩到 medium（真机截图里 rail 只画出了前四个目的地）：切换外壳之后
 /// 六个目的地都必须落在 rail 的可见范围内。
 void _railAfterResize() {
-  testWidgets('1440 缩到 930：rail 六个目的地仍然都在可见范围内', (
-    WidgetTester tester,
-  ) async {
-    final ShellHarness harness = await pumpShell(
-      tester,
-      const Size(1440, 900),
-    );
+  testWidgets('1440 缩到 930：rail 六个目的地仍然都在可见范围内', (WidgetTester tester) async {
+    final ShellHarness harness = await pumpShell(tester, const Size(1440, 900));
     expect(find.byType(TySidebar), findsOneWidget);
 
     harness.size.value = const Size(930, 537);
@@ -312,13 +289,7 @@ void _railAfterResize() {
 
     expect(find.byType(TyNavRail), findsOneWidget);
     final Rect rail = tester.getRect(find.byType(TyNavRail));
-    for (final String label in <String>[
-      '歌曲',
-      '专辑',
-      '艺术家',
-      '歌单',
-      '收藏',
-    ]) {
+    for (final String label in <String>['歌曲', '专辑', '艺术家', '歌单', '收藏']) {
       final Rect item = tester.getRect(find.byTooltip(label));
       expect(
         item.top >= rail.top && item.bottom <= rail.bottom,

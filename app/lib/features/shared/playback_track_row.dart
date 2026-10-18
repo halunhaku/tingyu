@@ -17,10 +17,17 @@ class PlaybackTrackRow extends ConsumerWidget {
   const PlaybackTrackRow({
     super.key,
     required this.track,
-    required this.index,
+    this.index,
     this.tableMode = false,
     this.showAlbum = true,
+    this.showSource = false,
+    this.sourceLabel,
+    this.separateArtistColumn = false,
+    this.reserveSelectionColumn = false,
     this.showCover = true,
+    this.coverSize,
+    this.titleMaxLines = 1,
+    this.rowHeight,
     this.highlightQuery,
     this.selected = false,
     this.onTap,
@@ -34,11 +41,18 @@ class PlaybackTrackRow extends ConsumerWidget {
 
   final Track track;
 
-  /// 1 起的展示序号。
-  final int index;
+  /// 1 起的展示序号；为空时不显示序号。
+  final int? index;
   final bool tableMode;
   final bool showAlbum;
+  final bool showSource;
+  final String? sourceLabel;
+  final bool separateArtistColumn;
+  final bool reserveSelectionColumn;
   final bool showCover;
+  final double? coverSize;
+  final int titleMaxLines;
+  final double? rowHeight;
   final String? highlightQuery;
   final bool selected;
   final VoidCallback? onTap;
@@ -60,7 +74,14 @@ class PlaybackTrackRow extends ConsumerWidget {
       index: index,
       tableMode: tableMode,
       showAlbum: showAlbum,
+      showSource: showSource,
+      sourceLabel: sourceLabel,
+      separateArtistColumn: separateArtistColumn,
+      reserveSelectionColumn: reserveSelectionColumn,
       showCover: showCover,
+      coverSize: coverSize,
+      titleMaxLines: titleMaxLines,
+      rowHeight: rowHeight,
       highlightQuery: highlightQuery,
       selected: selected,
       isPlaying: isCurrent,

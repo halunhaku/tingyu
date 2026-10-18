@@ -1,0 +1,8 @@
+docs/ui-redesign/p3-library-evidence/desktop-light/library-songs.png: 1898x1024 physical, DPI 1.5, logical=1265.33x682.67, state=normal, theme=light, sha256=70c39d78af556c09b676da562dff0b49ef7a7d22d00ef86b1a3f4da34a53713b
+docs/ui-redesign/p3-library-evidence/desktop-dark/library-songs.png: 1898x1024 physical, DPI 1.5, logical=1265.33x682.67, state=normal, theme=dark, sha256=39b365a7015aaeaa64ca9c36ebcaf7cfd3475c1bb833ec9cf2e3964446732f3f
+docs/ui-redesign/p3-library-evidence/desktop-medium-light/library-songs.png: 1200x1289 physical, DPI 1.5, logical=800x859.33, state=normal, theme=light, sha256=e14665fa990b77a8b163b2e716289f2f0f106e36b976f7f63969c5f19d53aef1
+docs/ui-redesign/p3-library-evidence/mobile-light/library-songs.png: 585x1266 physical, DPI 1.5, logical=390x844, state=normal, theme=light, sha256=c9682289150ca3535bccfd40a9b931fc14e89c90fb05e06ddf224324ab35150e
+docs/ui-redesign/p3-library-evidence/mobile-dark/library-songs.png: 585x1266 physical, DPI 1.5, logical=390x844, state=normal, theme=dark, sha256=dd31377ce5a0c305cd4f36c4a1e80df29465bc1d975db047f060bf08efaabaf6
+docs/ui-redesign/p3-library-evidence/mobile-scale2/library-songs.png: 585x1266 physical, DPI 1.5, logical=390x844, state=normal, theme=light, textScale=2, sha256=fdd0c8b8d8ed1ca1a4b26e28826dc8934ca4e5dd22007d170efd8da2e9daead7
+docs/ui-redesign/p3-library-evidence/mobile-empty/library-songs.png: 585x1266 physical, DPI 1.5, logical=390x844, state=empty, theme=light, sha256=e27e0d80ebca075ad2e430cae42ad6bbb9452ccf7e6fad5ccefe310d3146734e
+docs/ui-redesign/p3-library-evidence/mobile-error/library-songs.png: 585x1266 physical, DPI 1.5, logical=390x844, state=error, theme=dark, sha256=ea45f0aba3dcd86e34bc5a9ad5a12bf33db9168d80e64f8d91b60f34bfac74fe

@@ -216,7 +216,7 @@ void main() {
     await unmountApp(tester);
   });
 
-  testWidgets('桌面：曲库页不出现搜索框（搜索入口在侧栏）', (WidgetTester tester) async {
+  testWidgets('桌面：曲库页使用声档内联搜索，不再重复侧栏搜索', (WidgetTester tester) async {
     final List<Track> tracks = <Track>[_track('t1', '晴天')];
     final GoRouter router = GoRouter(
       initialLocation: '/library/songs',
@@ -269,7 +269,8 @@ void main() {
     );
 
     expect(find.byType(LibraryPage), findsOneWidget);
-    expect(find.byType(TextField), findsNothing);
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('搜索曲库'), findsOneWidget);
     await unmountApp(tester);
   });
 

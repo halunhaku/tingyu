@@ -14,11 +14,16 @@ import 'package:tingyu/app/providers.dart';
 import 'package:tingyu/data/cover_store.dart';
 import 'package:tingyu/data/db/database.dart';
 import 'package:tingyu/data/enrichment_service.dart';
+import 'package:tingyu/data/models/search_page_result.dart';
+import 'package:tingyu/data/models/track_sort.dart';
 import 'package:tingyu/data/repositories/track_repository.dart';
 import 'package:tingyu/data/settings_store.dart';
+import 'package:tingyu/design/layout/app_shell.dart';
 import 'package:tingyu/design/layout/form_factor.dart';
 import 'package:tingyu/design/theme.dart';
 import 'package:tingyu/design/tokens/voice_archive.dart';
+import 'package:tingyu/features/library/library_page.dart';
+import 'package:tingyu/features/library/library_view_state.dart';
 import 'package:tingyu/features/player/now_playing_page.dart';
 import 'package:tingyu/playback/playback_engine.dart';
 import 'package:tingyu/playback/playback_item.dart';
@@ -38,6 +43,7 @@ final List<Track> _fixtureTracks = <Track>[
     album: '潮汐手记',
     duration: const Duration(minutes: 4, seconds: 12),
     fileName: 'voice-archive-1.mp3',
+    sourceId: 'voice-archive-local',
     cover: true,
   ),
   _track(
@@ -47,6 +53,7 @@ final List<Track> _fixtureTracks = <Track>[
     album: '潮汐手记',
     duration: const Duration(minutes: 5, seconds: 8),
     fileName: 'voice-archive-2.mp3',
+    sourceId: 'voice-archive-quark',
     cover: true,
   ),
   _track(
@@ -56,6 +63,7 @@ final List<Track> _fixtureTracks = <Track>[
     album: 'Tidal Notes',
     duration: const Duration(minutes: 3, seconds: 46),
     fileName: 'voice-archive-3.mp3',
+    sourceId: 'voice-archive-webdav',
     cover: true,
   ),
   _track(
@@ -65,6 +73,31 @@ final List<Track> _fixtureTracks = <Track>[
     album: '练习录音',
     duration: const Duration(minutes: 2, seconds: 51),
     fileName: 'voice-archive-4.mp3',
+    sourceId: 'voice-archive-local',
+  ),
+];
+
+const List<MusicSource> _fixtureSources = <MusicSource>[
+  MusicSource(
+    id: 'voice-archive-local',
+    kind: 'local',
+    name: '本地文件',
+    trackCount: 2,
+    syncStatus: '固定预览 · 已完成',
+  ),
+  MusicSource(
+    id: 'voice-archive-quark',
+    kind: 'quark',
+    name: '夸克网盘',
+    trackCount: 1,
+    syncStatus: '固定预览 · 已完成',
+  ),
+  MusicSource(
+    id: 'voice-archive-webdav',
+    kind: 'webdav',
+    name: 'WebDAV',
+    trackCount: 1,
+    syncStatus: '固定预览 · 已完成',
   ),
 ];
 
@@ -75,10 +108,11 @@ Track _track({
   required String album,
   required Duration duration,
   required String fileName,
+  required String sourceId,
   bool cover = false,
 }) => Track(
   id: id,
-  sourceId: 'voice-archive-preview',
+  sourceId: sourceId,
   title: title,
   artist: artist,
   album: album,
@@ -130,7 +164,10 @@ class _VoiceArchivePreviewApp extends StatelessWidget {
           trackByIdProvider(track.id)
               .overrideWith((Ref ref) => Stream<Track?>.value(track)),
         sourcesProvider.overrideWith(
-          (Ref ref) => Stream<List<MusicSource>>.value(const <MusicSource>[]),
+          (Ref ref) => Stream<List<MusicSource>>.value(_fixtureSources),
+        ),
+        playlistsProvider.overrideWith(
+          (Ref ref) => Stream<List<Playlist>>.value(const <Playlist>[]),
         ),
         coverFileProvider.overrideWith((Ref ref, String name) async {
           if (name != _fixtureCoverName || coverPath.isEmpty) {
@@ -139,7 +176,9 @@ class _VoiceArchivePreviewApp extends StatelessWidget {
           final File file = File(coverPath);
           return await file.exists() ? file : null;
         }),
-        trackRepositoryProvider.overrideWithValue(_PreviewTrackRepository()),
+        trackRepositoryProvider.overrideWithValue(
+          _PreviewTrackRepository(state: environment['TINGYU_PREVIEW_STATE']),
+        ),
         enrichmentServiceProvider.overrideWithValue(
           _NoNetworkEnrichmentService(),
         ),
@@ -192,19 +231,29 @@ List<Track> _tracksForState(String? state) => state == 'empty'
     : List<Track>.unmodifiable(_fixtureTracks);
 
 GoRouter _previewRouter(String? configuredRoute) {
-  final String initialLocation = switch (configuredRoute) {
-    '/stage?tab=queue' => '/stage?tab=queue',
-    '/stage?tab=lyrics' => '/stage?tab=lyrics',
-    _ => '/stage',
-  };
+  final String initialLocation =
+      configuredRoute != null && configuredRoute.startsWith('/library/songs')
+      ? configuredRoute
+      : switch (configuredRoute) {
+          '/stage?tab=queue' => '/stage?tab=queue',
+          '/stage?tab=lyrics' => '/stage?tab=lyrics',
+          _ => '/stage',
+        };
   return GoRouter(
     initialLocation: initialLocation,
     routes: <RouteBase>[
       GoRoute(path: '/stage', builder: (_, _) => const NowPlayingPage()),
       GoRoute(
         path: '/library/songs',
-        builder: (_, _) => const _PreviewExitPage(),
+        builder: (BuildContext context, GoRouterState state) => TyAppShell(
+          child: LibraryPage(
+            routePath: '/library/songs',
+            view: LibraryViewState.fromQuery(state.uri.queryParameters),
+          ),
+        ),
       ),
+      GoRoute(path: '/sources', builder: (_, _) => const _PreviewExitPage()),
+      GoRoute(path: '/search', builder: (_, _) => const _PreviewExitPage()),
     ],
     errorBuilder: (_, GoRouterState state) =>
         _PreviewExitPage(message: '预览入口不处理 ${state.uri.path}；返回播放舞台即可。'),
@@ -412,8 +461,57 @@ class PreviewPreferencesNotifier extends PreferencesNotifier {
 }
 
 class _PreviewTrackRepository implements TrackRepository {
+  _PreviewTrackRepository({required this.state});
+
+  final String? state;
+
   @override
   Future<void> setFavorite(String id, {required bool value}) async {}
+
+  @override
+  Future<SearchPageResult<Track>> listTracksPaged({
+    String query = '',
+    bool favoritesOnly = false,
+    String? sourceId,
+    TrackSortField sort = TrackSortField.title,
+    bool ascending = true,
+    int offset = 0,
+    int limit = 40,
+  }) async {
+    if (state == 'error') {
+      throw StateError('固定预览：模拟曲库读取失败');
+    }
+    if (state == 'empty') {
+      return const SearchPageResult<Track>(items: <Track>[], total: 0);
+    }
+    final String needle = query.trim().toLowerCase();
+    final List<Track> filtered = _fixtureTracks.where((Track track) {
+      final bool matchesQuery =
+          needle.isEmpty ||
+          track.title.toLowerCase().contains(needle) ||
+          track.artist.toLowerCase().contains(needle) ||
+          track.album.toLowerCase().contains(needle);
+      return matchesQuery &&
+          (!favoritesOnly || track.isFavorite) &&
+          (sourceId == null || track.sourceId == sourceId);
+    }).toList();
+    filtered.sort((Track a, Track b) {
+      final int compared = switch (sort) {
+        TrackSortField.title => a.title.compareTo(b.title),
+        TrackSortField.artist => a.artist.compareTo(b.artist),
+        TrackSortField.album => a.album.compareTo(b.album),
+        TrackSortField.duration => a.duration.compareTo(b.duration),
+        TrackSortField.addedAt => a.dateAdded.compareTo(b.dateAdded),
+      };
+      return ascending ? compared : -compared;
+    });
+    final int safeOffset = offset.clamp(0, filtered.length);
+    final int end = (safeOffset + limit).clamp(0, filtered.length);
+    return SearchPageResult<Track>(
+      items: filtered.sublist(safeOffset, end),
+      total: filtered.length,
+    );
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -422,7 +520,7 @@ class _PreviewTrackRepository implements TrackRepository {
 class _NoNetworkEnrichmentService extends LibraryEnrichmentService {
   _NoNetworkEnrichmentService()
     : super(
-        tracks: _PreviewTrackRepository(),
+        tracks: _PreviewTrackRepository(state: null),
         covers: CoverStore(rootDirectory: () async => Directory.systemTemp),
         enricher: MetadataEnricher(
           searcher: _UnusedMetadataSearcher(),

@@ -29,6 +29,7 @@ class PageHarness {
     required this.brightness,
     this.overrides = const <Override>[],
     this.formFactor,
+    this.textScale = 1,
   });
 
   final Size size;
@@ -39,6 +40,9 @@ class PageHarness {
 
   /// 缺省按宽度推导；需要「窄窗但桌面语汇」时显式给。
   final FormFactor? formFactor;
+
+  /// 固定系统字号，供 200% 无障碍布局回归使用。
+  final double textScale;
 }
 
 /// 什么都不做的播放引擎：页面里的播放控件需要一个 handler，但不该碰音频服务。
@@ -123,6 +127,7 @@ Future<void> pumpPage(
         builder: (BuildContext context, Widget? child) => MediaQuery(
           data: MediaQuery.of(context).copyWith(
             size: harness.size,
+            textScaler: TextScaler.linear(harness.textScale),
             // 冻结所有动效：骨架微光与音柱是永久动画，不关掉 golden 永远不稳定。
             disableAnimations: true,
           ),
@@ -153,7 +158,10 @@ Future<void> pumpRoutedPage(
   final GoRouter router = GoRouter(
     initialLocation: location,
     routes: <RouteBase>[
-      GoRoute(path: path, builder: (_, _) => Scaffold(body: page)),
+      GoRoute(
+        path: path,
+        builder: (_, _) => Scaffold(body: page),
+      ),
     ],
   );
   addTearDown(router.dispose);
@@ -182,6 +190,7 @@ Future<void> pumpRoutedPage(
         builder: (BuildContext context, Widget? child) => MediaQuery(
           data: MediaQuery.of(context).copyWith(
             size: harness.size,
+            textScaler: TextScaler.linear(harness.textScale),
             disableAnimations: true,
           ),
           child: TyLayoutScope.forSize(

@@ -30,8 +30,15 @@ class TyTrackRow extends StatelessWidget {
     this.onSecondaryTapDown,
     this.onSelectChanged,
     this.showAlbum = true,
+    this.showSource = false,
+    this.sourceLabel,
+    this.separateArtistColumn = false,
+    this.reserveSelectionColumn = false,
     this.showCover = true,
+    this.coverSize,
     this.tableMode = false,
+    this.titleMaxLines = 1,
+    this.rowHeight,
     this.trailing,
     this.highlightQuery,
   });
@@ -54,19 +61,35 @@ class TyTrackRow extends StatelessWidget {
   final VoidCallback? onMore;
   final void Function(TapDownDetails details)? onSecondaryTapDown;
   final ValueChanged<bool>? onSelectChanged;
+
+  /// compact 形态下为真，把专辑与来源收进标题下的信息行；
+  /// table 形态下由宿主决定是否显示独立的来源列。
   final bool showAlbum;
+  final bool showSource;
+  final String? sourceLabel;
+
+  /// 表格中把艺术家从标题副行拆成独立列。默认关闭，保持其它页面原版式。
+  final bool separateArtistColumn;
+
+  /// 始终保留多选列，避免表格行 hover 时内容横向跳动。
+  final bool reserveSelectionColumn;
   final bool showCover;
+  final double? coverSize;
 
   /// 表格形态（列宽与行高按表格令牌）。
   final bool tableMode;
+  final int titleMaxLines;
+
+  /// 宿主可覆盖固定行高；主要用于曲库手机双行标题与 200% 字号。
+  final double? rowHeight;
   final Widget? trailing;
 
   /// 搜索命中词：给了就把标题里的命中子串点亮（`TyHighlightedText`）。
   final String? highlightQuery;
 
-  double _height(BuildContext context) => tableMode
-      ? context.metrics.tableRowHeight
-      : context.metrics.rowHeight;
+  double _height(BuildContext context) =>
+      rowHeight ??
+      (tableMode ? context.metrics.tableRowHeight : context.metrics.rowHeight);
 
   @override
   Widget build(BuildContext context) {
@@ -78,10 +101,12 @@ class TyTrackRow extends StatelessWidget {
       onSecondaryTapDown: onSecondaryTapDown,
       semanticLabel:
           '${track.title} · ${track.artist} · ${track.album}'
+          '${showSource && sourceLabel != null ? ' · $sourceLabel' : ''}'
           '${isPlaying ? ' · 正在播放' : ''}',
       cursor: SystemMouseCursors.click,
       builder: (BuildContext context, TyInteractionState state) {
-        final bool showActions = touch || state.hovered || state.focused || selected;
+        final bool showActions =
+            touch || state.hovered || state.focused || selected;
         final Color? background = selected
             ? ty.colors.surfaceSelected
             : (state.pressed
@@ -113,7 +138,8 @@ class TyTrackRow extends StatelessWidget {
                   ),
                 ),
               ),
-              if (onSelectChanged != null && (selected || showActions))
+              if (onSelectChanged != null &&
+                  (reserveSelectionColumn || selected || showActions))
                 Padding(
                   padding: const EdgeInsets.only(right: TySpace.x4),
                   child: _CheckBox(
@@ -126,47 +152,77 @@ class TyTrackRow extends StatelessWidget {
                   path: track.coverArtPath,
                   url: track.coverArtUrl,
                   seed: '${track.artist} · ${track.album}',
-                  size: tableMode ? 32 : 40,
+                  size: coverSize ?? (tableMode ? 32 : 40),
                   radius: TyRadius.xs,
                 ),
                 const SizedBox(width: TySpace.x12),
               ],
               Expanded(
                 flex: 5,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    // 搜索页要把命中子串点亮；其它场景原样 `Text`（少一层 span）。
-                    if (highlightQuery == null || highlightQuery!.isEmpty)
-                      Text(
-                        track.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: ty.typography.bodyM.copyWith(
-                          color: isPlaying
-                              ? ty.colors.accent
-                              : ty.colors.textPrimary,
-                          fontWeight: isPlaying
-                              ? FontWeight.w600
-                              : FontWeight.w400,
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    right: separateArtistColumn ? TySpace.x12 : 0,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      // 搜索页要把命中子串点亮；其它场景原样 `Text`（少一层 span）。
+                      if (highlightQuery == null || highlightQuery!.isEmpty)
+                        Text(
+                          track.title,
+                          maxLines: titleMaxLines,
+                          overflow: TextOverflow.ellipsis,
+                          style: ty.typography.bodyM.copyWith(
+                            color: isPlaying
+                                ? ty.colors.accent
+                                : ty.colors.textPrimary,
+                            fontWeight: isPlaying
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        )
+                      else
+                        TyHighlightedText(
+                          text: track.title,
+                          query: highlightQuery!,
+                          maxLines: titleMaxLines,
+                          style: ty.typography.bodyM.copyWith(
+                            color: isPlaying
+                                ? ty.colors.accent
+                                : ty.colors.textPrimary,
+                            fontWeight: isPlaying
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
                         ),
-                      )
-                    else
-                      TyHighlightedText(
-                        text: track.title,
-                        query: highlightQuery!,
-                        style: ty.typography.bodyM.copyWith(
-                          color: isPlaying
-                              ? ty.colors.accent
-                              : ty.colors.textPrimary,
-                          fontWeight: isPlaying
-                              ? FontWeight.w600
-                              : FontWeight.w400,
+                      if (!separateArtistColumn) ...<Widget>[
+                        const SizedBox(height: 1),
+                        Text(
+                          showSource && !tableMode
+                              ? <String>[
+                                  track.artist,
+                                  if (showAlbum) track.album,
+                                  ?sourceLabel,
+                                ].join(' · ')
+                              : track.artist,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: ty.typography.bodyS.copyWith(
+                            color: ty.colors.textSecondary,
+                          ),
                         ),
-                      ),
-                    const SizedBox(height: 1),
-                    Text(
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              if (separateArtistColumn)
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: TySpace.x12),
+                    child: Text(
                       track.artist,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -174,18 +230,37 @@ class TyTrackRow extends StatelessWidget {
                         color: ty.colors.textSecondary,
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
               if (showAlbum && context.formFactor != FormFactor.compact)
                 Expanded(
                   flex: 3,
-                  child: Text(
-                    track.album,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: ty.typography.bodyS.copyWith(
-                      color: ty.colors.textSecondary,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: TySpace.x12),
+                    child: Text(
+                      track.album,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: ty.typography.bodyS.copyWith(
+                        color: ty.colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+              if (showSource &&
+                  tableMode &&
+                  context.formFactor != FormFactor.compact)
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: TySpace.x12),
+                    child: Text(
+                      sourceLabel ?? '未知来源',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: ty.typography.bodyS.copyWith(
+                        color: ty.colors.textSecondary,
+                      ),
                     ),
                   ),
                 ),
@@ -464,7 +539,8 @@ class TyTrackTable extends StatelessWidget {
   /// 默认行的播放态来自 `playingTrackId` / `playing`，那要求宿主订阅整份播放快照，
   /// 于是每次进度 tick 都会重建可见的每一行；换成只订阅自己那一行的组件后，
   /// 换曲只重建高亮翻转的行（`ui_rebuild_seek_test` 锁定的口径）。
-  final Widget Function(BuildContext context, int index, Track track)? rowBuilder;
+  final Widget Function(BuildContext context, int index, Track track)?
+  rowBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -482,8 +558,7 @@ class TyTrackTable extends StatelessWidget {
             onSort: onSort,
             showAlbum: showAlbum,
           ),
-        if (showHeader)
-          const TyDividerThin(),
+        if (showHeader) const TyDividerThin(),
         Expanded(
           child: tracks.isEmpty
               ? (emptyBuilder?.call(context) ?? const SizedBox.shrink())
@@ -500,31 +575,31 @@ class TyTrackTable extends StatelessWidget {
                     // 而不是页面左上角（`Offset.zero` 会退化成那里）。
                     return Builder(
                       builder: (BuildContext rowContext) => TyTrackRow(
-                      track: track,
-                      index: i + 1,
-                      tableMode: true,
-                      showAlbum: showAlbum,
-                      highlightQuery: highlightQuery,
-                      isPlaying: track.id == playingTrackId,
-                      playing: track.id == playingTrackId && playing,
-                      selected: selectedIds.contains(track.id),
-                      onTap: onTapTrack == null ? null : () => onTapTrack!(i),
-                      onDoubleTap: onTapTrack == null
-                          ? null
-                          : () => onTapTrack!(i),
-                      onToggleFavorite: onToggleFavorite == null
-                          ? null
-                          : () => onToggleFavorite!(track),
-                      onMore: onMore == null
-                          ? null
-                          : () => onMore!(track, _rowOrigin(rowContext)),
-                      onSecondaryTapDown: onSecondaryTapDown == null
-                          ? null
-                          : (TapDownDetails d) =>
-                                onSecondaryTapDown!(track, d),
-                      onSelectChanged: onSelectChanged == null
-                          ? null
-                          : (bool value) => onSelectChanged!(track, value),
+                        track: track,
+                        index: i + 1,
+                        tableMode: true,
+                        showAlbum: showAlbum,
+                        highlightQuery: highlightQuery,
+                        isPlaying: track.id == playingTrackId,
+                        playing: track.id == playingTrackId && playing,
+                        selected: selectedIds.contains(track.id),
+                        onTap: onTapTrack == null ? null : () => onTapTrack!(i),
+                        onDoubleTap: onTapTrack == null
+                            ? null
+                            : () => onTapTrack!(i),
+                        onToggleFavorite: onToggleFavorite == null
+                            ? null
+                            : () => onToggleFavorite!(track),
+                        onMore: onMore == null
+                            ? null
+                            : () => onMore!(track, _rowOrigin(rowContext)),
+                        onSecondaryTapDown: onSecondaryTapDown == null
+                            ? null
+                            : (TapDownDetails d) =>
+                                  onSecondaryTapDown!(track, d),
+                        onSelectChanged: onSelectChanged == null
+                            ? null
+                            : (bool value) => onSelectChanged!(track, value),
                       ),
                     );
                   },
@@ -540,11 +615,8 @@ class TyDividerThin extends StatelessWidget {
   const TyDividerThin({super.key});
 
   @override
-  Widget build(BuildContext context) => Divider(
-    height: 1,
-    thickness: 1,
-    color: context.ty.colors.border,
-  );
+  Widget build(BuildContext context) =>
+      Divider(height: 1, thickness: 1, color: context.ty.colors.border);
 }
 
 class _TableHeader extends StatelessWidget {
@@ -687,6 +759,7 @@ class TyTrackList extends StatelessWidget {
     this.footer,
     this.highlightQuery,
     this.rowBuilder,
+    this.itemExtent,
   });
 
   final List<Track> tracks;
@@ -713,7 +786,11 @@ class TyTrackList extends StatelessWidget {
   final String? highlightQuery;
 
   /// 自定义行构造器；语义与 [TyTrackTable.rowBuilder] 相同。
-  final Widget Function(BuildContext context, int index, Track track)? rowBuilder;
+  final Widget Function(BuildContext context, int index, Track track)?
+  rowBuilder;
+
+  /// 覆盖固定行高；曲库手机列表用双行标题时与行组件传入同一值。
+  final double? itemExtent;
 
   @override
   Widget build(BuildContext context) {
@@ -727,15 +804,14 @@ class TyTrackList extends StatelessWidget {
         SliverPadding(
           padding: padding,
           sliver: SliverFixedExtentList(
-            itemExtent: context.metrics.rowHeight,
-            delegate: SliverChildBuilderDelegate(
-              (BuildContext context, int i) {
-                final Track track = tracks[i];
-                if (rowBuilder != null) {
-                  return rowBuilder!(context, i, track);
-                }
-                return Builder(
-                  builder: (BuildContext rowContext) => TyTrackRow(
+            itemExtent: itemExtent ?? context.metrics.rowHeight,
+            delegate: SliverChildBuilderDelegate((BuildContext context, int i) {
+              final Track track = tracks[i];
+              if (rowBuilder != null) {
+                return rowBuilder!(context, i, track);
+              }
+              return Builder(
+                builder: (BuildContext rowContext) => TyTrackRow(
                   track: track,
                   index: i + 1,
                   showAlbum: showAlbum,
@@ -752,16 +828,13 @@ class TyTrackList extends StatelessWidget {
                       : () => onMore!(track, _rowOrigin(rowContext)),
                   onSecondaryTapDown: onSecondaryTapDown == null
                       ? null
-                      : (TapDownDetails d) =>
-                            onSecondaryTapDown!(track, d),
+                      : (TapDownDetails d) => onSecondaryTapDown!(track, d),
                   onSelectChanged: onSelectChanged == null
                       ? null
                       : (bool value) => onSelectChanged!(track, value),
-                  ),
-                );
-              },
-              childCount: tracks.length,
-            ),
+                ),
+              );
+            }, childCount: tracks.length),
           ),
         ),
         if (footer != null) SliverToBoxAdapter(child: footer),

@@ -1,0 +1,169 @@
+{
+  "generatedAt": "2026-10-18T21:37:08.2293036+08:00",
+  "branch": "codex/ui-p3-library",
+  "baseCommit": "8706cf1bed53c05e6a4767ebaa2e9d9f0b5b47f4",
+  "flutterFixture": "app/tool/voice_archive_preview.dart",
+  "fixtureData": "4 tracks; local/Quark/WebDAV source labels; fixed 2026-10-18 dates and 84s progress",
+  "engineConfiguration": "host_release",
+  "captures": [
+    {
+      "path": "docs/ui-redesign/p3-library-evidence/desktop-light/library-songs.png",
+      "kind": "preview",
+      "state": "normal",
+      "theme": "light",
+      "physicalWidth": 1898,
+      "physicalHeight": 1024,
+      "dpiScale": 1.5,
+      "logicalWidth": 1265.33,
+      "logicalHeight": 682.67,
+      "sha256": "70c39d78af556c09b676da562dff0b49ef7a7d22d00ef86b1a3f4da34a53713b"
+    },
+    {
+      "path": "docs/ui-redesign/p3-library-evidence/desktop-dark/library-songs.png",
+      "kind": "preview",
+      "state": "normal",
+      "theme": "dark",
+      "physicalWidth": 1898,
+      "physicalHeight": 1024,
+      "dpiScale": 1.5,
+      "logicalWidth": 1265.33,
+      "logicalHeight": 682.67,
+      "sha256": "39b365a7015aaeaa64ca9c36ebcaf7cfd3475c1bb833ec9cf2e3964446732f3f"
+    },
+    {
+      "path": "docs/ui-redesign/p3-library-evidence/desktop-medium-light/library-songs.png",
+      "kind": "preview",
+      "state": "normal",
+      "theme": "light",
+      "physicalWidth": 1200,
+      "physicalHeight": 1289,
+      "dpiScale": 1.5,
+      "logicalWidth": 800.0,
+      "logicalHeight": 859.33,
+      "sha256": "e14665fa990b77a8b163b2e716289f2f0f106e36b976f7f63969c5f19d53aef1"
+    },
+    {
+      "path": "docs/ui-redesign/p3-library-evidence/mobile-light/library-songs.png",
+      "kind": "preview",
+      "state": "normal",
+      "theme": "light",
+      "physicalWidth": 585,
+      "physicalHeight": 1266,
+      "dpiScale": 1.5,
+      "logicalWidth": 390.0,
+      "logicalHeight": 844.0,
+      "sha256": "c9682289150ca3535bccfd40a9b931fc14e89c90fb05e06ddf224324ab35150e"
+    },
+    {
+      "path": "docs/ui-redesign/p3-library-evidence/mobile-dark/library-songs.png",
+      "kind": "preview",
+      "state": "normal",
+      "theme": "dark",
+      "physicalWidth": 585,
+      "physicalHeight": 1266,
+      "dpiScale": 1.5,
+      "logicalWidth": 390.0,
+      "logicalHeight": 844.0,
+      "sha256": "dd31377ce5a0c305cd4f36c4a1e80df29465bc1d975db047f060bf08efaabaf6"
+    },
+    {
+      "path": "docs/ui-redesign/p3-library-evidence/mobile-scale2/library-songs.png",
+      "kind": "preview",
+      "state": "normal",
+      "theme": "light",
+      "physicalWidth": 585,
+      "physicalHeight": 1266,
+      "dpiScale": 1.5,
+      "logicalWidth": 390.0,
+      "logicalHeight": 844.0,
+      "sha256": "fdd0c8b8d8ed1ca1a4b26e28826dc8934ca4e5dd22007d170efd8da2e9daead7",
+      "textScale": 2
+    },
+    {
+      "path": "docs/ui-redesign/p3-library-evidence/mobile-empty/library-songs.png",
+      "kind": "preview",
+      "state": "empty",
+      "theme": "light",
+      "physicalWidth": 585,
+      "physicalHeight": 1266,
+      "dpiScale": 1.5,
+      "logicalWidth": 390.0,
+      "logicalHeight": 844.0,
+      "sha256": "e27e0d80ebca075ad2e430cae42ad6bbb9452ccf7e6fad5ccefe310d3146734e"
+    },
+    {
+      "path": "docs/ui-redesign/p3-library-evidence/mobile-error/library-songs.png",
+      "kind": "preview",
+      "state": "error",
+      "theme": "dark",
+      "physicalWidth": 585,
+      "physicalHeight": 1266,
+      "dpiScale": 1.5,
+      "logicalWidth": 390.0,
+      "logicalHeight": 844.0,
+      "sha256": "ea45f0aba3dcd86e34bc5a9ad5a12bf33db9168d80e64f8d91b60f34bfac74fe"
+    }
+  ],
+  "gates": {
+    "flutterAnalyze": {
+      "exitCode": 0,
+      "result": "No issues found"
+    },
+    "targetedTests": {
+      "passed": 34,
+      "exitCode": 0,
+      "failed": 0
+    },
+    "fullNonGoldenTests": {
+      "passed": 352,
+      "knownFailure": "source_adapter_cache_test invokes unavailable chmod on Windows",
+      "exitCode": 1,
+      "failed": 1
+    },
+    "goldenTests": {
+      "passed": 9,
+      "updateGoldens": false,
+      "exitCode": 1,
+      "failed": 3
+    },
+    "previewReleaseBuild": {
+      "exitCode": 0
+    },
+    "productionReleaseBuild": {
+      "exitCode": 0
+    },
+    "productionSmoke": {
+      "playing": true,
+      "exitCode": 0,
+      "cyclesAttempted": 10,
+      "engine": "media_kit (libmpv)",
+      "durationMs": 120000,
+      "exited": false,
+      "terminatedAfterProbe": true
+    }
+  },
+  "goldenComparisons": [
+    {
+      "test": "library-songs-expanded-dark",
+      "passed": false,
+      "diff": "10.71%"
+    },
+    {
+      "test": "library-songs-compact-light",
+      "passed": false,
+      "diff": "26.59%"
+    },
+    {
+      "test": "stage-compact-dark",
+      "passed": false,
+      "diff": "100.00%"
+    }
+  ],
+  "limitations": [
+    "Windows only; Android, iOS, macOS and Linux were not run on devices.",
+    "Quark and WebDAV remote playback were not exercised; source labels use fixed preview data.",
+    "No manual screen-reader review was performed.",
+    "Golden baselines were not updated; library and inherited player differences require explicit design approval.",
+    "Production smoke captures are represented by result.json and logs only; screenshots are not retained because the production entry can expose the local user library."
+  ]
+}

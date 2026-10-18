@@ -61,6 +61,8 @@ class TySidebar extends StatelessWidget {
     required this.selectedRoute,
     required this.onNavigate,
     required this.footer,
+    this.header,
+    this.showSearch = true,
   });
 
   final double width;
@@ -76,6 +78,12 @@ class TySidebar extends StatelessWidget {
   final ValueChanged<String> onNavigate;
   final List<TyNavDestination> footer;
 
+  /// 用于已迁移页面展示品牌与来源摘要；为空时保持旧侧栏。
+  final Widget? header;
+
+  /// 曲库把搜索移到内容区后关闭侧栏搜索；其它页面保持默认显示。
+  final bool showSearch;
+
   @override
   Widget build(BuildContext context) {
     final TyTokens ty = context.ty;
@@ -85,21 +93,32 @@ class TySidebar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              TySpace.x12,
-              TySpace.x12,
-              TySpace.x12,
-              TySpace.x8,
+          if (header != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                TySpace.x16,
+                TySpace.x16,
+                TySpace.x16,
+                TySpace.x12,
+              ),
+              child: header!,
             ),
-            child: TySearchField(
-              controller: searchController,
-              focusNode: searchFocusNode,
-              hint: searchHint,
-              onChanged: onSearchChanged,
-              onClear: onClearSearch,
+          if (showSearch)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                TySpace.x12,
+                TySpace.x12,
+                TySpace.x12,
+                TySpace.x8,
+              ),
+              child: TySearchField(
+                controller: searchController,
+                focusNode: searchFocusNode,
+                hint: searchHint,
+                onChanged: onSearchChanged,
+                onClear: onClearSearch,
+              ),
             ),
-          ),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: TySpace.x8),
