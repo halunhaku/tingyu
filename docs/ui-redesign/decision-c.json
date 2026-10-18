@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-18",
+  "userSelection": "c",
+  "direction": "C-声档",
+  "directionApproved": true,
+  "designSystemApproved": false,
+  "approvalScope": "选择P1的C方向；不扩大解释为精确像素、Dark整页、新规格或Golden更新已获批准",
+  "sourceCommit": "d724d20194359ce2a01a1e640792887f6f4a5d09",
+  "assets": [
+    {
+      "path": "directions/c/desktop-library.png",
+      "sha256": "C523603B626D08DC13A22879140437A0A3BA84FA39A98D24161FF38D26CA3B84"
+    },
+    {
+      "path": "directions/c/desktop-player.png",
+      "sha256": "22485E6B59FAC3BEC287EB1B59E2FB7A468B272FF3EB76127683D3D2B640969D"
+    },
+    {
+      "path": "directions/c/mobile-library.png",
+      "sha256": "317262F5AED97D0FEFB1BEB3820E0AF337DBAE839D70D7F73F439C112E2751E0"
+    },
+    {
+      "path": "directions/c/mobile-player.png",
+      "sha256": "B69E96F5CAE9A3002F6BF91681E44A0F112924EDD5B7DD2CA41557058D891267"
+    }
+  ],
+  "pendingImportantDetails": [
+    "Dark语义色板与页面视觉",
+    "手机来源筛选布局和弹性行高",
+    "舞台240/360封面与短窗口降级规则"
+  ]
+}
