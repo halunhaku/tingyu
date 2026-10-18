@@ -25,12 +25,16 @@ import 'package:tingyu/design/tokens/voice_archive.dart';
 import 'package:tingyu/features/library/library_page.dart';
 import 'package:tingyu/features/library/library_view_state.dart';
 import 'package:tingyu/features/player/now_playing_page.dart';
+import 'package:tingyu/features/sources/sources_page.dart';
+import 'package:tingyu/features/sources/source_sync.dart';
 import 'package:tingyu/playback/playback_engine.dart';
 import 'package:tingyu/playback/playback_item.dart';
 import 'package:tingyu/playback/playback_snapshot.dart';
 import 'package:tingyu/playback/tingyu_audio_handler.dart';
 import 'package:tingyu/sources/scraper/metadata_enricher.dart';
 import 'package:tingyu/sources/scraper/metadata_provider.dart';
+
+import 'source_archive_fixtures.dart';
 
 final DateTime _fixtureDate = DateTime.utc(2026, 10, 18);
 const String _fixtureCoverName = 'voice-archive-cover.png';
@@ -149,6 +153,14 @@ class _VoiceArchivePreviewApp extends StatelessWidget {
     final List<Track> tracks = _tracksForState(
       environment['TINGYU_PREVIEW_STATE'],
     );
+    final bool sourcesRoute =
+        environment['TINGYU_DEBUG_ROUTE']?.startsWith('/sources') ?? false;
+    final SourcePreviewState sourceState = SourcePreviewState.parse(
+      environment['TINGYU_PREVIEW_STATE'],
+    );
+    final List<MusicSource> visibleSources = sourcesRoute
+        ? sourcePreviewFixtures(sourceState)
+        : _fixtureSources;
 
     return ProviderScope(
       overrides: <Override>[
@@ -163,8 +175,18 @@ class _VoiceArchivePreviewApp extends StatelessWidget {
         for (final Track track in _fixtureTracks)
           trackByIdProvider(track.id)
               .overrideWith((Ref ref) => Stream<Track?>.value(track)),
-        sourcesProvider.overrideWith(
-          (Ref ref) => Stream<List<MusicSource>>.value(_fixtureSources),
+        sourcesProvider.overrideWith((Ref ref) {
+          if (sourcesRoute && sourceState == SourcePreviewState.error) {
+            return Stream<List<MusicSource>>.error(StateError('固定预览：模拟来源读取失败'));
+          }
+          return Stream<List<MusicSource>>.value(visibleSources);
+        }),
+        sourceSyncProvider.overrideWith(
+          () => SourceSyncPreviewController(
+            sourcesRoute
+                ? sourcePreviewSyncStates(sourceState)
+                : const <String, SourceSyncState>{},
+          ),
         ),
         playlistsProvider.overrideWith(
           (Ref ref) => Stream<List<Playlist>>.value(const <Playlist>[]),
@@ -235,6 +257,7 @@ GoRouter _previewRouter(String? configuredRoute) {
       configuredRoute != null && configuredRoute.startsWith('/library/songs')
       ? configuredRoute
       : switch (configuredRoute) {
+          final String route when route.startsWith('/sources') => '/sources',
           '/stage?tab=queue' => '/stage?tab=queue',
           '/stage?tab=lyrics' => '/stage?tab=lyrics',
           _ => '/stage',
@@ -252,7 +275,10 @@ GoRouter _previewRouter(String? configuredRoute) {
           ),
         ),
       ),
-      GoRoute(path: '/sources', builder: (_, _) => const _PreviewExitPage()),
+      GoRoute(
+        path: '/sources',
+        builder: (_, _) => const TyAppShell(child: SourcesPage()),
+      ),
       GoRoute(path: '/search', builder: (_, _) => const _PreviewExitPage()),
     ],
     errorBuilder: (_, GoRouterState state) =>

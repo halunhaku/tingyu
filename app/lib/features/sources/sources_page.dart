@@ -17,11 +17,13 @@ import '../../design/components/context_menu.dart';
 import '../../design/components/dialogs.dart';
 import '../../design/components/feedback.dart';
 import '../../design/components/inputs.dart';
+import '../../design/components/interactive.dart';
 import '../../design/components/source_card.dart';
 import '../../design/components/structure.dart';
 import '../../design/layout/form_factor.dart';
 import '../../design/tokens/metrics.dart';
 import '../../design/tokens/tokens.dart';
+import '../../design/tokens/voice_archive.dart';
 import '../../design/theme.dart';
 import '../../sources/quark/quark_auth.dart';
 import '../../sources/quark/quark_drive_client.dart';
@@ -33,7 +35,7 @@ import 'source_status.dart';
 import 'source_sync.dart';
 
 /// 骨架卡片高度：与 `TySourceCard` 的无详情形态对齐（含徽标 + 名称 + 状态行）。
-const double _sourceCardSkeletonHeight = 96;
+const double _sourceCardSkeletonHeight = 128;
 
 /// 来源管理：列出、添加、同步、删除本地目录 / WebDAV / 夸克网盘。
 ///
@@ -48,9 +50,34 @@ class SourcesPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final TyTokens inherited = context.ty;
+    return Theme(
+      data: TyTheme.build(
+        brightness: inherited.brightness,
+        density: inherited.density,
+        colors: VoiceArchiveColors.of(inherited.brightness),
+      ),
+      child: Builder(
+        builder: (BuildContext themedContext) => _page(themedContext, ref),
+      ),
+    );
+  }
+
+  Widget _page(BuildContext context, WidgetRef ref) {
     final TyMetrics metrics = context.metrics;
     final AsyncValue<List<MusicSource>> sources = ref.watch(sourcesProvider);
-    final int count = sources.value?.length ?? 0;
+    final List<MusicSource> list = sources.value ?? const <MusicSource>[];
+    final int count = list.length;
+    final int trackCount = list.fold<int>(
+      0,
+      (int total, MusicSource source) => total + source.trackCount,
+    );
+    final String subtitle = switch (sources) {
+      AsyncError<List<MusicSource>>() => '无法读取来源',
+      AsyncLoading<List<MusicSource>>() => '正在读取来源',
+      _ when count == 0 => '连接本地或云端音乐',
+      _ => '$count 个来源 · $trackCount 首音乐',
+    };
     return Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: metrics.maxContentWidth),
@@ -66,15 +93,8 @@ class SourcesPage extends ConsumerWidget {
               ),
               child: TyPageHeader(
                 title: '来源管理',
-                // 窄屏只报数量：类型清单在空态与来源卡片上都有，写进副标题会把
-                // 一行挤成两行（「夸克网盘」甚至会在词中间断行）。
-                subtitle: count == 0
-                    ? '本地目录 / WebDAV / 夸克网盘'
-                    : '$count 个来源',
+                subtitle: subtitle,
                 actions: <Widget>[
-                  // 主操作放页头：页头不随列表滚动，比沉在页面底部更靠前，
-                  // 也不会在只有一张卡片时留出半屏空白。窄屏换成图标键，
-                  // 把宽度让给标题与副标题。
                   if (context.formFactor.isCompact)
                     TyIconAction(
                       icon: Icons.add,
@@ -96,34 +116,37 @@ class SourcesPage extends ConsumerWidget {
                 value: sources,
                 loading: (BuildContext context) =>
                     _listSkeleton(context, metrics),
-                error: (BuildContext context, Object error, StackTrace? stack) =>
-                    TyErrorView(
-                      title: '读取来源失败',
-                      detail: '$error',
-                      onRetry: () => ref.invalidate(sourcesProvider),
-                    ),
+                error:
+                    (BuildContext context, Object error, StackTrace? stack) =>
+                        TyErrorView(
+                          title: '读取来源失败',
+                          detail: _sourceReadErrorDetail(error),
+                          onRetry: () => ref.invalidate(sourcesProvider),
+                        ),
                 data: (BuildContext context, List<MusicSource> list) {
                   if (list.isEmpty) {
-                    return TyEmptyState(
-                      icon: Icons.cloud_queue,
-                      title: '还没有来源',
-                      description: '添加本地目录、WebDAV 或夸克网盘后即可扫描曲库',
-                      actionLabel: '添加来源',
-                      onAction: () => _showAddDialog(context, ref),
+                    return _EmptySources(
+                      onAdd: (_AddSourceKind kind) =>
+                          _chooseAddKind(context, ref, kind),
                     );
                   }
-                  return ListView.separated(
+                  return ListView(
+                    key: const Key('sources-list'),
                     padding: EdgeInsets.fromLTRB(
                       metrics.pagePadding,
                       0,
                       metrics.pagePadding,
                       TySpace.x16,
                     ),
-                    itemCount: list.length,
-                    separatorBuilder: (_, _) =>
-                        const SizedBox(height: TySpace.x12),
-                    itemBuilder: (BuildContext context, int index) =>
-                        _SourceCard(source: list[index]),
+                    children: <Widget>[
+                      _SourceOverview(sources: list),
+                      const TySectionHeader(title: '音乐来源', count: null),
+                      for (int index = 0; index < list.length; index++) ...[
+                        if (index > 0) const SizedBox(height: TySpace.x12),
+                        _SourceCard(source: list[index], ordinal: index + 1),
+                      ],
+                      const SizedBox(height: TySpace.x16),
+                    ],
                   );
                 },
               ),
@@ -135,6 +158,7 @@ class SourcesPage extends ConsumerWidget {
   }
 
   static Widget _listSkeleton(BuildContext context, TyMetrics metrics) {
+    final bool compact = context.formFactor.isCompact;
     return ListView(
       padding: EdgeInsets.fromLTRB(
         metrics.pagePadding,
@@ -142,14 +166,33 @@ class SourcesPage extends ConsumerWidget {
         metrics.pagePadding,
         TySpace.x16,
       ),
-      children: const <Widget>[
-        TySkeleton(height: _sourceCardSkeletonHeight, radius: TyRadius.lg),
-        SizedBox(height: TySpace.x12),
-        TySkeleton(height: _sourceCardSkeletonHeight, radius: TyRadius.lg),
-        SizedBox(height: TySpace.x12),
-        TySkeleton(height: _sourceCardSkeletonHeight, radius: TyRadius.lg),
+      children: <Widget>[
+        const TySkeleton(height: 88, radius: TyRadius.sm),
+        const SizedBox(height: TySpace.x24),
+        for (int index = 0; index < (compact ? 2 : 3); index++) ...<Widget>[
+          if (index > 0) const SizedBox(height: TySpace.x12),
+          const TySkeleton(
+            height: _sourceCardSkeletonHeight,
+            radius: TyRadius.sm,
+          ),
+        ],
       ],
     );
+  }
+
+  Future<void> _chooseAddKind(
+    BuildContext context,
+    WidgetRef ref,
+    _AddSourceKind kind,
+  ) async {
+    switch (kind) {
+      case _AddSourceKind.local:
+        await _addLocalFolder(context, ref);
+      case _AddSourceKind.webdav:
+        await _addWebDav(context, ref);
+      case _AddSourceKind.quark:
+        await _addQuark(context, ref);
+    }
   }
 
   Future<void> _showAddDialog(BuildContext context, WidgetRef ref) async {
@@ -175,15 +218,13 @@ class SourcesPage extends ConsumerWidget {
                   ? '选择本机上的音乐文件夹'
                   : '选择电脑上的音乐文件夹',
               leading: const _RowIcon(Icons.folder_outlined),
-              onTap: () =>
-                  Navigator.of(context).pop(_AddSourceKind.local),
+              onTap: () => Navigator.of(context).pop(_AddSourceKind.local),
             ),
             TySettingsRow.navRow(
               title: 'WebDAV',
               description: '坚果云等支持 WebDAV 的网盘',
               leading: const _RowIcon(Icons.cloud_outlined),
-              onTap: () =>
-                  Navigator.of(context).pop(_AddSourceKind.webdav),
+              onTap: () => Navigator.of(context).pop(_AddSourceKind.webdav),
             ),
             TySettingsRow.navRow(
               title: '夸克网盘',
@@ -198,14 +239,7 @@ class SourcesPage extends ConsumerWidget {
     if (kind == null || !context.mounted) {
       return;
     }
-    switch (kind) {
-      case _AddSourceKind.local:
-        await _addLocalFolder(context, ref);
-      case _AddSourceKind.webdav:
-        await _addWebDav(context, ref);
-      case _AddSourceKind.quark:
-        await _addQuark(context, ref);
-    }
+    await _chooseAddKind(context, ref, kind);
   }
 
   Future<void> _addLocalFolder(BuildContext context, WidgetRef ref) async {
@@ -476,9 +510,10 @@ class SourcesPage extends ConsumerWidget {
         return await _withProgress(
           context,
           '正在读取夸克目录…',
-          () async => (await client.listFolder(session: session)).items
-              .where((QuarkItem item) => item.isFolder)
-              .toList(),
+          () async =>
+              (await client.listFolder(session: session)).items
+                  .where((QuarkItem item) => item.isFolder)
+                  .toList(),
         );
       } on Object catch (error) {
         if (!context.mounted) {
@@ -558,6 +593,334 @@ class SourcesPage extends ConsumerWidget {
   }
 }
 
+String _sourceReadErrorDetail(Object error) {
+  final String detail = error.toString().replaceFirst(
+    RegExp(r'^(Bad state|Exception|StateError):\s*'),
+    '',
+  );
+  return detail.isEmpty ? '来源列表暂时无法读取，请重试。' : '$detail。';
+}
+
+class _SourceOverview extends ConsumerWidget {
+  const _SourceOverview({required this.sources});
+
+  final List<MusicSource> sources;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final TyTokens ty = context.ty;
+    final Map<String, SourceSyncState> sync = ref.watch(sourceSyncProvider);
+    final int totalTracks = sources.fold<int>(
+      0,
+      (int total, MusicSource source) => total + source.trackCount,
+    );
+    final int connected = sources.where((MusicSource source) {
+      final SourceSyncState state = sync[source.id] ?? const SourceSyncState();
+      return describeSourceStatus(source, state).tone ==
+          TySourceStatusTone.connected;
+    }).length;
+    final int syncing = sources.where((MusicSource source) {
+      return sync[source.id]?.running ?? false;
+    }).length;
+    return Semantics(
+      container: true,
+      label:
+          '${sources.length} 个来源，$totalTracks 首音乐，'
+          '${syncing > 0 ? '$syncing 个同步中' : '$connected 个已连接'}',
+      child: Container(
+        padding: const EdgeInsets.all(TySpace.x16),
+        decoration: BoxDecoration(
+          color: ty.colors.surfaceRaised,
+          borderRadius: TyRadius.smAll,
+          border: Border.all(color: ty.colors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(
+                  Icons.graphic_eq,
+                  size: TyIconSize.compact,
+                  color: ty.colors.accent,
+                ),
+                const SizedBox(width: TySpace.x6),
+                Text(
+                  '声档接入',
+                  style: ty.typography.labelS.copyWith(
+                    color: ty.colors.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: TySpace.x12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Expanded(
+                  child: _OverviewMetric(
+                    value: '${sources.length}',
+                    label: '来源',
+                  ),
+                ),
+                const _OverviewDivider(),
+                Expanded(
+                  child: _OverviewMetric(value: '$totalTracks', label: '曲目'),
+                ),
+                const _OverviewDivider(),
+                Expanded(
+                  child: _OverviewMetric(
+                    value: '${syncing > 0 ? syncing : connected}',
+                    label: syncing > 0 ? '同步中' : '已连接',
+                    accent: syncing > 0,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OverviewMetric extends StatelessWidget {
+  const _OverviewMetric({
+    required this.value,
+    required this.label,
+    this.accent = false,
+  });
+
+  final String value;
+  final String label;
+  final bool accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final TyTokens ty = context.ty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: ty.typography.titleL.copyWith(
+            color: accent ? ty.colors.accent : ty.colors.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: TySpace.x2),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: ty.typography.labelM.copyWith(color: ty.colors.textTertiary),
+        ),
+      ],
+    );
+  }
+}
+
+class _OverviewDivider extends StatelessWidget {
+  const _OverviewDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: TySpace.x40,
+      margin: const EdgeInsets.symmetric(horizontal: TySpace.x12),
+      color: context.ty.colors.border,
+    );
+  }
+}
+
+class _EmptySources extends StatelessWidget {
+  const _EmptySources({required this.onAdd});
+
+  final ValueChanged<_AddSourceKind> onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final TyTokens ty = context.ty;
+    final bool compact = context.formFactor.isCompact;
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        const double gap = TySpace.x12;
+        final double optionWidth = compact
+            ? constraints.maxWidth
+            : (constraints.maxWidth - gap * 2) / 3;
+        return ListView(
+          padding: EdgeInsets.fromLTRB(
+            context.metrics.pagePadding,
+            compact ? TySpace.x8 : TySpace.x24,
+            context.metrics.pagePadding,
+            TySpace.x24,
+          ),
+          children: <Widget>[
+            Container(
+              padding: EdgeInsets.all(compact ? TySpace.x20 : TySpace.x32),
+              decoration: BoxDecoration(
+                color: ty.colors.surfaceRaised,
+                borderRadius: TyRadius.smAll,
+                border: Border.all(color: ty.colors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    '建立声档',
+                    style: ty.typography.labelS.copyWith(
+                      color: ty.colors.accent,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                  const SizedBox(height: TySpace.x8),
+                  Text(
+                    '还没有音乐来源',
+                    style: ty.typography.titleL.copyWith(
+                      color: ty.colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: TySpace.x6),
+                  Text(
+                    '连接一个位置后，听屿会扫描曲目并在这里保存同步状态。不会自动上传文件。',
+                    style: ty.typography.bodyM.copyWith(
+                      color: ty.colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: TySpace.x24),
+                  Wrap(
+                    spacing: gap,
+                    runSpacing: gap,
+                    children: <Widget>[
+                      SizedBox(
+                        width: optionWidth,
+                        child: _AddSourceOption(
+                          key: const Key('sources-add-local'),
+                          title: '本地目录',
+                          description: '扫描这台设备上的音乐文件',
+                          icon: Icons.folder_outlined,
+                          onTap: () => onAdd(_AddSourceKind.local),
+                        ),
+                      ),
+                      SizedBox(
+                        width: optionWidth,
+                        child: _AddSourceOption(
+                          key: const Key('sources-add-webdav'),
+                          title: 'WebDAV',
+                          description: '连接坚果云等兼容服务',
+                          icon: Icons.cloud_outlined,
+                          onTap: () => onAdd(_AddSourceKind.webdav),
+                        ),
+                      ),
+                      SizedBox(
+                        width: optionWidth,
+                        child: _AddSourceOption(
+                          key: const Key('sources-add-quark'),
+                          title: '夸克网盘',
+                          description: '扫码或导入会话访问云端曲库',
+                          icon: Icons.cloud_queue,
+                          onTap: () => onAdd(_AddSourceKind.quark),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _AddSourceOption extends StatelessWidget {
+  const _AddSourceOption({
+    super.key,
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String title;
+  final String description;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final TyTokens ty = context.ty;
+    return ClipRRect(
+      borderRadius: TyRadius.smAll,
+      child: TyInteractive(
+        onTap: onTap,
+        semanticLabel: '添加$title，$description',
+        builder: (BuildContext context, TyInteractionState state) {
+          return Container(
+            constraints: const BoxConstraints(minHeight: 112),
+            padding: const EdgeInsets.all(TySpace.x16),
+            decoration: BoxDecoration(
+              color: Color.alphaBlend(
+                state.overlay(ty.colors),
+                ty.colors.surfaceSunken,
+              ),
+              border: Border.all(color: ty.colors.border),
+              borderRadius: TyRadius.smAll,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Container(
+                      width: TySpace.x40,
+                      height: TySpace.x40,
+                      decoration: BoxDecoration(
+                        color: ty.colors.surfaceRaised,
+                        borderRadius: TyRadius.smAll,
+                      ),
+                      child: Icon(
+                        icon,
+                        size: TyIconSize.normal,
+                        color: ty.colors.accent,
+                      ),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      Icons.arrow_forward,
+                      size: TyIconSize.compact,
+                      color: ty.colors.textTertiary,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: TySpace.x12),
+                Text(
+                  title,
+                  style: ty.typography.titleM.copyWith(
+                    color: ty.colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: TySpace.x2),
+                Text(
+                  description,
+                  style: ty.typography.bodyS.copyWith(
+                    color: ty.colors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 /// 弹窗里的行图标：色值走 token，尺寸走图标 token。
 class _RowIcon extends StatelessWidget {
   const _RowIcon(this.icon);
@@ -578,9 +941,10 @@ enum _AddSourceKind { local, webdav, quark }
 
 /// 来源卡片：把 provider 里的状态翻译成 `TySourceCard` 的纯展示 props。
 class _SourceCard extends ConsumerWidget {
-  const _SourceCard({required this.source});
+  const _SourceCard({required this.source, required this.ordinal});
 
   final MusicSource source;
+  final int ordinal;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -588,6 +952,7 @@ class _SourceCard extends ConsumerWidget {
         ref.watch(sourceSyncProvider)[source.id] ?? const SourceSyncState();
     final SourceStatusView view = describeSourceStatus(source, sync);
     return TySourceCard(
+      key: Key('source-card-${source.id}'),
       name: source.name,
       typeLabel: view.typeLabel,
       typeIcon: view.typeIcon,
@@ -597,6 +962,8 @@ class _SourceCard extends ConsumerWidget {
       syncing: sync.running,
       progress: sync.total > 0 ? sync.progress : null,
       progressLabel: sync.running ? view.progressLabel : null,
+      trackCount: source.trackCount,
+      ordinal: ordinal,
       primaryAction: _primaryAction(context, ref, view),
       onTap: () => context.push('/source/${source.id}'),
       menuActions: <TyMenuAction>[
@@ -651,10 +1018,16 @@ class _SourceCard extends ConsumerWidget {
       label: view.primaryLabel,
       icon: view.primaryIcon,
       onPressed: switch (view.remediation) {
-        SourceRemediation.relogin => () =>
-            reloginQuarkSource(context, ref, source),
-        SourceRemediation.reconfigure => () =>
-            confirmDeleteSource(context, ref, source),
+        SourceRemediation.relogin => () => reloginQuarkSource(
+          context,
+          ref,
+          source,
+        ),
+        SourceRemediation.reconfigure => () => confirmDeleteSource(
+          context,
+          ref,
+          source,
+        ),
         _ => () => ref.read(sourceSyncProvider.notifier).sync(source),
       },
     );
@@ -910,10 +1283,7 @@ class _WebDavFormDialogState extends State<_WebDavFormDialog> {
           variant: TyButtonVariant.ghost,
           onPressed: () => Navigator.of(context).pop(),
         ),
-        TyButton(
-          label: '连接并扫描',
-          onPressed: _submit,
-        ),
+        TyButton(label: '连接并扫描', onPressed: _submit),
       ],
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -949,11 +1319,7 @@ class _WebDavFormDialogState extends State<_WebDavFormDialog> {
             helperText: '留空表示按匿名访问（仅对开放只读的目录有效）',
           ),
           const SizedBox(height: TySpace.x12),
-          TyTextField(
-            controller: _name,
-            label: '显示名称（可留空）',
-            hint: '默认取服务器主机名',
-          ),
+          TyTextField(controller: _name, label: '显示名称（可留空）', hint: '默认取服务器主机名'),
         ],
       ),
     );
@@ -1020,10 +1386,7 @@ class _QuarkCookieDialogState extends State<_QuarkCookieDialog> {
           variant: TyButtonVariant.ghost,
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
         ),
-        TyButton(
-          label: '校验并使用',
-          onPressed: _busy ? null : _submit,
-        ),
+        TyButton(label: '校验并使用', onPressed: _busy ? null : _submit),
       ],
       child: Column(
         mainAxisSize: MainAxisSize.min,

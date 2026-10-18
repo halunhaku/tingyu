@@ -373,7 +373,9 @@ class _TyAppShellState extends ConsumerState<TyAppShell> {
     }
 
     final Widget scopedShell = Builder(builder: buildScopedShell);
-    if (path != '/library/songs') {
+    final bool voiceArchivePage =
+        path == '/library/songs' || path == '/sources';
+    if (!voiceArchivePage) {
       return scopedShell;
     }
     final TyTokens inherited = context.ty;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../layout/form_factor.dart';
 import '../tokens/color.dart';
 import '../theme.dart';
 import '../tokens/metrics.dart';
@@ -52,6 +53,8 @@ class TySourceCard extends StatelessWidget {
     this.primaryAction,
     this.menuActions = const <TyMenuAction>[],
     this.onTap,
+    this.trackCount,
+    this.ordinal,
   });
 
   final String name;
@@ -82,39 +85,62 @@ class TySourceCard extends StatelessWidget {
   /// 打开来源详情。
   final VoidCallback? onTap;
 
+  /// 来源内的曲目数；未知时不要传。
+  final int? trackCount;
+
+  /// 列表中的显示序号；不参与业务排序。
+  final int? ordinal;
+
   @override
   Widget build(BuildContext context) {
     final TyTokens ty = context.ty;
+    final bool compact = context.formFactor.isCompact;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: ty.colors.surface,
-        borderRadius: TyRadius.lgAll,
+        color: ty.colors.surfaceRaised,
+        borderRadius: TyRadius.smAll,
         border: Border.all(color: ty.colors.border),
       ),
       child: ClipRRect(
-        borderRadius: TyRadius.lgAll,
+        borderRadius: TyRadius.smAll,
         child: TyInteractive(
           onTap: onTap,
-          semanticLabel: '$name，$typeLabel，$statusLabel',
+          semanticLabel: <String>[
+            name,
+            typeLabel,
+            statusLabel,
+            if (trackCount != null) '$trackCount 首曲目',
+            ?detail,
+          ].join('，'),
           builder: (BuildContext context, TyInteractionState state) {
             return ColoredBox(
               color: state.overlay(ty.colors),
-              child: Padding(
-                padding: const EdgeInsets.all(TySpace.x16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Expanded(child: _body(context)),
-                    if (primaryAction != null) ...<Widget>[
-                      const SizedBox(width: TySpace.x12),
-                      _PrimaryAction(action: primaryAction!),
-                    ],
-                    if (menuActions.isNotEmpty) ...<Widget>[
-                      const SizedBox(width: TySpace.x4),
-                      _SourceMenuButton(actions: menuActions),
-                    ],
-                  ],
-                ),
+              child: Stack(
+                children: <Widget>[
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: ColoredBox(
+                      color: _toneColor(
+                        ty.colors,
+                        syncing ? TySourceStatusTone.idle : statusTone,
+                      ).withValues(alpha: 0.78),
+                      child: const SizedBox(width: 3),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      compact ? TySpace.x16 : TySpace.x20,
+                      compact ? TySpace.x16 : TySpace.x16,
+                      TySpace.x8,
+                      compact ? TySpace.x16 : TySpace.x16,
+                    ),
+                    child: compact
+                        ? _compactContent(context)
+                        : _wideContent(context),
+                  ),
+                ],
               ),
             );
           },
@@ -123,48 +149,130 @@ class TySourceCard extends StatelessWidget {
     );
   }
 
-  Widget _body(BuildContext context) {
+  Widget _wideContent(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: <Widget>[
+        _SourceTypeMark(
+          icon: typeIcon,
+          color: _toneColor(
+            context.ty.colors,
+            syncing ? TySourceStatusTone.idle : statusTone,
+          ),
+          ordinal: ordinal,
+        ),
+        const SizedBox(width: TySpace.x16),
+        Expanded(child: _identityAndStatus(context)),
+        if (trackCount != null) ...<Widget>[
+          const SizedBox(width: TySpace.x24),
+          _SourceMetric(label: '曲目', value: '$trackCount', width: TySpace.x64),
+        ],
+        if (primaryAction != null) ...<Widget>[
+          const SizedBox(width: TySpace.x16),
+          _PrimaryAction(action: primaryAction!),
+        ],
+        if (menuActions.isNotEmpty) ...<Widget>[
+          const SizedBox(width: TySpace.x4),
+          _SourceMenuButton(actions: menuActions),
+        ],
+      ],
+    );
+  }
+
+  Widget _compactContent(BuildContext context) {
     final TyTokens ty = context.ty;
+    final bool enlargeText = MediaQuery.textScalerOf(context).scale(1) > 1.3;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            _SourceTypeMark(
+              icon: typeIcon,
+              color: _toneColor(
+                ty.colors,
+                syncing ? TySourceStatusTone.idle : statusTone,
+              ),
+              ordinal: ordinal,
+              compact: true,
+            ),
+            const SizedBox(width: TySpace.x12),
+            Expanded(child: _identityAndStatus(context)),
+            if (menuActions.isNotEmpty) ...<Widget>[
+              const SizedBox(width: TySpace.x4),
+              _SourceMenuButton(actions: menuActions),
+            ],
+          ],
+        ),
+        if (primaryAction != null) ...<Widget>[
+          const SizedBox(height: TySpace.x12),
+          Row(
+            children: <Widget>[
+              if (trackCount != null)
+                _SourceMetric(label: '曲目', value: '$trackCount'),
+              const Spacer(),
+              if (!enlargeText) _PrimaryAction(action: primaryAction!),
+            ],
+          ),
+          if (enlargeText) ...<Widget>[
+            const SizedBox(height: TySpace.x8),
+            _PrimaryAction(action: primaryAction!, expand: true),
+          ],
+        ],
+      ],
+    );
+  }
+
+  Widget _identityAndStatus(BuildContext context) {
+    final TyTokens ty = context.ty;
+    final bool stackStatus =
+        context.formFactor.isCompact &&
+        MediaQuery.textScalerOf(context).scale(1) > 1.3;
+    final Widget title = Text(
+      name,
+      maxLines: context.formFactor.isCompact ? 2 : 1,
+      overflow: TextOverflow.ellipsis,
+      style: ty.typography.titleM.copyWith(
+        color: ty.colors.textPrimary,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+    final Widget status = _SourceStatusPill(
+      label: syncing
+          ? '同步中'
+          : switch (statusTone) {
+              TySourceStatusTone.connected => '已连接',
+              TySourceStatusTone.warning => '需要处理',
+              TySourceStatusTone.failed => '需恢复',
+              TySourceStatusTone.idle => '待同步',
+            },
+      tone: syncing ? TySourceStatusTone.idle : statusTone,
+      emphasized: syncing,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        Row(
-          children: <Widget>[
-            TyBadge(label: typeLabel, icon: typeIcon),
-            const SizedBox(width: TySpace.x8),
-            Flexible(
-              child: Text(
-                name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: ty.typography.titleM.copyWith(
-                  color: ty.colors.textPrimary,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: TySpace.x6),
-        Semantics(
-          liveRegion: syncing,
-          value: syncing ? progressLabel : null,
-          child: Row(
+        if (stackStatus) ...<Widget>[
+          title,
+          const SizedBox(height: TySpace.x6),
+          status,
+        ] else
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              TySourceStatusDot(tone: statusTone),
-              const SizedBox(width: TySpace.x6),
-              Flexible(
-                child: Text(
-                  statusLabel,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: ty.typography.bodyS.copyWith(
-                    color: ty.colors.textSecondary,
-                  ),
-                ),
-              ),
+              Expanded(child: title),
+              const SizedBox(width: TySpace.x8),
+              status,
             ],
           ),
+        const SizedBox(height: TySpace.x2),
+        Text(
+          '$typeLabel · $statusLabel',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: ty.typography.bodyS.copyWith(color: ty.colors.textSecondary),
         ),
         if (detail != null) ...<Widget>[
           const SizedBox(height: TySpace.x2),
@@ -172,12 +280,20 @@ class TySourceCard extends StatelessWidget {
             detail!,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: ty.typography.bodyS.copyWith(color: ty.colors.textTertiary),
+            style: ty.typography.bodyS.copyWith(
+              color: statusTone == TySourceStatusTone.failed
+                  ? ty.colors.danger
+                  : ty.colors.textTertiary,
+            ),
           ),
         ],
         if (syncing) ...<Widget>[
           const SizedBox(height: TySpace.x8),
-          TyProgressBar(value: progress, semanticLabel: progressLabel),
+          Semantics(
+            liveRegion: true,
+            value: progressLabel,
+            child: TyProgressBar(value: progress, semanticLabel: '来源同步进度'),
+          ),
           if (progressLabel != null) ...<Widget>[
             const SizedBox(height: TySpace.x4),
             Text(
@@ -193,6 +309,138 @@ class TySourceCard extends StatelessWidget {
       ],
     );
   }
+
+  static Color _toneColor(TyColors colors, TySourceStatusTone tone) {
+    return switch (tone) {
+      TySourceStatusTone.connected => colors.success,
+      TySourceStatusTone.warning => colors.warning,
+      TySourceStatusTone.failed => colors.danger,
+      TySourceStatusTone.idle => colors.accent,
+    };
+  }
+}
+
+class _SourceTypeMark extends StatelessWidget {
+  const _SourceTypeMark({
+    required this.icon,
+    required this.color,
+    required this.ordinal,
+    this.compact = false,
+  });
+
+  final IconData icon;
+  final Color color;
+  final int? ordinal;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final TyTokens ty = context.ty;
+    final double size = compact ? TySpace.x48 : 54;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: ty.colors.surfaceSunken,
+        borderRadius: TyRadius.smAll,
+        border: Border.all(color: ty.colors.border),
+      ),
+      child: Stack(
+        children: <Widget>[
+          Center(
+            child: Icon(
+              icon,
+              size: compact ? TyIconSize.normal : TyIconSize.toolbar,
+              color: color,
+            ),
+          ),
+          if (ordinal != null && !compact)
+            Positioned(
+              left: TySpace.x4,
+              top: TySpace.x2,
+              child: Text(
+                ordinal!.toString().padLeft(2, '0'),
+                style: ty.typography.labelS.copyWith(
+                  color: ty.colors.textTertiary,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SourceStatusPill extends StatelessWidget {
+  const _SourceStatusPill({
+    required this.label,
+    required this.tone,
+    this.emphasized = false,
+  });
+
+  final String label;
+  final TySourceStatusTone tone;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) {
+    final TyTokens ty = context.ty;
+    final Color foreground = TySourceCard._toneColor(ty.colors, tone);
+    return Container(
+      constraints: const BoxConstraints(minHeight: 24),
+      padding: const EdgeInsets.symmetric(horizontal: TySpace.x8),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(
+          foreground.withValues(alpha: emphasized ? 0.16 : 0.10),
+          ty.colors.surfaceRaised,
+        ),
+        borderRadius: TyRadius.xsAll,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          TySourceStatusDot(tone: tone),
+          const SizedBox(width: TySpace.x6),
+          Text(label, style: ty.typography.labelS.copyWith(color: foreground)),
+        ],
+      ),
+    );
+  }
+}
+
+class _SourceMetric extends StatelessWidget {
+  const _SourceMetric({required this.label, required this.value, this.width});
+
+  final String label;
+  final String value;
+  final double? width;
+
+  @override
+  Widget build(BuildContext context) {
+    final TyTokens ty = context.ty;
+    return SizedBox(
+      width: width,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Text(
+            label,
+            style: ty.typography.labelS.copyWith(color: ty.colors.textTertiary),
+          ),
+          const SizedBox(height: TySpace.x2),
+          Text(
+            value,
+            style: ty.typography.numericM.copyWith(
+              color: ty.colors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// 8px 状态点（`DESIGN.md` §6.4）；颜色承载状态，形状不承载信息。
@@ -203,29 +451,26 @@ class TySourceStatusDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final TyColors c = context.ty.colors;
-    final Color color = switch (tone) {
-      TySourceStatusTone.connected => c.success,
-      TySourceStatusTone.warning => c.warning,
-      TySourceStatusTone.failed => c.danger,
-      TySourceStatusTone.idle => c.textTertiary,
-    };
     return Semantics(
       // 状态点本身不是信息载体：颜色语义交给状态行文字，读屏不重复播报。
       excludeSemantics: true,
       child: Container(
         width: TySpace.x8,
         height: TySpace.x8,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        decoration: BoxDecoration(
+          color: TySourceCard._toneColor(context.ty.colors, tone),
+          shape: BoxShape.circle,
+        ),
       ),
     );
   }
 }
 
 class _PrimaryAction extends StatelessWidget {
-  const _PrimaryAction({required this.action});
+  const _PrimaryAction({required this.action, this.expand = false});
 
   final TySourceAction action;
+  final bool expand;
 
   @override
   Widget build(BuildContext context) {
@@ -233,7 +478,8 @@ class _PrimaryAction extends StatelessWidget {
       label: action.label,
       icon: action.icon,
       variant: TyButtonVariant.secondary,
-      dense: true,
+      dense: !expand,
+      expand: expand,
       onPressed: action.busy ? null : action.onPressed,
     );
   }

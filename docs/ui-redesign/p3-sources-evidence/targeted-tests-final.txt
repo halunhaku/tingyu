@@ -1,0 +1,25 @@
+00:00 +0: loading F:/project/tingyu/app/test/sources_page_redesign_test.dart
+00:00 +0: F:/project/tingyu/app/test/sources_page_redesign_test.dart: 来源管理桌面摘要、卡片与状态层级可渲染
+00:00 +1: F:/project/tingyu/app/test/sources_page_redesign_test.dart: 来源管理桌面摘要、卡片与状态层级可渲染
+00:00 +2: F:/project/tingyu/app/test/sources_page_redesign_test.dart: 来源管理桌面摘要、卡片与状态层级可渲染
+00:00 +3: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:00 +4: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:00 +5: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:00 +6: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:00 +7: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:00 +8: F:/project/tingyu/app/test/sources_page_redesign_test.dart: 添加按钮仍打开原来的来源类型选择
+00:00 +9: F:/project/tingyu/app/test/form_factor_test.dart: 1440 缩到 930：rail 六个目的地仍然都在可见范围内
+00:00 +10: F:/project/tingyu/app/test/sources_page_redesign_test.dart: 来源更多菜单保留配置、诊断与删除入口
+00:00 +11: F:/project/tingyu/app/test/sources_page_redesign_test.dart: 来源更多菜单保留配置、诊断与删除入口
+00:00 +12: F:/project/tingyu/app/test/sources_page_redesign_test.dart: 来源更多菜单保留配置、诊断与删除入口
+00:00 +13: F:/project/tingyu/app/test/form_factor_test.dart: formFactorProvider 与 context.formFactor 恒等：三个参考尺寸
+00:00 +14: F:/project/tingyu/app/test/sources_page_redesign_test.dart: 读取失败不向用户暴露 Bad state 前缀
+00:01 +15: F:/project/tingyu/app/test/form_factor_test.dart: TyAppShell 按宽度选择外壳 compact：底部 Tab + 迷你条区域，无侧栏/rail
+00:01 +16: F:/project/tingyu/app/test/form_factor_test.dart: TyAppShell 按宽度选择外壳 medium：图标 rail，无底部 Tab
+00:01 +17: F:/project/tingyu/app/test/form_factor_test.dart: TyAppShell 按宽度选择外壳 expanded：展开侧栏，无底部 Tab
+00:01 +18: F:/project/tingyu/app/test/form_factor_test.dart: TyAppShell 按宽度选择外壳 低于 360×480 显示窗口过小，360×480 即可用
+00:01 +19: F:/project/tingyu/app/test/form_factor_test.dart: TyAppShell 按宽度选择外壳 compact 底部 Tab 真的切换路由
+00:01 +20: F:/project/tingyu/app/test/form_factor_test.dart: TyAppShell 按宽度选择外壳 compact 曲库页承担四段导航，外壳不重复渲染
+00:01 +21: F:/project/tingyu/app/test/form_factor_test.dart: TyAppShell 按宽度选择外壳 compact 详情页隐藏底 Tab，但迷你播放条还在
+00:01 +22: F:/project/tingyu/app/test/form_factor_test.dart: TyAppShell 按宽度选择外壳 窗口从 1440 缩到 412：当前路径与摆放状态都不丢
+00:01 +23: All tests passed!

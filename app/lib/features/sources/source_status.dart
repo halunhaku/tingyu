@@ -90,15 +90,16 @@ SourceStatusView describeSourceStatus(
       sync.error ??
       (isFailureStatus(source.syncStatus) ? source.syncStatus : null);
   if (failure != null) {
+    final bool relogin = source.kind == 'quark';
     return SourceStatusView(
       typeLabel: typeLabel,
       typeIcon: typeIcon,
       statusLabel: '同步失败',
       tone: TySourceStatusTone.failed,
       detail: failure,
-      primaryLabel: '重试',
-      primaryIcon: Icons.refresh,
-      remediation: source.kind == 'quark'
+      primaryLabel: relogin ? '重新登录' : '重试',
+      primaryIcon: relogin ? Icons.login : Icons.refresh,
+      remediation: relogin
           ? SourceRemediation.relogin
           : SourceRemediation.retry,
     );
@@ -146,9 +147,7 @@ const List<String> _healthyStatusPrefixes = <String>[
 
 bool isFailureStatus(String status) =>
     status.isNotEmpty &&
-    !_healthyStatusPrefixes.any(
-      (String prefix) => status.startsWith(prefix),
-    );
+    !_healthyStatusPrefixes.any((String prefix) => status.startsWith(prefix));
 
 /// 配置完整性：读不到目录 / 地址的来源无法扫描，必须显式说明而不是显示「0 首」。
 bool isConfigured(MusicSource source) => switch (source.kind) {
