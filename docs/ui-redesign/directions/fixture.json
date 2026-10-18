@@ -1,0 +1,145 @@
+{
+  "purpose": "P1虚构元数据，仅作为精确稿/未来测试夹具；不写入用户曲库",
+  "currentTrack": "p1-01",
+  "playing": true,
+  "positionSeconds": 84,
+  "albums": [
+    {
+      "name": "潮汐手记",
+      "count": 4,
+      "artIntent": "海平面与礁石"
+    },
+    {
+      "name": "橙色傍晚",
+      "count": 3,
+      "artIntent": "落日窗景"
+    },
+    {
+      "name": "群山之间",
+      "count": 3,
+      "artIntent": "蓝色群山"
+    },
+    {
+      "name": "植物诗集",
+      "count": 2,
+      "artIntent": "绿色植物"
+    }
+  ],
+  "tracks": [
+    {
+      "id": "p1-01",
+      "title": "海风经过",
+      "artist": "林间回声",
+      "album": "潮汐手记",
+      "durationSeconds": 252,
+      "source": "local",
+      "missingArt": false
+    },
+    {
+      "id": "p1-02",
+      "title": "直到海岸线的最后一束光都熄灭",
+      "artist": "林间回声",
+      "album": "潮汐手记",
+      "durationSeconds": 308,
+      "source": "quark",
+      "missingArt": false
+    },
+    {
+      "id": "p1-03",
+      "title": "Between the Islands and the Quiet Sea",
+      "artist": "林间回声",
+      "album": "潮汐手记",
+      "durationSeconds": 226,
+      "source": "webdav",
+      "missingArt": false
+    },
+    {
+      "id": "p1-04",
+      "title": "雨停之后 After the Rain",
+      "artist": "林间回声",
+      "album": "潮汐手记",
+      "durationSeconds": 276,
+      "source": "local",
+      "missingArt": false
+    },
+    {
+      "id": "p1-05",
+      "title": "山谷来信",
+      "artist": "林间回声",
+      "album": "橙色傍晚",
+      "durationSeconds": 238,
+      "source": "quark",
+      "missingArt": false
+    },
+    {
+      "id": "p1-06",
+      "title": "夜航",
+      "artist": "林间回声",
+      "album": "橙色傍晚",
+      "durationSeconds": 261,
+      "source": "local",
+      "missingArt": false
+    },
+    {
+      "id": "p1-07",
+      "title": "无封面的练习",
+      "artist": "林间回声",
+      "album": "橙色傍晚",
+      "durationSeconds": 171,
+      "source": "webdav",
+      "missingArt": true
+    },
+    {
+      "id": "p1-08",
+      "title": "同一片天空",
+      "artist": "林间回声",
+      "album": "群山之间",
+      "durationSeconds": 302,
+      "source": "local",
+      "missingArt": false
+    },
+    {
+      "id": "p1-09",
+      "title": "月光慢行",
+      "artist": "林间回声",
+      "album": "群山之间",
+      "durationSeconds": 248,
+      "source": "quark",
+      "missingArt": false
+    },
+    {
+      "id": "p1-10",
+      "title": "回声",
+      "artist": "林间回声",
+      "album": "群山之间",
+      "durationSeconds": 219,
+      "source": "webdav",
+      "missingArt": false
+    },
+    {
+      "id": "p1-11",
+      "title": "晨间漫步",
+      "artist": "林间回声 / 栖木",
+      "album": "植物诗集",
+      "durationSeconds": 197,
+      "source": "local",
+      "missingArt": false
+    },
+    {
+      "id": "p1-12",
+      "title": "岛屿尽头",
+      "artist": "栖木",
+      "album": "植物诗集",
+      "durationSeconds": 284,
+      "source": "quark",
+      "missingArt": false
+    }
+  ],
+  "lyrics": [
+    "风把远方带到窗前",
+    "我们沿着潮声慢慢走",
+    "每座岛都有自己的回声",
+    "天亮以前记得回头"
+  ],
+  "limitations": "生成图非当前行的专辑/封面/艺术家仍有偏差；未来确定性渲染以本JSON为准。没有音频文件或真实用户数据。"
+}
