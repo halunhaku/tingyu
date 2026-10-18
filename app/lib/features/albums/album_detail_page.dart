@@ -1,17 +1,26 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
 import '../../data/db/database.dart';
+import '../../data/models/library_summaries.dart';
+import '../../design/components/buttons.dart';
+import '../../design/components/context_menu.dart';
+import '../../design/components/detail_hero.dart';
+import '../../design/components/feedback.dart';
+import '../../design/components/structure.dart';
+import '../../design/components/track.dart';
+import '../../design/format.dart';
+import '../../design/layout/form_factor.dart';
+import '../../design/tokens/metrics.dart';
 import '../shared/add_to_playlist.dart';
-import '../shared/cover_art.dart';
-import '../shared/current_track.dart';
-import '../shared/empty_state.dart';
-import '../shared/format.dart';
-import '../shared/track_row.dart';
+import '../shared/playback_track_row.dart';
+import '../shared/skeletons.dart';
+import '../shared/track_actions.dart';
 
-/// 专辑详情：大封面 + 元数据 + 「播放全部 / 添加到播放列表」，下方是曲目表。
+/// 专辑详情：`TyDetailHero`（封面 + 元数据 + 播放/随机/加入歌单/更多）+ 曲目表。
 ///
 /// 曲目顺序由 [albumTracksProvider] 给定（碟号 → 曲序 → 标题），点击第 i 首
 /// 从该首开始播放整张专辑。
@@ -22,205 +31,226 @@ class AlbumDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final TyMetrics metrics = context.metrics;
     final AsyncValue<List<Track>> tracks = ref.watch(
       albumTracksProvider(albumKey),
     );
+    final List<Track> list = tracks.value ?? const <Track>[];
+    // 列表页已经读过聚合结果，封面/年份先从这里取，避免曲目还在加载时头图空一拍。
+    final AlbumSummary? summary = ref
+        .watch(albumsProvider)
+        .value
+        ?.where(
+          (AlbumSummary item) =>
+              item.album == albumKey.album && item.artist == albumKey.artist,
+        )
+        .firstOrNull;
+    final Track? cover = _firstWithCover(list);
 
-    final Widget content = tracks.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (Object error, StackTrace stack) => EmptyState(
-        icon: Icons.error_outline,
-        title: '专辑读取失败',
-        message: '$error',
-      ),
-      data: (List<Track> list) {
-        if (list.isEmpty) {
-          return EmptyState(
-            icon: Icons.album_outlined,
-            title: '没有可播放的曲目',
-            message: '${albumKey.album} · ${albumKey.artist}',
-            action: TextButton(
-              onPressed: () =>
-                  context.canPop() ? context.pop() : context.go('/albums'),
-              child: const Text('返回专辑列表'),
-            ),
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.only(bottom: 24),
-          itemCount: list.length + 1,
-          itemBuilder: (BuildContext context, int index) {
-            if (index == 0) {
-              return _AlbumHeader(albumKey: albumKey, tracks: list);
-            }
-            final int trackIndex = index - 1;
-            final Track track = list[trackIndex];
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: _AlbumTrackRow(
-                track: track,
-                index: track.trackNumber ?? trackIndex + 1,
-                queue: list,
-                startIndex: trackIndex,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            metrics.pagePadding,
+            TySpace.x16,
+            metrics.pagePadding,
+            TySpace.x8,
+          ),
+          child: TyDetailHero(
+            eyebrow: '专辑',
+            title: albumKey.album,
+            coverPath: summary?.coverArtPath ?? cover?.coverArtPath,
+            coverUrl: cover?.coverArtUrl,
+            coverSeed: '${albumKey.artist} · ${albumKey.album}',
+            meta: _meta(list),
+            header: context.canPop()
+                ? Row(
+                    children: <Widget>[
+                      TyIconAction(
+                        icon: Icons.arrow_back,
+                        semanticLabel: '返回',
+                        tooltip: '返回',
+                        onPressed: () => context.pop(),
+                      ),
+                    ],
+                  )
+                : null,
+            actions: <Widget>[
+              TyButton(
+                label: '播放',
+                icon: Icons.play_arrow,
+                onPressed: list.isEmpty
+                    ? null
+                    : () => _play(ref, list, shuffle: false),
               ),
-            );
-          },
-        );
-      },
-    );
-
-    return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(
-          onPressed: () =>
-              context.canPop() ? context.pop() : context.go('/albums'),
-        ),
-        title: Text(albumKey.album),
-      ),
-      body: content,
-    );
-  }
-}
-
-/// 专辑头：封面 + 专辑名/艺术家/年份/曲目数/总时长 + 播放与加列表按钮。
-class _AlbumHeader extends ConsumerWidget {
-  const _AlbumHeader({required this.albumKey, required this.tracks});
-
-  final AlbumKey albumKey;
-
-  final List<Track> tracks;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final TextTheme text = Theme.of(context).textTheme;
-    final ColorScheme scheme = Theme.of(context).colorScheme;
-    final Track? cover = _firstWithCover(tracks);
-    final int? year = _firstYear(tracks);
-    final double totalSeconds = tracks.fold<double>(
-      0,
-      (double sum, Track track) => sum + track.duration,
-    );
-
-    final String stats = <String>[
-      if (year != null) '$year年',
-      '${tracks.length} 首歌曲',
-      if (totalSeconds > 0) formatSeconds(totalSeconds),
-    ].join(' · ');
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: <Widget>[
-              CoverArt(
-                coverArtPath: cover?.coverArtPath,
-                coverArtUrl: cover?.coverArtUrl,
-                size: 180,
-                radius: 8,
+              TyButton(
+                label: '随机',
+                icon: Icons.shuffle,
+                variant: TyButtonVariant.secondary,
+                onPressed: list.isEmpty
+                    ? null
+                    : () => _play(ref, list, shuffle: true),
               ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      albumKey.album,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: text.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      albumKey.artist,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: text.titleSmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      stats,
-                      style: text.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 8,
-                      children: <Widget>[
-                        FilledButton.icon(
-                          onPressed: () => ref
-                              .read(playbackProvider.notifier)
-                              .playTracks(tracks),
-                          icon: const Icon(Icons.play_arrow, size: 18),
-                          label: const Text('播放全部'),
-                        ),
-                        FilledButton.tonalIcon(
-                          onPressed: () => ref
-                              .read(playbackProvider.notifier)
-                              .playTracks(tracks, shuffle: true),
-                          icon: const Icon(Icons.shuffle, size: 18),
-                          label: const Text('随机播放'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () =>
-                              showAddToPlaylistDialog(context, ref, tracks),
-                          icon: const Icon(Icons.playlist_add, size: 18),
-                          label: const Text('添加到播放列表'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+              TyButton(
+                label: '加入歌单',
+                icon: Icons.playlist_add,
+                variant: TyButtonVariant.secondary,
+                onPressed: list.isEmpty
+                    ? null
+                    : () => showAddToPlaylistDialog(context, ref, list),
+              ),
+              TyIconAction(
+                icon: Icons.more_horiz,
+                semanticLabel: '专辑更多操作',
+                tooltip: '更多',
+                onPressed: () => _showMenu(context, ref, list),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          const Divider(height: 1),
-        ],
-      ),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: metrics.pagePadding),
+          child: TySectionHeader(
+            title: '曲目',
+            count: tracks.hasValue ? list.length : null,
+          ),
+        ),
+        Expanded(
+          child: TyAsyncView<List<Track>>(
+            value: tracks,
+            loading: (BuildContext context) =>
+                const TrackRowsSkeleton(rows: 8),
+            error: (BuildContext context, Object error, StackTrace? stack) =>
+                TyErrorView(
+                  title: '专辑读取失败',
+                  detail: '$error',
+                  onRetry: () => ref.invalidate(albumTracksProvider(albumKey)),
+                ),
+            isEmpty: (List<Track> value) => value.isEmpty,
+            empty: (BuildContext context) => TyEmptyState(
+              icon: Icons.album_outlined,
+              title: '没有可播放的曲目',
+              description: '${albumKey.album} · ${albumKey.artist}',
+              actionLabel: '返回专辑列表',
+              onAction: () => context.canPop()
+                  ? context.pop()
+                  : context.go('/library/albums'),
+            ),
+            data: (BuildContext context, List<Track> value) =>
+                _trackList(context, ref, value),
+          ),
+        ),
+      ],
     );
   }
-}
 
-/// 专辑曲目行：点击从该行开始播放整张专辑。
-class _AlbumTrackRow extends ConsumerWidget {
-  const _AlbumTrackRow({
-    required this.track,
-    required this.index,
-    required this.queue,
-    required this.startIndex,
-  });
+  /// 元数据行（`·` 分隔，`DESIGN.md` §6.1 的 `TyDetailHero`）：艺术家 · 年份 · 曲目数 · 总时长。
+  String _meta(List<Track> tracks) {
+    final int? year = _firstYear(tracks);
+    final double total = tracks.fold<double>(
+      0,
+      (double sum, Track track) => sum + track.duration,
+    );
+    return <String>[
+      albumKey.artist,
+      if (year != null) '$year年',
+      if (tracks.isNotEmpty) '${tracks.length} 首歌曲',
+      if (total > 0) formatSeconds(total),
+    ].join(' · ');
+  }
 
-  final Track track;
+  Future<void> _play(WidgetRef ref, List<Track> tracks, {required bool shuffle}) {
+    return ref
+        .read(playbackProvider.notifier)
+        .playTracks(tracks, shuffle: shuffle);
+  }
 
-  final int index;
+  Widget _trackList(BuildContext context, WidgetRef ref, List<Track> tracks) {
+    final TyMetrics metrics = context.metrics;
+    Future<void> showMenu(Track track, Offset position) => showTrackMenu(
+          context,
+          ref,
+          track,
+          position: position,
+          onPlay: () => _play(ref, tracks, shuffle: false),
+        );
+    void play(int index) => ref
+        .read(playbackProvider.notifier)
+        .playTracks(tracks, startIndex: index);
+    // 行自己订阅播放态：进度 tick 与换曲都不会重建整张列表
+    // （`ui_rebuild_seek_test` 的口径）。
+    Widget row(BuildContext context, int index, Track track) => PlaybackTrackRow(
+          key: ValueKey<String>('album-${track.id}'),
+          track: track,
+          index: index + 1,
+          tableMode: !context.formFactor.isCompact,
+          // 专辑页里「专辑」列恒等于页面标题，纯噪声：只在这一页关掉它。
+          showAlbum: false,
+          onTap: () => play(index),
+          onToggleFavorite: () => toggleTrackFavorite(ref, track),
+          onMore: () => showMenu(track, rowOrigin(context)),
+          onSecondaryTapDown: (TapDownDetails details) =>
+              showMenu(track, details.globalPosition),
+        );
 
-  final List<Track> queue;
+    if (context.formFactor == FormFactor.compact) {
+      return TyTrackList(
+        tracks: tracks,
+        playingTrackId: null,
+        playing: false,
+        rowBuilder: row,
+        padding: EdgeInsets.symmetric(horizontal: metrics.pagePadding),
+      );
+    }
+    return TyTrackTable(
+      tracks: tracks,
+      playingTrackId: null,
+      playing: false,
+      rowBuilder: row,
+    );
+  }
 
-  final int startIndex;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // 只订阅"这一行是不是正在播放的那一首"：进度 tick 不再重建整张列表。
-    final bool isPlaying = ref.watch(isCurrentTrackProvider(track.id));
-
-    return TrackRow(
-      track: track,
-      index: index,
-      showAlbum: false,
-      isPlaying: isPlaying,
-      onTap: () => ref
-          .read(playbackProvider.notifier)
-          .playTracks(queue, startIndex: startIndex),
+  /// 头图的「更多」：与右键菜单同一份语义（播放 / 随机 / 加入歌单 / 在艺人中查看）。
+  Future<void> _showMenu(
+    BuildContext context,
+    WidgetRef ref,
+    List<Track> tracks,
+  ) {
+    final RenderObject? box = context.findRenderObject();
+    return TyContextMenu.show(
+      context,
+      position: box is RenderBox && box.hasSize
+          ? box.localToGlobal(box.size.center(Offset.zero))
+          : Offset.zero,
+      actions: <TyMenuAction>[
+        TyMenuAction(
+          label: '播放',
+          icon: Icons.play_arrow_outlined,
+          enabled: tracks.isNotEmpty,
+          onSelected: () => _play(ref, tracks, shuffle: false),
+        ),
+        TyMenuAction(
+          label: '随机播放',
+          icon: Icons.shuffle,
+          enabled: tracks.isNotEmpty,
+          onSelected: () => _play(ref, tracks, shuffle: true),
+        ),
+        TyMenuAction(
+          label: '添加到播放列表…',
+          icon: Icons.playlist_add,
+          enabled: tracks.isNotEmpty,
+          onSelected: () => showAddToPlaylistDialog(context, ref, tracks),
+        ),
+        TyMenuAction(
+          label: '在艺人中查看',
+          icon: Icons.person_outline,
+          enabled: albumKey.artist.isNotEmpty,
+          onSelected: () => context.push(
+            '/artist/${Uri.encodeComponent(albumKey.artist)}',
+          ),
+        ),
+      ],
     );
   }
 }

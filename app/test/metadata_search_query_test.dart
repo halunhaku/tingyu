@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tingyu/data/db/database.dart';
+import 'package:tingyu/design/components/buttons.dart';
+import 'package:tingyu/design/layout/form_factor.dart';
+import 'package:tingyu/design/theme.dart';
+import 'package:tingyu/design/components/feedback.dart';
 import 'package:tingyu/features/library/manual_match_dialog.dart';
 import 'package:tingyu/sources/scraper/metadata_provider.dart';
 
@@ -35,10 +39,7 @@ void main() {
         buildMetadataSearchQuery(title: '晴天', artist: '周杰伦', album: '未知专辑'),
         '晴天 周杰伦',
       );
-      expect(
-        buildMetadataSearchQuery(title: '晴天', album: 'WebDAV 曲库'),
-        '晴天',
-      );
+      expect(buildMetadataSearchQuery(title: '晴天', album: 'WebDAV 曲库'), '晴天');
     });
   });
 
@@ -61,6 +62,12 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         child: MaterialApp(
+          theme: TyTheme.build(brightness: Brightness.light),
+          builder: (BuildContext context, Widget? child) =>
+              TyLayoutScope.forSize(
+                const Size(412, 915),
+                child: child ?? const SizedBox.shrink(),
+              ),
           home: Consumer(
             builder: (BuildContext context, WidgetRef ref, Widget? _) {
               return TextButton(
@@ -77,15 +84,23 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('匹配元数据'), findsOneWidget);
-    expect(find.text('先填写歌名，再点搜索'), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text('还没有候选'), findsOneWidget);
+    expect(find.text('填好歌名后点「搜索」'), findsOneWidget);
+    expect(find.byType(TySkeleton), findsNothing, reason: '打开时不得自动搜索');
 
-    final List<TextField> fields = tester.widgetList<TextField>(find.byType(TextField)).toList();
+    final List<TextField> fields = tester
+        .widgetList<TextField>(find.byType(TextField))
+        .toList();
     expect(fields, hasLength(3));
     expect(fields[0].controller?.text, 'qingtian');
     expect(fields[1].controller?.text, isEmpty);
     expect(fields[2].controller?.text, isEmpty);
 
-    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, '搜索').first).onPressed, isNotNull);
+    expect(
+      tester
+          .widget<TyButton>(find.widgetWithText(TyButton, '搜索').first)
+          .onPressed,
+      isNotNull,
+    );
   });
 }

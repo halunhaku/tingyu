@@ -1,12 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
+import '../../design/components/buttons.dart';
+import '../../design/components/dialogs.dart';
+import '../../design/components/feedback.dart';
+import '../../design/components/inputs.dart';
+import '../../design/components/structure.dart';
+import '../../design/layout/form_factor.dart';
+import '../../design/theme.dart';
+import '../../design/tokens/metrics.dart';
 import '../../sources/ai/ai_client.dart';
 import '../../sources/ai/ai_config.dart';
 import '../../sources/ai/ai_library_refactor_service.dart';
 
-/// AI 识别与曲库清洗设置页面。
+/// AI 识别与曲库清洗设置页面（`DESIGN.md` §6.1/§6.4）。
+///
+/// 结构：页头（compact 自带返回）→ 总开关 → 服务商配置 → 批量维护。
+/// 所有写操作仍然走既有的 `AISettingsRepository`（密钥只进安全存储），
+/// 这一层只换表现。
 class AISettingsPage extends ConsumerStatefulWidget {
   const AISettingsPage({super.key});
 
@@ -48,18 +61,18 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
   }
 
   Future<void> _saveSettings(
-    AISettings current, {
-    AIProviderPreset? preset,
+    AISettings settings, {
     bool? isEnabled,
+    AIProviderPreset? preset,
   }) async {
-    final AISettings updated = current.copyWith(
-      isEnabled: isEnabled ?? current.isEnabled,
-      preset: preset ?? current.preset,
+    final AISettings next = settings.copyWith(
+      isEnabled: isEnabled,
+      preset: preset,
       baseUrl: _baseUrlController.text.trim(),
       model: _modelController.text.trim(),
       apiKey: _apiKeyController.text.trim(),
     );
-    await ref.read(aiSettingsProvider.notifier).save(updated);
+    await ref.read(aiSettingsProvider.notifier).save(next);
   }
 
   Future<void> _testConnection(AISettings settings) async {
@@ -68,29 +81,29 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
       _testMessage = null;
       _testSuccess = null;
     });
-
-    await _saveSettings(settings);
-
     final AIClient client = AIClient(
       baseUrl: _baseUrlController.text.trim(),
       model: _modelController.text.trim(),
       apiKey: _apiKeyController.text.trim(),
     );
-
     try {
       final bool ok = await client.testConnection();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _isTesting = false;
         _testSuccess = ok;
-        _testMessage = ok ? '连接成功' : '未收到有效回复';
+        _testMessage = ok ? '连接成功：模型返回了内容' : '连接失败：端点或密钥不可用';
       });
     } on Object catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _isTesting = false;
         _testSuccess = false;
-        _testMessage = '连接失败: $error';
+        _testMessage = '连接失败：$error';
       });
     }
   }
@@ -115,264 +128,314 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
       isCancelled: () => _isCancelled,
     );
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     setState(() {
       _isRefactoring = false;
       _refactorProgress = finalState;
     });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _isCancelled
-              ? '清洗已停止：已检查 ${finalState.processed} 首，纠偏 ${finalState.updated} 首'
-              : '清洗完成：共检查 ${finalState.processed} 首，纠偏 ${finalState.updated} 首',
-        ),
-      ),
+    TySnack.show(
+      context,
+      _isCancelled
+          ? '清洗已停止：已检查 ${finalState.processed} 首，纠偏 ${finalState.updated} 首'
+          : '清洗完成：共检查 ${finalState.processed} 首，纠偏 ${finalState.updated} 首',
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final TyMetrics metrics = context.metrics;
     final AsyncValue<AISettings> asyncSettings = ref.watch(aiSettingsProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('AI 智能识别')),
-      body: asyncSettings.when(
-        data: (AISettings settings) {
-          _syncFromSettings(settings);
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            metrics.pagePadding,
+            TySpace.x20,
+            metrics.pagePadding,
+            TySpace.x12,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              _Section(
-                title: '总开关',
-                children: <Widget>[
-                  SwitchListTile(
-                    title: const Text('启用智能识别'),
-                    subtitle: const Text('支持通过大语言模型清洗乱码、音轨序号等噪音，提取标准歌名、歌手与专辑'),
-                    value: settings.isEnabled,
-                    onChanged: (bool value) =>
-                        _saveSettings(settings, isEnabled: value),
+              if (context.canPop())
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TyIconAction(
+                    icon: Icons.arrow_back,
+                    semanticLabel: '返回',
+                    tooltip: '返回',
+                    onPressed: () => context.pop(),
                   ),
+                ),
+              TyPageHeader(title: 'AI 智能识别', subtitle: '用大语言模型清洗曲库里的乱码与噪音字段'),
+            ],
+          ),
+        ),
+        Expanded(
+          child: TyAsyncView<AISettings>(
+            value: asyncSettings,
+            loading: (BuildContext context) => const Padding(
+              padding: EdgeInsets.symmetric(horizontal: TySpace.x20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  TySkeleton(height: 16, width: 200),
+                  SizedBox(height: TySpace.x16),
+                  TySkeleton.line(),
+                  TySkeleton.line(),
                 ],
               ),
-              if (settings.isEnabled) ...<Widget>[
-                _Section(
-                  title: '服务商配置',
-                  children: <Widget>[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                      child: DropdownButtonFormField<AIProviderPreset>(
-                        initialValue: settings.preset,
-                        decoration: const InputDecoration(
-                          labelText: '预设服务商',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: AIProviderPreset.values.map((
-                          AIProviderPreset p,
-                        ) {
-                          return DropdownMenuItem<AIProviderPreset>(
-                            value: p,
-                            child: Text(p.displayName),
-                          );
-                        }).toList(),
-                        onChanged: (AIProviderPreset? newPreset) {
-                          if (newPreset != null) {
-                            _baseUrlController.text = newPreset.defaultBaseUrl;
-                            _modelController.text = newPreset.defaultModel;
-                            _saveSettings(settings, preset: newPreset);
-                          }
-                        },
+            ),
+            error: (BuildContext context, Object error, StackTrace? stack) =>
+                TyErrorView(
+                  title: '加载配置失败',
+                  detail: '$error',
+                  onRetry: () => ref.invalidate(aiSettingsProvider),
+                ),
+            data: (BuildContext context, AISettings settings) {
+              _syncFromSettings(settings);
+              return ListView(
+                key: const PageStorageKey<String>('ai-settings'),
+                padding: EdgeInsets.fromLTRB(
+                  metrics.pagePadding,
+                  0,
+                  metrics.pagePadding,
+                  TySpace.x32,
+                ),
+                children: <Widget>[
+                  TyInsetGroup(
+                    title: '总开关',
+                    footer: settings.isEnabled ? null : '关闭后不会调用任何模型，曲库字段保持原样。',
+                    children: <Widget>[
+                      TySettingsRow.switchRow(
+                        title: '启用智能识别',
+                        description: '清洗乱码、音轨序号等噪音，提取标准歌名、歌手与专辑',
+                        value: settings.isEnabled,
+                        onChanged: (bool value) =>
+                            _saveSettings(settings, isEnabled: value),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                      child: TextField(
-                        controller: _baseUrlController,
-                        decoration: const InputDecoration(
-                          labelText: 'API 端点 (Base URL)',
-                          hintText: 'https://api.deepseek.com/v1',
-                          border: OutlineInputBorder(),
+                    ],
+                  ),
+                  if (settings.isEnabled) ...<Widget>[
+                    const SizedBox(height: TySpace.x24),
+                    TyInsetGroup(
+                      title: '服务商配置',
+                      children: <Widget>[
+                        TySettingsRow.selectRow(
+                          title: '预设服务商',
+                          value: settings.preset.displayName,
+                          onTap: () => _pickPreset(settings),
                         ),
-                        onChanged: (_) => _saveSettings(settings),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                      child: TextField(
-                        controller: _modelController,
-                        decoration: const InputDecoration(
-                          labelText: '模型名称 (Model)',
-                          hintText: 'deepseek-chat',
-                          border: OutlineInputBorder(),
+                        _field(
+                          controller: _baseUrlController,
+                          label: 'API 端点 (Base URL)',
+                          hint: 'https://api.deepseek.com/v1',
+                          onChanged: () => _saveSettings(settings),
                         ),
-                        onChanged: (_) => _saveSettings(settings),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                      child: TextField(
-                        controller: _apiKeyController,
-                        obscureText: _obscureKey,
-                        decoration: InputDecoration(
-                          labelText: 'API 密钥 (API Key)',
-                          hintText: '本地 Ollama 可留空',
-                          border: const OutlineInputBorder(),
-                          suffixIcon: IconButton(
+                        _field(
+                          controller: _modelController,
+                          label: '模型名称 (Model)',
+                          hint: 'deepseek-chat',
+                          onChanged: () => _saveSettings(settings),
+                        ),
+                        _field(
+                          controller: _apiKeyController,
+                          label: 'API 密钥 (API Key)',
+                          hint: '本地 Ollama 可留空',
+                          obscureText: _obscureKey,
+                          suffix: TyIconAction(
+                            icon: _obscureKey
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            semanticLabel: _obscureKey ? '显示密钥' : '隐藏密钥',
                             tooltip: _obscureKey ? '显示密钥' : '隐藏密钥',
-                            icon: Icon(
-                              _obscureKey
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
-                            ),
+                            size: TyIconSize.inline,
                             onPressed: () =>
                                 setState(() => _obscureKey = !_obscureKey),
                           ),
+                          helperText: '密钥只写入系统安全存储，不进入数据库',
+                          onChanged: () => _saveSettings(settings),
                         ),
-                        onChanged: (_) => _saveSettings(settings),
-                      ),
+                      ],
                     ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      child: Row(
-                        children: <Widget>[
-                          FilledButton.tonalIcon(
-                            icon: const Icon(Icons.cable),
-                            label: const Text('测试连接'),
-                            onPressed: _isTesting
-                                ? null
-                                : () => _testConnection(settings),
+                    const SizedBox(height: TySpace.x24),
+                    TyInsetGroup(
+                      title: '连接检查',
+                      footer: '测试连接会用当前填写的端点与密钥发一次最小请求。',
+                      children: <Widget>[
+                        TySettingsRow.actionRow(
+                          title: '测试连接',
+                          description: _testMessage ?? '确认端点、模型与密钥是否可用',
+                          leading: Icon(
+                            _testSuccess == null
+                                ? Icons.cable
+                                : (_testSuccess!
+                                      ? Icons.check_circle_outline
+                                      : Icons.error_outline),
+                            size: TyIconSize.inline,
+                            color: _testSuccess == null
+                                ? context.ty.colors.textSecondary
+                                : (_testSuccess!
+                                      ? context.ty.colors.success
+                                      : context.ty.colors.danger),
                           ),
-                          const SizedBox(width: 12),
-                          if (_isTesting)
-                            const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                          actionLabel: _isTesting ? '测试中…' : '测试',
+                          busy: _isTesting,
+                          onTap: _isTesting
+                              ? null
+                              : () => _testConnection(settings),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: TySpace.x24),
+                    TyInsetGroup(
+                      title: '批量维护',
+                      footer: '清洗只改动歌名、歌手与专辑三个字段；原文件不动。',
+                      children: <Widget>[
+                        TySettingsRow.actionRow(
+                          title: '清洗整库',
+                          description: '对当前曲库所有曲目批量识别并纠偏',
+                          leading: const Icon(
+                            Icons.auto_fix_high,
+                            size: TyIconSize.inline,
+                          ),
+                          actionLabel: _isRefactoring ? '清洗中…' : '开始',
+                          busy: _isRefactoring,
+                          onTap: _isRefactoring ? null : _startRefactor,
+                        ),
+                        if (_isRefactoring)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                              TySpace.x16,
+                              TySpace.x8,
+                              TySpace.x16,
+                              TySpace.x16,
                             ),
-                          if (_testMessage != null)
-                            Expanded(
-                              child: Row(
-                                children: <Widget>[
-                                  Icon(
-                                    _testSuccess == true
-                                        ? Icons.check_circle
-                                        : Icons.error,
-                                    size: 18,
-                                    color: _testSuccess == true
-                                        ? Colors.green
-                                        : Colors.red,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: <Widget>[
+                                Semantics(
+                                  liveRegion: true,
+                                  value: _refactorProgress == null
+                                      ? '正在清洗'
+                                      : '已清洗 ${_refactorProgress!.processed} / '
+                                            '${_refactorProgress!.total}',
+                                  child: TyProgressBar(
+                                    value: _refactorProgress?.ratio,
                                   ),
-                                  const SizedBox(width: 6),
-                                  Flexible(
-                                    child: Text(
-                                      _testMessage!,
-                                      style: TextStyle(
-                                        color: _testSuccess == true
-                                            ? Colors.green
-                                            : Colors.red,
-                                        fontSize: 13,
+                                ),
+                                const SizedBox(height: TySpace.x8),
+                                Row(
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: Text(
+                                        _refactorProgress == null
+                                            ? '正在清洗…'
+                                            : '正在清洗 (${_refactorProgress!.processed}/'
+                                                  '${_refactorProgress!.total}) · '
+                                                  '已纠偏 ${_refactorProgress!.updated} 首',
+                                        style: context.ty.typography.bodyS
+                                            .copyWith(
+                                              color: context
+                                                  .ty
+                                                  .colors
+                                                  .textSecondary,
+                                            ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
+                                    TyButton(
+                                      label: '停止',
+                                      variant: TyButtonVariant.secondary,
+                                      dense: true,
+                                      onPressed: () =>
+                                          setState(() => _isCancelled = true),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                _Section(
-                  title: '批量维护',
-                  children: <Widget>[
-                    ListTile(
-                      leading: const Icon(Icons.auto_fix_high),
-                      title: const Text('清洗整库'),
-                      subtitle: const Text('对当前曲库所有曲目批量进行 AI 智能识别并纠偏歌名、歌手与专辑'),
-                    ),
-                    if (_isRefactoring && _refactorProgress != null)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            LinearProgressIndicator(
-                              value: _refactorProgress!.ratio,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '正在清洗 (${_refactorProgress!.processed}/${_refactorProgress!.total}) · 已纠偏 ${_refactorProgress!.updated} 首',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      child: Row(
-                        children: <Widget>[
-                          FilledButton.icon(
-                            icon: const Icon(Icons.auto_awesome),
-                            label: Text(_isRefactoring ? '清洗中…' : '开始清洗整库'),
-                            onPressed: _isRefactoring ? null : _startRefactor,
                           ),
-                          if (_isRefactoring) ...<Widget>[
-                            const SizedBox(width: 12),
-                            OutlinedButton(
-                              onPressed: () =>
-                                  setState(() => _isCancelled = true),
-                              child: const Text('停止'),
-                            ),
-                          ],
-                        ],
-                      ),
+                      ],
                     ),
                   ],
-                ),
-              ],
-            ],
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (Object err, _) => Center(child: Text('加载配置失败: $err')),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _field({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required VoidCallback onChanged,
+    bool obscureText = false,
+    String? helperText,
+    Widget? suffix,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        TySpace.x16,
+        TySpace.x8,
+        TySpace.x16,
+        TySpace.x12,
+      ),
+      child: TyTextField(
+        controller: controller,
+        label: label,
+        hint: hint,
+        obscureText: obscureText,
+        helperText: helperText,
+        suffix: suffix,
+        onChanged: (String _) => onChanged(),
       ),
     );
   }
-}
 
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.children});
-
-  final String title;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 4, 4, 6),
-            child: Text(
-              title,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Card(
-            margin: EdgeInsets.zero,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: children,
-            ),
+  Future<void> _pickPreset(AISettings settings) async {
+    final AIProviderPreset? picked = await showTyDialog<AIProviderPreset>(
+      context,
+      child: TyDialog(
+        title: '预设服务商',
+        actions: <Widget>[
+          TyButton(
+            label: '取消',
+            variant: TyButtonVariant.ghost,
+            onPressed: () => Navigator.of(context).pop(),
           ),
         ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            for (final AIProviderPreset preset in AIProviderPreset.values)
+              TySettingsRow(
+                title: preset.displayName,
+                trailing: preset == settings.preset
+                    ? Icon(
+                        Icons.check,
+                        size: TyIconSize.compact,
+                        color: context.ty.colors.accent,
+                      )
+                    : null,
+                onTap: () => Navigator.of(context).pop(preset),
+              ),
+          ],
+        ),
       ),
     );
+    if (picked == null || picked == settings.preset) {
+      return;
+    }
+    _baseUrlController.text = picked.defaultBaseUrl;
+    _modelController.text = picked.defaultModel;
+    await _saveSettings(settings, preset: picked);
   }
 }

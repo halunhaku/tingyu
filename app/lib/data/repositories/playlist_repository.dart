@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../db/database.dart';
+import '../models/search_page_result.dart';
 
 /// 播放列表读写：顺序由 `playlist_items.position` 显式保存。
 class PlaylistRepository {
@@ -16,6 +17,34 @@ class PlaylistRepository {
   Future<Playlist?> byId(String id) => (_db.select(
     _db.playlists,
   )..where(($PlaylistsTable t) => t.id.equals(id))).getSingleOrNull();
+
+  /// 按歌单名搜索分页；`total` 是真实命中数。
+  ///
+  /// 谓词与排序同 [all]（名称排序）；空查询不查库，直接返回空结果。
+  Future<SearchPageResult<Playlist>> searchByNamePaged(
+    String query, {
+    int offset = 0,
+    int limit = 40,
+  }) async {
+    final String trimmed = query.trim();
+    if (trimmed.isEmpty) {
+      return const SearchPageResult<Playlist>(items: <Playlist>[], total: 0);
+    }
+    final String needle = '%${trimmed.toLowerCase()}%';
+    final int total = await _db.playlists
+        .count(where: ($PlaylistsTable t) => t.name.lower().like(needle))
+        .getSingle();
+    if (total == 0) {
+      return const SearchPageResult<Playlist>(items: <Playlist>[], total: 0);
+    }
+    final SimpleSelectStatement<$PlaylistsTable, Playlist> select = _db.select(
+      _db.playlists,
+    )..where(($PlaylistsTable t) => t.name.lower().like(needle));
+    final List<Playlist> items = await (_named(
+      select,
+    )..limit(limit, offset: offset)).get();
+    return SearchPageResult<Playlist>(items: items, total: total);
+  }
 
   Future<void> create({
     required String id,

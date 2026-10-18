@@ -12,10 +12,12 @@ on:
       - 'v*'
     paths:
       - 'app/**'
+      - 'tools/**'
       - '.github/workflows/flutter.yml'
   pull_request:
     paths:
       - 'app/**'
+      - 'tools/**'
       - '.github/workflows/flutter.yml'
   workflow_dispatch:
 
@@ -52,7 +54,9 @@ jobs:
           dart run build_runner build
           git diff --exit-code --stat
       - run: flutter analyze
-      - run: flutter test
+      # golden 基准图只在 Windows 本机校验（app/dart_test.yaml 也做了 skip 兜底）；
+      # 这里显式排除，避免 CI 引入字体栈差异导致的假失败。
+      - run: flutter test --exclude-tags golden
 
   build:
     name: build (${{ matrix.name }})
@@ -111,7 +115,25 @@ jobs:
       # 运行期需要的凭据（Android 签名密钥）在 CI 里没有，所以 release job 只做
       # 未签名/调试签名的构建验证；正式分发用仓库 Secrets 走本地打包（见 README）。
       - name: Build
+        if: matrix.target != 'windows'
         run: flutter build ${{ matrix.target }} --release ${{ matrix.build_args }}
+      - name: Set up engine Python
+        if: matrix.target == 'windows'
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11.9'
+      - name: Build Windows with patched accessibility engine
+        if: matrix.target == 'windows'
+        working-directory: .
+        shell: pwsh
+        run: |
+          ./tools/bootstrap-windows-engine.ps1 -PythonExecutable (Get-Command python).Source
+          ./tools/build-windows-engine.ps1 -Stage Sync -Jobs 2
+          ./tools/build-windows-engine.ps1 -Stage Configure
+          ./tools/build-windows-engine.ps1 -Stage Compile -Jobs 2
+          ./tools/build-windows-engine.ps1 -Stage Test
+          $env:PATH = "$PWD/app/build/flutter-engine/checkout/bin;$env:PATH"
+          ./tools/build-windows-engine.ps1 -Stage App
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:

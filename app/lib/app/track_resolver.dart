@@ -23,7 +23,7 @@ class TrackResolver {
     final MusicSource? source = await _ref.read(sourceRepositoryProvider).byId(track.sourceId);
     final Uri? artUri = await _resolveCover(track);
 
-    PlaybackItem base = PlaybackItem.fromUri(Uri.file(track.filePathOrUrl));
+    PlaybackItem base = PlaybackItem.fromUri(initialUri(track.filePathOrUrl));
     if (source != null) {
       try {
         // 走缓存：夸克每首歌都要换直链，重建适配器会把 5400s 的直链缓存清零。
@@ -46,6 +46,38 @@ class TrackResolver {
       artUri: artUri,
       duration: Duration(milliseconds: (track.duration * 1000).round()),
     );
+  }
+
+  /// resolver 入口的占位 URI：来源存在时随后会被 `adapter.open()` 覆盖，
+  /// 只有来源行已删除的孤儿曲目才会真正用它播放。
+  ///
+  /// 不能无脑 `Uri.file()`：Windows 上它遇到 `quark://<fid>` /
+  /// `https://...` 直接抛 `Invalid argument(s): Illegal character in path`，
+  /// 而 `Uri.tryParse()` 又会把 `F:\...` 误解析出 scheme `f` —— 两边分流。
+  static Uri initialUri(String filePathOrUrl) {
+    if (_looksLikeWindowsDrivePath(filePathOrUrl)) {
+      return Uri.file(filePathOrUrl);
+    }
+    final Uri? parsed = Uri.tryParse(filePathOrUrl);
+    if (parsed != null && parsed.scheme.isNotEmpty) {
+      return parsed;
+    }
+    return Uri.file(filePathOrUrl);
+  }
+
+  /// `C:\...` / `D:/...` 盘符路径：tryParse 会误读出单字母 scheme。
+  static bool _looksLikeWindowsDrivePath(String raw) {
+    if (raw.length < 3) {
+      return false;
+    }
+    final int drive = raw.codeUnitAt(0);
+    final bool isLetter =
+        (drive >= 65 && drive <= 90) || (drive >= 97 && drive <= 122);
+    if (!isLetter || raw.codeUnitAt(1) != 58) {
+      return false;
+    }
+    final int sep = raw.codeUnitAt(2);
+    return sep == 47 || sep == 92; // '/' or '\'
   }
 
   Future<Uri?> _resolveCover(Track track) async {

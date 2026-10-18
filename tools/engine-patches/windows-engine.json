@@ -1,0 +1,15 @@
+{
+  "frameworkVersion": "3.47.2",
+  "frameworkRevision": "d3b14c876900e553bc736ca19295fc09e3853e8e",
+  "upstreamEngineRevision": "a804b261645ef8c13eb3d5c44a5c2fb0340c5539",
+  "depotToolsRevision": "2bb968c46024f495598317f6b882c8cbda1be71d",
+  "patchCommit": "164f9b1b8a7c0b303dce83068f8831d54bbcd324",
+  "patchSource": "https://github.com/flutter/flutter/pull/190903",
+  "patchSha256": "1800ae62f6a9178a6c5afcabe4ddb2e89f4a3649db26a62be878ab44a03db908",
+  "combinedPatchSha256": "9b324ee757ccbdf9547490e2ea9f7f1f8ed5710dc6ee5577148a67f473a36602",
+  "testFixturePatchSha256": "96817dc35c7529bc83084f762ed64c48af785b00cb7d3996bbc81ae323f2e42f",
+  "configuration": "host_release",
+  "windowsSdkVersion": "10.0.26100.0",
+  "engineDllSha256": "13c66fe122ffb6345ffd3d5161fc7a581321eb3b1bf9cbbbcbf47da52cd757e1",
+  "status": "local installation verified: engine tests, real-library navigation, MSAA and active Narrator smoke passed"
+}

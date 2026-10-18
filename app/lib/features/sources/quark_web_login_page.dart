@@ -7,6 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 
+import '../../design/components/buttons.dart';
+import '../../design/components/feedback.dart';
+import '../../design/layout/form_factor.dart';
+import '../../design/theme.dart';
+import '../../design/tokens/metrics.dart';
+import '../../design/tokens/tokens.dart';
 import '../../sources/quark/quark_auth.dart';
 import '../../sources/quark/quark_drive_client.dart';
 import '../../sources/quark/quark_session.dart';
@@ -291,7 +297,7 @@ class _QuarkWebLoginPageState extends State<QuarkWebLoginPage> {
     }
   }
 
-  Widget _buildWebView() {
+  Widget buildWebView() {
     const Set<Factory<OneSequenceGestureRecognizer>> gestures =
         <Factory<OneSequenceGestureRecognizer>>{
           Factory<EagerGestureRecognizer>(EagerGestureRecognizer.new),
@@ -310,46 +316,127 @@ class _QuarkWebLoginPageState extends State<QuarkWebLoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    return QuarkWebLoginChrome(
+      hint: _hint,
+      currentUrl: _currentUrl,
+      busy: _busy,
+      onBack: () => Navigator.of(context).maybePop(),
+      onRefresh: () => _controller.reload(),
+      onFinish: _finishManually,
+      child: buildWebView(),
+    );
+  }
+}
+
+/// 网页登录页的外壳：状态条 + 进度 + WebView 槽位。
+///
+/// 纯展示（`child` 就是 WebView 本身），所以测试可以塞一个占位块把这一层的
+/// 间距、层级、按钮位置渲染出来——WebView 在 widget 测试里跑不起来。
+class QuarkWebLoginChrome extends StatelessWidget {
+  const QuarkWebLoginChrome({
+    super.key,
+    required this.hint,
+    required this.currentUrl,
+    required this.busy,
+    required this.child,
+    this.onBack,
+    this.onRefresh,
+    this.onFinish,
+  });
+
+  final String hint;
+  final String currentUrl;
+  final bool busy;
+  final Widget child;
+  final VoidCallback? onBack;
+  final VoidCallback? onRefresh;
+  final VoidCallback? onFinish;
+
+  @override
+  Widget build(BuildContext context) {
+    final TyTokens ty = context.ty;
+    final TyMetrics metrics = context.metrics;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('登录夸克网盘'),
-        actions: <Widget>[
-          IconButton(
-            tooltip: '刷新',
-            icon: const Icon(Icons.refresh),
-            onPressed: () => _controller.reload(),
-          ),
-          TextButton(
-            onPressed: _busy ? null : _finishManually,
-            child: const Text('完成'),
-          ),
-        ],
-      ),
-      body: Column(
-        children: <Widget>[
-          Container(
-            width: double.infinity,
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(_hint, style: Theme.of(context).textTheme.bodySmall),
-                if (_currentUrl.isNotEmpty)
-                  Text(
-                    _currentUrl,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+      backgroundColor: ty.colors.canvas,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                metrics.pagePadding,
+                TySpace.x12,
+                metrics.pagePadding,
+                TySpace.x8,
+              ),
+              child: Row(
+                children: <Widget>[
+                  if (onBack != null)
+                    TyIconAction(
+                      icon: Icons.arrow_back,
+                      semanticLabel: '返回',
+                      tooltip: '返回',
+                      onPressed: onBack,
+                    ),
+                  const SizedBox(width: TySpace.x8),
+                  Expanded(
+                    child: Text(
+                      '登录夸克网盘',
+                      style: ty.typography.titleL.copyWith(
+                        color: ty.colors.textPrimary,
+                      ),
                     ),
                   ),
-              ],
+                  TyIconAction(
+                    icon: Icons.refresh,
+                    semanticLabel: '刷新页面',
+                    tooltip: '刷新',
+                    onPressed: onRefresh,
+                  ),
+                  const SizedBox(width: TySpace.x8),
+                  TyButton(
+                    label: '完成',
+                    dense: true,
+                    onPressed: busy ? null : onFinish,
+                  ),
+                ],
+              ),
             ),
-          ),
-          if (_busy) const LinearProgressIndicator(minHeight: 2),
-          Expanded(child: _buildWebView()),
-        ],
+            // 状态条：提示 + 当前地址（地址是登录卡点时唯一能自查的线索）。
+            Container(
+              width: double.infinity,
+              color: ty.colors.surfaceSunken,
+              padding: EdgeInsets.symmetric(
+                horizontal: metrics.pagePadding,
+                vertical: TySpace.x8,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    hint,
+                    style: ty.typography.bodyS.copyWith(
+                      color: ty.colors.textSecondary,
+                    ),
+                  ),
+                  if (currentUrl.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: TySpace.x2),
+                    Text(
+                      currentUrl,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: ty.typography.labelS.copyWith(
+                        color: ty.colors.textTertiary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (busy) const TyProgressBar(),
+            Expanded(child: child),
+          ],
+        ),
       ),
     );
   }

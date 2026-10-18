@@ -1,108 +1,247 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
 import '../../data/db/database.dart';
-import '../shared/current_track.dart';
-import '../shared/empty_state.dart';
-import '../shared/track_row.dart';
-import 'artists_page.dart';
+import '../../design/components/album_card.dart';
+import '../../design/components/buttons.dart';
+import '../../design/components/detail_hero.dart';
+import '../../design/components/feedback.dart';
+import '../../design/components/structure.dart';
+import '../../design/components/track.dart';
+import '../../design/layout/form_factor.dart';
+import '../../design/tokens/metrics.dart';
+import '../albums/albums_page.dart' show albumRoute;
+import '../shared/playback_track_row.dart';
+import '../shared/skeletons.dart';
+import '../shared/track_actions.dart';
+import 'artists_page.dart' show artistAvatarProvider;
 
-/// 艺术家详情：头像 + 名字 + 统计，下方按专辑分组列出曲目，每组可单独播放。
+/// 艺术家详情：头像 + 名字 + 统计，下方是「专辑」横向封面轨与「全部曲目」。
 ///
-/// 专辑之间按专辑名排序，组内沿用 [sortForAlbum]（碟号 → 曲序 → 标题）。
-class ArtistDetailPage extends ConsumerWidget {
+/// 曲目顺序沿用 [artistTracksProvider]；专辑之间按专辑名排序，组内沿用
+/// [sortForAlbum]（碟号 → 曲序 → 标题）。
+///
+/// 专辑区做成一行横向轨道而不是多行网格：曲目区由 `TyTrackTable`/`TyTrackList`
+/// 承载，它们自己拥有滚动视口，多行网格会把整页剩下的高度吃掉。
+class ArtistDetailPage extends ConsumerStatefulWidget {
   const ArtistDetailPage({super.key, required this.artist});
 
   final String artist;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ArtistDetailPage> createState() => _ArtistDetailPageState();
+}
+
+class _ArtistDetailPageState extends ConsumerState<ArtistDetailPage> {
+  /// 「全部曲目」默认展示的条数（`docs/UX_REDESIGN.md` §5.3）。
+  static const int _previewCount = 10;
+
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final TyMetrics metrics = context.metrics;
     final AsyncValue<List<Track>> tracks = ref.watch(
-      artistTracksProvider(artist),
+      artistTracksProvider(widget.artist),
     );
+    final List<Track> list = tracks.value ?? const <Track>[];
+    final Map<String, List<Track>> groups = _groupByAlbum(list);
+    final List<Track> shown = _expanded
+        ? list
+        : list.take(_previewCount).toList();
 
-    final Widget content = tracks.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (Object error, StackTrace stack) => EmptyState(
-        icon: Icons.error_outline,
-        title: '艺术家读取失败',
-        message: '$error',
-      ),
-      data: (List<Track> list) {
-        if (list.isEmpty) {
-          return EmptyState(
-            icon: Icons.person_outline,
-            title: '没有这位艺术家的曲目',
-            message: artist,
-            action: TextButton(
-              onPressed: () =>
-                  context.canPop() ? context.pop() : context.go('/artists'),
-              child: const Text('返回艺术家列表'),
-            ),
-          );
-        }
-
-        final Map<String, List<Track>> groups = _groupByAlbum(list);
-        final List<_ArtistItem> items = <_ArtistItem>[];
-        for (final MapEntry<String, List<Track>> group in groups.entries) {
-          items.add(_AlbumGroupItem(album: group.key, tracks: group.value));
-          for (int i = 0; i < group.value.length; i++) {
-            final Track track = group.value[i];
-            items.add(
-              _TrackItem(
-                track: track,
-                index: track.trackNumber ?? i + 1,
-                queue: group.value,
-                startIndex: i,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            metrics.pagePadding,
+            TySpace.x16,
+            metrics.pagePadding,
+            TySpace.x8,
+          ),
+          child: TyDetailHero(
+            eyebrow: '艺术家',
+            title: widget.artist,
+            coverBytes: ref.watch(artistAvatarProvider(widget.artist)).value,
+            coverSeed: widget.artist,
+            coverShape: TyDetailHeroShape.circle,
+            meta: tracks.hasValue
+                ? '${list.length} 首歌曲 · ${groups.length} 张专辑'
+                : null,
+            header: context.canPop()
+                ? Row(
+                    children: <Widget>[
+                      TyIconAction(
+                        icon: Icons.arrow_back,
+                        semanticLabel: '返回',
+                        tooltip: '返回',
+                        onPressed: () => context.pop(),
+                      ),
+                    ],
+                  )
+                : null,
+            actions: <Widget>[
+              TyButton(
+                label: '播放全部',
+                icon: Icons.play_arrow,
+                onPressed: list.isEmpty
+                    ? null
+                    : () => ref
+                          .read(playbackProvider.notifier)
+                          .playTracks(list),
               ),
-            );
-          }
-        }
-
-        // 拍平成一个惰性列表：艺术家可能有上千首曲目，不能一次性建出所有行。
-        return ListView.builder(
-          padding: const EdgeInsets.only(bottom: 24),
-          itemCount: items.length + 1,
-          itemBuilder: (BuildContext context, int index) {
-            if (index == 0) {
-              return _ArtistHeader(
-                artist: artist,
-                tracks: list,
-                albumCount: groups.length,
-              );
-            }
-            return switch (items[index - 1]) {
-              _AlbumGroupItem item => _AlbumGroupHeader(
-                artist: artist,
-                album: item.album,
-                tracks: item.tracks,
+              TyButton(
+                label: '随机',
+                icon: Icons.shuffle,
+                variant: TyButtonVariant.secondary,
+                onPressed: list.isEmpty
+                    ? null
+                    : () => ref
+                          .read(playbackProvider.notifier)
+                          .playTracks(list, shuffle: true),
               ),
-              _TrackItem item => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: _ArtistTrackRow(
-                  track: item.track,
-                  index: item.index,
-                  queue: item.queue,
-                  startIndex: item.startIndex,
-                ),
-              ),
-            };
-          },
-        );
-      },
-    );
-
-    return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(
-          onPressed: () =>
-              context.canPop() ? context.pop() : context.go('/artists'),
+            ],
+          ),
         ),
-        title: Text(artist),
+        if (groups.isNotEmpty) ...<Widget>[
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: metrics.pagePadding),
+            child: TySectionHeader(title: '专辑', count: groups.length),
+          ),
+          _AlbumRail(groups: groups),
+        ],
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: metrics.pagePadding),
+          child: TySectionHeader(
+            title: '全部曲目',
+            count: tracks.hasValue ? list.length : null,
+            actionLabel: list.length > _previewCount
+                ? (_expanded ? '收起' : '全部展开')
+                : null,
+            onAction: list.length > _previewCount
+                ? () => setState(() => _expanded = !_expanded)
+                : null,
+          ),
+        ),
+        Expanded(
+          child: TyAsyncView<List<Track>>(
+            value: tracks,
+            loading: (BuildContext context) =>
+                const TrackRowsSkeleton(rows: 8),
+            error: (BuildContext context, Object error, StackTrace? stack) =>
+                TyErrorView(
+                  title: '艺术家读取失败',
+                  detail: '$error',
+                  onRetry: () =>
+                      ref.invalidate(artistTracksProvider(widget.artist)),
+                ),
+            isEmpty: (List<Track> value) => value.isEmpty,
+            empty: (BuildContext context) => TyEmptyState(
+              icon: Icons.person_outline,
+              title: '没有这位艺术家的曲目',
+              description: widget.artist,
+              actionLabel: '返回艺术家列表',
+              onAction: () => context.canPop()
+                  ? context.pop()
+                  : context.go('/library/artists'),
+            ),
+            data: (BuildContext context, List<Track> value) =>
+                _trackList(context, shown),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 曲目区：桌面表格 / compact 列表，接线与曲库页一致。
+  Widget _trackList(BuildContext context, List<Track> tracks) {
+    final TyMetrics metrics = context.metrics;
+
+    Future<void> play(int index) => ref
+        .read(playbackProvider.notifier)
+        .playTracks(tracks, startIndex: index);
+
+    Future<void> showMenu(Track track, Offset position) => showTrackMenu(
+      context,
+      ref,
+      track,
+      position: position,
+      onPlay: () => play(tracks.indexOf(track)),
+    );
+
+    // 行自己订阅播放态：进度 tick 一行都不重建（`ui_rebuild_seek_test` 的口径）。
+    Widget row(BuildContext context, int index, Track track) => PlaybackTrackRow(
+      key: ValueKey<String>('artist-${track.id}'),
+      track: track,
+      index: index + 1,
+      tableMode: !context.formFactor.isCompact,
+      showAlbum:
+          !context.formFactor.isCompact &&
+          context.formFactor == FormFactor.expanded,
+      onTap: () => play(index),
+      onToggleFavorite: () => toggleTrackFavorite(ref, track),
+      onMore: () => showMenu(track, rowOrigin(context)),
+      onSecondaryTapDown: (TapDownDetails details) =>
+          showMenu(track, details.globalPosition),
+    );
+
+    if (context.formFactor == FormFactor.compact) {
+      return TyTrackList(
+        tracks: tracks,
+        playingTrackId: null,
+        playing: false,
+        rowBuilder: row,
+        padding: EdgeInsets.symmetric(horizontal: metrics.pagePadding),
+      );
+    }
+    return TyTrackTable(
+      tracks: tracks,
+      playingTrackId: null,
+      playing: false,
+      rowBuilder: row,
+    );
+  }
+}
+
+/// 专辑横向轨：单行、按专辑名排序，点击进专辑详情，悬停播放钮起播这张专辑。
+class _AlbumRail extends ConsumerWidget {
+  const _AlbumRail({required this.groups});
+
+  final Map<String, List<Track>> groups;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final TyMetrics metrics = context.metrics;
+    final List<MapEntry<String, List<Track>>> entries = groups.entries.toList();
+    return SizedBox(
+      height: tyTileExtent(context, metrics.gridMinTile),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(horizontal: metrics.pagePadding),
+        itemCount: entries.length,
+        separatorBuilder: (_, _) => SizedBox(width: metrics.gridGap),
+        itemBuilder: (BuildContext context, int index) {
+          final String album = entries[index].key;
+          final List<Track> albumTracks = entries[index].value;
+          return TyAlbumCard(
+            width: metrics.gridMinTile,
+            title: album,
+            subtitle: '${albumTracks.length} 首',
+            coverPath: _firstCoverPath(albumTracks),
+            coverUrl: _firstCoverUrl(albumTracks),
+            coverSeed: '$album · ${albumTracks.first.artist}',
+            onTap: () => context.push(
+              albumRoute(album, albumTracks.first.artist),
+            ),
+            onPlay: () =>
+                ref.read(playbackProvider.notifier).playTracks(albumTracks),
+          );
+        },
       ),
-      body: content,
     );
   }
 }
@@ -122,192 +261,16 @@ Map<String, List<Track>> _groupByAlbum(List<Track> tracks) {
   return groups;
 }
 
-/// 拍平后的列表项：专辑分组头或一曲目行。
-sealed class _ArtistItem {
-  const _ArtistItem();
-}
-
-class _AlbumGroupItem extends _ArtistItem {
-  const _AlbumGroupItem({required this.album, required this.tracks});
-
-  final String album;
-
-  final List<Track> tracks;
-}
-
-class _TrackItem extends _ArtistItem {
-  const _TrackItem({
-    required this.track,
-    required this.index,
-    required this.queue,
-    required this.startIndex,
-  });
-
-  final Track track;
-
-  final int index;
-
-  final List<Track> queue;
-
-  final int startIndex;
-}
-
-/// 艺术家头：头像 + 名字 + 「N 首歌曲 · M 张专辑」+ 播放/随机按钮。
-class _ArtistHeader extends ConsumerWidget {
-  const _ArtistHeader({
-    required this.artist,
-    required this.tracks,
-    required this.albumCount,
-  });
-
-  final String artist;
-  final List<Track> tracks;
-  final int albumCount;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final TextTheme text = Theme.of(context).textTheme;
-    final ColorScheme scheme = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 4),
-      child: Row(
-        children: <Widget>[
-          ArtistAvatar(artist: artist, size: 120),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  '艺术家',
-                  style: text.labelMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    letterSpacing: 1,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  artist,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: text.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '${tracks.length} 首歌曲 · $albumCount 张专辑',
-                  style: text.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  children: <Widget>[
-                    FilledButton.icon(
-                      onPressed: tracks.isEmpty
-                          ? null
-                          : () => ref
-                                .read(playbackProvider.notifier)
-                                .playTracks(tracks),
-                      icon: const Icon(Icons.play_arrow, size: 18),
-                      label: const Text('播放全部'),
-                    ),
-                    FilledButton.tonalIcon(
-                      onPressed: tracks.isEmpty
-                          ? null
-                          : () => ref
-                                .read(playbackProvider.notifier)
-                                .playTracks(tracks, shuffle: true),
-                      icon: const Icon(Icons.shuffle, size: 18),
-                      label: const Text('随机播放'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+String? _firstCoverPath(List<Track> tracks) => tracks
+    .map((Track track) => track.coverArtPath)
+    .firstWhere(
+      (String? path) => path != null && path.isNotEmpty,
+      orElse: () => null,
     );
-  }
-}
 
-/// 专辑分组头：专辑名 + 「播放这张专辑」/「打开专辑」。
-class _AlbumGroupHeader extends ConsumerWidget {
-  const _AlbumGroupHeader({
-    required this.artist,
-    required this.album,
-    required this.tracks,
-  });
-
-  final String artist;
-
-  final String album;
-
-  final List<Track> tracks;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return SectionHeader(
-      title: album,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          IconButton(
-            tooltip: '播放这张专辑',
-            iconSize: 18,
-            icon: const Icon(Icons.play_circle_outline),
-            onPressed: () =>
-                ref.read(playbackProvider.notifier).playTracks(tracks),
-          ),
-          IconButton(
-            tooltip: '打开专辑',
-            iconSize: 18,
-            icon: const Icon(Icons.album_outlined),
-            onPressed: () => context.push(
-              '/albums/${Uri.encodeComponent(artist)}/${Uri.encodeComponent(album)}',
-            ),
-          ),
-        ],
-      ),
+String? _firstCoverUrl(List<Track> tracks) => tracks
+    .map((Track track) => track.coverArtUrl)
+    .firstWhere(
+      (String? url) => url != null && url.isNotEmpty,
+      orElse: () => null,
     );
-  }
-}
-
-/// 艺术家曲目行：点击从该行开始播放所在专辑。
-class _ArtistTrackRow extends ConsumerWidget {
-  const _ArtistTrackRow({
-    required this.track,
-    required this.index,
-    required this.queue,
-    required this.startIndex,
-  });
-
-  final Track track;
-
-  final int index;
-
-  final List<Track> queue;
-
-  final int startIndex;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // 只订阅"这一行是不是正在播放的那一首"：进度 tick 不再重建整张列表。
-    final bool isPlaying = ref.watch(isCurrentTrackProvider(track.id));
-
-    return TrackRow(
-      track: track,
-      index: index,
-      showAlbum: false,
-      isPlaying: isPlaying,
-      onTap: () => ref
-          .read(playbackProvider.notifier)
-          .playTracks(queue, startIndex: startIndex),
-    );
-  }
-}

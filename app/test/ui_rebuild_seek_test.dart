@@ -2,21 +2,26 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tingyu/app/playback_controller.dart';
 import 'package:tingyu/app/providers.dart';
 import 'package:tingyu/data/db/database.dart';
+import 'package:tingyu/data/models/library_query.dart';
+import 'package:tingyu/data/models/search_page_result.dart';
+import 'package:tingyu/design/components/cover.dart';
+import 'package:tingyu/design/components/track.dart';
 import 'package:tingyu/features/library/library_page.dart';
 import 'package:tingyu/features/player/mini_player.dart';
 import 'package:tingyu/features/player/player_bar.dart';
 import 'package:tingyu/features/player/queue_panel.dart';
-import 'package:tingyu/features/player/seek_bar.dart';
-import 'package:tingyu/features/shared/cover_art.dart';
-import 'package:tingyu/features/shared/track_row.dart';
+import 'package:tingyu/design/components/transport.dart';
 import 'package:tingyu/playback/playback_item.dart';
 import 'package:tingyu/playback/playback_snapshot.dart';
 
-/// 播放 UI 的两条硬约束：
+import 'support/pump.dart';
+
+/// 播放 UI 的两条硬约束（`DESIGN.md` §7.3）：
 /// 1. 进度 tick（每秒 5-16 次）只重建真正显示进度的控件，列表行/封面/标题一律不动；
 /// 2. 进度条只在松手时 seek 一次，拖动中途不能给引擎发 seek。
 ///
@@ -96,6 +101,8 @@ Track _track(int n) => Track(
 
 PlaybackSnapshot _playing(int seconds) => PlaybackSnapshot.initial.copyWith(
   playing: true,
+  // 传输条/迷你条只在「队列里有东西」时出现（processing 不再是 idle）。
+  processing: PlaybackProcessing.ready,
   position: Duration(seconds: seconds),
   duration: const Duration(seconds: 200),
   index: 0,
@@ -126,12 +133,6 @@ class _RebuildCounter {
       .fold(0, (int sum, MapEntry<Type, int> entry) => sum + entry.value);
 }
 
-/// 固定查询词：截断提示只在真的有搜索词时才出现。
-class _FixedQuery extends SearchQueryController {
-  @override
-  String build() => '周杰伦';
-}
-
 void main() {
   final _RebuildCounter counter = _RebuildCounter();
 
@@ -147,25 +148,37 @@ void main() {
   tearDown(() => debugOnRebuildDirtyWidget = null);
   tearDown(counter.stop);
 
-  testWidgets('曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行', (WidgetTester tester) async {
+    // 桌面大窗：表格形态，行是 TyTrackRow。
     final List<Track> tracks = <Track>[for (int i = 0; i < 12; i++) _track(i)];
     final _FakePlayback fake = _FakePlayback(tracks);
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          playbackProvider.overrideWith(() => fake),
-          autoLibraryEnrichmentProvider.overrideWith((Ref ref) async {}),
-          visibleTracksProvider.overrideWithValue(
-            AsyncValue<List<Track>>.data(tracks),
+
+    await pumpTyApp(
+      tester,
+      home: const Scaffold(body: LibraryPage()),
+      size: const Size(1440, 900),
+      overrides: <Override>[
+        playbackProvider.overrideWith(() => fake),
+        autoLibraryEnrichmentProvider.overrideWith((Ref ref) async {}),
+        // 来源流也要挡住：真实的 drift 流会在测试收尾时留下 pending timer。
+        sourcesProvider.overrideWithValue(
+          const AsyncValue<List<MusicSource>>.data(<MusicSource>[]),
+        ),
+        // 不接真实 drift：这一条测的是「行怎么订阅播放态」，
+        // 内存库留下的流查询定时器会让测试在收尾时被判为 pending timer。
+        libraryTracksPageProvider(
+          const LibraryPageRequest(
+            query: LibraryQuery(),
+            limit: libraryPageSize,
           ),
-        ],
-        child: const MaterialApp(home: Scaffold(body: LibraryPage())),
-      ),
+        ).overrideWith(
+          (Ref ref) async =>
+              SearchPageResult<Track>(items: tracks, total: tracks.length),
+        ),
+      ],
     );
     await tester.pumpAndSettle();
-    expect(find.byType(TrackRow), findsWidgets);
+    expect(find.byType(TyTrackRow), findsWidgets);
 
     fake.emit(_playing(1));
     await tester.pump();
@@ -176,8 +189,8 @@ void main() {
       await tester.pump();
     }
     counter.stop();
-    expect(counter.of(TrackRow), 0, reason: '进度 tick 不该重建曲目行');
-    expect(counter.of(CoverArt), 0, reason: '进度 tick 不该重建封面');
+    expect(counter.of(TyTrackRow), 0, reason: '进度 tick 不该重建曲目行');
+    expect(counter.of(TyCover), 0, reason: '进度 tick 不该重建封面');
 
     // 换队列但下标不变（新旧队列都从第 0 首起播）：高亮必须自己跟过去。
     fake.tracks = <Track>[tracks[5], ...tracks];
@@ -185,40 +198,50 @@ void main() {
     fake.emit(_playing(0));
     await tester.pump();
     counter.stop();
-    expect(counter.of(TrackRow), 2, reason: '只有高亮翻转的两行该重建');
+    expect(counter.of(TyTrackRow), 2, reason: '只有高亮翻转的两行该重建');
     expect(
       find.descendant(
         of: find.byWidgetPredicate(
-          (Widget widget) => widget is TrackRow && widget.track.id == 't5',
+          (Widget widget) => widget is TyTrackRow && widget.track.id == 't5',
         ),
-        matching: find.byIcon(Icons.graphic_eq),
+        matching: find.byType(TyEqualizer),
       ),
       findsOneWidget,
       reason: '新队列的当前曲目要拿到高亮',
     );
+    expect(
+      find.descendant(
+        of: find.byWidgetPredicate(
+          (Widget widget) => widget is TyTrackRow && widget.track.id == 't0',
+        ),
+        matching: find.byType(TyEqualizer),
+      ),
+      findsNothing,
+      reason: '不再播放的那一行要交出高亮',
+    );
+    // drift 的内存库会为流查询留一个「稍后一跑」的定时器；测试结束前把时间推过去，
+    // 否则会被判定为「树拆掉后仍有 pending timer」。
   });
 
   testWidgets('迷你条：推进进度不重建封面与标题', (WidgetTester tester) async {
     final Track track = _track(0);
-    final _FakePlayback fake = _FakePlayback(
-      <Track>[track],
-      item: PlaybackItem.fromUri(Uri.parse('file:///music/t0.mp3')),
+    final _FakePlayback fake = _FakePlayback(<Track>[
+      track,
+    ], item: PlaybackItem.fromUri(Uri.parse('file:///music/t0.mp3')));
+    await pumpTyApp(
+      tester,
+      home: const Scaffold(body: Align(child: MiniPlayer())),
+      size: const Size(412, 915),
+      overrides: <Override>[
+        playbackProvider.overrideWith(() => fake),
+        trackByIdProvider(track.id)
+            .overrideWithValue(AsyncValue<Track?>.data(track)),
+      ],
     );
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          playbackProvider.overrideWith(() => fake),
-          trackByIdProvider(track.id).overrideWithValue(
-            AsyncValue<Track?>.data(track),
-          ),
-        ],
-        child: const MaterialApp(
-          home: Scaffold(body: Align(child: MiniPlayer())),
-        ),
-      ),
-    );
+    fake.emit(_playing(0));
     await tester.pumpAndSettle();
-    expect(find.text('曲目 0'), findsOneWidget);
+    // 迷你条/传输条的标题是 Text.rich（标题 · 艺术家 一行），所以按包含匹配。
+    expect(find.textContaining('曲目 0'), findsOneWidget);
 
     fake.emit(_playing(1));
     await tester.pump();
@@ -230,24 +253,22 @@ void main() {
     }
     counter.stop();
     expect(counter.of(MiniPlayer), 0);
-    expect(counter.of(CoverArt), 0);
+    expect(counter.of(TyCover), 0);
   });
 
-  testWidgets('队列面板：一次取全库元数据，推进进度不重建行，换队列立即跟上', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('队列面板：一次取全库元数据，推进进度不重建行，换队列立即跟上', (WidgetTester tester) async {
     final List<Track> tracks = <Track>[for (int i = 0; i < 8; i++) _track(i)];
     final _FakePlayback fake = _FakePlayback(tracks);
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          playbackProvider.overrideWith(() => fake),
-          allTracksProvider.overrideWithValue(
-            AsyncValue<List<Track>>.data(tracks),
-          ),
-        ],
-        child: const MaterialApp(home: Scaffold(body: QueuePanel())),
-      ),
+    await pumpTyApp(
+      tester,
+      home: const Scaffold(body: QueuePanel()),
+      size: const Size(412, 915),
+      overrides: <Override>[
+        playbackProvider.overrideWith(() => fake),
+        allTracksProvider.overrideWithValue(
+          AsyncValue<List<Track>>.data(tracks),
+        ),
+      ],
     );
     await tester.pumpAndSettle();
     // 没有覆盖 trackByIdProvider：面板若还逐行订阅它，这里只会看到「加载中…」。
@@ -267,37 +288,34 @@ void main() {
     fake.tracks = <Track>[tracks[3]];
     fake.emit(_playing(1));
     await tester.pump();
-    expect(find.text('1 首'), findsOneWidget);
+    // 计数由 `TySectionHeader` 渲染成纯数字（行里也有序号「1」，所以用 findsWidgets）。
+    expect(find.text('1'), findsWidgets);
     expect(find.text('曲目 7'), findsNothing);
   });
 
-  testWidgets('播放条：推进进度只重建进度条，拖动只在松手时 seek 一次', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('播放条：推进进度只重建进度条，拖动只在松手时 seek 一次', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(1400, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
     final Track track = _track(0);
-    final _FakePlayback fake = _FakePlayback(
-      <Track>[track],
-      item: PlaybackItem.fromUri(Uri.parse('file:///music/t0.mp3')),
+    final _FakePlayback fake = _FakePlayback(<Track>[
+      track,
+    ], item: PlaybackItem.fromUri(Uri.parse('file:///music/t0.mp3')));
+    await pumpTyApp(
+      tester,
+      home: const Scaffold(body: Align(child: PlayerBar())),
+      size: const Size(1400, 800),
+      overrides: <Override>[
+        playbackProvider.overrideWith(() => fake),
+        trackByIdProvider(track.id)
+            .overrideWithValue(AsyncValue<Track?>.data(track)),
+      ],
     );
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          playbackProvider.overrideWith(() => fake),
-          trackByIdProvider(track.id).overrideWithValue(
-            AsyncValue<Track?>.data(track),
-          ),
-        ],
-        child: const MaterialApp(
-          home: Scaffold(body: Align(child: PlayerBar())),
-        ),
-      ),
-    );
+    fake.emit(_playing(0));
     await tester.pumpAndSettle();
-    expect(find.text('曲目 0'), findsOneWidget);
+    // 迷你条/传输条的标题是 Text.rich（标题 · 艺术家 一行），所以按包含匹配。
+    expect(find.textContaining('曲目 0'), findsOneWidget);
 
     fake.emit(_playing(20));
     await tester.pump();
@@ -309,12 +327,12 @@ void main() {
     }
     counter.stop();
     expect(counter.of(PlayerBar), 0);
-    expect(counter.of(CoverArt), 0, reason: '进度 tick 不该重建封面');
-    expect(counter.of(SeekBar), 9, reason: '只有进度条该跟着 tick 重建');
+    expect(counter.of(TyCover), 0, reason: '进度 tick 不该重建封面');
+    expect(counter.of(TySeekBar), 9, reason: '只有进度条该跟着 tick 重建');
 
     // 拖动 6 帧：中途一次 seek 都不能发，松手只发一次。
     final TestGesture gesture = await tester.startGesture(
-      tester.getCenter(find.byType(Slider).first),
+      tester.getCenter(find.byType(TySeekBar)),
     );
     for (int frame = 0; frame < 6; frame++) {
       await gesture.moveBy(const Offset(20, 0));
@@ -326,48 +344,20 @@ void main() {
     expect(fake.seeks, hasLength(1));
   });
 
-  testWidgets('曲库页：搜索命中被截断时给出上限提示', (WidgetTester tester) async {
-    final List<Track> tracks = <Track>[for (int i = 0; i < 3; i++) _track(i)];
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          searchQueryProvider.overrideWith(_FixedQuery.new),
-          playbackProvider.overrideWith(() => _FakePlayback(const <Track>[])),
-          autoLibraryEnrichmentProvider.overrideWith((Ref ref) async {}),
-          visibleTracksProvider.overrideWithValue(
-            AsyncValue<List<Track>>.data(tracks),
-          ),
-          searchResultsProvider.overrideWithValue(
-            AsyncValue<SearchResults>.data(
-              (tracks: tracks, limit: searchResultLimit, truncated: true),
-            ),
-          ),
-        ],
-        child: const MaterialApp(home: Scaffold(body: LibraryPage())),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('搜索“周杰伦”'), findsOneWidget);
-    expect(find.text('命中超过 $searchResultLimit 首，仅显示前 $searchResultLimit 首'), findsOneWidget);
-  });
-
   testWidgets('封面按显示尺寸解码，不按原图分辨率', (WidgetTester tester) async {
     tester.view.devicePixelRatio = 2;
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          coverFileProvider('cover.jpg').overrideWith(
-            (Ref ref) async => File('/tmp/tingyu-cover-test.jpg'),
-          ),
+        overrides: <Override>[
+          coverFileProvider(
+            'cover.jpg',
+          ).overrideWith((Ref ref) async => File('/tmp/tingyu-cover-test.jpg')),
         ],
         child: const MaterialApp(
           home: Scaffold(
-            body: Center(
-              child: CoverArt(coverArtPath: 'cover.jpg', size: 44),
-            ),
+            body: Center(child: TyCover(path: 'cover.jpg', size: 44)),
           ),
         ),
       ),

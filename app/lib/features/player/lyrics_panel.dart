@@ -3,14 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../data/db/database.dart';
+import '../../design/components/lyrics_view.dart';
 import '../../playback/playback_snapshot.dart';
 import '../shared/current_track.dart';
 import 'lrc_parser.dart';
 
-/// 歌词面板：按播放进度高亮当前行并自动滚动。
+/// 歌词面板（`DESIGN.md` §6.3 `TyLyricsView` 的数据接线）。
 ///
-/// 纯文本歌词（没有时间轴）退化为可滚动文本；没有歌词时给一个"抓取"按钮，
-/// 直接复用 M3 的富化服务（QQ 音乐 / LRCLIB / 网易云管道）。
+/// 这一层只管三件事：按进度算当前行、没有歌词时触发一次抓取、把行数据交给
+/// `TyLyricsView` 渲染（舞台右栏、`/lyrics` 整页、检查器共用同一份）。
 class LyricsPanel extends ConsumerStatefulWidget {
   const LyricsPanel({super.key});
 
@@ -19,11 +20,7 @@ class LyricsPanel extends ConsumerStatefulWidget {
 }
 
 class _LyricsPanelState extends ConsumerState<LyricsPanel> {
-  final ScrollController _scrollController = ScrollController();
-
-  int _lastActiveIndex = -1;
-
-  /// 已解析的歌词文本与结果：面板每个 tick 都要按进度重算高亮，
+  /// 已解析的歌词文本与结果：每个 tick 都要按进度重算高亮，
   /// 缓存下来免得每 tick 重新解析整份 LRC。
   String? _parsedLyrics;
 
@@ -32,67 +29,44 @@ class _LyricsPanelState extends ConsumerState<LyricsPanel> {
   bool _fetching = false;
 
   @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     // 曲目来自当前播放身份（换曲才变），进度单独订阅：
-    // 这样进度 tick 只重建歌词行高亮，不会连带重建整张快照依赖。
+    // 进度 tick 只重建歌词行高亮，不会连带重建整张快照依赖。
     final Track? track = ref.watch(currentTrackProvider);
     final Duration position = ref.watch(
       playbackProvider.select((PlaybackSnapshot snapshot) => snapshot.position),
     );
 
     if (track == null) {
-      return const _LyricsHint('未在播放');
-    }
-
-    final LrcDocument document = _documentFor(track.lyrics);
-    if (document.isEmpty) {
-      return _LyricsHint(
-        '暂无歌词',
-        action: FilledButton.tonal(
-          onPressed: _fetching ? null : () => _fetchLyrics(track),
-          child: Text(_fetching ? '抓取中…' : '抓取歌词'),
+      // 队列由外部设置（直链 / 调试入口）时没有曲库行：这时候「未在播放」是错的，
+      // 该说的是「这首歌取不到歌词」。真的没在播放才说没在播放。
+      final bool playingSomething = ref.watch(
+        currentTrackRefProvider.select(
+          (CurrentTrackRef value) => value.item != null,
         ),
+      );
+      return TyLyricsView(
+        lines: const <TyLyricLine>[],
+        emptyTitle: playingSomething ? '这首没有歌词' : '未在播放',
+        emptyDescription: playingSomething ? '曲库外的曲目拿不到歌词信息' : '从曲库中选一首歌开始播放',
       );
     }
 
-    final int active = document.isSynced ? document.indexAt(position) : -1;
-    if (active != _lastActiveIndex && active >= 0) {
-      _lastActiveIndex = active;
-      // 面板被侧栏收起或切回封面时整棵子树已被移除，此时既没有滚动控制器
-      // 也不该再排滚动；`mounted` 与 `_scrollTo` 的挂载检查各挡一层。
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _scrollTo(active);
-        }
-      });
-    }
-
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-      itemCount: document.lines.length,
-      itemBuilder: (BuildContext context, int lineIndex) {
-        final LrcLine line = document.lines[lineIndex];
-        final bool isActive = lineIndex == active;
-        final ColorScheme scheme = Theme.of(context).colorScheme;
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 180),
-            style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                  color: isActive ? scheme.primary : scheme.onSurfaceVariant,
-                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
-                ),
-            child: Text(line.text.isEmpty ? '♪' : line.text),
-          ),
-        );
-      },
+    final LrcDocument document = _documentFor(track.lyrics);
+    return TyLyricsView(
+      lines: <TyLyricLine>[
+        for (final LrcLine line in document.lines)
+          TyLyricLine(time: line.time, text: line.text),
+      ],
+      activeIndex: document.isSynced ? document.indexAt(position) : null,
+      onLineTap: document.isSynced
+          ? (TyLyricLine line) =>
+                ref.read(playbackProvider.notifier).seek(line.time)
+          : null,
+      onRematch: _fetching ? null : () => _fetchLyrics(track),
+      rematchLabel: _fetching ? '抓取中…' : '抓取歌词',
+      emptyTitle: '未找到歌词',
+      emptyDescription: '可以按歌名与歌手在 LRCLIB / 网易云 / QQ 音乐里重新匹配',
     );
   }
 
@@ -102,22 +76,7 @@ class _LyricsPanelState extends ConsumerState<LyricsPanel> {
       return _parsedDocument!;
     }
     _parsedLyrics = lyrics;
-    _lastActiveIndex = -1;
     return _parsedDocument = LrcParser.parse(lyrics);
-  }
-
-  void _scrollTo(int index) {
-    // 面板不可见时没有挂载的滚动视图，自动滚动就到此为止。
-    if (!_scrollController.hasClients) {
-      return;
-    }
-    // 每行约 44px（正文 + 内边距），把当前行滚到视口 1/3 处。
-    final double target = (index * 44.0) - 120;
-    _scrollController.animateTo(
-      target.clamp(0, _scrollController.position.maxScrollExtent),
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutCubic,
-    );
   }
 
   Future<void> _fetchLyrics(Track track) async {
@@ -130,31 +89,5 @@ class _LyricsPanelState extends ConsumerState<LyricsPanel> {
         setState(() => _fetching = false);
       }
     }
-  }
-}
-
-class _LyricsHint extends StatelessWidget {
-  const _LyricsHint(this.text, {this.action});
-
-  final String text;
-
-  final Widget? action;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          Text(
-            text,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-          ),
-          if (action != null) ...<Widget>[const SizedBox(height: 12), action!],
-        ],
-      ),
-    );
   }
 }

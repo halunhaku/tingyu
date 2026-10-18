@@ -2,23 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../app/playback_controller.dart';
 import '../../app/providers.dart';
 import '../../data/db/database.dart';
+import '../../design/components/buttons.dart';
+import '../../design/components/transport.dart';
+import '../../design/layout/form_factor.dart';
+import '../../design/tokens/metrics.dart';
 import '../../playback/playback_item.dart';
 import '../../playback/playback_snapshot.dart';
-import '../shared/cover_art.dart';
 import '../shared/current_track.dart';
-import '../shared/format.dart';
-import 'seek_bar.dart';
+import '../shared/track_actions.dart';
 
-/// 底部悬浮播放条（对齐旧版 `MacOSNowPlayingToolbar` 的紧凑形态）。
+/// 底部传输条（`DESIGN.md` §6.3）。
 ///
-/// 展示的元数据取自库里的曲目行（抓取富化后会即时更新），而不是播放条目里的快照。
-/// 窄窗口下按宽度逐级收敛：先去掉音量，再去掉进度条与时间，避免任何溢出。
+/// - 队列为空时整条收起（不留「未在播放」占位）；
+/// - 左：封面 56 + 曲名/艺术家（点击进舞台）+ ♥；中：传输键 + 进度行；
+///   右：歌词 / 队列 / 音量；
+/// - 失败时整条替换为 `TyErrorView` 内联形态，而不是静默停住。
 ///
-/// 这一层只订阅"当前是哪一首"：进度 tick 不再重建封面与标题（重建封面就可能重解图片），
-/// 播放键、进度条、音量各自订阅自己那几项。
+/// 订阅口径：这一层只看「当前是哪一首」与「有没有队列」；进度 tick 由
+/// `TySeekBar` 自己订阅，播放键、音量各自订阅自己那一项。
 class PlayerBar extends ConsumerWidget {
   const PlayerBar({super.key});
 
@@ -26,14 +29,21 @@ class PlayerBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final CurrentTrackRef current = ref.watch(currentTrackRefProvider);
     final Track? track = ref.watch(currentTrackProvider);
-    final PlaybackController controller = ref.read(playbackProvider.notifier);
-    final ColorScheme scheme = Theme.of(context).colorScheme;
-
-    // 队列由外部设置时没有 id 映射，用引擎条目兜底。
+    // 只订阅「有没有队列」与「有没有失败」：进度 tick 不该重建整条播放条
+    // （重建一次封面就可能重解一次图片）。
+    final ({bool hasQueue, String? error}) state = ref.watch(
+      playbackProvider.select(
+        (PlaybackSnapshot snapshot) => (
+          hasQueue: snapshot.processing != PlaybackProcessing.idle,
+          error: snapshot.failure?.message,
+        ),
+      ),
+    );
+    final bool hasQueue = state.hasQueue;
     final PlaybackItem? item = current.item;
     final bool hasTrack = track != null || item != null;
-    final String title = track?.title ?? item?.title ?? '未在播放';
-    final String artist = track?.artist ?? item?.artist ?? '';
+
+    // 队列由外部设置时没有曲库 id 映射，用引擎条目兜底。
     final Uri? artUri = item?.artUri;
     final String? remoteArt =
         (artUri != null &&
@@ -42,152 +52,136 @@ class PlayerBar extends ConsumerWidget {
         : null;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: Material(
-        elevation: 6,
-        borderRadius: BorderRadius.circular(12),
-        color: scheme.surfaceContainerHigh,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              final double width = constraints.maxWidth;
-              final bool showProgress = width >= 560;
-              final bool showVolume = width >= 780;
-              final bool showFullTitles = width >= 640;
-
-              return Row(
-                children: <Widget>[
-                  CoverArt(
-                    coverArtPath: track?.coverArtPath,
-                    coverArtUrl: track?.coverArtUrl ?? remoteArt,
-                    size: 44,
-                    radius: 8,
-                  ),
-                  const SizedBox(width: 10),
-                  ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: showFullTitles ? 200 : 110,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                        if (showFullTitles)
-                          Text(
-                            artist,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: scheme.onSurfaceVariant),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    tooltip: '上一首',
-                    icon: const Icon(Icons.skip_previous),
-                    onPressed: hasTrack ? controller.previous : null,
-                  ),
-                  _PlayPauseButton(enabled: hasTrack),
-                  IconButton(
-                    tooltip: '下一首',
-                    icon: const Icon(Icons.skip_next),
-                    onPressed: hasTrack ? controller.next : null,
-                  ),
-                  if (showProgress) ...<Widget>[
-                    const SizedBox(width: 4),
-                    Expanded(child: _ProgressBar(enabled: hasTrack)),
-                  ] else
-                    const Spacer(),
-                  const SizedBox(width: 8),
-                  if (showVolume)
-                    const Tooltip(
-                      message: '音量',
-                      child: SizedBox(width: 92, child: _VolumeSlider()),
-                    ),
-                  IconButton(
-                    tooltip: '正在播放',
-                    icon: const Icon(Icons.open_in_full),
-                    onPressed: hasTrack
-                        ? () => context.push('/now-playing')
-                        : null,
-                  ),
-                ],
-              );
-            },
+      padding: EdgeInsets.fromLTRB(TySpace.x16, 0, TySpace.x16, TySpace.x12),
+      child: TyTransportBar(
+        visible: hasQueue && hasTrack,
+        coverPath: track?.coverArtPath,
+        coverUrl: track?.coverArtUrl ?? remoteArt,
+        coverSeed: track?.album ?? item?.title ?? 'tingyu',
+        title: track?.title ?? item?.title ?? '',
+        artist: track?.artist ?? item?.artist ?? '',
+        favorite: track?.isFavorite ?? false,
+        onToggleFavorite: track == null
+            ? null
+            : () => toggleTrackFavorite(ref, track),
+        onOpenStage: () => context.push('/stage'),
+        error: state.error == null ? null : '播放失败',
+        errorDetail: state.error,
+        onRetry: () => ref.read(playbackProvider.notifier).togglePlayPause(),
+        transport: const _TransportRow(),
+        progress: const _Progress(),
+        actions: <Widget>[
+          const _StageAction(
+            icon: Icons.lyrics_outlined,
+            tooltip: '歌词',
+            tab: 'lyrics',
           ),
-        ),
+          const _StageAction(
+            icon: Icons.queue_music_outlined,
+            tooltip: '播放队列',
+            tab: 'queue',
+          ),
+          const _Volume(),
+        ],
       ),
     );
   }
 }
 
-/// 播放/暂停键：单独订阅 `playing`，进度 tick 与音量都不会重建它。
-class _PlayPauseButton extends ConsumerWidget {
-  const _PlayPauseButton({required this.enabled});
-
-  final bool enabled;
+/// 传输键：单独订阅 `playing` 与随机/循环状态。
+class _TransportRow extends ConsumerWidget {
+  const _TransportRow();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final bool playing = ref.watch(
-      playbackProvider.select((PlaybackSnapshot snapshot) => snapshot.playing),
-    );
-    return IconButton(
-      tooltip: playing ? '暂停' : '播放',
-      icon: Icon(
-        playing ? Icons.pause_circle_filled : Icons.play_circle_filled,
-        size: 34,
-      ),
-      onPressed: enabled
-          ? ref.read(playbackProvider.notifier).togglePlayPause
-          : null,
-    );
-  }
-}
-
-/// 进度条：单独订阅 position/duration。
-///
-/// 也是唯一会随进度 tick 重建的部分；拖动只在松手时 seek 一次（见 [SeekBar]）。
-class _ProgressBar extends ConsumerWidget {
-  const _ProgressBar({required this.enabled});
-
-  /// 有曲目才允许拖动（无曲目时进度条只是摆设）。
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final ({Duration position, Duration duration}) progress = ref.watch(
+    final ({
+      bool playing,
+      PlaybackProcessing processing,
+      PlayOrder playOrder,
+      PlaybackRepeatMode repeatMode,
+    })
+    snapshot = ref.watch(
       playbackProvider.select(
-        (PlaybackSnapshot snapshot) => (
-          position: snapshot.position,
-          duration: snapshot.duration,
+        (PlaybackSnapshot value) => (
+          playing: value.playing,
+          processing: value.processing,
+          playOrder: value.playOrder,
+          repeatMode: value.repeatMode,
         ),
       ),
     );
-    return SeekBar(
+    final bool ready = snapshot.processing != PlaybackProcessing.idle;
+    return TyTransportRow(
+      playing: snapshot.playing,
+      loading: snapshot.processing == PlaybackProcessing.loading,
+      onPlayPause: ready
+          ? () => ref.read(playbackProvider.notifier).togglePlayPause()
+          : null,
+      onPrevious: ready
+          ? () => ref.read(playbackProvider.notifier).previous()
+          : null,
+      onNext: ready ? () => ref.read(playbackProvider.notifier).next() : null,
+      shuffled: snapshot.playOrder == PlayOrder.shuffle,
+      onToggleShuffle: ready
+          ? () => ref.read(playbackProvider.notifier).toggleShuffle()
+          : null,
+      repeatActive: snapshot.repeatMode != PlaybackRepeatMode.off,
+      repeatIcon: switch (snapshot.repeatMode) {
+        PlaybackRepeatMode.one => Icons.repeat_one_rounded,
+        _ => Icons.repeat_rounded,
+      },
+      repeatTooltip: switch (snapshot.repeatMode) {
+        PlaybackRepeatMode.one => '单曲循环',
+        PlaybackRepeatMode.off => '不循环',
+        _ => '列表循环',
+      },
+      onCycleRepeat: ready
+          ? () => ref.read(playbackProvider.notifier).cycleRepeatMode()
+          : null,
+      sideIconSize: TyPlayerSize.barSideIcon,
+      keyIconSize: TyPlayerSize.barKeyIcon,
+      playSize: TyPlayerSize.barPlay,
+    );
+  }
+}
+
+/// 进度行：单独订阅 position/duration/buffered（唯一随 tick 重建的部分）。
+class _Progress extends ConsumerWidget {
+  const _Progress();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ({Duration position, Duration duration, Duration buffered}) progress =
+        ref.watch(
+          playbackProvider.select(
+            (PlaybackSnapshot snapshot) => (
+              position: snapshot.position,
+              duration: snapshot.duration,
+              buffered: snapshot.buffered,
+            ),
+          ),
+        );
+    final bool ready = ref.watch(
+      playbackProvider.select(
+        (PlaybackSnapshot snapshot) =>
+            snapshot.processing != PlaybackProcessing.idle,
+      ),
+    );
+    return TySeekBar(
       position: progress.position,
       duration: progress.duration,
-      // 时长未知时滑块没有可信的刻度，仍保持播放条原先的禁用策略。
-      enabled: enabled && progress.duration > Duration.zero,
-      // 播放条沿用 `--:--` 的时长口径，与正在播放页的 `0:00` 各自保留原样。
-      format: formatDuration,
+      buffered: progress.buffered,
+      // 时长未知时滑块没有可信的刻度。
+      enabled: ready && progress.duration > Duration.zero,
+      hitHeight: TyPlayerSize.barSeekHitHeight,
       onSeek: ref.read(playbackProvider.notifier).seek,
     );
   }
 }
 
-/// 音量条：单独订阅 `volume`，它与进度互不牵连。
-class _VolumeSlider extends ConsumerWidget {
-  const _VolumeSlider();
+/// 音量：单独订阅 `volume`，与进度互不牵连。
+class _Volume extends ConsumerWidget {
+  const _Volume();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -196,9 +190,36 @@ class _VolumeSlider extends ConsumerWidget {
         (PlaybackSnapshot snapshot) => snapshot.volume.clamp(0, 1).toDouble(),
       ),
     );
-    return Slider(
-      value: volume,
+    return TyVolumeControl(
+      volume: volume,
       onChanged: ref.read(playbackProvider.notifier).setVolume,
+    );
+  }
+}
+
+/// 右侧「歌词 / 队列」：桌面打开检查器式面板，其余情况退回独立页。
+class _StageAction extends StatelessWidget {
+  const _StageAction({
+    required this.icon,
+    required this.tooltip,
+    required this.tab,
+  });
+
+  final IconData icon;
+  final String tooltip;
+
+  /// `/stage?tab=lyrics` 或 `queue`。
+  final String tab;
+
+  @override
+  Widget build(BuildContext context) {
+    return TyIconAction(
+      icon: icon,
+      semanticLabel: tooltip,
+      tooltip: tooltip,
+      onPressed: () => context.push(
+        context.formFactor.isCompact ? '/$tab' : '/stage?tab=$tab',
+      ),
     );
   }
 }
