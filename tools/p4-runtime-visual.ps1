@@ -208,10 +208,22 @@ foreach ($case in @($config.cases)) {
       '-OutputJson'
       $comparisonJson
     )
-    $compareOutput = & $pwsh @compareArguments 2>&1
-    $compareOutput | Set-Content -Encoding UTF8 $compareLog
+    $compareOutput = @(& $pwsh @compareArguments 2>&1)
     $compareExitCode = $LASTEXITCODE
     $comparison = Get-Content -LiteralPath $comparisonJson -Raw | ConvertFrom-Json
+    $compareLogLines = if ($compareOutput.Count -gt 0) {
+      $compareOutput
+    } else {
+      @(
+        'Visual comparison passed.'
+        "approvedSha256=$($comparison.approvedSha256)"
+        "actualSha256=$($comparison.actualSha256)"
+        "pixelExact=$($comparison.pixelExact)"
+        "byteExact=$($comparison.byteExact)"
+        "differingPixels=$($comparison.differingPixels)"
+      )
+    }
+    $compareLogLines | Set-Content -Encoding UTF8 $compareLog
     $casePassed = $compareExitCode -eq 0 -and [bool]$comparison.pixelExact
     if (!$casePassed) {
       $overallPassed = $false
