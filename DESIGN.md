@@ -1,5 +1,7 @@
 # Tingyu Design System (Phase 3)
 
+> 2026-10-18 分页迁移说明：用户已批准 [声档P2 v0.1](docs/ui-redesign/02-design-system.md)（批准记录 `docs/ui-redesign/decision-c.json`）。本轮仅全屏播放与直接关联控件采用新规范；其他页面继续遵循下文。舞台通过现有TyTheme/TyColors的局部作用域接入声档令牌，不替换业务架构或提前改变全局页面。Golden基准仍须单独明确批准后更新。
+
 > 适用版本:Tingyu 3.0(`app/`)。
 > 本文是**实现契约**:Phase 4/5 的任何 UI 代码必须只用本文定义的 token 与组件,不得出现魔法常量、硬编码颜色、平台分支布局。
 > 上游依据:`docs/UI_UX_AUDIT.md`(问题编号)、`docs/UX_REDESIGN.md`(结构决策)。

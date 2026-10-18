@@ -103,8 +103,15 @@ for key, removal in (("all", None), ("withoutAlbum", "album"), ("withoutAlbumArt
 for asset in decision["assets"]:
     if hashlib.sha256((root / asset["path"]).read_bytes()).hexdigest().upper() != asset["sha256"]:
         errors.append(f"selected asset changed: {asset['path']}")
-if not decision["directionApproved"] or decision["designSystemApproved"]:
-    errors.append("approval scope must remain direction-only until user confirms P2")
+if not decision["directionApproved"]:
+    errors.append("direction approval is missing")
+if decision["designSystemApproved"]:
+    approval = decision.get("designSystemApproval", {})
+    if approval.get("userMessage") != "确认" or approval.get("goldenUpdateApproved") is not False:
+        errors.append("P2 approval must be explicit and must not imply Golden update permission")
+    token_hash = hashlib.sha256((root / "tokens/voice-archive.v0.1.json").read_bytes()).hexdigest().upper()
+    if approval.get("tokensSha256") != token_hash:
+        errors.append("approved token specification has changed")
 if tokens["breakpoints"] != {"compactMaxExclusive": 640, "mediumMaxExclusive": 1024}:
     errors.append("breakpoints differ from preserved FormFactor")
 for path in (root / "02-design-system.md", root / "01-directions.md"):

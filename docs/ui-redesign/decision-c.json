@@ -3,8 +3,8 @@
   "userSelection": "c",
   "direction": "C-声档",
   "directionApproved": true,
-  "designSystemApproved": false,
-  "approvalScope": "选择P1的C方向；不扩大解释为精确像素、Dark整页、新规格或Golden更新已获批准",
+  "designSystemApproved": true,
+  "approvalScope": "C声档P2 v0.1及深色配色、手机筛选/弹性行高、舞台尺寸/短窗规则获用户确认；当前实施仅全屏播放及直接关联控件；不授权自动更新Golden。",
   "sourceCommit": "d724d20194359ce2a01a1e640792887f6f4a5d09",
   "assets": [
     {
@@ -24,9 +24,12 @@
       "sha256": "B69E96F5CAE9A3002F6BF91681E44A0F112924EDD5B7DD2CA41557058D891267"
     }
   ],
-  "pendingImportantDetails": [
-    "Dark语义色板与页面视觉",
-    "手机来源筛选布局和弹性行高",
-    "舞台240/360封面与短窗口降级规则"
-  ]
+  "pendingImportantDetails": [],
+  "designSystemApproval": {
+    "date": "2026-10-18",
+    "userMessage": "确认",
+    "specCommit": "c5dbe18",
+    "tokensSha256": "0FCBE2D32CF707AA0B7DAF3E7496E7C5C2867CE70874B54099FBE17B66FD83C9",
+    "goldenUpdateApproved": false
+  }
 }
