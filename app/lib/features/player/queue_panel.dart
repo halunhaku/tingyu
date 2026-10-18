@@ -24,7 +24,14 @@ import '../../playback/playback_snapshot.dart';
 /// 能力边界（§4.1）：引擎只有 `setQueue` 与 `addToQueue`，没有插入 / 移除 / 重排，
 /// 所以这里**不提供**这些控件——只做读、跳转。
 class QueuePanel extends ConsumerWidget {
-  const QueuePanel({super.key});
+  const QueuePanel({super.key, this.grouped = false, this.preview = false});
+
+  /// Show the current item and future items as separate sections for the stage.
+  /// The standalone queue page keeps its original complete-list presentation.
+  final bool grouped;
+
+  /// Compact grouped preview: show only the next item for the player stage.
+  final bool preview;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -45,6 +52,83 @@ class QueuePanel extends ConsumerWidget {
         ? source.length
         : (showIds ? ids.length : items.length);
     final int currentIndex = view.currentIndex;
+
+    Widget rowAt(int index) {
+      final String? trackId = showSource
+          ? source[index].id
+          : (showIds ? ids[index] : null);
+      return _QueueRow(
+        track: trackId == null ? null : tracksById[trackId],
+        item: showSource || showIds ? null : items[index],
+        number: index + 1,
+        isCurrent: index == currentIndex,
+        isPlaying: index == currentIndex && playing,
+        grouped: grouped,
+        onTap: () => ref.read(playbackProvider.notifier).playAt(index),
+      );
+    }
+
+    if (grouped && preview) {
+      final bool hasNext = currentIndex >= 0 && currentIndex + 1 < count;
+      return ColoredBox(
+        color: ty.colors.surface,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            TySpace.x16,
+            TySpace.x8,
+            TySpace.x16,
+            TySpace.x8,
+          ),
+          children: <Widget>[
+            const _QueueGroupHeading(title: '接下来'),
+            if (hasNext)
+              rowAt(currentIndex + 1)
+            else
+              const _QueueGroupEmpty(title: '暂无下一首'),
+          ],
+        ),
+      );
+    }
+
+    if (grouped) {
+      final bool hasCurrent = currentIndex >= 0 && currentIndex < count;
+      final int nextCount = hasCurrent ? count - currentIndex - 1 : 0;
+      // Header + current row/empty state + header + next rows/empty state.
+      final int itemCount = 4 + (nextCount > 0 ? nextCount - 1 : 0);
+
+      return ColoredBox(
+        color: ty.colors.surface,
+        child: ListView.builder(
+          padding: const EdgeInsets.fromLTRB(
+            TySpace.x16,
+            TySpace.x12,
+            TySpace.x16,
+            TySpace.x16,
+          ),
+          itemCount: itemCount,
+          itemBuilder: (BuildContext context, int listIndex) {
+            if (listIndex == 0) {
+              return const _QueueGroupHeading(title: '当前播放');
+            }
+            if (listIndex == 1) {
+              return hasCurrent
+                  ? rowAt(currentIndex)
+                  : const _QueueGroupEmpty(title: '暂无当前播放');
+            }
+            if (listIndex == 2) {
+              return Padding(
+                padding: const EdgeInsets.only(top: TySpace.x16),
+                child: _QueueGroupHeading(title: '接下来', count: nextCount),
+              );
+            }
+            if (nextCount == 0) {
+              return const _QueueGroupEmpty(title: '暂无下一首');
+            }
+            return rowAt(currentIndex + listIndex - 2);
+          },
+        ),
+      );
+    }
 
     return ColoredBox(
       color: ty.colors.surface,
@@ -74,18 +158,7 @@ class QueuePanel extends ConsumerWidget {
                     itemExtent: context.metrics.rowHeight,
                     itemCount: count,
                     itemBuilder: (BuildContext context, int index) {
-                      final String? trackId = showSource
-                          ? source[index].id
-                          : (showIds ? ids[index] : null);
-                      return _QueueRow(
-                        track: trackId == null ? null : tracksById[trackId],
-                        item: showSource || showIds ? null : items[index],
-                        number: index + 1,
-                        isCurrent: index == currentIndex,
-                        isPlaying: index == currentIndex && playing,
-                        onTap: () =>
-                            ref.read(playbackProvider.notifier).playAt(index),
-                      );
+                      return rowAt(index);
                     },
                   ),
           ),
@@ -93,6 +166,57 @@ class QueuePanel extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _QueueGroupHeading extends StatelessWidget {
+  const _QueueGroupHeading({required this.title, this.count});
+
+  final String title;
+  final int? count;
+
+  @override
+  Widget build(BuildContext context) {
+    final TyTokens ty = context.ty;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: TySpace.x8),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Text(
+              title,
+              style: ty.typography.titleM.copyWith(
+                color: ty.colors.textPrimary,
+              ),
+            ),
+          ),
+          if (count != null)
+            Text(
+              '$count 首',
+              style: ty.typography.bodyS.copyWith(
+                color: ty.colors.textSecondary,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QueueGroupEmpty extends StatelessWidget {
+  const _QueueGroupEmpty({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: TySpace.x12),
+    child: Text(
+      title,
+      style: context.ty.typography.bodyS.copyWith(
+        color: context.ty.colors.textSecondary,
+      ),
+    ),
+  );
 }
 
 /// 队列行要展示的东西：三份平行队列数据 + 正在播放的下标。
@@ -141,6 +265,7 @@ class _QueueRow extends StatelessWidget {
     required this.number,
     required this.isCurrent,
     required this.isPlaying,
+    this.grouped = false,
     required this.onTap,
   });
 
@@ -156,6 +281,8 @@ class _QueueRow extends StatelessWidget {
   final bool isCurrent;
 
   final bool isPlaying;
+
+  final bool grouped;
 
   final VoidCallback onTap;
 
@@ -218,11 +345,15 @@ class _QueueRow extends StatelessWidget {
                         children: <Widget>[
                           Text(
                             title,
-                            maxLines: 1,
+                            maxLines: grouped ? 2 : 1,
                             overflow: TextOverflow.ellipsis,
                             style: ty.typography.bodyM.copyWith(
                               color: isCurrent
-                                  ? ty.colors.accent
+                                  ? (grouped &&
+                                            Theme.of(context).brightness ==
+                                                Brightness.light
+                                        ? ty.colors.accentPressed
+                                        : ty.colors.accent)
                                   : ty.colors.textPrimary,
                               fontWeight: isCurrent
                                   ? FontWeight.w600
@@ -249,10 +380,14 @@ class _QueueRow extends StatelessWidget {
                       ),
                       const SizedBox(width: TySpace.x4),
                     ],
-                    Text(
-                      track == null ? '--:--' : formatSeconds(track.duration),
-                      style: ty.typography.numericS.copyWith(
-                        color: ty.colors.textSecondary,
+                    SizedBox(
+                      width: grouped ? _groupedDurationColumnWidth : null,
+                      child: Text(
+                        track == null ? '--:--' : formatSeconds(track.duration),
+                        textAlign: TextAlign.right,
+                        style: ty.typography.numericS.copyWith(
+                          color: ty.colors.textSecondary,
+                        ),
                       ),
                     ),
                   ],
@@ -263,3 +398,5 @@ class _QueueRow extends StatelessWidget {
     );
   }
 }
+
+const double _groupedDurationColumnWidth = 56;

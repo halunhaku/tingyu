@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,10 +7,13 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tingyu/app/playback_controller.dart';
 import 'package:tingyu/app/providers.dart';
+import 'package:tingyu/data/db/database.dart';
+import 'package:tingyu/design/components/cover.dart';
 import 'package:tingyu/design/components/player_stage.dart';
 import 'package:tingyu/design/components/transport.dart';
 import 'package:tingyu/design/layout/form_factor.dart';
 import 'package:tingyu/design/theme.dart';
+import 'package:tingyu/design/tokens/metrics.dart';
 import 'package:tingyu/features/player/now_playing_page.dart';
 import 'package:tingyu/features/shared/current_track.dart';
 import 'package:tingyu/playback/playback_engine.dart';
@@ -67,6 +72,7 @@ Future<void> pumpPage(
   WidgetTester tester, {
   required Size size,
   double bottomPadding = 0,
+  Track? displayedTrack,
 }) async {
   await tester.binding.setSurfaceSize(size);
   addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -75,19 +81,28 @@ Future<void> pumpPage(
     ProviderScope(
       overrides: <Override>[
         formFactorProvider.overrideWithValue(formFactor),
+        // compact 高手机会挂载队列预览；用内存流隔离 Drift 查询及其关闭定时器。
+        allTracksProvider.overrideWith(
+          (Ref ref) => Stream<List<Track>>.value(
+            displayedTrack == null ? const <Track>[] : <Track>[displayedTrack],
+          ),
+        ),
+        if (displayedTrack != null)
+          trackByIdProvider(displayedTrack.id)
+              .overrideWith((Ref ref) => Stream<Track?>.value(displayedTrack)),
         audioHandlerProvider.overrideWithValue(
           TingyuAudioHandler(_SilentEngine()),
         ),
         // 有「正在播放的那一条」才会渲染出封面舞台与传输行（否则是空态）。
         currentTrackRefProvider.overrideWithValue((
-          trackId: null,
+          trackId: displayedTrack?.id,
           item: PlaybackItem.fromUri(
             Uri.file('/tmp/tingyu-layout-test.mp3'),
             title: '测试曲目',
             artist: '测试歌手',
           ),
         )),
-        currentTrackProvider.overrideWithValue(null),
+        currentTrackProvider.overrideWithValue(displayedTrack),
         playbackProvider.overrideWith(() => _FakePlayback()),
       ],
       child: MaterialApp.router(
@@ -131,11 +146,14 @@ void _stageLayoutCoverage() {
     final Rect transport = tester.getRect(find.byType(TyTransportRow));
     final double gapToBottom = 844 - transport.bottom;
 
-    // 传输行下面只剩次级行（♥/歌词/队列/音量）与固定留白（24 固定 + 20 安全区），
-    // 所以 96 是宽松上限；关键是它不再浮在屏幕中间。
+    // 高手机在传输行后增加批准的168dp队列预览槽；再加槽前16、底部24与20安全区。
+    // 断言覆盖这段明确布局，仍要求传输行之后只出现这一块预览和固定留白。
+    expect(find.text('接下来'), findsOneWidget);
+    final double approvedPreviewAndInsets =
+        TyPlayerStageSize.compactPaneHeight + TySpace.x16 + TySpace.x24 + 20;
     expect(
       gapToBottom,
-      lessThanOrEqualTo(120),
+      lessThanOrEqualTo(approvedPreviewAndInsets + 1),
       reason: '传输行应当贴在下缘，实测距屏幕底 ${gapToBottom.toStringAsFixed(1)}dp',
     );
     expect(
@@ -151,6 +169,40 @@ void _stageLayoutCoverage() {
     expect(tester.takeException(), isNull);
     // 传输行仍在树里（滚动区域内），只是不需要靠弹性间隔撑开。
     expect(find.byType(TyTransportRow), findsOneWidget);
+  });
+
+  testWidgets('1265×683桌面常规字号首屏完整显示封面、标题、歌手和专辑', (WidgetTester tester) async {
+    final Track track = Track(
+      id: 'stage-layout-track',
+      sourceId: 'stage-layout-source',
+      title: '海风经过',
+      artist: '林间回声',
+      album: '潮汐手记',
+      duration: 252,
+      fileFormat: 'mp3',
+      filePathOrUrl: '/preview/stage-layout.mp3',
+      fileSize: 0,
+      isFavorite: false,
+      dateAdded: DateTime.utc(2026, 10, 18),
+      playCount: 0,
+    );
+    await pumpPage(tester, size: const Size(1265, 683), displayedTrack: track);
+
+    final Rect scrollViewport = tester.getRect(
+      find.byType(SingleChildScrollView).first,
+    );
+    final List<Finder> metadata = <Finder>[
+      find.byType(TyCover),
+      find.text(track.title),
+      find.text(track.artist),
+      find.text(track.album),
+    ];
+    for (final Finder finder in metadata) {
+      final Rect rect = tester.getRect(finder);
+      expect(rect.top, greaterThanOrEqualTo(scrollViewport.top));
+      expect(rect.bottom, lessThanOrEqualTo(scrollViewport.bottom));
+    }
+    expect(tester.takeException(), isNull);
   });
 }
 

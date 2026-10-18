@@ -28,7 +28,15 @@ abstract final class TyStageBackground {
 /// - 漂移只插值渐变起止点，24s 一个周期；`disableAnimations` 时停在固定相位；
 /// - 动画层与内容各一个 [RepaintBoundary]：每帧只重绘这层渐变，不重建页面内容。
 class FluidBackground extends ConsumerStatefulWidget {
-  const FluidBackground({super.key, required this.child, this.coverPath});
+  const FluidBackground({
+    super.key,
+    required this.child,
+    this.coverPath,
+    this.animate = true,
+  });
+
+  /// 声档舞台保留取色偏好，但不主动漂移背景。
+  final bool animate;
 
   /// 舞台内容；[RepaintBoundary] 隔开，漂移不会触发它重绘。
   final Widget child;
@@ -56,7 +64,7 @@ class _FluidBackgroundState extends ConsumerState<FluidBackground>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (MediaQuery.disableAnimationsOf(context)) {
+    if (!widget.animate || MediaQuery.disableAnimationsOf(context)) {
       _controller.stop();
       _controller.value = _stillPhase;
       return;
@@ -77,7 +85,12 @@ class _FluidBackgroundState extends ConsumerState<FluidBackground>
   /// 换歌时封面路径变了 → provider 换实例，上一首的结果不会涂到这首上
   /// （`DESIGN.md` §2.5 第 7 条「只接受当前曲目的取色结果」）。
   StagePalette _palette(Brightness brightness) {
-    final StagePalette fallback = StagePalette.neutral(brightness);
+    final StagePalette fallback = !widget.animate
+        ? StagePalette(
+            primary: context.ty.colors.canvas,
+            secondary: context.ty.colors.canvas,
+          )
+        : StagePalette.neutral(brightness);
     final bool tint = ref.watch(
       preferencesProvider.select(
         (AsyncValue<PreferencesState> value) =>

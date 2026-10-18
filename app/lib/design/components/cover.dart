@@ -120,7 +120,13 @@ class TyCover extends ConsumerWidget {
       final AsyncValue<File?> file = ref.watch(coverFileProvider(localPath));
       return file.maybeWhen(
         data: (File? resolved) => resolved == null
-            ? _RemoteOrPlaceholder(url: url, size: size, radius: radius, seed: seed, fit: fit)
+            ? _RemoteOrPlaceholder(
+                url: url,
+                size: size,
+                radius: radius,
+                seed: seed,
+                fit: fit,
+              )
             : Image.file(
                 resolved,
                 width: size,
@@ -134,7 +140,13 @@ class TyCover extends ConsumerWidget {
         orElse: () => _Placeholder(size: size, seed: seed),
       );
     }
-    return _RemoteOrPlaceholder(url: url, size: size, radius: radius, seed: seed, fit: fit);
+    return _RemoteOrPlaceholder(
+      url: url,
+      size: size,
+      radius: radius,
+      seed: seed,
+      fit: fit,
+    );
   }
 }
 
@@ -186,7 +198,9 @@ class _Placeholder extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      color: TyCoverPalette.placeholder(seed, ty.brightness),
+      color: seed == null || seed!.isEmpty
+          ? ty.colors.coverPlaceholder
+          : TyCoverPalette.placeholder(seed, ty.brightness),
       alignment: Alignment.center,
       child: Icon(
         Icons.music_note,
@@ -227,7 +241,8 @@ class TyAvatar extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       alignment: Alignment.center,
-      child: child ??
+      child:
+          child ??
           Text(
             (text == null || text.isEmpty) ? '♪' : text.characters.first,
             style: ty.typography.labelM.copyWith(

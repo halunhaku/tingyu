@@ -16,10 +16,11 @@ abstract final class TyTheme {
   static ThemeData build({
     required Brightness brightness,
     TyDensity density = TyDensity.comfortable,
+    TyColors? colors,
   }) {
-    final TyColors c = TyColors.of(brightness);
+    final TyColors c = colors ?? TyColors.of(brightness);
     final TyType type = TyType();
-    final ColorScheme scheme = colorScheme(brightness);
+    final ColorScheme scheme = colorScheme(brightness, colors: c);
     final TyTokens tokens = TyTokens(
       brightness: brightness,
       density: density,
@@ -46,18 +47,13 @@ abstract final class TyTheme {
         c.textTertiary,
       ),
       iconTheme: IconThemeData(color: c.textSecondary, size: TyIconSize.normal),
-      dividerTheme: DividerThemeData(
-        color: c.border,
-        thickness: 1,
-        space: 1,
-      ),
+      dividerTheme: DividerThemeData(color: c.border, thickness: 1, space: 1),
       scrollbarTheme: ScrollbarThemeData(
         thickness: WidgetStateProperty.all<double>(8),
         radius: const Radius.circular(TyRadius.full),
         thumbColor: WidgetStateProperty.resolveWith<Color>(
-          (Set<WidgetState> states) => states.contains(WidgetState.hovered)
-              ? c.borderStrong
-              : c.border,
+          (Set<WidgetState> states) =>
+              states.contains(WidgetState.hovered) ? c.borderStrong : c.border,
         ),
         crossAxisMargin: TySpace.x2,
       ),
@@ -180,14 +176,12 @@ abstract final class TyTheme {
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith<Color>(
-          (Set<WidgetState> states) => states.contains(WidgetState.selected)
-              ? c.onAccent
-              : c.surface,
+          (Set<WidgetState> states) =>
+              states.contains(WidgetState.selected) ? c.onAccent : c.surface,
         ),
         trackColor: WidgetStateProperty.resolveWith<Color>(
-          (Set<WidgetState> states) => states.contains(WidgetState.selected)
-              ? c.accent
-              : c.borderStrong,
+          (Set<WidgetState> states) =>
+              states.contains(WidgetState.selected) ? c.accent : c.borderStrong,
         ),
         trackOutlineColor: WidgetStateProperty.all<Color>(Colors.transparent),
       ),
@@ -205,9 +199,8 @@ abstract final class TyTheme {
       ),
       radioTheme: RadioThemeData(
         fillColor: WidgetStateProperty.resolveWith<Color>(
-          (Set<WidgetState> states) => states.contains(WidgetState.selected)
-              ? c.accent
-              : c.borderStrong,
+          (Set<WidgetState> states) =>
+              states.contains(WidgetState.selected) ? c.accent : c.borderStrong,
         ),
       ),
       sliderTheme: SliderThemeData(
@@ -282,8 +275,8 @@ abstract final class TyTheme {
   }
 
   /// 由 token 派生的 Material `ColorScheme`（中性色不被种子染色）。
-  static ColorScheme colorScheme(Brightness brightness) {
-    final TyColors c = TyColors.of(brightness);
+  static ColorScheme colorScheme(Brightness brightness, {TyColors? colors}) {
+    final TyColors c = colors ?? TyColors.of(brightness);
     final ColorScheme base = ColorScheme.fromSeed(
       seedColor: c.accent,
       brightness: brightness,

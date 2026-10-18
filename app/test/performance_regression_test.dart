@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
@@ -72,11 +74,9 @@ void main() {
     );
   });
 
-  testWidgets('舞台漂移背景：每帧重绘的是背景层，不重建内容与封面', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('声档静态背景：连续帧不重建内容与封面', (WidgetTester tester) async {
     final Track track = goldenTrack('t1', '晴天');
-    // 不冻结动画：漂移与音柱都在跑，正是要观察的场景。
+    // 不全局冻结动画，验证声档停止背景漂移后内容仍不逐帧重建。
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final GoRouter router = GoRouter(
@@ -94,13 +94,16 @@ void main() {
             TingyuAudioHandler(SilentEngine()),
           ),
           autoLibraryEnrichmentProvider.overrideWith((Ref ref) async {}),
+          // 舞台的高手机预览订阅全曲目；使用内存流，避免打开 Drift 查询。
+          allTracksProvider.overrideWith(
+            (Ref ref) => Stream<List<Track>>.value(<Track>[track]),
+          ),
           currentTrackRefProvider.overrideWithValue((
             trackId: track.id,
             item: null,
           )),
-          trackByIdProvider(
-            track.id,
-          ).overrideWithValue(AsyncValue<Track?>.data(track)),
+          trackByIdProvider(track.id)
+              .overrideWithValue(AsyncValue<Track?>.data(track)),
           playbackProvider.overrideWith(
             () => FakePlaybackController(<Track>[track]),
           ),
@@ -109,9 +112,7 @@ void main() {
           theme: TyTheme.build(brightness: Brightness.dark),
           routerConfig: router,
           builder: (BuildContext context, Widget? child) => MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(size: const Size(390, 844)),
+            data: MediaQuery.of(context).copyWith(size: const Size(390, 844)),
             child: TyLayoutScope.forSize(
               const Size(390, 844),
               child: child ?? const SizedBox.shrink(),
@@ -120,7 +121,11 @@ void main() {
         ),
       ),
     );
-    await pumpFrames(tester, frames: 10, step: const Duration(milliseconds: 16));
+    await pumpFrames(
+      tester,
+      frames: 10,
+      step: const Duration(milliseconds: 16),
+    );
 
     final Map<Type, int> rebuilds = <Type, int>{};
     bool counting = true;
@@ -132,21 +137,13 @@ void main() {
     };
     addTearDown(() => debugOnRebuildDirtyWidget = null);
 
-    // 漂移周期 24 秒，这里推进 60 帧 ≈ 1 秒。
+    // 推进 60 帧 ≈ 1 秒，保留封面与舞台内容的零重建约束。
     for (int i = 0; i < 60; i++) {
       await tester.pump(const Duration(milliseconds: 16));
     }
     counting = false;
 
-    expect(
-      rebuilds[TyCover] ?? 0,
-      0,
-      reason: '漂移不该重建封面（重建一次就可能重解图片）',
-    );
-    expect(
-      rebuilds[TyPlayerStage] ?? 0,
-      0,
-      reason: '漂移不该重建舞台内容，它只应重绘背景层',
-    );
+    expect(rebuilds[TyCover] ?? 0, 0, reason: '漂移不该重建封面（重建一次就可能重解图片）');
+    expect(rebuilds[TyPlayerStage] ?? 0, 0, reason: '漂移不该重建舞台内容，它只应重绘背景层');
   });
 }

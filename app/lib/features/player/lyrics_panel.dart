@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../data/db/database.dart';
 import '../../design/components/lyrics_view.dart';
+import '../../design/theme.dart';
+import '../../design/tokens/metrics.dart';
 import '../../playback/playback_snapshot.dart';
 import '../shared/current_track.dart';
 import 'lrc_parser.dart';
@@ -13,7 +15,8 @@ import 'lrc_parser.dart';
 /// 这一层只管三件事：按进度算当前行、没有歌词时触发一次抓取、把行数据交给
 /// `TyLyricsView` 渲染（舞台右栏、`/lyrics` 整页、检查器共用同一份）。
 class LyricsPanel extends ConsumerStatefulWidget {
-  const LyricsPanel({super.key});
+  const LyricsPanel({super.key, this.compact = false});
+  final bool compact;
 
   @override
   ConsumerState<LyricsPanel> createState() => _LyricsPanelState();
@@ -45,6 +48,9 @@ class _LyricsPanelState extends ConsumerState<LyricsPanel> {
           (CurrentTrackRef value) => value.item != null,
         ),
       );
+      if (widget.compact) {
+        return _emptyPreview(context, playingSomething ? '这首没有歌词' : '未在播放');
+      }
       return TyLyricsView(
         lines: const <TyLyricLine>[],
         emptyTitle: playingSomething ? '这首没有歌词' : '未在播放',
@@ -53,6 +59,16 @@ class _LyricsPanelState extends ConsumerState<LyricsPanel> {
     }
 
     final LrcDocument document = _documentFor(track.lyrics);
+    if (widget.compact && document.lines.isEmpty) {
+      return _emptyPreview(
+        context,
+        '未找到歌词',
+        action: TextButton(
+          onPressed: _fetching ? null : () => _fetchLyrics(track),
+          child: Text(_fetching ? '抓取中…' : '抓取歌词'),
+        ),
+      );
+    }
     return TyLyricsView(
       lines: <TyLyricLine>[
         for (final LrcLine line in document.lines)
@@ -69,6 +85,25 @@ class _LyricsPanelState extends ConsumerState<LyricsPanel> {
       emptyDescription: '可以按歌名与歌手在 LRCLIB / 网易云 / QQ 音乐里重新匹配',
     );
   }
+
+  Widget _emptyPreview(BuildContext context, String title, {Widget? action}) =>
+      SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(TySpace.x8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(
+                title,
+                style: context.ty.typography.bodyS.copyWith(
+                  color: context.ty.colors.textSecondary,
+                ),
+              ),
+              ?action,
+            ],
+          ),
+        ),
+      );
 
   /// 解析结果按歌词文本缓存；换曲（或歌词被重新抓取）时连高亮进度一起重置。
   LrcDocument _documentFor(String? lyrics) {

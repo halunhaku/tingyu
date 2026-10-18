@@ -19,17 +19,26 @@ abstract final class TyHeroTags {
 
 /// 舞台几何档位（`DESIGN.md` §3.3 / §6.3 / §7.2）。
 abstract final class TyPlayerStageSize {
+  static const double sheetHeightFactor = 0.8;
+
   /// 右侧 `secondary` 槽宽度（歌词 / 队列）。
   static const double rightPaneWidth = 380;
 
   /// 舞台封面上限 / 下限与高度占比（compact 与桌面各一档）。
   static const double coverMax = 420;
   static const double coverMin = 120;
+  static const double compactCoverPreferred = 240;
+  static const double desktopCoverPreferred = 360;
   static const double compactCoverHeightRatio = 0.42;
-  static const double coverHeightRatio = 0.5;
+  static const double coverHeightRatio = 0.42;
 
   /// 左侧内容列最大宽度（封面 + 控制）。
   static const double contentMaxWidth = 420;
+
+  /// 桌面控制列与右侧内容之间的留白；手机内嵌预览的最低窗口高度。
+  static const double paneGap = TySpace.x48;
+  static const double compactPaneMinWindowHeight = 720;
+  static const double compactPaneHeight = 168;
 
   /// 顶部条高与抓手。
   static const double topBarHeight = TySpace.x48;
@@ -69,6 +78,9 @@ class TyPlayerStage extends StatefulWidget {
     required this.transport,
     this.actions = const <Widget>[],
     this.rightPane,
+    this.compactPane,
+    this.headerActions = const <Widget>[],
+    this.status,
     this.onClose,
     this.onDismiss,
     this.heroTag = TyHeroTags.nowPlayingCover,
@@ -104,6 +116,16 @@ class TyPlayerStage extends StatefulWidget {
 
   /// expanded 的右侧槽；为 null 时单栏。
   final Widget? rightPane;
+
+  /// compact 高手机的单一 tab + 内容预览槽；tab 由宿主包含在同一组件中。
+  /// 组件仅在窗口高度达到 [TyPlayerStageSize.compactPaneMinWindowHeight] 时显示。
+  final Widget? compactPane;
+
+  /// 顶栏右侧动作。
+  final List<Widget> headerActions;
+
+  /// 可选的当前播放状态文案。
+  final Widget? status;
 
   /// 顶部左箭头。
   final VoidCallback? onClose;
@@ -174,11 +196,31 @@ class _TyPlayerStageState extends State<TyPlayerStage> {
             child: twoColumn
                 ? Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: <Widget>[
-                      Expanded(child: _stage(context, formFactor)),
-                      SizedBox(
-                        width: TyPlayerStageSize.rightPaneWidth,
-                        child: widget.rightPane,
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: TySpace.x32,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: <Widget>[
+                            SizedBox(
+                              width: TyPlayerStageSize.contentMaxWidth,
+                              child: _stage(
+                                context,
+                                formFactor,
+                                twoColumn: true,
+                              ),
+                            ),
+                            const SizedBox(width: TyPlayerStageSize.paneGap),
+                            SizedBox(
+                              width: TyPlayerStageSize.rightPaneWidth,
+                              child: widget.rightPane,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   )
@@ -229,8 +271,17 @@ class _TyPlayerStageState extends State<TyPlayerStage> {
                     onPressed: widget.onClose,
                   ),
                 const Spacer(),
+                ...widget.headerActions,
               ],
             ),
+            if (widget.status != null)
+              Align(
+                alignment: Alignment.center,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: TySpace.x64),
+                  child: widget.status,
+                ),
+              ),
             if (_canDrag)
               // 收起手势落在顶部条上：内容本身要能滚动，不与滚动抢手势。
               GestureDetector(
@@ -259,26 +310,37 @@ class _TyPlayerStageState extends State<TyPlayerStage> {
     );
   }
 
-  Widget _stage(BuildContext context, FormFactor formFactor) {
+  Widget _stage(
+    BuildContext context,
+    FormFactor formFactor, {
+    bool twoColumn = false,
+  }) {
     final EdgeInsets padding = MediaQuery.paddingOf(context);
     final double bottomInset = padding.bottom + TySpace.x24;
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        // 封面尺寸（`DESIGN.md` §3.3）：compact 按宽度，桌面按高度的一半，封顶 420。
-        final double raw = formFactor == FormFactor.compact
-            ? math.min(
-                constraints.maxWidth - TySpace.x40,
-                constraints.maxHeight *
-                    TyPlayerStageSize.compactCoverHeightRatio,
-              )
-            : math.min(
-                TyPlayerStageSize.coverMax,
-                constraints.maxHeight * TyPlayerStageSize.coverHeightRatio,
-              );
-        final double coverSize = raw
-            .clamp(TyPlayerStageSize.coverMin, TyPlayerStageSize.coverMax)
-            .toDouble();
-        final double horizontal = formFactor == FormFactor.compact
+        // 优先桌面 360 / 手机 240；可用高度不足时按比例收敛，最低保留 120。
+        final double preferred = formFactor == FormFactor.compact
+            ? TyPlayerStageSize.compactCoverPreferred
+            : TyPlayerStageSize.desktopCoverPreferred;
+        final double heightLimited =
+            constraints.maxHeight *
+            (formFactor == FormFactor.compact
+                ? TyPlayerStageSize.compactCoverHeightRatio
+                : TyPlayerStageSize.coverHeightRatio);
+        final double widthLimited = formFactor == FormFactor.compact
+            ? math.max(0, constraints.maxWidth - TySpace.x40)
+            : TyPlayerStageSize.coverMax;
+        final double coverSize = math.min(
+          preferred,
+          math.min(
+            widthLimited,
+            math.max(TyPlayerStageSize.coverMin, heightLimited),
+          ),
+        );
+        final double horizontal = twoColumn
+            ? 0
+            : formFactor == FormFactor.compact
             ? TySpace.x20
             : TySpace.x32;
         // 控件固定在下缘，封面与标题占满剩余空间（放不下就在这一块内滚动）。
@@ -310,6 +372,17 @@ class _TyPlayerStageState extends State<TyPlayerStage> {
                   ),
                   const SizedBox(height: TySpace.x24),
                   _controls(),
+                  if (formFactor == FormFactor.compact &&
+                      widget.compactPane != null &&
+                      MediaQuery.sizeOf(context).height >=
+                          TyPlayerStageSize
+                              .compactPaneMinWindowHeight) ...<Widget>[
+                    const SizedBox(height: TySpace.x16),
+                    SizedBox(
+                      height: TyPlayerStageSize.compactPaneHeight,
+                      child: widget.compactPane,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -368,7 +441,7 @@ class _TyPlayerStageState extends State<TyPlayerStage> {
             url: widget.coverUrl,
             seed: widget.coverSeed,
             size: coverSize,
-            radius: TyRadius.xl,
+            radius: TyRadius.sm,
           ),
         ),
         const SizedBox(height: TySpace.x24),
@@ -378,6 +451,7 @@ class _TyPlayerStageState extends State<TyPlayerStage> {
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
           style: titleStyle.copyWith(color: ty.colors.textPrimary),
+          semanticsLabel: title,
         ),
         const SizedBox(height: TySpace.x4),
         _artist(context),

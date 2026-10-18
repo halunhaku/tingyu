@@ -543,7 +543,9 @@ class _TySeekBarState extends State<TySeekBar> {
         container: true,
         slider: true,
         label: widget.semanticLabel,
-        value: '${_clock(shown)} / ${_clock(widget.duration)}',
+        value: widget.duration > Duration.zero
+            ? '${_clock(shown)} / ${_clock(widget.duration)}'
+            : '${_clock(shown)} / --:--',
         increasedValue: '+${TySeekBar.step.inSeconds} 秒',
         decreasedValue: '-${TySeekBar.step.inSeconds} 秒',
         onIncrease: widget.enabled ? () => _nudge(TySeekBar.step) : null,

@@ -1,0 +1,19 @@
+00:00 +0: loading F:/project/tingyu/app/test/voice_archive_player_test.dart
+00:00 +0: 声档主题只在舞台作用域，默认队列和原有快照保持一致
+00:00 +1: 显式歌词参数优先，点击唯一队列分段可切回
+00:00 +2: 短窗口保留队列入口并打开同主题的完整面板
+00:00 +3: 失败快照不画正常暂停态，重试调用原队列索引
+00:00 +4: 未知总时长禁用seek并明确显示未知
+00:00 +5: 页面大字不溢出 Size(360.0, 640.0) Brightness.dark
+00:00 +6: 页面大字不溢出 Size(360.0, 640.0) Brightness.light
+00:00 +7: 页面大字不溢出 Size(390.0, 844.0) Brightness.dark
+00:00 +8: 页面大字不溢出 Size(390.0, 844.0) Brightness.light
+00:00 +9: 页面大字不溢出 Size(844.0, 390.0) Brightness.dark
+00:00 +10: 页面大字不溢出 Size(844.0, 390.0) Brightness.light
+00:01 +11: 页面大字不溢出 Size(800.0, 900.0) Brightness.dark
+00:01 +12: 页面大字不溢出 Size(800.0, 900.0) Brightness.light
+00:01 +13: 页面大字不溢出 Size(1024.0, 768.0) Brightness.dark
+00:01 +14: 页面大字不溢出 Size(1024.0, 768.0) Brightness.light
+00:01 +15: 页面大字不溢出 Size(1440.0, 900.0) Brightness.dark
+00:01 +16: 页面大字不溢出 Size(1440.0, 900.0) Brightness.light
+00:01 +17: All tests passed!

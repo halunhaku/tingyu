@@ -1,0 +1,1 @@
+MSAA probe failed to compile under PowerShell 7: CS0246 List<> assembly reference missing. No native accessibility pass claimed. Earlier concurrent screenshot run can interfere with navigation; repeat smoke separately.

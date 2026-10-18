@@ -1,0 +1,949 @@
+00:00 +0: loading F:/project/tingyu/app/test/ai_client_test.dart
+00:00 +0: F:/project/tingyu/app/test/ai_client_test.dart: AIProviderPreset 服务商预设 预设包含 DeepSeek, 通义千问, Kimi, OpenAI, 本地 Ollama 与自定义
+00:00 +1: F:/project/tingyu/app/test/ai_client_test.dart: AIClient 通信协议与响应解析 标准 OpenAI /chat/completions 请求格式与鉴权头
+00:00 +2: F:/project/tingyu/app/test/ai_client_test.dart: AIClient 通信协议与响应解析 本地 Ollama 无 key 时不附加 Authorization 请求头
+00:00 +3: F:/project/tingyu/app/test/ai_client_test.dart: AIClient 通信协议与响应解析 testConnection 发送探测消息并返回结果
+00:00 +4: F:/project/tingyu/app/test/ai_client_test.dart: AIClient 通信协议与响应解析 HTTP 401 映射为 AIUnauthorizedException
+00:00 +5: F:/project/tingyu/app/test/ai_client_test.dart: AIClient 通信协议与响应解析 HTTP 429 映射为 AIRateLimitedException
+00:00 +6: F:/project/tingyu/app/test/ai_client_test.dart: AIClient 通信协议与响应解析 HTTP 500 / 503 映射为 AIServerException
+00:00 +7: F:/project/tingyu/app/test/ai_client_test.dart: AIClient 通信协议与响应解析 返回结构异常（无 choices）映射为 AIResponseParseException
+00:00 +8: F:/project/tingyu/app/test/ai_library_refactor_service_test.dart: 空曲库时直接完成且不出网
+00:00 +9: F:/project/tingyu/app/test/ai_library_refactor_service_test.dart: 批量清洗已有曲目元数据并成功持久化入库
+00:00 +10: F:/project/tingyu/app/test/ai_library_refactor_service_test.dart: 批量清洗已有曲目元数据并成功持久化入库
+00:00 +11: F:/project/tingyu/app/test/ai_library_refactor_service_test.dart: 批量清洗已有曲目元数据并成功持久化入库
+00:00 +12: F:/project/tingyu/app/test/ai_metadata_parser_test.dart: AIMetadataParser 元数据解析器 剥离 Markdown ```json 代码块外壳与首尾噪音
+00:00 +13: F:/project/tingyu/app/test/ai_library_refactor_service_test.dart: 按 batchSize 分批次并在中途取消时提前终止
+00:00 +14: F:/project/tingyu/app/test/ai_library_refactor_service_test.dart: 按 batchSize 分批次并在中途取消时提前终止
+00:00 +15: F:/project/tingyu/app/test/ai_library_refactor_service_test.dart: 按 batchSize 分批次并在中途取消时提前终止
+00:00 +16: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:00 +17: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:00 +18: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:00 +19: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:00 +20: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:00 +20: F:/project/tingyu/app/test/golden/core_pages_golden_test.dart: (suite)
+  Skip: golden 基准图仅在 Windows 本机生成与校验；CI 排除该 tag
+00:00 +20 ~1: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:00 +21 ~1: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:00 +22 ~1: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:00 +23 ~1: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:01 +24 ~1: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:01 +25 ~1: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:01 +26 ~1: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:01 +27 ~1: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:01 +28 ~1: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:01 +29 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +30 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +31 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +32 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +33 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +34 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +35 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +36 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +37 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +38 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +39 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +40 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +41 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +42 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +43 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +44 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +45 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +46 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +47 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +48 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +49 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +50 ~1: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +51 ~1: F:/project/tingyu/app/test/design_system_render_test.dart: 触控平台：卡片的次要操作不靠 hover 也能看到、能点
+00:01 +51 ~1: F:/project/tingyu/app/test/enrichment_service_test.dart: 上游失败时 enrichTrack 返回"没有变化"，而不是抛出
+[enrich] 补全失败「晴天」: SocketException: 网络不可达
+00:01 +52 ~1: F:/project/tingyu/app/test/design_system_render_test.dart: 触控平台：卡片的次要操作不靠 hover 也能看到、能点
+00:01 +53 ~1: F:/project/tingyu/app/test/design_system_render_test.dart: 触控平台：卡片的次要操作不靠 hover 也能看到、能点
+00:01 +54 ~1: F:/project/tingyu/app/test/design_system_render_test.dart: 触控平台：卡片的次要操作不靠 hover 也能看到、能点
+00:01 +55 ~1: F:/project/tingyu/app/test/design_system_render_test.dart: 触控平台：曲目行的 ♥ / ⋯ 不靠 hover 也能看到
+00:01 +56 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +57 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +58 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +59 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +60 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +61 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +62 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +63 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +64 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +65 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +66 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:02 +67 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:02 +68 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:02 +69 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:02 +70 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:02 +71 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:02 +72 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:02 +73 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:02 +74 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:02 +75 ~1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:02 +76 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +77 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +78 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +79 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +80 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +80 ~1: F:/project/tingyu/app/test/local_library_scanner_test.dart: 同一张封面重复保存共用同一个文件（一张专辑只落一份盘）
+[cover-store] 清理无引用封面 1 个
+00:02 +81 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +82 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +83 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +84 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +85 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +86 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +87 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +88 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +89 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +90 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +91 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +92 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +93 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +94 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +95 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +96 ~1: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +97 ~1: F:/project/tingyu/app/test/design_system_render_test.dart: B4 内容页组件 专辑卡 / 艺人行 / 歌单卡 / 详情头图 / 排序菜单 / 命令面板三形态两主题渲染
+00:02 +98 ~1: F:/project/tingyu/app/test/design_system_render_test.dart: B4 内容页组件 专辑卡 / 艺人行 / 歌单卡 / 详情头图 / 排序菜单 / 命令面板三形态两主题渲染
+00:02 +99 ~1: F:/project/tingyu/app/test/design_system_render_test.dart: B4 内容页组件 专辑卡 / 艺人行 / 歌单卡 / 详情头图 / 排序菜单 / 命令面板三形态两主题渲染
+00:02 +100 ~1: F:/project/tingyu/app/test/form_factor_test.dart: 1440 缩到 930：rail 六个目的地仍然都在可见范围内
+00:02 +101 ~1: F:/project/tingyu/app/test/design_system_render_test.dart: B4 内容页组件 命令面板方向键 + Enter 选中，Esc 关闭
+00:02 +102 ~1: F:/project/tingyu/app/test/design_system_render_test.dart: B4 内容页组件 命令面板方向键 + Enter 选中，Esc 关闭
+00:02 +103 ~1: F:/project/tingyu/app/test/design_system_render_test.dart: B4 内容页组件 命令面板方向键 + Enter 选中，Esc 关闭
+00:02 +104 ~1: F:/project/tingyu/app/test/design_system_render_test.dart: B4 内容页组件 命令面板方向键 + Enter 选中，Esc 关闭
+00:02 +105 ~1: F:/project/tingyu/app/test/design_system_render_test.dart: B4 内容页组件 命令面板方向键 + Enter 选中，Esc 关闭
+00:02 +106 ~1: F:/project/tingyu/app/test/design_system_render_test.dart: B4 内容页组件 命令面板方向键 + Enter 选中，Esc 关闭
+00:02 +107 ~1: F:/project/tingyu/app/test/design_system_render_test.dart: B4 内容页组件 命令面板方向键 + Enter 选中，Esc 关闭
+00:02 +108 ~1: F:/project/tingyu/app/test/design_system_render_test.dart: B4 内容页组件 命令面板方向键 + Enter 选中，Esc 关闭
+00:02 +109 ~1: F:/project/tingyu/app/test/form_factor_test.dart: TyAppShell 按宽度选择外壳 compact：底部 Tab + 迷你条区域，无侧栏/rail
+00:02 +110 ~1: F:/project/tingyu/app/test/metadata_search_query_test.dart: 打开匹配对话框先填字段，不自动搜索
+00:02 +111 ~1: F:/project/tingyu/app/test/metadata_search_query_test.dart: 打开匹配对话框先填字段，不自动搜索
+00:02 +112 ~1: F:/project/tingyu/app/test/metadata_search_query_test.dart: 打开匹配对话框先填字段，不自动搜索
+00:02 +113 ~1: F:/project/tingyu/app/test/metadata_search_query_test.dart: 打开匹配对话框先填字段，不自动搜索
+00:02 +114 ~1: F:/project/tingyu/app/test/metadata_search_query_test.dart: 打开匹配对话框先填字段，不自动搜索
+00:02 +115 ~1: F:/project/tingyu/app/test/metadata_search_query_test.dart: 打开匹配对话框先填字段，不自动搜索
+00:02 +116 ~1: F:/project/tingyu/app/test/metadata_search_query_test.dart: 打开匹配对话框先填字段，不自动搜索
+00:02 +117 ~1: F:/project/tingyu/app/test/metadata_search_query_test.dart: 打开匹配对话框先填字段，不自动搜索
+00:02 +118 ~1: F:/project/tingyu/app/test/metadata_search_query_test.dart: 打开匹配对话框先填字段，不自动搜索
+00:03 +119 ~1: F:/project/tingyu/app/test/metadata_search_query_test.dart: 打开匹配对话框先填字段，不自动搜索
+00:03 +120 ~1: F:/project/tingyu/app/test/metadata_search_query_test.dart: 打开匹配对话框先填字段，不自动搜索
+00:03 +121 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +121 ~1: F:/project/tingyu/app/test/playback_controller_resolve_failure_test.dart: 整队列都取不到直链时，快照里留下带曲名的失败（而不是静默）
+[playback] 无法播放「伊斯坦堡」: 夸克网络连接异常: unknown
+[playback] 跳过无法解析的曲目「伊斯坦堡」: 夸克网络连接异常: unknown
+00:03 +122 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +122 ~1: F:/project/tingyu/app/test/playback_controller_resolve_failure_test.dart: 再次失败是新实例：提示才会重新弹
+[playback] 无法播放「伊斯坦堡」: 夸克网络连接异常: unknown
+[playback] 跳过无法解析的曲目「伊斯坦堡」: 夸克网络连接异常: unknown
+[playback] 无法播放「晴天」: 夸克网络连接异常: unknown
+[playback] 跳过无法解析的曲目「晴天」: 夸克网络连接异常: unknown
+00:03 +123 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +123 ~1: F:/project/tingyu/app/test/playback_controller_resolve_failure_test.dart: 整队列都解析不出来时也只在点击那一首上报一次，不逐首刷屏
+[playback] 无法播放「伊斯坦布尔」: 夸克网络连接异常: unknown
+[playback] 跳过无法解析的曲目「伊斯坦布尔」: 夸克网络连接异常: unknown
+[playback] 跳过无法解析的曲目「晴天」: 夸克网络连接异常: unknown
+[playback] 跳过无法解析的曲目「可爱女人」: 夸克网络连接异常: unknown
+00:03 +124 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +124 ~1: F:/project/tingyu/app/test/playback_controller_resolve_failure_test.dart: 整队列都解析不出来时，不会把失败写成"正在播放"
+[playback] 无法播放「伊斯坦堡」: 夸克网络连接异常: unknown
+[playback] 跳过无法解析的曲目「伊斯坦堡」: 夸克网络连接异常: unknown
+[playback] 跳过无法解析的曲目「晴天」: 夸克网络连接异常: unknown
+00:03 +125 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +125 ~1: F:/project/tingyu/app/test/playback_controller_resolve_failure_test.dart: 解析遭遇网络异常时，快照文案被归纳为中文网络提示
+[playback] 无法播放「晴天」: SocketException: OS Error: Network is unreachable
+[playback] 跳过无法解析的曲目「晴天」: SocketException: OS Error: Network is unreachable
+00:03 +126 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +126 ~1: F:/project/tingyu/app/test/playback_controller_resolve_failure_test.dart: 解析遭遇本地目录授权失效时，快照文案保留明确指引
+[playback] 无法播放「晴天」: 本地目录授权已失效，请重新选择音乐文件夹
+[playback] 跳过无法解析的曲目「晴天」: 本地目录授权已失效，请重新选择音乐文件夹
+00:03 +127 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +127 ~1: F:/project/tingyu/app/test/playback_controller_resolve_failure_test.dart: 引擎随后推的快照不会把解析失败擦掉（旧会话仍在 tick）
+[playback] 无法播放「伊斯坦堡」: 夸克网络连接异常: unknown
+[playback] 跳过无法解析的曲目「伊斯坦堡」: 夸克网络连接异常: unknown
+00:03 +128 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +129 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +130 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +131 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +132 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +133 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +134 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +135 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +136 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +137 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +138 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +139 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +140 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +141 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +142 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +143 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +144 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +145 ~1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +145 ~1: F:/project/tingyu/app/test/now_playing_layout_test.dart: 竖屏：传输行贴在下缘（留出 24dp + 手势条），不在底部留大片空白
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: a value less than or equal to <120>
+  Actual: <228.0>
+   Which: is not a value less than or equal to <120>
+传输行应当贴在下缘，实测距屏幕底 228.0dp
+
+When the exception was thrown, this was the stack:
+#4      _stageLayoutCoverage.<anonymous closure> (file:///F:/project/tingyu/app/test/now_playing_layout_test.dart:136:5)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///F:/project/tingyu/app/test/now_playing_layout_test.dart line 136
+The test description was:
+  竖屏：传输行贴在下缘（留出 24dp + 手势条），不在底部留大片空白
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:03 +145 ~1 -1: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +145 ~1 -1: F:/project/tingyu/app/test/now_playing_layout_test.dart: 竖屏：传输行贴在下缘（留出 24dp + 手势条），不在底部留大片空白 [E]
+  Test failed. See exception logs above.
+  The test description was: 竖屏：传输行贴在下缘（留出 24dp + 手势条），不在底部留大片空白
+  
+00:03 +145 ~1 -1: F:/project/tingyu/app/test/now_playing_layout_test.dart: 矮屏（横屏）不溢出：封面收缩，内容可滚动
+Pending timers:
+Timer (duration: 0:00:00.000000, periodic: false), created:
+#0      new FakeTimer._ (package:fake_async/fake_async.dart:342:62)
+#1      FakeAsync._createTimer (package:fake_async/fake_async.dart:260:29)
+#2      FakeAsync.run.<anonymous closure> (package:fake_async/fake_async.dart:185:15)
+#6      StreamQueryStore.markAsClosed (package:drift/src/runtime/executor/stream_queries.dart:156:11)
+#7      QueryStream._onCancelOrPause (package:drift/src/runtime/executor/stream_queries.dart:305:14)
+#8      QueryStream._stream.<anonymous closure>.<anonymous closure> (package:drift/src/runtime/executor/stream_queries.dart:238:9)
+#17     ElementWithFuture.runOnDispose (package:riverpod/src/core/element.dart:318:32)
+#18     ProviderElement.clearState (package:riverpod/src/core/element.dart:1290:5)
+#19     ProviderElement.dispose (package:riverpod/src/core/element.dart:1323:5)
+#20     ElementWithFuture.dispose (package:riverpod/src/core/element.dart:344:11)
+#21     $StreamProviderElement.dispose (package:riverpod/src/providers/stream_provider.dart:163:11)
+#22     ProviderContainer._dispose (package:riverpod/src/core/provider_container.dart:1317:15)
+#23     ProviderContainer.dispose (package:riverpod/src/core/provider_container.dart:1335:21)
+#24     ProviderScopeState.dispose (package:flutter_riverpod/src/core/provider_scope.dart:220:15)
+#25     StatefulElement.unmount (package:flutter/src/widgets/framework.dart:6043:11)
+#26     _InactiveElements._unmount (package:flutter/src/widgets/framework.dart:2119:13)
+#27     ListIterable.forEach (dart:_internal/iterable.dart:49:13)
+#28     _InactiveElements._unmountAll (package:flutter/src/widgets/framework.dart:2128:25)
+#29     BuildOwner.lockState (package:flutter/src/widgets/framework.dart:3033:15)
+#30     BuildOwner.finalizeTree (package:flutter/src/widgets/framework.dart:3357:7)
+#31     AutomatedTestWidgetsFlutterBinding.drawFrame (package:flutter_test/src/binding.dart:2454:19)
+#32     RendererBinding._handlePersistentFrameCallback (package:flutter/src/rendering/binding.dart:558:5)
+#33     SchedulerBinding._invokeFrameCallback (package:flutter/src/scheduler/binding.dart:1430:15)
+#34     SchedulerBinding.handleDrawFrame (package:flutter/src/scheduler/binding.dart:1345:9)
+#35     AutomatedTestWidgetsFlutterBinding.scheduleWarmUpFrame (package:flutter_test/src/binding.dart:2358:5)
+#36     _runWidget (package:flutter/src/widgets/binding.dart:1952:7)
+#37     runApp (package:flutter/src/widgets/binding.dart:1885:3)
+#38     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1941:5)
+#41     TestWidgetsFlutterBinding._runTest (package:flutter_test/src/binding.dart:1927:10)
+#42     AutomatedTestWidgetsFlutterBinding.runTest.<anonymous closure> (package:flutter_test/src/binding.dart:2490:24)
+#43     FakeAsync.run.<anonymous closure>.<anonymous closure> (package:fake_async/fake_async.dart:182:47)
+#48     withClock (package:clock/src/default.dart:52:10)
+#49     FakeAsync.run.<anonymous closure> (package:fake_async/fake_async.dart:182:15)
+#54     FakeAsync.run (package:fake_async/fake_async.dart:181:52)
+#55     AutomatedTestWidgetsFlutterBinding.runTest (package:flutter_test/src/binding.dart:2487:15)
+#56     testWidgets.<anonymous closure> (package:flutter_test/src/widget_tester.dart:184:24)
+#57     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#58     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#59     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+(elided 21 frames from dart:async)
+
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following assertion was thrown running a test:
+A Timer is still pending even after the widget tree was disposed.
+'package:flutter_test/src/binding.dart':
+Failed assertion: line 2543 pos 12: '!timersPending'
+
+When the exception was thrown, this was the stack:
+#2      AutomatedTestWidgetsFlutterBinding._verifyInvariants (package:flutter_test/src/binding.dart:2543:12)
+#3      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1974:7)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided 3 frames from class _AssertionError and package:stack_trace)
+
+The test description was:
+  矮屏（横屏）不溢出：封面收缩，内容可滚动
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:03 +145 ~1 -2: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +145 ~1 -2: F:/project/tingyu/app/test/now_playing_layout_test.dart: 矮屏（横屏）不溢出：封面收缩，内容可滚动 [E]
+  Test failed. See exception logs above.
+  The test description was: 矮屏（横屏）不溢出：封面收缩，内容可滚动
+  
+00:03 +146 ~1 -2: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:03 +146 ~1 -2: F:/project/tingyu/app/test/now_playing_layout_test.dart: 舞台的文本落在真实 DefaultTextStyle 里（没有 fallback 黄线）
+WARNING (drift): It looks like you've created the database class TingyuDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$TingyuDatabase (package:tingyu/data/db/database.g.dart:2658:39)
+#4      new TingyuDatabase (package:tingyu/data/db/database.dart:22:7)
+#5      databaseProvider.<anonymous closure> (package:tingyu/app/providers.dart:40:35)
+#6      Provider.create (package:riverpod/src/providers/provider.dart:59:36)
+#7      $ProviderElement.create (package:riverpod/src/providers/provider.dart:343:33)
+#8      ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#9      ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#10     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#11     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#12     ProviderElement.listen (package:riverpod/src/core/element.dart:991:28)
+#13     Ref.watch (package:riverpod/src/core/ref.dart:726:20)
+#14     trackRepositoryProvider.<anonymous closure> (package:tingyu/app/providers.dart:59:40)
+#15     Provider.create (package:riverpod/src/providers/provider.dart:59:36)
+#16     $ProviderElement.create (package:riverpod/src/providers/provider.dart:343:33)
+#17     ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#18     ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#19     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#20     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#21     ProviderElement.listen (package:riverpod/src/core/element.dart:991:28)
+#22     Ref.watch (package:riverpod/src/core/ref.dart:726:20)
+#23     allTracksProvider.<anonymous closure> (package:tingyu/app/providers.dart:76:24)
+#24     StreamProvider.create (package:riverpod/src/providers/stream_provider.dart:131:44)
+#25     $StreamProviderElement.create.<anonymous closure> (package:riverpod/src/providers/stream_provider.dart:158:45)
+#26     ElementWithFuture.handleStream.<anonymous closure> (package:riverpod/src/core/element.dart:171:28)
+#27     ElementWithFuture._handleAsync (package:riverpod/src/core/element.dart:282:35)
+#28     ElementWithFuture.handleStream (package:riverpod/src/core/element.dart:165:12)
+#29     $StreamProviderElement.create (package:riverpod/src/providers/stream_provider.dart:158:12)
+#30     ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#31     ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#32     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#33     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#34     ProviderElement.listen (package:riverpod/src/core/element.dart:991:28)
+#35     Ref.watch (package:riverpod/src/core/ref.dart:726:20)
+#36     _tracksByIdProvider.<anonymous closure> (package:tingyu/features/player/queue_panel.dart:256:11)
+#37     Provider.create (package:riverpod/src/providers/provider.dart:59:36)
+#38     $ProviderElement.create (package:riverpod/src/providers/provider.dart:343:33)
+#39     ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#40     ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#41     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#42     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#43     ProviderContainer.listen (package:riverpod/src/core/provider_container.dart:1141:26)
+#44     ConsumerStatefulElement.watch.<anonymous closure> (package:flutter_riverpod/src/core/consumer.dart:490:37)
+#45     _LinkedHashMapMixin.putIfAbsent (dart:_compact_hash:631:23)
+#46     ConsumerStatefulElement.watch (package:flutter_riverpod/src/core/consumer.dart:483:14)
+#47     QueuePanel.build (package:tingyu/features/player/queue_panel.dart:40:47)
+#48     _ConsumerState.build (package:flutter_riverpod/src/core/consumer.dart:283:48)
+#49     StatefulElement.build (package:flutter/src/widgets/framework.dart:5944:27)
+#50     ConsumerStatefulElement.build (package:flutter_riverpod/src/core/consumer.dart:460:20)
+#51     ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5830:15)
+#52     StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5995:11)
+#53     Element.rebuild (package:flutter/src/widgets/framework.dart:5542:7)
+#54     ComponentElement._firstBuild (package:flutter/src/widgets/framework.dart:5812:5)
+#55     StatefulElement._firstBuild (package:flutter/src/widgets/framework.dart:5986:11)
+#56     ComponentElement.mount (package:flutter/src/widgets/framework.dart:5806:5)
+#57     ConsumerStatefulElement.mount (package:flutter_riverpod/src/core/consumer.dart:389:11)
+#58     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#59     Element.updateChild (package:flutter/src/widgets/framework.dart:4072:18)
+#60     ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5854:16)
+#61     Element.rebuild (package:flutter/src/widgets/framework.dart:5542:7)
+#62     ComponentElement._firstBuild (package:flutter/src/widgets/framework.dart:5812:5)
+#63     ComponentElement.mount (package:flutter/src/widgets/framework.dart:5806:5)
+#64     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#65     MultiChildRenderObjectElement.inflateWidget (package:flutter/src/widgets/framework.dart:7277:36)
+#66     MultiChildRenderObjectElement.mount (package:flutter/src/widgets/framework.dart:7292:32)
+#67     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#68     Element.updateChild (package:flutter/src/widgets/framework.dart:4072:18)
+#69     SingleChildRenderObjectElement.mount (package:flutter/src/widgets/framework.dart:7128:14)
+#70     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#71     Element.updateChild (package:flutter/src/widgets/framework.dart:4072:18)
+#72     ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5854:16)
+#73     Element.rebuild (package:flutter/src/widgets/framework.dart:5542:7)
+#74     ComponentElement._firstBuild (package:flutter/src/widgets/framework.dart:5812:5)
+#75     ComponentElement.mount (package:flutter/src/widgets/framework.dart:5806:5)
+#76     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#77     Element.updateChild (package:flutter/src/widgets/framework.dart:4072:18)
+#78     SingleChildRenderObjectElement.mount (package:flutter/src/widgets/framework.dart:7128:14)
+#79     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#80     MultiChildRenderObjectElement.inflateWidget (package:flutter/src/widgets/framework.dart:7277:36)
+#81     MultiChildRenderObjectElement.mount (package:flutter/src/widgets/framework.dart:7292:32)
+#82     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#83     Element.updateChild (package:flutter/src/widgets/framework.dart:4072:18)
+#84     SingleChildRenderObjectElement.mount (package:flutter/src/widgets/framework.dart:7128:14)
+#85     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#86     Element.updateChild (package:flutter/src/widgets/framework.dart:4072:18)
+#87     SingleChildRenderObjectElement.mount (package:flutter/src/widgets/framework.dart:7128:14)
+#88     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#89     Element.updateChild (package:flutter/src/widgets/framework.dart:4072:18)
+#90     SingleChildRenderObjectElement.mount (package:flutter/src/widgets/framework.dart:7128:14)
+#91     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#92     Element.updateChild (package:flutter/src/widgets/framework.dart:4072:18)
+#93     _LayoutBuilderElement._rebuildWithConstraints.updateChildCallback (package:flutter/src/widgets/layout_builder.dart:247:18)
+#94     BuildOwner.buildScope (package:flutter/src/widgets/framework.dart:3114:19)
+#95     _LayoutBuilderElement._rebuildWithConstraints (package:flutter/src/widgets/layout_builder.dart:270:12)
+#96     RenderAbstractLayoutBuilderMixin.layoutCallback (package:flutter/src/widgets/layout_builder.dart:333:38)
+#97     RenderObjectWithLayoutCallbackMixin.runLayoutCallback.<anonymous closure> (package:flutter/src/rendering/object.dart:4313:33)
+#98     RenderObject.invokeLayoutCallback.<anonymous closure> (package:flutter/src/rendering/object.dart:3042:17)
+#99     PipelineOwner._enableMutationsToDirtySubtrees (package:flutter/src/rendering/object.dart:1223:15)
+#100    RenderObject.invokeLayoutCallback (package:flutter/src/rendering/object.dart:3041:14)
+#101    RenderObjectWithLayoutCallbackMixin.runLayoutCallback (package:flutter/src/rendering/object.dart:4313:5)
+#102    _RenderLayoutBuilder.performLayout (package:flutter/src/widgets/layout_builder.dart:447:5)
+#103    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#104    ChildLayoutHelper.layoutChild (package:flutter/src/rendering/layout_helper.dart:62:11)
+#105    RenderFlex._computeSizes (package:flutter/src/rendering/flex.dart:1275:26)
+#106    RenderFlex.performLayout (package:flutter/src/rendering/flex.dart:1329:32)
+#107    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#108    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#109    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#110    ChildLayoutHelper.layoutChild (package:flutter/src/rendering/layout_helper.dart:62:11)
+#111    RenderStack._computeSize (package:flutter/src/rendering/stack.dart:647:43)
+#112    RenderStack.performLayout (package:flutter/src/rendering/stack.dart:682:12)
+#113    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#114    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#115    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#116    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#117    RenderCustomPaint.performLayout (package:flutter/src/rendering/custom_paint.dart:574:11)
+#118    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#119    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#120    _RenderCustomClip.performLayout (package:flutter/src/rendering/proxy_box.dart:1549:11)
+#121    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#122    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#123    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#124    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#125    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#126    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#127    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#128    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#129    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#130    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#131    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#132    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#133    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#134    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#135    RenderOffstage.performLayout (package:flutter/src/rendering/proxy_box.dart:3923:13)
+#136    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#137    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#138    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#139    _RenderTheaterMixin.layoutChild (package:flutter/src/widgets/overlay.dart:1124:13)
+#140    _RenderTheater.performLayout (package:flutter/src/widgets/overlay.dart:1482:9)
+#141    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#142    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#143    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#144    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#145    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#146    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#147    RenderCustomPaint.performLayout (package:flutter/src/rendering/custom_paint.dart:574:11)
+#148    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#149    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#150    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#151    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#152    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#153    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#154    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#155    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#156    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#157    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#158    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#159    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#160    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#161    RenderView.performLayout (package:flutter/src/rendering/view.dart:292:12)
+#162    RenderObject._layoutWithoutResize (package:flutter/src/rendering/object.dart:2771:7)
+#163    PipelineOwner.flushLayout (package:flutter/src/rendering/object.dart:1174:18)
+#164    PipelineOwner.flushLayout (package:flutter/src/rendering/object.dart:1187:15)
+#165    AutomatedTestWidgetsFlutterBinding.drawFrame (package:flutter_test/src/binding.dart:2434:27)
+#166    RendererBinding._handlePersistentFrameCallback (package:flutter/src/rendering/binding.dart:558:5)
+#167    SchedulerBinding._invokeFrameCallback (package:flutter/src/scheduler/binding.dart:1430:15)
+#168    SchedulerBinding.handleDrawFrame (package:flutter/src/scheduler/binding.dart:1345:9)
+#169    AutomatedTestWidgetsFlutterBinding.pump.<anonymous closure> (package:flutter_test/src/binding.dart:2261:9)
+#170    _rootRun (dart:async/zone_root.dart:35:13)
+#171    _CustomZone.run (dart:async/zone.dart:810:35)
+#172    TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#173    AutomatedTestWidgetsFlutterBinding.pump (package:flutter_test/src/binding.dart:2250:27)
+#174    WidgetTester.pumpWidget.<anonymous closure> (package:flutter_test/src/widget_tester.dart:598:22)
+#175    _rootRun (dart:async/zone_root.dart:35:13)
+#176    _CustomZone.run (dart:async/zone.dart:810:35)
+#177    TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#178    WidgetTester.pumpWidget (package:flutter_test/src/widget_tester.dart:595:27)
+#179    pumpPage (file:///F:/project/tingyu/app/test/now_playing_layout_test.dart:74:16)
+<asynchronous suspension>
+#180    _textStyleCoverage.<anonymous closure> (file:///F:/project/tingyu/app/test/now_playing_layout_test.dart:164:5)
+<asynchronous suspension>
+#181    testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#182    TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+#183    StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+Pending timers:
+Timer (duration: 0:00:00.000000, periodic: false), created:
+#0      new FakeTimer._ (package:fake_async/fake_async.dart:342:62)
+#1      FakeAsync._createTimer (package:fake_async/fake_async.dart:260:29)
+#2      FakeAsync.run.<anonymous closure> (package:fake_async/fake_async.dart:185:15)
+#6      StreamQueryStore.markAsClosed (package:drift/src/runtime/executor/stream_queries.dart:156:11)
+#7      QueryStream._onCancelOrPause (package:drift/src/runtime/executor/stream_queries.dart:305:14)
+#8      QueryStream._stream.<anonymous closure>.<anonymous closure> (package:drift/src/runtime/executor/stream_queries.dart:238:9)
+#17     ElementWithFuture.runOnDispose (package:riverpod/src/core/element.dart:318:32)
+#18     ProviderElement.clearState (package:riverpod/src/core/element.dart:1290:5)
+#19     ProviderElement.dispose (package:riverpod/src/core/element.dart:1323:5)
+#20     ElementWithFuture.dispose (package:riverpod/src/core/element.dart:344:11)
+#21     $StreamProviderElement.dispose (package:riverpod/src/providers/stream_provider.dart:163:11)
+#22     ProviderContainer._dispose (package:riverpod/src/core/provider_container.dart:1317:15)
+#23     ProviderContainer.dispose (package:riverpod/src/core/provider_container.dart:1335:21)
+#24     ProviderScopeState.dispose (package:flutter_riverpod/src/core/provider_scope.dart:220:15)
+#25     StatefulElement.unmount (package:flutter/src/widgets/framework.dart:6043:11)
+#26     _InactiveElements._unmount (package:flutter/src/widgets/framework.dart:2119:13)
+#27     ListIterable.forEach (dart:_internal/iterable.dart:49:13)
+#28     _InactiveElements._unmountAll (package:flutter/src/widgets/framework.dart:2128:25)
+#29     BuildOwner.lockState (package:flutter/src/widgets/framework.dart:3033:15)
+#30     BuildOwner.finalizeTree (package:flutter/src/widgets/framework.dart:3357:7)
+#31     AutomatedTestWidgetsFlutterBinding.drawFrame (package:flutter_test/src/binding.dart:2454:19)
+#32     RendererBinding._handlePersistentFrameCallback (package:flutter/src/rendering/binding.dart:558:5)
+#33     SchedulerBinding._invokeFrameCallback (package:flutter/src/scheduler/binding.dart:1430:15)
+#34     SchedulerBinding.handleDrawFrame (package:flutter/src/scheduler/binding.dart:1345:9)
+#35     AutomatedTestWidgetsFlutterBinding.scheduleWarmUpFrame (package:flutter_test/src/binding.dart:2358:5)
+#36     _runWidget (package:flutter/src/widgets/binding.dart:1952:7)
+#37     runApp (package:flutter/src/widgets/binding.dart:1885:3)
+#38     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1960:7)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided 12 frames from dart:async and package:stack_trace)
+
+00:03 +147 ~1 -2: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:03 +147 ~1 -2: F:/project/tingyu/app/test/now_playing_layout_test.dart: 舞台的文本落在真实 DefaultTextStyle 里（没有 fallback 黄线）
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following assertion was thrown running a test:
+A Timer is still pending even after the widget tree was disposed.
+'package:flutter_test/src/binding.dart':
+Failed assertion: line 2543 pos 12: '!timersPending'
+
+When the exception was thrown, this was the stack:
+#2      AutomatedTestWidgetsFlutterBinding._verifyInvariants (package:flutter_test/src/binding.dart:2543:12)
+#3      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1974:7)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided 3 frames from class _AssertionError and package:stack_trace)
+
+The test description was:
+  舞台的文本落在真实 DefaultTextStyle 里（没有 fallback 黄线）
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:03 +147 ~1 -3: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:03 +147 ~1 -3: F:/project/tingyu/app/test/now_playing_layout_test.dart: 舞台的文本落在真实 DefaultTextStyle 里（没有 fallback 黄线） [E]
+  Test failed. See exception logs above.
+  The test description was: 舞台的文本落在真实 DefaultTextStyle 里（没有 fallback 黄线）
+  
+00:03 +148 ~1 -3: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:03 +149 ~1 -3: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:04 +150 ~1 -3: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:04 +151 ~1 -3: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:04 +152 ~1 -3: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:04 +153 ~1 -3: F:/project/tingyu/app/test/performance_regression_test.dart: 舞台漂移背景：每帧重绘的是背景层，不重建内容与封面
+Pending timers:
+Timer (duration: 0:00:00.000000, periodic: false), created:
+#0      new FakeTimer._ (package:fake_async/fake_async.dart:342:62)
+#1      FakeAsync._createTimer (package:fake_async/fake_async.dart:260:29)
+#2      FakeAsync.run.<anonymous closure> (package:fake_async/fake_async.dart:185:15)
+#6      StreamQueryStore.markAsClosed (package:drift/src/runtime/executor/stream_queries.dart:156:11)
+#7      QueryStream._onCancelOrPause (package:drift/src/runtime/executor/stream_queries.dart:305:14)
+#8      QueryStream._stream.<anonymous closure>.<anonymous closure> (package:drift/src/runtime/executor/stream_queries.dart:238:9)
+#17     ElementWithFuture.runOnDispose (package:riverpod/src/core/element.dart:318:32)
+#18     ProviderElement.clearState (package:riverpod/src/core/element.dart:1290:5)
+#19     ProviderElement.dispose (package:riverpod/src/core/element.dart:1323:5)
+#20     ElementWithFuture.dispose (package:riverpod/src/core/element.dart:344:11)
+#21     $StreamProviderElement.dispose (package:riverpod/src/providers/stream_provider.dart:163:11)
+#22     ProviderContainer._dispose (package:riverpod/src/core/provider_container.dart:1317:15)
+#23     ProviderContainer.dispose (package:riverpod/src/core/provider_container.dart:1335:21)
+#24     ProviderScopeState.dispose (package:flutter_riverpod/src/core/provider_scope.dart:220:15)
+#25     StatefulElement.unmount (package:flutter/src/widgets/framework.dart:6043:11)
+#26     _InactiveElements._unmount (package:flutter/src/widgets/framework.dart:2119:13)
+#27     ListIterable.forEach (dart:_internal/iterable.dart:49:13)
+#28     _InactiveElements._unmountAll (package:flutter/src/widgets/framework.dart:2128:25)
+#29     BuildOwner.lockState (package:flutter/src/widgets/framework.dart:3033:15)
+#30     BuildOwner.finalizeTree (package:flutter/src/widgets/framework.dart:3357:7)
+#31     AutomatedTestWidgetsFlutterBinding.drawFrame (package:flutter_test/src/binding.dart:2454:19)
+#32     RendererBinding._handlePersistentFrameCallback (package:flutter/src/rendering/binding.dart:558:5)
+#33     SchedulerBinding._invokeFrameCallback (package:flutter/src/scheduler/binding.dart:1430:15)
+#34     SchedulerBinding.handleDrawFrame (package:flutter/src/scheduler/binding.dart:1345:9)
+#35     AutomatedTestWidgetsFlutterBinding.scheduleWarmUpFrame (package:flutter_test/src/binding.dart:2358:5)
+#36     _runWidget (package:flutter/src/widgets/binding.dart:1952:7)
+#37     runApp (package:flutter/src/widgets/binding.dart:1885:3)
+#38     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1960:7)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided 12 frames from dart:async and package:stack_trace)
+
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following assertion was thrown running a test:
+A Timer is still pending even after the widget tree was disposed.
+'package:flutter_test/src/binding.dart':
+Failed assertion: line 2543 pos 12: '!timersPending'
+
+When the exception was thrown, this was the stack:
+#2      AutomatedTestWidgetsFlutterBinding._verifyInvariants (package:flutter_test/src/binding.dart:2543:12)
+#3      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1974:7)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided 3 frames from class _AssertionError and package:stack_trace)
+
+The test description was:
+  舞台漂移背景：每帧重绘的是背景层，不重建内容与封面
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:04 +153 ~1 -4: F:/project/tingyu/app/test/performance_regression_test.dart: 舞台漂移背景：每帧重绘的是背景层，不重建内容与封面 [E]
+  Test failed. See exception logs above.
+  The test description was: 舞台漂移背景：每帧重绘的是背景层，不重建内容与封面
+  
+00:04 +153 ~1 -4: F:/project/tingyu/app/test/playback_media_kit_processing_test.dart: 未知时长（直链没有 Content-Length）按可播放处理，而不是加载中
+00:04 +154 ~1 -4: F:/project/tingyu/app/test/playback_media_kit_processing_test.dart: 队列为空是 idle，真在缓冲是 buffering，播完是 completed
+00:04 +155 ~1 -4: F:/project/tingyu/app/test/playback_media_kit_processing_test.dart: 时长已知时也只是 ready（此前它顺带覆盖了这条路径）
+00:04 +156 ~1 -4: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 列表循环：队尾按「下一首」回到第一首继续播放
+00:04 +157 ~1 -4: F:/project/tingyu/app/test/playback_snapshot_equality_test.dart: PlaybackSnapshot 值比较 字段相同的两份快照相等，hashCode 一致
+00:04 +158 ~1 -4: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 列表循环：最后一首播完自动从头继续
+00:04 +159 ~1 -4: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 列表循环：最后一首播完自动从头继续
+00:04 +160 ~1 -4: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 列表循环：最后一首播完自动从头继续
+00:04 +161 ~1 -4: F:/project/tingyu/app/test/playlist_position_test.dart: 曲目被扫描删除后重建：播放列表仍能继续追加曲目（position 无空洞）
+00:04 +162 ~1 -4: F:/project/tingyu/app/test/playlist_position_test.dart: 曲目被扫描删除后重建：播放列表仍能继续追加曲目（position 无空洞）
+00:04 +163 ~1 -4: F:/project/tingyu/app/test/playlist_position_test.dart: 曲目被扫描删除后重建：播放列表仍能继续追加曲目（position 无空洞）
+00:05 +164 ~1 -4: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 单曲循环：播完把当前曲从头重播（引擎不支持循环时的兜底）
+00:05 +165 ~1 -4: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 单曲循环：播完把当前曲从头重播（引擎不支持循环时的兜底）
+00:05 +166 ~1 -4: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 单曲循环：播完把当前曲从头重播（引擎不支持循环时的兜底）
+00:05 +167 ~1 -4: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 单曲循环：播完把当前曲从头重播（引擎不支持循环时的兜底）
+00:05 +168 ~1 -4: F:/project/tingyu/app/test/playlist_repository_test.dart: move 重排曲目顺序
+00:05 +169 ~1 -4: F:/project/tingyu/app/test/playlist_repository_test.dart: move 重排曲目顺序
+00:05 +170 ~1 -4: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 重建队列期间旧会话的进度事件不会把预取塞进旧队列
+00:05 +171 ~1 -4: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 重建队列期间旧会话的进度事件不会把预取塞进旧队列
+00:05 +172 ~1 -4: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 重建队列期间旧会话的进度事件不会把预取塞进旧队列
+00:05 +173 ~1 -4: F:/project/tingyu/app/test/playlist_repository_test.dart: watchAll 按名称排序并能收到新增
+00:05 +174 ~1 -4: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +175 ~1 -4: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +176 ~1 -4: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +177 ~1 -4: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +178 ~1 -4: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +179 ~1 -4: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +179 ~1 -4: F:/project/tingyu/app/test/preferences_test.dart: 损坏 JSON：默认值启动，错误可诊断，reset 覆盖并清除
+[settings] 读取偏好失败: FormatException: Unexpected end of input (at character 14)
+{"themeMode":
+             ^
+
+00:05 +180 ~1 -4: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +181 ~1 -4: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +182 ~1 -4: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +183 ~1 -4: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +184 ~1 -4: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +185 ~1 -4: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +186 ~1 -4: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +187 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +188 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +189 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +190 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +191 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +191 ~1 -4: F:/project/tingyu/app/test/quark_test.dart: getDownloadUrl：错误映射（401 / 31001 / login / 429 / 非 2xx / 非 200 status）
+[quark] 第 1 次失败（HTTP 429），1ms 后重试
+[quark] 第 2 次失败（HTTP 429），1ms 后重试
+00:05 +192 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +192 ~1 -4: F:/project/tingyu/app/test/quark_test.dart: getDownloadUrl：错误映射（401 / 31001 / login / 429 / 非 2xx / 非 200 status）
+[quark] 第 1 次失败（HTTP 429），1ms 后重试
+[quark] 第 2 次失败（HTTP 429），1ms 后重试
+[quark] 第 1 次失败（HTTP 503），1ms 后重试
+[quark] 第 2 次失败（HTTP 503），1ms 后重试
+[quark] 第 1 次失败（HTTP 503），1ms 后重试
+[quark] 第 2 次失败（HTTP 503），1ms 后重试
+00:05 +193 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +193 ~1 -4: F:/project/tingyu/app/test/quark_test.dart: getDownloadUrl：错误映射（401 / 31001 / login / 429 / 非 2xx / 非 200 status）
+[quark] 第 1 次失败（HTTP 500），1ms 后重试
+00:05 +194 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +195 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +195 ~1 -4: F:/project/tingyu/app/test/quark_test.dart: getDownloadUrl：错误映射（401 / 31001 / login / 429 / 非 2xx / 非 200 status）
+[quark] 第 2 次失败（HTTP 500），1ms 后重试
+00:05 +196 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +197 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +197 ~1 -4: F:/project/tingyu/app/test/quark_test.dart: getDownloadUrl：错误映射（401 / 31001 / login / 429 / 非 2xx / 非 200 status）
+[quark] 第 1 次失败（HTTP 503），1ms 后重试
+[quark] 第 2 次失败（HTTP 503），1ms 后重试
+[quark] 第 1 次失败（HTTP 500），1ms 后重试
+[quark] 第 2 次失败（HTTP 500），1ms 后重试
+00:05 +198 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +199 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +200 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +201 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +202 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +203 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +204 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +205 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +206 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +207 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +208 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +209 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +210 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +211 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +212 ~1 -4: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +213 ~1 -4: F:/project/tingyu/app/test/router_path_parameters_test.dart: go_router pathParameters 已解码中文与转义路径段
+00:06 +214 ~1 -4: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +215 ~1 -4: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +216 ~1 -4: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +217 ~1 -4: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +217 ~1 -4: F:/project/tingyu/app/test/settings_store_test.dart: 损坏 JSON 抛可恢复错误且保留原文件
+[settings] 读取偏好失败: FormatException: Unexpected character (at character 2)
+{not json
+ ^
+
+00:06 +218 ~1 -4: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +219 ~1 -4: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +220 ~1 -4: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +221 ~1 -4: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +222 ~1 -4: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +223 ~1 -4: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +224 ~1 -4: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +225 ~1 -4: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +226 ~1 -4: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +227 ~1 -4: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +228 ~1 -4: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +228 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +228 ~1 -5: F:/project/tingyu/app/test/source_adapter_cache_test.dart: 来源配置变化或凭据写入后重建适配器 [E]
+  ProcessException: 系统找不到指定的文件。 (at ../../../flutter/third_party/dart/runtime/bin/process_win.cc:579)
+    Command: chmod 600 C:\Users\qq120\AppData\Local\Temp\tingyu_credentials_4197b4df\credentials\webdav_password_s1.txt
+  dart:io                                       Process.run
+  package:tingyu/data/secure_store.dart 151:19  SecureStore._writeFile
+  ===== asynchronous gap ===========================
+  dart:io                                       Process.run
+  package:tingyu/data/secure_store.dart 151:19  SecureStore._writeFile
+  ===== asynchronous gap ===========================
+  dart:async                                    _CustomZone.registerUnaryCallback
+  package:tingyu/data/secure_store.dart 148:23  SecureStore._writeFile
+  package:tingyu/data/secure_store.dart 67:13   SecureStore.write
+  ===== asynchronous gap ===========================
+  dart:async                                    _CustomZone.registerBinaryCallback
+  package:tingyu/data/secure_store.dart 54:7    SecureStore.write
+  package:tingyu/data/secure_store.dart 122:7   SecureStore.writeWebDavPassword
+  test\source_adapter_cache_test.dart 99:25     main.<fn>
+  ===== asynchronous gap ===========================
+  dart:async                                    _CustomZone.registerUnaryCallback
+  test\source_adapter_cache_test.dart 90:26     main.<fn>
+  
+00:06 +229 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +230 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +231 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +232 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +233 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +234 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +235 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +236 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +237 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +238 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +239 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +240 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +241 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +242 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +243 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +244 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +245 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +246 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +247 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +248 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +249 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +250 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +251 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +252 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +253 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +254 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +255 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +256 ~1 -5: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +257 ~1 -5: F:/project/tingyu/app/test/search_page_test.dart: compact：清空按钮同时清掉输入、查询条件与 URL 参数
+00:07 +258 ~1 -5: F:/project/tingyu/app/test/search_page_test.dart: compact：清空按钮同时清掉输入、查询条件与 URL 参数
+00:07 +259 ~1 -5: F:/project/tingyu/app/test/search_page_test.dart: compact：清空按钮同时清掉输入、查询条件与 URL 参数
+00:07 +260 ~1 -5: F:/project/tingyu/app/test/search_page_test.dart: compact：清空按钮同时清掉输入、查询条件与 URL 参数
+00:07 +261 ~1 -5: F:/project/tingyu/app/test/search_page_test.dart: compact：清空按钮同时清掉输入、查询条件与 URL 参数
+00:07 +262 ~1 -5: F:/project/tingyu/app/test/search_page_test.dart: compact：清空按钮同时清掉输入、查询条件与 URL 参数
+WARNING (drift): It looks like you've created the database class TingyuDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+00:07 +263 ~1 -5: F:/project/tingyu/app/test/search_page_test.dart: compact：清空按钮同时清掉输入、查询条件与 URL 参数
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+00:07 +264 ~1 -5: F:/project/tingyu/app/test/search_page_test.dart: compact：清空按钮同时清掉输入、查询条件与 URL 参数
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$TingyuDatabase (package:tingyu/data/db/database.g.dart:2658:39)
+#4      new TingyuDatabase (package:tingyu/data/db/database.dart:22:7)
+#5      databaseProvider.<anonymous closure> (package:tingyu/app/providers.dart:40:35)
+#6      Provider.create (package:riverpod/src/providers/provider.dart:59:36)
+#7      $ProviderElement.create (package:riverpod/src/providers/provider.dart:343:33)
+#8      ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#9      ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#10     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#11     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#12     ProviderElement.listen (package:riverpod/src/core/element.dart:991:28)
+#13     Ref.watch (package:riverpod/src/core/ref.dart:726:20)
+#14     trackRepositoryProvider.<anonymous closure> (package:tingyu/app/providers.dart:59:40)
+#15     Provider.create (package:riverpod/src/providers/provider.dart:59:36)
+#16     $ProviderElement.create (package:riverpod/src/providers/provider.dart:343:33)
+#17     ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#18     ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#19     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#20     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#21     ProviderElement.listen (package:riverpod/src/core/element.dart:991:28)
+#22     Ref.watch (package:riverpod/src/core/ref.dart:726:20)
+#23     allTracksProvider.<anonymous closure> (package:tingyu/app/providers.dart:76:24)
+#24     StreamProvider.create (package:riverpod/src/providers/stream_provider.dart:131:44)
+#25     $StreamProviderElement.create.<anonymous closure> (package:riverpod/src/providers/stream_provider.dart:158:45)
+#26     ElementWithFuture.handleStream.<anonymous closure> (package:riverpod/src/core/element.dart:171:28)
+#27     ElementWithFuture._handleAsync (package:riverpod/src/core/element.dart:282:35)
+#28     ElementWithFuture.handleStream (package:riverpod/src/core/element.dart:165:12)
+#29     $StreamProviderElement.create (package:riverpod/src/providers/stream_provider.dart:158:12)
+#30     ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#31     ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#32     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#33     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#34     ProviderElement.listen (package:riverpod/src/core/element.dart:991:28)
+#35     Ref.watch (package:riverpod/src/core/ref.dart:726:20)
+#36     libraryFingerprintProvider.<anonymous closure> (package:tingyu/app/providers.dart:509:11)
+#37     Provider.create (package:riverpod/src/providers/provider.dart:59:36)
+#38     $ProviderElement.create (package:riverpod/src/providers/provider.dart:343:33)
+#39     ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#40     ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#41     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#42     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#43     ProviderElement.listen (package:riverpod/src/core/element.dart:991:28)
+#44     Ref.watch (package:riverpod/src/core/ref.dart:726:20)
+#45     searchOverviewProvider.<anonymous closure> (package:tingyu/app/providers.dart:613:7)
+#46     FutureProvider.create (package:riverpod/src/providers/future_provider.dart:142:46)
+#47     $FutureProviderElement.create.<anonymous closure> (package:riverpod/src/providers/future_provider.dart:167:45)
+#48     ElementWithFuture.handleFuture.<anonymous closure> (package:riverpod/src/core/element.dart:218:30)
+#49     ElementWithFuture._handleAsync (package:riverpod/src/core/element.dart:282:35)
+#50     ElementWithFuture.handleFuture (package:riverpod/src/core/element.dart:212:12)
+#51     $FutureProviderElement.create (package:riverpod/src/providers/future_provider.dart:167:12)
+#52     ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#53     ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#54     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#55     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#56     ProviderContainer.listen (package:riverpod/src/core/provider_container.dart:1141:26)
+#57     ConsumerStatefulElement.watch.<anonymous closure> (package:flutter_riverpod/src/core/consumer.dart:490:37)
+#58     _LinkedHashMapMixin.putIfAbsent (dart:_compact_hash:631:23)
+#59     ConsumerStatefulElement.watch (package:flutter_riverpod/src/core/consumer.dart:483:14)
+#60     _SearchPageState._overview (package:tingyu/features/search/search_page.dart:278:53)
+#61     _SearchPageState._body (package:tingyu/features/search/search_page.dart:212:11)
+#62     _SearchPageState.build (package:tingyu/features/search/search_page.dart:194:25)
+#63     StatefulElement.build (package:flutter/src/widgets/framework.dart:5944:27)
+#64     ConsumerStatefulElement.build (package:flutter_riverpod/src/core/consumer.dart:460:20)
+#65     ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5830:15)
+#66     StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5995:11)
+#67     Element.rebuild (package:flutter/src/widgets/framework.dart:5542:7)
+#68     BuildScope._tryRebuild (package:flutter/src/widgets/framework.dart:2763:15)
+#69     BuildScope._flushDirtyElements (package:flutter/src/widgets/framework.dart:2820:11)
+#70     BuildOwner.buildScope (package:flutter/src/widgets/framework.dart:3124:18)
+#71     AutomatedTestWidgetsFlutterBinding.drawFrame (package:flutter_test/src/binding.dart:2432:19)
+#72     RendererBinding._handlePersistentFrameCallback (package:flutter/src/rendering/binding.dart:558:5)
+#73     SchedulerBinding._invokeFrameCallback (package:flutter/src/scheduler/binding.dart:1430:15)
+#74     SchedulerBinding.handleDrawFrame (package:flutter/src/scheduler/binding.dart:1345:9)
+#75     AutomatedTestWidgetsFlutterBinding.pump.<anonymous closure> (package:flutter_test/src/binding.dart:2261:9)
+#76     _rootRun (dart:async/zone_root.dart:35:13)
+#77     _CustomZone.run (dart:async/zone.dart:810:35)
+#78     TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#79     AutomatedTestWidgetsFlutterBinding.pump (package:flutter_test/src/binding.dart:2250:27)
+#80     WidgetTester.pump.<anonymous closure> (package:flutter_test/src/widget_tester.dart:652:53)
+#81     _rootRun (dart:async/zone_root.dart:35:13)
+#82     _CustomZone.run (dart:async/zone.dart:810:35)
+#83     TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#84     WidgetTester.pump (package:flutter_test/src/widget_tester.dart:652:27)
+#85     main.<anonymous closure> (file:///F:/project/tingyu/app/test/search_page_test.dart:200:18)
+<asynchronous suspension>
+#86     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#87     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+#88     StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:07 +265 ~1 -5: F:/project/tingyu/app/test/track_repository_test.dart: artists/albums 聚合：计数、年份取最大、占位名排最后
+00:07 +266 ~1 -5: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页不出现搜索框（搜索入口在侧栏）
+00:07 +267 ~1 -5: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页不出现搜索框（搜索入口在侧栏）
+00:07 +268 ~1 -5: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页不出现搜索框（搜索入口在侧栏）
+00:07 +269 ~1 -5: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页不出现搜索框（搜索入口在侧栏）
+00:07 +270 ~1 -5: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页不出现搜索框（搜索入口在侧栏）
+00:07 +271 ~1 -5: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页不出现搜索框（搜索入口在侧栏）
+00:07 +272 ~1 -5: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页不出现搜索框（搜索入口在侧栏）
+00:07 +273 ~1 -5: F:/project/tingyu/app/test/track_repository_test.dart: 分页搜索 曲库列表分页：favoritesOnly 只数收藏，sourceId 与 query 组合过滤
+00:07 +274 ~1 -5: F:/project/tingyu/app/test/search_page_test.dart: 分组结果给真实总数，超过 5 条时给「查看全部」
+00:07 +275 ~1 -5: F:/project/tingyu/app/test/search_page_test.dart: 分组结果给真实总数，超过 5 条时给「查看全部」
+00:07 +276 ~1 -5: F:/project/tingyu/app/test/transport_row_layout_test.dart: 五个键等距分布，播放键居中，两侧留白对称
+00:07 +277 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:07 +278 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:07 +279 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:07 +280 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:07 +281 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +282 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +283 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +284 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +285 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +286 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +287 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +288 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +289 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +290 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +291 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +292 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +293 ~1 -5: F:/project/tingyu/app/test/voice_archive_stage_layout_test.dart: 高手机展示有界预览槽，矮手机保留独立入口
+00:08 +294 ~1 -5: F:/project/tingyu/app/test/voice_archive_stage_layout_test.dart: 高手机展示有界预览槽，矮手机保留独立入口
+00:08 +295 ~1 -5: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:08 +296 ~1 -5: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:08 +297 ~1 -5: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:08 +298 ~1 -5: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:08 +299 ~1 -5: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:08 +300 ~1 -5: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:08 +301 ~1 -5: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:08 +302 ~1 -5: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:08 +303 ~1 -5: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:08 +304 ~1 -5: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:08 +305 ~1 -5: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:08 +306 ~1 -5: F:/project/tingyu/app/test/voice_archive_player_test.dart: 短窗口保留队列入口并打开同主题的完整面板
+00:08 +307 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +308 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +309 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +309 ~1 -5: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 429 → 默认流控文案
+[webdav] 第 1 次失败（HTTP 429），1ms 后重试
+[webdav] 第 2 次失败（HTTP 429），1ms 后重试
+00:08 +310 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +310 ~1 -5: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 503 且响应体不含 BlockedTemporarily → 临时流控文案
+[webdav] 第 1 次失败（HTTP 503），1ms 后重试
+[webdav] 第 2 次失败（HTTP 503），1ms 后重试
+00:08 +311 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +311 ~1 -5: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 503 且响应体含 BlockedTemporarily → 临时封禁文案
+[webdav] 第 1 次失败（HTTP 503），1ms 后重试
+[webdav] 第 2 次失败（HTTP 503），1ms 后重试
+00:08 +312 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +312 ~1 -5: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 根目录 500 → WebDavServerError
+[webdav] 第 1 次失败（HTTP 500），1ms 后重试
+[webdav] 第 2 次失败（HTTP 500），1ms 后重试
+00:08 +313 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +313 ~1 -5: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 子目录 500 → 跳过该目录但不中断扫描
+[webdav] 第 1 次失败（HTTP 500），1ms 后重试
+[webdav] 第 2 次失败（HTTP 500），1ms 后重试
+00:08 +314 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +315 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +315 ~1 -5: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 根目录传输失败 → WebDavNetworkError；子目录失败只跳过
+[webdav] 第 1 次失败（DioException [connection error]: The connection errored: Connection refused This indicates an error which most likely cannot be solved by the library.），1ms 后重试
+[webdav] 第 2 次失败（DioException [connection error]: The connection errored: Connection refused This indicates an error which most likely cannot be solved by the library.），1ms 后重试
+[webdav] 第 1 次失败（DioException [connection error]: The connection errored: Connection refused This indicates an error which most likely cannot be solved by the library.），1ms 后重试
+[webdav] 第 2 次失败（DioException [connection error]: The connection errored: Connection refused This indicates an error which most likely cannot be solved by the library.），1ms 后重试
+00:08 +316 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +317 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +318 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +319 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +320 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +321 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +322 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +323 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +324 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +325 ~1 -5: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(360.0, 640.0) Brightness.dark
+00:08 +326 ~1 -5: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 封面按显示尺寸解码，不按原图分辨率
+00:08 +327 ~1 -5: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(360.0, 640.0) Brightness.light
+00:08 +328 ~1 -5: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(390.0, 844.0) Brightness.dark
+00:08 +329 ~1 -5: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(390.0, 844.0) Brightness.light
+00:08 +330 ~1 -5: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(844.0, 390.0) Brightness.dark
+00:08 +331 ~1 -5: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(844.0, 390.0) Brightness.light
+00:08 +332 ~1 -5: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(800.0, 900.0) Brightness.dark
+00:08 +333 ~1 -5: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(800.0, 900.0) Brightness.light
+00:08 +334 ~1 -5: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(1024.0, 768.0) Brightness.dark
+00:08 +335 ~1 -5: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(1024.0, 768.0) Brightness.light
+00:08 +336 ~1 -5: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(1440.0, 900.0) Brightness.dark
+00:08 +337 ~1 -5: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(1440.0, 900.0) Brightness.light
+00:09 +338 ~1 -5: Some tests failed.
+
+Failing tests:
+  F:/project/tingyu/app/test/now_playing_layout_test.dart: 矮屏（横屏）不溢出：封面收缩，内容可滚动
+  F:/project/tingyu/app/test/now_playing_layout_test.dart: 竖屏：传输行贴在下缘（留出 24dp + 手势条），不在底部留大片空白
+  F:/project/tingyu/app/test/now_playing_layout_test.dart: 舞台的文本落在真实 DefaultTextStyle 里（没有 fallback 黄线）
+  F:/project/tingyu/app/test/performance_regression_test.dart: 舞台漂移背景：每帧重绘的是背景层，不重建内容与封面
+  F:/project/tingyu/app/test/source_adapter_cache_test.dart: 来源配置变化或凭据写入后重建适配器
