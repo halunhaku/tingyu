@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-18",
+  "sourceCommit": "5491452619e10a87976cd049199d47d7e7359436",
+  "branch": "codex/ui-p0-audit",
+  "binaryProvenance": "既有 Release 产物；本轮未重新构建，不能证明与 HEAD 完全一致",
+  "binaries": [
+    {
+      "Path": "F:\\project\\tingyu\\app\\build\\windows\\x64\\runner\\Release\\tingyu.exe",
+      "Algorithm": "SHA256",
+      "Hash": "23C400290AC635C6515A0865AC73F358CFDE84BBED25542BADD891E29B6E842E"
+    },
+    {
+      "Path": "F:\\project\\tingyu\\app\\build\\windows\\x64\\runner\\Release\\data\\app.so",
+      "Algorithm": "SHA256",
+      "Hash": "5156CF8A19DB242FD0BD8808931C2E73692E7F03E0295C3C7ACA2359F6F928BD"
+    },
+    {
+      "Path": "F:\\project\\tingyu\\app\\build\\windows\\x64\\runner\\Release\\flutter_windows.dll",
+      "Algorithm": "SHA256",
+      "Hash": "13C66FE122FFB6345FFD3D5161FC7A581321EB3B1BF9CBBBCBF47DA52CD757E1"
+    }
+  ]
+}
