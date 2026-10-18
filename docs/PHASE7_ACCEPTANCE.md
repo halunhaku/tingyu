@@ -258,6 +258,9 @@ $ flutter test --no-pub
 - 播放冒烟：`tools/windows-smoke-test.ps1 -Cycles 4`
   - 实测（`app/build/ui-shots/p7-smoke/result.json`）：`cyclesAttempted=4`、`exited=false`（4 轮导航开合后仍在运行）、
     `nativeAccessibilityErrors=0`；`stdout.log` 中 `playing=true` 快照 1770 条（真实音轨播放中）
+  - 记录：本轮冒烟脚本**已经写出 result.json（17:13:50）**，但外层 shell 任务随后撞到自己 1200s 的包装超时被判
+    “interrupted”；即「4 轮开合 + 播放」这一段的结论来自已完成的汇总文件，而脚本尾部的清理没跑完。
+    事后检查无残留 `tingyu.exe` 进程。复跑时建议给外层任务留足时间（脚本本身含 `-Cycles` 等待）。
 - **未做**：CI（GitHub Actions）本次未触发；Android/macOS/Linux/iOS 无真机运行
 
 ---
