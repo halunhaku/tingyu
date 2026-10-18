@@ -1,0 +1,6 @@
+00:00 +0: loading F:/project/tingyu/app/test/golden/core_pages_golden_test.dart
+00:00 +0: golden: 曲库·歌曲（expanded / dark）
+00:00 +1: All tests passed!
+00:00 +0: loading F:/project/tingyu/app/test/golden/core_pages_golden_test.dart
+00:00 +0: golden: 曲库·歌曲（compact / light）
+00:00 +1: All tests passed!

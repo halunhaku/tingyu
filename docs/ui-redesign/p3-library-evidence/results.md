@@ -4,7 +4,7 @@
 
 ## 结论
 
-曲库首页的实现、响应式截图、关键交互测试、Windows 生产构建和真实本地播放冒烟已经执行。列策略已按 P2 的 864 / 708 / 560 / 460 内容宽度边界复核；艺术家进入副标题时，来源仍保留独立列。当前状态为“等待用户审查最终视觉并决定是否批准 Golden”：没有把静态分析、Widget 测试或无障碍树查询写成视觉验收通过，也没有更新 Golden 基准。
+曲库首页的实现、响应式截图、关键交互测试、Windows 生产构建和真实本地播放冒烟已经执行。列策略已按 P2 的 864 / 708 / 560 / 460 内容宽度边界复核；艺术家进入副标题时，来源仍保留独立列。2026-10-18 用户明确确认当前曲库视觉，两个曲库 Golden 已单独更新。静态分析、Widget 测试与无障碍树查询没有被写成完整视觉或无障碍验收通过，播放舞台 Golden 也仍保持待批准状态。
 
 ## 实际截图
 
@@ -58,7 +58,9 @@ Windows DPI 为 1.5。桌面客户区为 1898×1024 物理像素（约 1265×683
 | 静态分析 | `flutter analyze` | 0 | [analyze.txt](analyze.txt)：No issues found |
 | 重点回归 | `flutter test test/form_factor_test.dart test/library_page_redesign_test.dart test/performance_regression_test.dart test/search_page_test.dart test/ui_rebuild_seek_test.dart` | 0 | [targeted-tests.txt](targeted-tests.txt)：34/34 |
 | 全量非 Golden | `flutter test --exclude-tags golden`，共 353 项 | 1 | [full-tests.txt](full-tests.txt)：352 通过，1 个环境失败 |
-| Golden 只校验 | `flutter test --run-skipped -t golden test/golden/core_pages_golden_test.dart` | 1 | [golden-test.txt](golden-test.txt)：9 通过，3 个预期待批准差异 |
+| Golden 只校验（批准前） | `flutter test --run-skipped -t golden test/golden/core_pages_golden_test.dart` | 1 | [golden-test.txt](golden-test.txt)：9 通过，3 个待批准差异 |
+| Golden 更新（逐用例） | 仅对两个曲库用例执行 `--update-goldens` | 0 | [golden-approved-test.txt](golden-approved-test.txt)：两个用例分别通过 |
+| Golden 完整校验（批准后） | `flutter test --run-skipped -t golden test/golden/core_pages_golden_test.dart` | 1 | [golden-approved-test.txt](golden-approved-test.txt)：10 通过，1 个播放舞台待批准差异 |
 | Preview Release | Windows host engine，入口 `tool/voice_archive_preview.dart` | 0 | [preview-build.txt](preview-build.txt) |
 | Production Release | [build-windows-engine.ps1](../../../tools/build-windows-engine.ps1) 的 `App` 阶段 | 0 | [production-build.txt](production-build.txt) |
 | 生产冒烟 | [windows-smoke-test.ps1](../../../tools/windows-smoke-test.ps1)，10 cycles | 0 | [production-smoke.txt](production-smoke.txt) |
@@ -73,17 +75,17 @@ Command: chmod 600 ...\credentials\webdav_password_s1.txt
 
 该失败发生在 `SecureStore._writeFile`，没有为了通过测试而修改断言或削弱权限逻辑。
 
-## Golden 待批准差异
+## Golden 批准与当前状态
 
-本轮没有执行 `--update-goldens`。旧基准保留在 `app/test/golden/goldens/`，失败截图与差异图保存在 [golden-diffs](golden-diffs/)。
+用户于 2026-10-18 明确批准曲库最终视觉。批准记录见 [golden-approval.txt](golden-approval.txt)。更新只绑定以下两个用例，并分别执行单用例更新，没有运行全量自动更新：
 
-| 用例 | 像素差异 | 差异说明 |
+| 用例 | 批准前差异 | 当前状态 |
 |---|---:|---|
-| `library-songs-expanded-dark` | 10.71% | 曲库接入声档页头、内联搜索、工具区、来源列和新表格层次 |
-| `library-songs-compact-light` | 26.59% | 手机曲库重排为声档四段导航、两层工具区与双行歌曲行 |
-| `stage-compact-dark` | 100.00% | 已实施声档播放页与旧 P0 基准的整体差异；不是本轮曲库新增改动 |
+| `library-songs-expanded-dark` | 10.71% | 已更新并校验通过 |
+| `library-songs-compact-light` | 26.59% | 已更新并校验通过 |
+| `stage-compact-dark` | 100.00% | 未更新，仍待单独视觉批准 |
 
-这些差异是设计与实现的待审查产物，不是 Golden 已通过。只有用户明确批准对应最终视觉后，才能单独更新基准并重跑回归。
+批准后的完整 Golden 校验为 10 通过、1 失败；唯一失败是 `stage-compact-dark`。原始更新与完整校验输出保存在 [golden-approved-test.txt](golden-approved-test.txt)，退出码分别保存在 `golden-approved-test.exit.txt` 中。`golden-diffs/` 内曲库差异图是批准前的历史证据，不代表当前基准仍有差异。
 
 ## 生产冒烟
 
@@ -103,7 +105,6 @@ Command: chmod 600 ...\credentials\webdav_password_s1.txt
 
 ## 下一阶段
 
-1. 用户审查本页桌面、手机、Dark、200% 与状态截图，提出具体视觉问题或批准当前实现。
-2. 获批后为两个曲库 Golden 单独建立批准记录并更新基准；播放舞台旧基准仍需按 P3 播放页流程处理。
-3. 下一组迁移来源管理页，复用现有 `sourcesProvider`、同步状态、登录/配置界面与路由，继续保持单页提交和回退节点。
-4. 在受控环境补真实 WebDAV、夸克播放和各平台冒烟；随后补人工读屏和视觉对比验收。
+1. 下一组迁移来源管理页，复用现有 `sourcesProvider`、同步状态、登录/配置界面与路由，继续保持单页提交和回退节点。
+2. 播放舞台旧基准仍需按 P3 播放页流程单独取得视觉批准。
+3. 在受控环境补真实 WebDAV、夸克播放和各平台冒烟；随后补人工读屏和视觉对比验收。

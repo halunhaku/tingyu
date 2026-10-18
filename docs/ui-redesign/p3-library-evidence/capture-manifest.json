@@ -4,6 +4,16 @@
   "baseCommit": "8706cf1bed53c05e6a4767ebaa2e9d9f0b5b47f4",
   "flutterFixture": "app/tool/voice_archive_preview.dart",
   "fixtureData": "4 tracks; local/Quark/WebDAV source labels; fixed 2026-10-18 dates and 84s progress",
+  "goldenApproval": {
+    "approvedAt": "2026-10-18T21:42:04+08:00",
+    "approvedBy": "user",
+    "scope": [
+      "library-songs-compact-light",
+      "library-songs-expanded-dark"
+    ],
+    "evidence": "docs/ui-redesign/p3-library-evidence/golden-approval.txt",
+    "updateCommandScope": "One plain-name test per requested library golden; --update-goldens was not run for the full suite"
+  },
   "engineConfiguration": "host_release",
   "captures": [
     {
@@ -121,10 +131,12 @@
       "failed": 1
     },
     "goldenTests": {
-      "passed": 9,
-      "updateGoldens": false,
+      "passed": 10,
+      "updateGoldens": true,
+      "updateScope": "library-songs-compact-light and library-songs-expanded-dark only",
       "exitCode": 1,
-      "failed": 3
+      "failed": 1,
+      "knownFailure": "stage-compact-dark remains pending visual approval"
     },
     "previewReleaseBuild": {
       "exitCode": 0
@@ -145,17 +157,22 @@
   "goldenComparisons": [
     {
       "test": "library-songs-expanded-dark",
-      "passed": false,
-      "diff": "10.71%"
+      "passed": true,
+      "approved": true,
+      "diff": "0.00%",
+      "previousDiff": "10.71%"
     },
     {
       "test": "library-songs-compact-light",
-      "passed": false,
-      "diff": "26.59%"
+      "passed": true,
+      "approved": true,
+      "diff": "0.00%",
+      "previousDiff": "26.59%"
     },
     {
       "test": "stage-compact-dark",
       "passed": false,
+      "approved": false,
       "diff": "100.00%"
     }
   ],
@@ -163,7 +180,7 @@
     "Windows only; Android, iOS, macOS and Linux were not run on devices.",
     "Quark and WebDAV remote playback were not exercised; source labels use fixed preview data.",
     "No manual screen-reader review was performed.",
-    "Golden baselines were not updated; library and inherited player differences require explicit design approval.",
+    "Only the two user-approved library Golden baselines were updated; the inherited player Golden remains pending separate visual approval.",
     "Production smoke captures are represented by result.json and logs only; screenshots are not retained because the production entry can expose the local user library."
   ]
 }
