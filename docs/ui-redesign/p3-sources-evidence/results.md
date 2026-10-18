@@ -12,8 +12,9 @@
 回归测试、生产构建和本地播放冒烟。页面继续使用原有来源 provider、同步控制器、路由、
 协议实现和凭据存储。
 
-当前没有已知的阻塞性视觉问题，但来源页视觉与 Golden 仍等待用户单独批准。Golden
-只执行校验，没有执行更新。播放舞台继承的 100% 差异也继续保持待批准状态。
+当前没有已知的阻塞性视觉问题。用户于 2026-10-18 明确批准来源页视觉，并同时批准
+独立的播放舞台。两项 Golden 只按具名用例分别更新，没有运行全量自动更新；批准后的
+完整 Golden 校验为 12/12 通过。
 
 ## 实际截图
 
@@ -72,7 +73,13 @@ medium 为 1200×1289（800×859 逻辑像素），手机为 585×1266（390×84
 | 静态分析 | `flutter analyze` | 0 | [analyze-final.txt](analyze-final.txt)：No issues found |
 | 重点回归 | 来源页、来源 ID、同步与响应式共 4 个测试文件 | 0 | [targeted-tests-final.txt](targeted-tests-final.txt)：23/23 |
 | 全量非 Golden | `flutter test --exclude-tags golden` | 1 | [full-tests-final.txt](full-tests-final.txt)：360 通过、1 个环境失败 |
-| Golden 只校验 | `flutter test --run-skipped -t golden test/golden/core_pages_golden_test.dart` | 1 | [golden-test-final.txt](golden-test-final.txt)：10 通过、2 个待批准差异 |
+| Golden 只校验（批准前） | `flutter test --run-skipped -t golden test/golden/core_pages_golden_test.dart` | 1 | [golden-test-final.txt](golden-test-final.txt)：10 通过、2 个待批准差异 |
+| 来源页 Golden 更新 | 仅 `golden: 来源管理（expanded / light）` | 0 | [golden-approved-sources.txt](golden-approved-sources.txt)：1/1 |
+| 播放舞台 Golden 更新 | 仅 `golden: 播放舞台（compact / dark）` | 0 | [golden-approved-stage.txt](golden-approved-stage.txt)：1/1 |
+| Golden 完整校验（批准后） | `flutter test --run-skipped -t golden test/golden/core_pages_golden_test.dart` | 0 | [golden-approved-test.txt](golden-approved-test.txt)：12/12 |
+| Golden 批准后格式化 | 仅 `test/golden/core_pages_golden_test.dart` | 0 | [golden-approval-format.txt](golden-approval-format.txt)：0 changed |
+| Golden 批准后静态分析 | `flutter analyze` | 0 | [golden-approval-analyze.txt](golden-approval-analyze.txt)：No issues found |
+| Golden 批准后重点回归 | 播放页、来源页、同步、响应式、重建/seek 共 6 个测试文件 | 0 | [golden-approval-regression.txt](golden-approval-regression.txt)：45/45 |
 | 固定预览构建 | Windows host engine，入口 `tool/voice_archive_preview.dart` | 0 | [preview-build-final.txt](preview-build-final.txt) |
 | 生产 Release | `tools/build-windows-engine.ps1 -Stage App` | 0 | [production-build-final.txt](production-build-final.txt) |
 | 生产冒烟 | `tools/windows-smoke-test.ps1`，10 cycles | 0 | [production-smoke-final/result.json](production-smoke-final/result.json) |
@@ -88,17 +95,23 @@ Command: chmod 600 ...\credentials\webdav_password_s1.txt
 失败发生在 `SecureStore._writeFile` 调用 `chmod`。本轮没有修改测试断言或降低凭据
 权限要求来掩盖该失败。
 
-## Golden 状态
+## Golden 批准与当前状态
 
-| 用例 | 只校验结果 | 当前状态 |
-|---|---:|---|
-| `sources-expanded-light` | 14.31% 差异 | 来源页重构尚未获用户视觉批准；基准未更新 |
-| `stage-compact-dark` | 100.00% 差异 | 继承自播放页迁移，继续等待单独批准；基准未更新 |
+用户于 2026-10-18T22:11:56+08:00 以“全部批准”确认当前视觉。批准记录见
+[golden-approval.txt](golden-approval.txt)。本轮只更新以下两个具名用例：
 
-差异图保存在 [golden-diffs-final](golden-diffs-final/)；原始输出和退出码见
-[golden-test-final.txt](golden-test-final.txt) 与
-[golden-test-final.exit.txt](golden-test-final.exit.txt)。本轮没有运行
-`--update-goldens`。
+| 用例 | 批准前差异 | 当前状态 | 字节数 | 当前 SHA256 |
+|---|---:|---|---:|---|
+| `sources-expanded-light` | 14.31% | 已更新并校验通过 | 12074 | `48a8a7cfebb6b7b24bd83c90cee56d6ece4d0837d5ad961b8c23513c4d6a6c3a` |
+| `stage-compact-dark` | 100.00% | 已更新并校验通过 | 6231 | `0cf05d3588fcee2a77a0f9bd456ae23f542e1431dbef6898cac2e747142487c1` |
+
+来源页和舞台分别使用单用例 `--update-goldens`，没有对整个 Golden 文件执行自动更新。
+舞台用例首次更新暴露了 Drift/Riverpod 的零延时清理计时器；测试在断言后卸载页面并推进
+1ms 测试帧，未放宽像素断言。批准后的只校验命令为
+`flutter test --run-skipped -t golden test/golden/core_pages_golden_test.dart`，
+结果为 12/12 通过，见 [golden-approved-test.txt](golden-approved-test.txt)。
+[golden-diffs-final](golden-diffs-final/) 与批准前日志保留为历史证据，不代表当前基准
+仍有差异。
 
 ## 生产冒烟
 
@@ -117,6 +130,6 @@ Command: chmod 600 ...\credentials\webdav_password_s1.txt
 - 尚未使用受控凭据验证真实夸克网盘与 WebDAV 的认证、扫描和远程播放。
 - 尚未完成人工 Narrator/VoiceOver/TalkBack、完整键盘焦点顺序和真实设备 200% 字号走查。
 - 固定截图只证明当前 Windows 夹具渲染；Widget 测试和静态分析不能替代视觉验收。
-- 来源页最终视觉与 `sources-expanded-light` Golden 需要用户明确批准；播放舞台也需要
-  另一项独立批准。
+- 来源页和播放舞台的当前 Golden 已获用户具名批准；这些批准不覆盖未执行的跨平台和
+  人工无障碍验收。
 - 当前实现没有改写数据库、播放引擎、来源协议、凭据存储或 Riverpod 架构。

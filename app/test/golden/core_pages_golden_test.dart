@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
+
 import 'dart:io';
 
 import 'package:tingyu/app/preferences.dart';
@@ -28,6 +29,7 @@ import 'package:tingyu/features/sources/source_page.dart';
 import 'package:tingyu/features/sources/sources_page.dart';
 
 import '../support/page_harness.dart';
+import '../support/test_support.dart';
 
 /// 核心页面的视觉回归（`DESIGN.md` §9 的 golden 约定）。
 ///
@@ -111,10 +113,19 @@ void main() {
         overrides: <Override>[
           albumsProvider.overrideWithValue(
             AsyncValue<List<AlbumSummary>>.data(<AlbumSummary>[
-              const AlbumSummary(album: '叶惠美', artist: '周杰伦', trackCount: 11, year: 2003),
+              const AlbumSummary(
+                album: '叶惠美',
+                artist: '周杰伦',
+                trackCount: 11,
+                year: 2003,
+              ),
               const AlbumSummary(album: 'HQ', artist: '守月', trackCount: 1),
               const AlbumSummary(album: '太阳之子', artist: '周杰伦', trackCount: 12),
-              const AlbumSummary(album: '我们拥有同一扇门吗', artist: '希先森', trackCount: 4),
+              const AlbumSummary(
+                album: '我们拥有同一扇门吗',
+                artist: '希先森',
+                trackCount: 4,
+              ),
             ]),
           ),
         ],
@@ -139,9 +150,9 @@ void main() {
           albumsProvider.overrideWithValue(
             const AsyncValue<List<AlbumSummary>>.data(<AlbumSummary>[]),
           ),
-          albumTracksProvider(
-            key,
-          ).overrideWithValue(AsyncValue<List<Track>>.data(songs.take(6).toList())),
+          albumTracksProvider(key).overrideWithValue(
+            AsyncValue<List<Track>>.data(songs.take(6).toList()),
+          ),
         ],
       ),
       location: '/album/x',
@@ -191,7 +202,9 @@ void main() {
                 total: 1,
               ),
               artists: const SearchGroup<ArtistSummary>(
-                items: <ArtistSummary>[ArtistSummary(name: '周杰伦', trackCount: 101)],
+                items: <ArtistSummary>[
+                  ArtistSummary(name: '周杰伦', trackCount: 101),
+                ],
                 total: 1,
               ),
               playlists: const SearchGroup<Playlist>(
@@ -220,7 +233,9 @@ void main() {
         brightness: Brightness.light,
         overrides: <Override>[
           playbackProvider.overrideWith(() => playback),
-          allTracksProvider.overrideWithValue(AsyncValue<List<Track>>.data(songs)),
+          allTracksProvider.overrideWithValue(
+            AsyncValue<List<Track>>.data(songs),
+          ),
         ],
       ),
     );
@@ -253,6 +268,8 @@ void main() {
 
   testWidgets('golden: 播放舞台（compact / dark）', (WidgetTester tester) async {
     final Track track = goldenTrack('t1', '晴天');
+    final TingyuDatabase database = openTestDatabase();
+    addTearDown(database.close);
     await pumpRoutedPage(
       tester,
       const NowPlayingPage(),
@@ -260,13 +277,13 @@ void main() {
         size: phone,
         brightness: Brightness.dark,
         overrides: <Override>[
+          databaseProvider.overrideWithValue(database),
           currentTrackRefProvider.overrideWithValue((
             trackId: track.id,
             item: null,
           )),
-          trackByIdProvider(
-            track.id,
-          ).overrideWithValue(AsyncValue<Track?>.data(track)),
+          trackByIdProvider(track.id)
+              .overrideWithValue(AsyncValue<Track?>.data(track)),
           playbackProvider.overrideWith(
             () => FakePlaybackController(<Track>[track]),
           ),
@@ -278,6 +295,10 @@ void main() {
       find.byType(NowPlayingPage),
       matchesGoldenFile('goldens/stage-compact-dark.png'),
     );
+    // Unmount in-body so Drift/Riverpod can close its zero-duration stream
+    // cleanup timer before Flutter's pending-timer invariant runs.
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
   });
 
   testWidgets('golden: 设置（expanded / light）', (WidgetTester tester) async {
@@ -289,7 +310,10 @@ void main() {
         brightness: Brightness.light,
         overrides: <Override>[
           settingsStoreProvider.overrideWithValue(
-            SettingsStore(supportDirectory: () async => Directory('/nonexistent-tingyu-golden')),
+            SettingsStore(
+              supportDirectory: () async =>
+                  Directory('/nonexistent-tingyu-golden'),
+            ),
           ),
           allTracksProvider.overrideWithValue(
             AsyncValue<List<Track>>.data(songs),
@@ -362,12 +386,10 @@ void main() {
         size: wide,
         brightness: Brightness.light,
         overrides: <Override>[
-          sourceByIdProvider(
-            'src-golden',
-          ).overrideWithValue(AsyncValue<MusicSource?>.data(source)),
-          tracksOfSourceProvider(
-            'src-golden',
-          ).overrideWithValue(AsyncValue<List<Track>>.data(songs)),
+          sourceByIdProvider('src-golden')
+              .overrideWithValue(AsyncValue<MusicSource?>.data(source)),
+          tracksOfSourceProvider('src-golden')
+              .overrideWithValue(AsyncValue<List<Track>>.data(songs)),
           allTracksProvider.overrideWithValue(
             AsyncValue<List<Track>>.data(songs),
           ),

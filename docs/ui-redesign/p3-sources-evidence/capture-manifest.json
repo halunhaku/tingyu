@@ -5,7 +5,7 @@
   "fixture": "app/tool/voice_archive_preview.dart",
   "fixtureData": "3 fictional sources; 228 tracks; fixed 2026-10-04/05/06 sync dates; no database, network or credentials",
   "engineConfiguration": "host_release",
-  "reviewStatus": "implementation complete; source visual and Golden baseline await separate user approval",
+  "reviewStatus": "implementation complete; source visual, player stage and both named Golden baselines approved and validated",
   "sourceHashes": [
     {
       "path": "app/lib/design/components/source_card.dart",
@@ -26,6 +26,10 @@
     {
       "path": "app/test/sources_page_redesign_test.dart",
       "sha256": "7d070720cc81b1bb08fc450995261bc96731a768cc8c1db1904a267a0a93cdbc"
+    },
+    {
+      "path": "app/test/golden/core_pages_golden_test.dart",
+      "sha256": "3f543049451ccad303ba8d4ea3924daf3c2a2b6afda860090a1000ab4e5239f1"
     },
     {
       "path": "app/tool/source_archive_fixtures.dart",
@@ -167,16 +171,26 @@
   "gates": {
     "format": {
       "exitCode": 0,
-      "changed": 0
+      "changed": 0,
+      "files": 1,
+      "log": "golden-approval-format.txt"
     },
     "flutterAnalyze": {
       "exitCode": 0,
-      "result": "No issues found"
+      "result": "No issues found",
+      "log": "golden-approval-analyze.txt"
     },
     "targetedTests": {
+      "passed": 45,
+      "failed": 0,
+      "exitCode": 0,
+      "log": "golden-approval-regression.txt"
+    },
+    "targetedTestsBeforeApproval": {
       "passed": 23,
       "failed": 0,
-      "exitCode": 0
+      "exitCode": 0,
+      "log": "targeted-tests-final.txt"
     },
     "fullNonGoldenTests": {
       "total": 361,
@@ -187,6 +201,14 @@
       "log": "full-tests-final.txt"
     },
     "goldenTests": {
+      "total": 12,
+      "passed": 12,
+      "failed": 0,
+      "exitCode": 0,
+      "updateGoldens": false,
+      "log": "golden-approved-test.txt"
+    },
+    "goldenTestsBeforeApproval": {
       "total": 12,
       "passed": 10,
       "failed": 2,
@@ -213,20 +235,39 @@
       "evidence": "production-smoke-final/result.json"
     }
   },
+  "goldenApproval": {
+    "approvedAt": "2026-10-18T22:11:56.3568756+08:00",
+    "approvedBy": "user",
+    "userStatement": "全部批准",
+    "record": "golden-approval.txt",
+    "updateScope": "named cases only; no whole-file or whole-suite automatic update",
+    "postApprovalValidation": {
+      "total": 12,
+      "passed": 12,
+      "exitCode": 0,
+      "log": "golden-approved-test.txt"
+    }
+  },
   "goldenComparisons": [
     {
       "test": "sources-expanded-light",
-      "passed": false,
-      "approved": false,
-      "diff": "14.31%",
-      "action": "baseline retained; no update performed"
+      "path": "app/test/golden/goldens/sources-expanded-light.png",
+      "passed": true,
+      "approved": true,
+      "priorApprovalDiff": "14.31%",
+      "bytes": 12074,
+      "sha256": "48a8a7cfebb6b7b24bd83c90cee56d6ece4d0837d5ad961b8c23513c4d6a6c3a",
+      "action": "named-case-only baseline update; full validation passed"
     },
     {
       "test": "stage-compact-dark",
-      "passed": false,
-      "approved": false,
-      "diff": "100.00%",
-      "action": "inherited pending player approval; no update performed"
+      "path": "app/test/golden/goldens/stage-compact-dark.png",
+      "passed": true,
+      "approved": true,
+      "priorApprovalDiff": "100.00%",
+      "bytes": 6231,
+      "sha256": "0cf05d3588fcee2a77a0f9bd456ae23f542e1431dbef6898cac2e747142487c1",
+      "action": "named-case-only baseline update; full validation passed"
     }
   ],
   "visualReview": {
@@ -243,8 +284,8 @@
     "Windows only; Android, iOS, macOS and Linux were not exercised on devices.",
     "The source fixture proves current rendering with fixed data; Quark and WebDAV authentication, sync and remote playback were not exercised.",
     "No manual screen-reader or complete keyboard-focus review was performed.",
-    "sources-expanded-light Golden is intentionally failing until explicit user approval; no baseline was updated.",
-    "stage-compact-dark remains an inherited Golden pending separate player visual approval.",
+    "Approval covers the fixed Windows Golden and fixture render only; it does not cover Android, iOS, macOS, Linux or real remote-source behavior.",
+    "The approved Golden baselines are stable under the recorded Windows Flutter test environment; visual approval is not a substitute for manual screen-reader validation.",
     "Production smoke screenshots and generated audio were removed; fixed fixture screenshots are retained."
   ]
 }

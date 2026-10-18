@@ -1,0 +1,47 @@
+00:00 +0: loading F:/project/tingyu/app/test/voice_archive_player_test.dart
+00:00 +0: F:/project/tingyu/app/test/voice_archive_player_test.dart: 声档主题只在舞台作用域，默认队列和原有快照保持一致
+00:00 +1: F:/project/tingyu/app/test/voice_archive_player_test.dart: 声档主题只在舞台作用域，默认队列和原有快照保持一致
+00:00 +2: F:/project/tingyu/app/test/voice_archive_player_test.dart: 声档主题只在舞台作用域，默认队列和原有快照保持一致
+00:00 +3: F:/project/tingyu/app/test/sources_page_redesign_test.dart: 来源管理桌面摘要、卡片与状态层级可渲染
+00:00 +4: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:00 +5: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:00 +6: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:00 +7: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:00 +8: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:00 +9: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:00 +10: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:00 +11: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:00 +12: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:00 +13: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:00 +14: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:00 +15: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:00 +16: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +17: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +18: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +19: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +20: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +21: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +22: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +23: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +24: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +25: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +26: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +27: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +28: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +29: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +30: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +31: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +32: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +33: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +34: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +35: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +36: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +37: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +38: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +39: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +40: F:/project/tingyu/app/test/form_factor_test.dart: TyAppShell 按宽度选择外壳 窗口从 1440 缩到 412：当前路径与摆放状态都不丢
+00:01 +41: F:/project/tingyu/app/test/form_factor_test.dart: TyAppShell 按宽度选择外壳 窗口从 1440 缩到 412：当前路径与摆放状态都不丢
+00:01 +42: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 队列面板：一次取全库元数据，推进进度不重建行，换队列立即跟上
+00:01 +43: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:01 +44: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 封面按显示尺寸解码，不按原图分辨率
+00:01 +45: All tests passed!

@@ -70,7 +70,8 @@ Windows 截图使用 [windows-ui-screenshots.ps1](../../tools/windows-ui-screens
 | `flutter analyze` | 通过，无问题 |
 | 曲库及重点回归 | 34/34 通过 |
 | 全量非 Golden | 352 通过，1 失败；失败为 Windows 缺少 `chmod` 的既有环境问题 |
-| Golden 只校验 | 10 通过，1 失败；曲库两张已批准基准通过，播放舞台仍为 100% 待批准差异 |
+| Golden 只校验（曲库批准节点） | 当时 10 通过，1 失败；曲库两张已批准基准通过，播放舞台当时仍有 100% 待批准差异 |
+| Golden 完整校验（最终） | 12/12 通过；播放舞台随后获具名批准并按单用例更新 |
 | Preview Release 构建 | 通过 |
 | Production Release 构建 | 通过 |
 | Windows 真实播放冒烟 | 通过；10 次循环未退出，`media_kit (libmpv)` 持续播放 |
@@ -81,11 +82,18 @@ Windows 截图使用 [windows-ui-screenshots.ps1](../../tools/windows-ui-screens
 
 2026-10-18，用户明确确认当前曲库视觉。批准范围只包括 `library-songs-compact-light` 与 `library-songs-expanded-dark` 两张 Golden；更新时按用例分别执行 `--update-goldens`，没有更新播放舞台或其他页面基准。批准记录、更新日志和更新后完整 Golden 结果保存在 [批准证据](p3-library-evidence/golden-approval.txt)、[更新日志](p3-library-evidence/golden-approved-test.txt) 与 [结果记录](p3-library-evidence/results.md)。
 
-更新后完整 Golden 校验为 10 通过、1 失败。失败项仅为继承自播放页迁移的 `stage-compact-dark`，像素差异 100%；该基准继续保持待批准状态，不能依据本轮曲库批准一并更新。
+曲库批准节点的完整 Golden 校验当时为 10 通过、1 失败。失败项仅为继承自播放页迁移的
+`stage-compact-dark`，像素差异 100%；当时没有依据曲库批准一并更新。
+
+用户随后于来源管理节点以“全部批准”具名确认播放舞台并批准来源页。只更新
+`stage-compact-dark` 与 `sources-expanded-light` 后，不带 `--update-goldens` 的完整
+Golden 校验为 12/12。当前批准记录、当前 SHA256 与原始日志见
+[来源页批准记录](p3-sources-evidence/golden-approval.txt) 与
+[批准后校验](p3-sources-evidence/golden-approved-test.txt)。
 
 后续工作：
 
-1. 以来源管理页开始 P3 下一组迁移，继续复用 `sourcesProvider`、同步状态、路由和凭据接口。
-2. 为播放舞台单独完成用户视觉批准，再决定其 Golden 更新。
+1. 来源管理页已完成并获批准；进入 P4，固化当前 12 个 Golden 与实际运行截图对比门禁。
+2. 播放舞台已单独完成用户视觉批准并保持 12/12；任何后续像素变化仍须取得新的具名批准。
 3. 为夸克/WebDAV 使用受控凭据执行远程播放冒烟，并补 Android/iOS/macOS/Linux 实机验证。
 4. 执行人工读屏与键盘焦点走查；现有 UIA 查询和 Widget Semantics 不能替代完整无障碍验收。

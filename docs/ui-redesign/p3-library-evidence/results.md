@@ -4,7 +4,7 @@
 
 ## 结论
 
-曲库首页的实现、响应式截图、关键交互测试、Windows 生产构建和真实本地播放冒烟已经执行。列策略已按 P2 的 864 / 708 / 560 / 460 内容宽度边界复核；艺术家进入副标题时，来源仍保留独立列。2026-10-18 用户明确确认当前曲库视觉，两个曲库 Golden 已单独更新。静态分析、Widget 测试与无障碍树查询没有被写成完整视觉或无障碍验收通过，播放舞台 Golden 也仍保持待批准状态。
+曲库首页的实现、响应式截图、关键交互测试、Windows 生产构建和真实本地播放冒烟已经执行。列策略已按 P2 的 864 / 708 / 560 / 460 内容宽度边界复核；艺术家进入副标题时，来源仍保留独立列。2026-10-18 用户明确确认当前曲库视觉，两个曲库 Golden 已单独更新；播放舞台随后也在来源管理节点获用户批准，当前完整 Golden 校验为 12/12。静态分析、Widget 测试与无障碍树查询没有被写成完整视觉或无障碍验收通过。
 
 ## 实际截图
 
@@ -60,7 +60,7 @@ Windows DPI 为 1.5。桌面客户区为 1898×1024 物理像素（约 1265×683
 | 全量非 Golden | `flutter test --exclude-tags golden`，共 353 项 | 1 | [full-tests.txt](full-tests.txt)：352 通过，1 个环境失败 |
 | Golden 只校验（批准前） | `flutter test --run-skipped -t golden test/golden/core_pages_golden_test.dart` | 1 | [golden-test.txt](golden-test.txt)：9 通过，3 个待批准差异 |
 | Golden 更新（逐用例） | 仅对两个曲库用例执行 `--update-goldens` | 0 | [golden-approved-test.txt](golden-approved-test.txt)：两个用例分别通过 |
-| Golden 完整校验（批准后） | `flutter test --run-skipped -t golden test/golden/core_pages_golden_test.dart` | 1 | [golden-approved-test.txt](golden-approved-test.txt)：10 通过，1 个播放舞台待批准差异 |
+| Golden 完整校验（曲库批准后、舞台批准前） | `flutter test --run-skipped -t golden test/golden/core_pages_golden_test.dart` | 1 | [golden-approved-test.txt](golden-approved-test.txt)：当时 10 通过，1 个播放舞台待批准差异 |
 | Preview Release | Windows host engine，入口 `tool/voice_archive_preview.dart` | 0 | [preview-build.txt](preview-build.txt) |
 | Production Release | [build-windows-engine.ps1](../../../tools/build-windows-engine.ps1) 的 `App` 阶段 | 0 | [production-build.txt](production-build.txt) |
 | 生产冒烟 | [windows-smoke-test.ps1](../../../tools/windows-smoke-test.ps1)，10 cycles | 0 | [production-smoke.txt](production-smoke.txt) |
@@ -83,9 +83,16 @@ Command: chmod 600 ...\credentials\webdav_password_s1.txt
 |---|---:|---|
 | `library-songs-expanded-dark` | 10.71% | 已更新并校验通过 |
 | `library-songs-compact-light` | 26.59% | 已更新并校验通过 |
-| `stage-compact-dark` | 100.00% | 未更新，仍待单独视觉批准 |
+| `stage-compact-dark` | 100.00% | 后续已于来源管理节点具名批准；当前校验通过 |
 
 批准后的完整 Golden 校验为 10 通过、1 失败；唯一失败是 `stage-compact-dark`。原始更新与完整校验输出保存在 [golden-approved-test.txt](golden-approved-test.txt)，退出码分别保存在 `golden-approved-test.exit.txt` 中。`golden-diffs/` 内曲库差异图是批准前的历史证据，不代表当前基准仍有差异。
+
+舞台随后由用户于 2026-10-18 在来源管理节点批准。只更新 `stage-compact-dark` 后，
+不带 `--update-goldens` 的完整 Golden 校验为 12/12。当前批准记录、当前 SHA256 和原始
+日志见
+[来源页批准记录](../p3-sources-evidence/golden-approval.txt) 与
+[批准后校验](../p3-sources-evidence/golden-approved-test.txt)。本页“10 通过、1 失败”
+保留为曲库批准节点的历史状态。
 
 ## 生产冒烟
 
@@ -106,5 +113,6 @@ Command: chmod 600 ...\credentials\webdav_password_s1.txt
 ## 下一阶段
 
 1. 下一组迁移来源管理页，复用现有 `sourcesProvider`、同步状态、登录/配置界面与路由，继续保持单页提交和回退节点。
-2. 播放舞台旧基准仍需按 P3 播放页流程单独取得视觉批准。
+2. 播放舞台基准已获具名批准并保持 12/12 Golden 校验；后续像素变化仍须先审查再用
+   独立批准更新。
 3. 在受控环境补真实 WebDAV、夸克播放和各平台冒烟；随后补人工读屏和视觉对比验收。
