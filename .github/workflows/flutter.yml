@@ -43,6 +43,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.47.2'
           cache: true
       # media_kit / audio_service_mpris / flutter_secure_storage 在 Linux 上需要这些原生依赖才能解析与构建
       - name: Install Linux native dependencies
@@ -139,7 +140,6 @@ jobs:
           ./tools/build-windows-engine.ps1 -Stage Configure
           ./tools/build-windows-engine.ps1 -Stage Compile -Jobs 2
           ./tools/build-windows-engine.ps1 -Stage Test
-          $env:PATH = "$PWD/app/build/flutter-engine/checkout/bin;$env:PATH"
           ./tools/build-windows-engine.ps1 -Stage App
       - name: Upload artifact
         uses: actions/upload-artifact@v7
