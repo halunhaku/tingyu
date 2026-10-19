@@ -135,7 +135,9 @@ class _TyInteractiveState extends State<TyInteractive> {
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
-    if (!_actionable || event is KeyUpEvent) {
+    // 一次按键只对应一次操作。KeyRepeatEvent 是按住同一键产生的系统自动重复，
+    // 若也触发 onTap，长按 Enter / Space 会连续执行播放、删除等操作。
+    if (!_actionable || event is! KeyDownEvent) {
       return KeyEventResult.ignored;
     }
     final LogicalKeyboardKey key = event.logicalKey;
@@ -218,7 +220,9 @@ class _TyInteractiveState extends State<TyInteractive> {
       child = Semantics(
         container: true,
         button: widget.semanticButton,
-        enabled: widget.semanticEnabled ?? widget.enabled,
+        // 没有可执行动作时默认就是禁用态。只看 widget.enabled 会把
+        // `onTap == null` 的禁用按钮错误播报为可用。
+        enabled: widget.semanticEnabled ?? _actionable,
         label: widget.semanticLabel,
         value: widget.semanticValue,
         selected: widget.semanticSelected,

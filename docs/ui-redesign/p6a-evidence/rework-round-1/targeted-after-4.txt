@@ -1,0 +1,15 @@
+00:00 +0: loading F:/project/tingyu/app/test/p6a_interaction_contract_test.dart
+00:00 +0: F:/project/tingyu/app/test/p6a_interaction_contract_test.dart: Tab 顺序稳定，Enter 与 Space 驱动同一业务操作
+00:00 +0: F:/project/tingyu/app/test/webdav_http_integration_test.dart: 真实 loopback HTTP：鉴权、中文路径、503/429 重试与完整扫描
+[webdav] 第 1 次失败（HTTP 503），1ms 后重试
+[webdav] 第 2 次失败（HTTP 429），1ms 后重试
+00:00 +1: F:/project/tingyu/app/test/p6a_interaction_contract_test.dart: Tab 顺序稳定，Enter 与 Space 驱动同一业务操作
+00:00 +2: F:/project/tingyu/app/test/p6a_interaction_contract_test.dart: Tab 顺序稳定，Enter 与 Space 驱动同一业务操作
+00:00 +3: F:/project/tingyu/app/test/p6a_interaction_contract_test.dart: Tab 顺序稳定，Enter 与 Space 驱动同一业务操作
+00:00 +3: F:/project/tingyu/app/test/quark_http_fixture_test.dart: 真实 loopback HTTP：夸克分页、Cookie 刷新与直链接口契约
+[quark] 第 1 次失败（HTTP 429），1ms 后重试
+00:00 +4: F:/project/tingyu/app/test/p6a_interaction_contract_test.dart: Tab 顺序稳定，Enter 与 Space 驱动同一业务操作
+00:00 +5: F:/project/tingyu/app/test/p6a_interaction_contract_test.dart: 按住 Enter 或 Space 的自动重复不会重复执行操作
+00:00 +6: F:/project/tingyu/app/test/p6a_interaction_contract_test.dart: Esc 关闭浮层并把焦点与可见焦点环还给触发控件
+00:00 +7: F:/project/tingyu/app/test/p6a_interaction_contract_test.dart: 按钮暴露可执行语义动作与禁用状态
+00:00 +8: All tests passed!

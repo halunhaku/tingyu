@@ -2,7 +2,7 @@ param([Parameter(Mandatory=$true)][int]$AppProcessId,
       [Parameter(Mandatory=$true)][string]$OutputDirectory)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName Accessibility
-Add-Type -ReferencedAssemblies Accessibility -TypeDefinition @'
+Add-Type -ReferencedAssemblies Accessibility, System.Collections, System.Runtime -IgnoreWarnings -TypeDefinition @'
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;

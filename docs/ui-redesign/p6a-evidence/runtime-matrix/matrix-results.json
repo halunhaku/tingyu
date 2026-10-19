@@ -1,0 +1,484 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-19T11:18:03.1987541+08:00",
+  "currentCommit": "97a3d4e38775decfc287c3d4c9f2449cb370194f",
+  "platform": "Windows",
+  "diagnosticOnly": true,
+  "approvedBaseline": false,
+  "fixture": "app/tool/voice_archive_preview.dart",
+  "fixtureSha256": "c73447d61c314cb3e4f6e29514bf93a23bae5321fdbbbd23d8904d7f4aa35ec3",
+  "fixtureCover": "app/tool/fixtures/voice-archive-cover.png",
+  "fixtureCoverSha256": "6ce3bea4bfbe50978e6bd557508fe91ccc2ffe66428c965b0f5206b0634b4381",
+  "flutter": {
+    "frameworkVersion": "3.47.2",
+    "frameworkRevision": "d3b14c876900e553bc736ca19295fc09e3853e8e",
+    "dartSdkVersion": "3.13.2"
+  },
+  "fonts": [
+    {
+      "path": "C:\\Windows\\Fonts\\msyh.ttc",
+      "sha256": "d79c55e68b1131eea0cc1c47be4f572d964f28c682e143db2ad09c1e4cb07a3f"
+    },
+    {
+      "path": "C:\\Windows\\Fonts\\msyhbd.ttc",
+      "sha256": "4508821b3dffe01f0ef5e5326a3e60df705a44633858811f67b6982dce3f6ee6"
+    },
+    {
+      "path": "C:\\Windows\\Fonts\\segoeui.ttf",
+      "sha256": "704eada12961a27fd271f7d3b09e2066520e758390c1776744eff430fee30f6e"
+    }
+  ],
+  "animationsDisabled": true,
+  "overallStructuralPassed": true,
+  "contactSheet": "contact-sheet.png",
+  "cases": [
+    {
+      "id": "library-phone-small-normal-light",
+      "page": "library",
+      "route": "/library/songs",
+      "intent": "最小可用手机窗，正常数据",
+      "logicalViewport": {
+        "width": 360,
+        "height": 640
+      },
+      "clientViewport": {
+        "width": 540,
+        "height": 960,
+        "dpiScale": 1.5
+      },
+      "theme": "light",
+      "previewState": "normal",
+      "previewScale": 1,
+      "cover": "none",
+      "passedStructuralCheck": true,
+      "visualReview": "capturedForManualReview",
+      "image": "library-phone-small-normal-light/library-songs.png",
+      "flattenedImage": "matrix-images/library-phone-small-normal-light.png",
+      "sha256": "c163e13a8b31e111e35a878959175bc597b01ade0cc161fa304e8324ea9717e0",
+      "captureMetadata": "library-phone-small-normal-light/capture-metadata.json",
+      "captureLog": "library-phone-small-normal-light/capture.log"
+    },
+    {
+      "id": "library-phone-empty-dark",
+      "page": "library",
+      "route": "/library/songs",
+      "intent": "手机空曲库与暗色层次",
+      "logicalViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "clientViewport": {
+        "width": 585,
+        "height": 1266,
+        "dpiScale": 1.5
+      },
+      "theme": "dark",
+      "previewState": "empty",
+      "previewScale": 1,
+      "cover": "none",
+      "passedStructuralCheck": true,
+      "visualReview": "capturedForManualReview",
+      "image": "library-phone-empty-dark/library-songs.png",
+      "flattenedImage": "matrix-images/library-phone-empty-dark.png",
+      "sha256": "5badbc6a301b76d67720d528cceb8f131d2c1751fd3e6e4be87d17179162d796",
+      "captureMetadata": "library-phone-empty-dark/capture-metadata.json",
+      "captureLog": "library-phone-empty-dark/capture.log"
+    },
+    {
+      "id": "library-phone-error-scale2-light",
+      "page": "library",
+      "route": "/library/songs",
+      "intent": "手机 200% 字号错误态",
+      "logicalViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "clientViewport": {
+        "width": 585,
+        "height": 1266,
+        "dpiScale": 1.5
+      },
+      "theme": "light",
+      "previewState": "error",
+      "previewScale": 2,
+      "cover": "none",
+      "passedStructuralCheck": true,
+      "visualReview": "capturedForManualReview",
+      "image": "library-phone-error-scale2-light/library-songs.png",
+      "flattenedImage": "matrix-images/library-phone-error-scale2-light.png",
+      "sha256": "2f2d095627d21db58c4eff1d650b25cffda333808d94605384c40b6f8630a855",
+      "captureMetadata": "library-phone-error-scale2-light/capture-metadata.json",
+      "captureLog": "library-phone-error-scale2-light/capture.log"
+    },
+    {
+      "id": "library-compact-upper-empty-dark",
+      "page": "library",
+      "route": "/library/songs",
+      "intent": "compact 上边界附近，空态不依赖手机高度",
+      "logicalViewport": {
+        "width": 639,
+        "height": 640
+      },
+      "clientViewport": {
+        "width": 958,
+        "height": 960,
+        "dpiScale": 1.5
+      },
+      "theme": "dark",
+      "previewState": "empty",
+      "previewScale": 1,
+      "cover": "none",
+      "passedStructuralCheck": true,
+      "visualReview": "capturedForManualReview",
+      "image": "library-compact-upper-empty-dark/library-songs.png",
+      "flattenedImage": "matrix-images/library-compact-upper-empty-dark.png",
+      "sha256": "040351c07225803080a27274f3538d074745d5e3ca9238e768f5ae18b1f70570",
+      "captureMetadata": "library-compact-upper-empty-dark/capture-metadata.json",
+      "captureLog": "library-compact-upper-empty-dark/capture.log"
+    },
+    {
+      "id": "library-expanded-boundary-normal-light",
+      "page": "library",
+      "route": "/library/songs",
+      "intent": "expanded 下边界，检查侧栏与内容密度",
+      "logicalViewport": {
+        "width": 1024,
+        "height": 683
+      },
+      "clientViewport": {
+        "width": 1536,
+        "height": 1024,
+        "dpiScale": 1.5
+      },
+      "theme": "light",
+      "previewState": "normal",
+      "previewScale": 1,
+      "cover": "none",
+      "passedStructuralCheck": true,
+      "visualReview": "capturedForManualReview",
+      "image": "library-expanded-boundary-normal-light/library-songs.png",
+      "flattenedImage": "matrix-images/library-expanded-boundary-normal-light.png",
+      "sha256": "61ec5ffa2518e1e42a3aadaa47f0861aae8103c975002f92a836feb672186a18",
+      "captureMetadata": "library-expanded-boundary-normal-light/capture-metadata.json",
+      "captureLog": "library-expanded-boundary-normal-light/capture.log"
+    },
+    {
+      "id": "library-desktop-normal-dark",
+      "page": "library",
+      "route": "/library/songs",
+      "intent": "桌面常规窗口，与已批准桌面视觉同尺",
+      "logicalViewport": {
+        "width": 1265,
+        "height": 683
+      },
+      "clientViewport": {
+        "width": 1898,
+        "height": 1024,
+        "dpiScale": 1.5
+      },
+      "theme": "dark",
+      "previewState": "normal",
+      "previewScale": 1,
+      "cover": "none",
+      "passedStructuralCheck": true,
+      "visualReview": "capturedForManualReview",
+      "image": "library-desktop-normal-dark/library-songs.png",
+      "flattenedImage": "matrix-images/library-desktop-normal-dark.png",
+      "sha256": "e0296f28393418ade0f4633ffcd10ec36f87fe82b65fb61f38ba22fc29c074a6",
+      "captureMetadata": "library-desktop-normal-dark/capture-metadata.json",
+      "captureLog": "library-desktop-normal-dark/capture.log"
+    },
+    {
+      "id": "sources-phone-normal-light",
+      "page": "sources",
+      "route": "/sources",
+      "intent": "手机来源列表正常态",
+      "logicalViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "clientViewport": {
+        "width": 585,
+        "height": 1266,
+        "dpiScale": 1.5
+      },
+      "theme": "light",
+      "previewState": "normal",
+      "previewScale": 1,
+      "cover": "none",
+      "passedStructuralCheck": true,
+      "visualReview": "capturedForManualReview",
+      "image": "sources-phone-normal-light/sources.png",
+      "flattenedImage": "matrix-images/sources-phone-normal-light.png",
+      "sha256": "87efc4d21aad0488c4a3716c22cd1f20f9164bf4f6bb114d866a5c0720a17b45",
+      "captureMetadata": "sources-phone-normal-light/capture-metadata.json",
+      "captureLog": "sources-phone-normal-light/capture.log"
+    },
+    {
+      "id": "sources-phone-syncing-scale2-dark",
+      "page": "sources",
+      "route": "/sources",
+      "intent": "手机 200% 字号同步态",
+      "logicalViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "clientViewport": {
+        "width": 585,
+        "height": 1266,
+        "dpiScale": 1.5
+      },
+      "theme": "dark",
+      "previewState": "syncing",
+      "previewScale": 2,
+      "cover": "none",
+      "passedStructuralCheck": true,
+      "visualReview": "capturedForManualReview",
+      "image": "sources-phone-syncing-scale2-dark/sources.png",
+      "flattenedImage": "matrix-images/sources-phone-syncing-scale2-dark.png",
+      "sha256": "a6420868be1abf8b2d9bd681ab13c06f1a971287c8cd23ceecc6d08bb421793e",
+      "captureMetadata": "sources-phone-syncing-scale2-dark/capture-metadata.json",
+      "captureLog": "sources-phone-syncing-scale2-dark/capture.log"
+    },
+    {
+      "id": "sources-phone-relogin-dark",
+      "page": "sources",
+      "route": "/sources",
+      "intent": "小屏重新登录动作",
+      "logicalViewport": {
+        "width": 360,
+        "height": 640
+      },
+      "clientViewport": {
+        "width": 540,
+        "height": 960,
+        "dpiScale": 1.5
+      },
+      "theme": "dark",
+      "previewState": "relogin",
+      "previewScale": 1,
+      "cover": "none",
+      "passedStructuralCheck": true,
+      "visualReview": "capturedForManualReview",
+      "image": "sources-phone-relogin-dark/sources.png",
+      "flattenedImage": "matrix-images/sources-phone-relogin-dark.png",
+      "sha256": "f6357d5f8d62fa85e0fb817cc5e7e00d205d31cf576e9c9784a2f9778f6d95d0",
+      "captureMetadata": "sources-phone-relogin-dark/capture-metadata.json",
+      "captureLog": "sources-phone-relogin-dark/capture.log"
+    },
+    {
+      "id": "sources-phone-error-light",
+      "page": "sources",
+      "route": "/sources",
+      "intent": "手机来源读取错误与恢复入口",
+      "logicalViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "clientViewport": {
+        "width": 585,
+        "height": 1266,
+        "dpiScale": 1.5
+      },
+      "theme": "light",
+      "previewState": "error",
+      "previewScale": 1,
+      "cover": "none",
+      "passedStructuralCheck": true,
+      "visualReview": "capturedForManualReview",
+      "image": "sources-phone-error-light/sources.png",
+      "flattenedImage": "matrix-images/sources-phone-error-light.png",
+      "sha256": "6420a3ad4e7f07047d0ec5e9d8c780396cc7ac096dc50348e045a00f419cd332",
+      "captureMetadata": "sources-phone-error-light/capture-metadata.json",
+      "captureLog": "sources-phone-error-light/capture.log"
+    },
+    {
+      "id": "sources-desktop-relogin-dark",
+      "page": "sources",
+      "route": "/sources",
+      "intent": "桌面重新登录状态与已批准基准同尺",
+      "logicalViewport": {
+        "width": 1265,
+        "height": 683
+      },
+      "clientViewport": {
+        "width": 1898,
+        "height": 1024,
+        "dpiScale": 1.5
+      },
+      "theme": "dark",
+      "previewState": "relogin",
+      "previewScale": 1,
+      "cover": "none",
+      "passedStructuralCheck": true,
+      "visualReview": "capturedForManualReview",
+      "image": "sources-desktop-relogin-dark/sources.png",
+      "flattenedImage": "matrix-images/sources-desktop-relogin-dark.png",
+      "sha256": "3d89e2a5007743b38cf9f73b878a54637128da5a1ad7883acca3e3e8d54d55b9",
+      "captureMetadata": "sources-desktop-relogin-dark/capture-metadata.json",
+      "captureLog": "sources-desktop-relogin-dark/capture.log"
+    },
+    {
+      "id": "stage-phone-scale2-light",
+      "page": "stage",
+      "route": "/stage",
+      "intent": "手机 200% 字号正常播放",
+      "logicalViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "clientViewport": {
+        "width": 585,
+        "height": 1266,
+        "dpiScale": 1.5
+      },
+      "theme": "light",
+      "previewState": "normal",
+      "previewScale": 2,
+      "cover": "fixture",
+      "passedStructuralCheck": true,
+      "visualReview": "capturedForManualReview",
+      "image": "stage-phone-scale2-light/stage.png",
+      "flattenedImage": "matrix-images/stage-phone-scale2-light.png",
+      "sha256": "c7f3c0502f373a727ad48dfb4c08ff73dc470fb3d233a56ca11dba3b7421ab91",
+      "captureMetadata": "stage-phone-scale2-light/capture-metadata.json",
+      "captureLog": "stage-phone-scale2-light/capture.log"
+    },
+    {
+      "id": "stage-phone-empty-dark",
+      "page": "stage",
+      "route": "/stage",
+      "intent": "最小手机窗空播放态",
+      "logicalViewport": {
+        "width": 360,
+        "height": 640
+      },
+      "clientViewport": {
+        "width": 540,
+        "height": 960,
+        "dpiScale": 1.5
+      },
+      "theme": "dark",
+      "previewState": "empty",
+      "previewScale": 1,
+      "cover": "none",
+      "passedStructuralCheck": true,
+      "visualReview": "capturedForManualReview",
+      "image": "stage-phone-empty-dark/stage.png",
+      "flattenedImage": "matrix-images/stage-phone-empty-dark.png",
+      "sha256": "80fa394c7c491e3323a227fb5f6ba20597869688e0a1fc9fa1f57db07bf7fe7b",
+      "captureMetadata": "stage-phone-empty-dark/capture-metadata.json",
+      "captureLog": "stage-phone-empty-dark/capture.log"
+    },
+    {
+      "id": "stage-landscape-scale2-light",
+      "page": "stage",
+      "route": "/stage",
+      "intent": "手机横屏 200% 字号主控可达性",
+      "logicalViewport": {
+        "width": 844,
+        "height": 390
+      },
+      "clientViewport": {
+        "width": 1266,
+        "height": 585,
+        "dpiScale": 1.5
+      },
+      "theme": "light",
+      "previewState": "normal",
+      "previewScale": 2,
+      "cover": "fixture",
+      "passedStructuralCheck": true,
+      "visualReview": "capturedForManualReview",
+      "image": "stage-landscape-scale2-light/stage.png",
+      "flattenedImage": "matrix-images/stage-landscape-scale2-light.png",
+      "sha256": "28166441610b5dd66525417d49f07922b8acec1b1678768642e0da626794efcd",
+      "captureMetadata": "stage-landscape-scale2-light/capture-metadata.json",
+      "captureLog": "stage-landscape-scale2-light/capture.log"
+    },
+    {
+      "id": "stage-desktop-failure-dark",
+      "page": "stage",
+      "route": "/stage",
+      "intent": "桌面播放失败与恢复提示",
+      "logicalViewport": {
+        "width": 1265,
+        "height": 683
+      },
+      "clientViewport": {
+        "width": 1898,
+        "height": 1024,
+        "dpiScale": 1.5
+      },
+      "theme": "dark",
+      "previewState": "failure",
+      "previewScale": 1,
+      "cover": "fixture",
+      "passedStructuralCheck": true,
+      "visualReview": "capturedForManualReview",
+      "image": "stage-desktop-failure-dark/stage.png",
+      "flattenedImage": "matrix-images/stage-desktop-failure-dark.png",
+      "sha256": "7a5da17fe71e4cd4923c1d402e61fb7bcd388d951b28e2aa2ff68d373e83d0b5",
+      "captureMetadata": "stage-desktop-failure-dark/capture-metadata.json",
+      "captureLog": "stage-desktop-failure-dark/capture.log"
+    },
+    {
+      "id": "stage-desktop-queue-light",
+      "page": "stage",
+      "route": "/stage?tab=queue",
+      "intent": "桌面队列右栏",
+      "logicalViewport": {
+        "width": 1265,
+        "height": 683
+      },
+      "clientViewport": {
+        "width": 1898,
+        "height": 1024,
+        "dpiScale": 1.5
+      },
+      "theme": "light",
+      "previewState": "normal",
+      "previewScale": 1,
+      "cover": "fixture",
+      "passedStructuralCheck": true,
+      "visualReview": "capturedForManualReview",
+      "image": "stage-desktop-queue-light/stage-tab-queue.png",
+      "flattenedImage": "matrix-images/stage-desktop-queue-light.png",
+      "sha256": "d360293b454d689a5b510310887bf98ea174535394b1ae458c7c88d4c7d2b98b",
+      "captureMetadata": "stage-desktop-queue-light/capture-metadata.json",
+      "captureLog": "stage-desktop-queue-light/capture.log"
+    },
+    {
+      "id": "stage-phone-lyrics-scale2-dark",
+      "page": "stage",
+      "route": "/stage?tab=lyrics",
+      "intent": "手机 200% 字号歌词页",
+      "logicalViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "clientViewport": {
+        "width": 585,
+        "height": 1266,
+        "dpiScale": 1.5
+      },
+      "theme": "dark",
+      "previewState": "normal",
+      "previewScale": 2,
+      "cover": "fixture",
+      "passedStructuralCheck": true,
+      "visualReview": "capturedForManualReview",
+      "image": "stage-phone-lyrics-scale2-dark/stage-tab-lyrics.png",
+      "flattenedImage": "matrix-images/stage-phone-lyrics-scale2-dark.png",
+      "sha256": "a256e91a9546d5b95316222f2bf766d9c3b7d1646b6bcda03e160c614f024991",
+      "captureMetadata": "stage-phone-lyrics-scale2-dark/capture-metadata.json",
+      "captureLog": "stage-phone-lyrics-scale2-dark/capture.log"
+    }
+  ],
+  "limitations": [
+    "These captures are diagnostic evidence and have no approved pixel baseline.",
+    "Structural capture success does not approve visual quality, layout polish, or cross-platform rendering.",
+    "Windows fixed preview only; Android, iOS, macOS and Linux runtime rendering remain P6B work.",
+    "Real Quark/WebDAV accounts, real devices, system text scaling and manual screen readers remain P6B work."
+  ]
+}

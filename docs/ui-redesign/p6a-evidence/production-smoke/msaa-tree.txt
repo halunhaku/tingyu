@@ -1,0 +1,81 @@
+role=16 name=
+  role=20 name=
+    role=20 name=
+      role=20 name=
+        role=20 name=
+          role=20 name=0:22
+2:00
+            role=20 name=
+              role=42 name=搜索曲库
+              role=41 name=Ctrl F
+              role=41 name=曲库
+              role=41 name=191 首歌曲
+              role=20 name=
+                role=43 name=播放全部
+播放全部
+              role=20 name=排序
+                role=43 name=标题
+标题
+              role=20 name=多选
+                role=43 name=多选
+              role=20 name=
+                role=43 name=曲名 排序
+曲名
+              role=41 name=来源
+              role=20 name=
+                role=43 name=时长 排序
+时长
+              role=20 name=
+                role=20 name=
+                  role=20 name=
+                    role=43 name=Emily，生命是件神奇的事 (The wonder of us) · 房东的猫 · 不擅生长的树 (Isness) · 4:18 · 夸克网盘
+                      role=43 name=选择
+                  role=20 name=
+                    role=43 name=I Do · 周杰伦 · 太阳之子 · 3:36 · 夸克网盘
+                      role=43 name=选择
+                  role=20 name=
+                    role=43 name=Intro · 希先森 · Intro (Max) · 8:05 · 夸克网盘
+                      role=43 name=选择
+                  role=20 name=
+                    role=43 name=Mine Mine · 周杰伦 · 惊叹号 · 4:26 · 夸克网盘
+                      role=43 name=选择
+                  role=20 name=
+                    role=43 name=Mojito · 周杰伦 · Mojito · 3:05 · 夸克网盘
+                      role=43 name=选择
+                  role=20 name=
+                    role=43 name=Now You See Me · 周杰伦 · 周杰伦的床边故事 · 2:55 · 夸克网盘
+                      role=43 name=选择
+                  role=20 name=
+                    role=43 name=一口气全念对 · 周杰伦 · 哎呦，不错哦 · 2:38 · 夸克网盘
+                      role=43 name=选择
+                  role=20 name=
+                    role=43 name=一点点 · 周杰伦 · 周杰伦的床边故事 · 3:42 · 夸克网盘
+                      role=43 name=选择
+                  role=20 name=
+                    role=43 name=一路向北 · 周杰伦 · J III MP3 Player · 4:54 · 夸克网盘
+                      role=43 name=选择
+              role=41 name=已显示 40 / 共 191 首
+              role=20 name=
+                role=43 name=加载更多
+加载更多
+            role=20 name=正在播放 smoke-tone.wav
+              role=43 name=展开播放舞台
+smoke-tone.wav
+            role=20 name=随机播放：关
+              role=43 name=随机播放：关
+            role=20 name=上一首
+              role=43 name=上一首
+            role=20 name=暂停
+              role=43 name=暂停
+            role=20 name=下一首
+              role=43 name=下一首
+            role=20 name=列表循环
+              role=43 name=列表循环
+            role=20 name=歌词
+              role=43 name=歌词
+            role=20 name=播放队列
+              role=43 name=播放队列
+            role=20 name=
+              role=51 name=播放进度
+            role=20 name=音量
+              role=43 name=音量

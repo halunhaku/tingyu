@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 1,
+  "requestedStage": "all",
+  "startedAt": "2026-10-19T11:12:44.4788230+08:00",
+  "finishedAt": "2026-10-19T11:18:54.3596861+08:00",
+  "durationSeconds": 369.881,
+  "branch": "codex/ui-p6a-acceptance",
+  "commit": "97a3d4e38775decfc287c3d4c9f2449cb370194f",
+  "passed": true,
+  "environment": {
+    "platform": "Microsoft Windows NT 10.0.26300.0",
+    "powershell": "7.6.5",
+    "flutter": {
+      "frameworkVersion": "3.47.2",
+      "frameworkRevision": "d3b14c876900e553bc736ca19295fc09e3853e8e",
+      "dartSdkVersion": "3.13.2"
+    }
+  },
+  "gates": [
+    {
+      "id": "visual-asset-seal",
+      "displayName": "Approved Golden and P4 runtime baseline SHA256 seal",
+      "command": "verify F:\\project\\tingyu\\docs\\ui-redesign\\p4-quality\\approved-visual-assets.sha256",
+      "workingDirectory": "F:\\project\\tingyu",
+      "startedAt": "2026-10-19T11:12:44.4832677+08:00",
+      "finishedAt": "2026-10-19T11:12:44.5186568+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/visual-asset-seal.txt"
+    },
+    {
+      "id": "format",
+      "displayName": "Format check for P6A Dart changes",
+      "command": "dart format --output=none --set-exit-if-changed lib/design/components/interactive.dart lib/sources/quark/quark_drive_client.dart test/p6a_interaction_contract_test.dart test/webdav_http_integration_test.dart test/quark_http_fixture_test.dart",
+      "workingDirectory": "F:\\project\\tingyu\\app",
+      "startedAt": "2026-10-19T11:12:44.5280099+08:00",
+      "finishedAt": "2026-10-19T11:12:45.0986350+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/format.txt"
+    },
+    {
+      "id": "analyze",
+      "displayName": "Flutter static analysis",
+      "command": "flutter analyze",
+      "workingDirectory": "F:\\project\\tingyu\\app",
+      "startedAt": "2026-10-19T11:12:45.0998048+08:00",
+      "finishedAt": "2026-10-19T11:12:50.5417113+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/analyze.txt"
+    },
+    {
+      "id": "interaction-contracts",
+      "displayName": "Keyboard, overlay, semantics and responsive interaction contracts",
+      "command": "flutter test test/p6a_interaction_contract_test.dart test/p5_review_regression_test.dart test/design_system_render_test.dart test/form_factor_test.dart test/library_page_redesign_test.dart test/sources_page_redesign_test.dart test/voice_archive_stage_layout_test.dart test/now_playing_layout_test.dart test/navigation_gesture_test.dart",
+      "workingDirectory": "F:\\project\\tingyu\\app",
+      "startedAt": "2026-10-19T11:12:50.5468518+08:00",
+      "finishedAt": "2026-10-19T11:12:56.3990553+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/interaction-contracts.txt"
+    },
+    {
+      "id": "local-integrations",
+      "displayName": "Loopback HTTP protocol fixtures and database migration tests",
+      "command": "flutter test test/webdav_http_integration_test.dart test/quark_http_fixture_test.dart test/webdav_test.dart test/quark_test.dart test/source_sync_test.dart test/database_migration_test.dart",
+      "workingDirectory": "F:\\project\\tingyu\\app",
+      "startedAt": "2026-10-19T11:12:56.4012727+08:00",
+      "finishedAt": "2026-10-19T11:13:00.5979405+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/local-integrations.txt"
+    },
+    {
+      "id": "non-golden-tests",
+      "displayName": "All non-Golden unit, widget and integration tests",
+      "command": "flutter test --exclude-tags golden",
+      "workingDirectory": "F:\\project\\tingyu\\app",
+      "startedAt": "2026-10-19T11:13:00.5986979+08:00",
+      "finishedAt": "2026-10-19T11:13:13.1245147+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/non-golden-tests.txt"
+    },
+    {
+      "id": "golden",
+      "displayName": "Verify approved Golden images without updating them",
+      "command": "flutter test --run-skipped -t golden test/golden/core_pages_golden_test.dart",
+      "workingDirectory": "F:\\project\\tingyu\\app",
+      "startedAt": "2026-10-19T11:13:13.1252924+08:00",
+      "finishedAt": "2026-10-19T11:13:17.9235226+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/golden.txt"
+    },
+    {
+      "id": "visual-preview-build",
+      "displayName": "Build fixed-data preview with pinned Windows engine",
+      "command": "flutter --local-engine-src-path=F:\\project\\tingyu\\app\\build\\flutter-engine\\checkout\\engine\\src --local-engine=host_release --local-engine-host=host_release build windows --release -t tool/voice_archive_preview.dart",
+      "workingDirectory": "F:\\project\\tingyu\\app",
+      "startedAt": "2026-10-19T11:13:17.9287305+08:00",
+      "finishedAt": "2026-10-19T11:13:34.7189991+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/visual-preview-build.txt"
+    },
+    {
+      "id": "approved-runtime-visual",
+      "displayName": "Compare six approved runtime states without updating baselines",
+      "command": "C:\\Users\\qq120\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\powershell\\pwsh.exe -NoProfile -ExecutionPolicy Bypass -File F:\\project\\tingyu\\tools\\p4-runtime-visual.ps1 -RepositoryRoot F:\\project\\tingyu -CasesFile docs/ui-redesign/p4-quality/runtime-visual-cases.json -OutputDirectory docs/ui-redesign/p6a-evidence/approved-runtime -WaitSeconds 5",
+      "workingDirectory": "F:\\project\\tingyu",
+      "startedAt": "2026-10-19T11:13:34.7209934+08:00",
+      "finishedAt": "2026-10-19T11:14:49.4886508+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/approved-runtime-visual.txt"
+    },
+    {
+      "id": "response-runtime-matrix",
+      "displayName": "Capture P6A diagnostic responsive and large-text matrix",
+      "command": "C:\\Users\\qq120\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\powershell\\pwsh.exe -NoProfile -ExecutionPolicy Bypass -File F:\\project\\tingyu\\tools\\p6a-runtime-matrix.ps1 -RepositoryRoot F:\\project\\tingyu -OutputDirectory docs/ui-redesign/p6a-evidence/runtime-matrix -WaitSeconds 5",
+      "workingDirectory": "F:\\project\\tingyu",
+      "startedAt": "2026-10-19T11:14:49.4890824+08:00",
+      "finishedAt": "2026-10-19T11:18:03.2427893+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/response-runtime-matrix.txt"
+    },
+    {
+      "id": "production-build",
+      "displayName": "Build production Windows application with pinned engine",
+      "command": "C:\\Users\\qq120\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\powershell\\pwsh.exe -NoProfile -ExecutionPolicy Bypass -File F:\\project\\tingyu\\tools\\build-windows-engine.ps1 -Stage App",
+      "workingDirectory": "F:\\project\\tingyu",
+      "startedAt": "2026-10-19T11:18:03.2437918+08:00",
+      "finishedAt": "2026-10-19T11:18:21.2548633+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/production-build.txt"
+    },
+    {
+      "id": "production-smoke",
+      "displayName": "Real local WAV playback, navigation and automated accessibility tree",
+      "command": "C:\\Users\\qq120\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\powershell\\pwsh.exe -NoProfile -ExecutionPolicy Bypass -File F:\\project\\tingyu\\tools\\windows-smoke-test.ps1 -AppDirectory F:\\project\\tingyu\\app\\build\\windows\\x64\\runner\\Release -OutputDirectory F:\\project\\tingyu\\docs\\ui-redesign\\p6a-evidence\\production-smoke -Cycles 10 -EnableAccessibility",
+      "workingDirectory": "F:\\project\\tingyu",
+      "startedAt": "2026-10-19T11:18:21.2552084+08:00",
+      "finishedAt": "2026-10-19T11:18:54.3594141+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/production-smoke.txt"
+    }
+  ],
+  "evidence": {
+    "approvedRuntimeVisualDirectory": "approved-runtime",
+    "responseMatrixDirectory": "runtime-matrix",
+    "productionSmokeDirectory": "production-smoke",
+    "approvedVisualSeal": "docs/ui-redesign/p4-quality/approved-visual-assets.sha256"
+  },
+  "limitations": [
+    "P6A runs on Windows only and uses fixed local fixtures for source protocols.",
+    "The loopback WebDAV and Quark servers prove transport and protocol contracts, not a real remote account.",
+    "The diagnostic response matrix has no approved pixel baseline; it does not certify visual quality.",
+    "Android, iOS, macOS and Linux runtime rendering, real-device touch, system text scaling and manual screen readers remain P6B work."
+  ]
+}

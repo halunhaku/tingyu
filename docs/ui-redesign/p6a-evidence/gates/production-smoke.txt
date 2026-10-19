@@ -1,0 +1,51 @@
+WARNING: warning CS1701: Assuming assembly reference 'System.Runtime, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' used by 'Accessibility' matches identity 'System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' of 'System.Runtime', you may need to supply runtime policy
+WARNING: warning CS1701: Assuming assembly reference 'System.Runtime, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' used by 'Accessibility' matches identity 'System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' of 'System.Runtime', you may need to supply runtime policy
+WARNING: warning CS1701: Assuming assembly reference 'System.Runtime, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' used by 'Accessibility' matches identity 'System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' of 'System.Runtime', you may need to supply runtime policy
+WARNING: warning CS1701: Assuming assembly reference 'System.Runtime, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' used by 'Accessibility' matches identity 'System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' of 'System.Runtime', you may need to supply runtime policy
+WARNING: warning CS1701: Assuming assembly reference 'System.Runtime, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' used by 'Accessibility' matches identity 'System.Runtime, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' of 'System.Runtime', you may need to supply runtime policy
+{
+  "processId": 21176,
+  "nodes": 27,
+  "namedNodes": 21
+}
+{
+  "processId": 21176,
+  "nodes": 74,
+  "namedNodes": 52
+}
+{
+  "processId": 21176,
+  "libraryTrack": false,
+  "accessibilityEnabled": true,
+  "cyclesAttempted": 10,
+  "playbackStart": {
+    "Line": "[snapshot] engine=media_kit (libmpv) processing=ready playing=true position=8330ms duration=120000ms index=0 failure=-",
+    "PositionMs": 8330,
+    "DurationMs": 120000,
+    "Index": 0
+  },
+  "playbackEnd": {
+    "Line": "[snapshot] engine=media_kit (libmpv) processing=ready playing=true position=22890ms duration=120000ms index=0 failure=-",
+    "PositionMs": 22890,
+    "DurationMs": 120000,
+    "Index": 0
+  },
+  "positionDeltaMs": 14560,
+  "expandedStageConfirmed": true,
+  "exited": false,
+  "checkedAt": "2026-10-19T11:18:54.1858377+08:00",
+  "namedAccessibilityElements": 1,
+  "nativeAccessibilityErrors": 0,
+  "msaa": {
+    "processId": 21176,
+    "nodes": 74,
+    "namedNodes": 52
+  },
+  "latestPlaybackSnapshots": [
+    "[snapshot] engine=media_kit (libmpv) processing=ready playing=true position=22670ms duration=120000ms index=0 failure=-",
+    "[snapshot] engine=media_kit (libmpv) processing=ready playing=true position=22720ms duration=120000ms index=0 failure=-",
+    "[snapshot] engine=media_kit (libmpv) processing=ready playing=true position=22800ms duration=120000ms index=0 failure=-",
+    "[snapshot] engine=media_kit (libmpv) processing=ready playing=true position=22890ms duration=120000ms index=0 failure=-",
+    "[snapshot] engine=media_kit (libmpv) processing=ready playing=true position=22970ms duration=120000ms index=0 failure=-"
+  ]
+}

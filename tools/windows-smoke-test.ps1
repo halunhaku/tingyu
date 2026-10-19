@@ -98,6 +98,7 @@ function Wait-ForPlaying([int]$TimeoutSeconds) {
 $previousSource = $env:TINGYU_DEBUG_SOURCES
 $previousPlaybackLog = $env:TINGYU_DEBUG_PLAYBACK_LOG
 $previousAccessibility = $env:TINGYU_WINDOWS_ACCESSIBILITY
+$expandedStageConfirmed = $false
 $process = $null
 try {
   $env:TINGYU_DEBUG_SOURCES = if ($LibraryTrack) { '' } else { $tone }
@@ -135,11 +136,25 @@ try {
   for ($cycle = 1; $cycle -le $Cycles; $cycle++) {
     $process.Refresh()
     if ($process.HasExited) { break }
-    Click-Client $child ($rect.Right-[int](48*$scale)) ($rect.Bottom-[int](44*$scale))
-    Start-Sleep -Milliseconds 180
-    if ($cycle -eq 1) { Save-Screenshot $window '02-expanded.png' }
-    Click-Client $child ([int](295*$scale)) ([int](28*$scale))
-    Start-Sleep -Milliseconds 550
+    # 点击桌面传输条左侧的封面 / 标题区域，真实 push 到播放舞台。
+    Click-Client $child ([int](140*$scale)) ($rect.Bottom-[int](42*$scale))
+    Start-Sleep -Milliseconds 450
+    if ($cycle -eq 1) {
+      Save-Screenshot $window '02-expanded.png'
+      if ($EnableAccessibility) {
+        $stageProbeDirectory = Join-Path $OutputDirectory 'stage-accessibility'
+        & (Join-Path $PSScriptRoot 'windows-accessibility-probe.ps1') `
+          -AppProcessId $process.Id `
+          -OutputDirectory $stageProbeDirectory
+        $expandedStageConfirmed = @(
+          Get-Content (Join-Path $stageProbeDirectory 'msaa-tree.txt') |
+            Where-Object { $_ -match 'name=关闭舞台' }
+        ).Count -gt 0
+      }
+    }
+    # 点击舞台左上返回键，确认回库后播放引擎继续推进。
+    Click-Client $child ([int](32*$scale)) ([int](32*$scale))
+    Start-Sleep -Milliseconds 600
   }
   Start-Sleep -Seconds 3
   $process.Refresh()
@@ -157,6 +172,7 @@ try {
     playbackStart=$playbackStart
     playbackEnd=$playbackEnd
     positionDeltaMs=$positionDeltaMs
+    expandedStageConfirmed=[bool]$expandedStageConfirmed
     exited=$process.HasExited
     checkedAt=(Get-Date).ToString('o')
   }
@@ -179,6 +195,9 @@ try {
   if ($process.HasExited) { throw 'Navigation regression: application exited' }
   if ($null -eq $playbackEnd -or $positionDeltaMs -le 0) {
     throw 'Playback regression: position did not advance during the smoke test'
+  }
+  if ($EnableAccessibility -and !$expandedStageConfirmed) {
+    throw 'Navigation regression: playback stage was not entered before returning'
   }
   if ($EnableAccessibility -and $result.nativeAccessibilityErrors -gt 0) { throw 'Accessibility regression: native tree update failed' }
   if ($EnableAccessibility -and $result.msaa.namedNodes -lt 4) { throw 'Accessibility regression: application controls were not exposed to MSAA' }

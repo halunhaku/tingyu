@@ -1,0 +1,28 @@
+role=16 name=
+  role=20 name=
+    role=20 name=
+      role=20 name=
+        role=20 name=0:09
+2:00
+          role=20 name=关闭（Esc）
+            role=43 name=关闭舞台
+          role=20 name=
+            role=41 name=smoke-tone.wav
+          role=20 name=
+            role=51 name=播放进度
+          role=20 name=随机播放：关
+            role=43 name=随机播放：关
+          role=20 name=上一首
+            role=43 name=上一首
+          role=20 name=暂停
+            role=43 name=暂停
+          role=20 name=下一首
+            role=43 name=下一首
+          role=20 name=列表循环
+            role=43 name=列表循环
+          role=20 name=歌词
+            role=43 name=歌词
+          role=20 name=播放队列
+            role=43 name=播放队列
+          role=20 name=音量
+            role=43 name=音量
