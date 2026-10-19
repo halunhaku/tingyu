@@ -56,7 +56,9 @@ class TrackResolver {
   /// 而 `Uri.tryParse()` 又会把 `F:\...` 误解析出 scheme `f` —— 两边分流。
   static Uri initialUri(String filePathOrUrl) {
     if (_looksLikeWindowsDrivePath(filePathOrUrl)) {
-      return Uri.file(filePathOrUrl);
+      // 盘符路径必须显式按 Windows 规则解析；否则在 Linux/macOS 上
+      // `Uri.file()` 会把 `D:/...` 当成相对路径并生成空 scheme。
+      return Uri.file(filePathOrUrl, windows: true);
     }
     final Uri? parsed = Uri.tryParse(filePathOrUrl);
     if (parsed != null && parsed.scheme.isNotEmpty) {

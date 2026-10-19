@@ -30,7 +30,10 @@ void main() {
         r'F:\Music\周杰伦 - 不爱我就拉倒.mp3',
       );
       expect(uri.scheme, 'file');
-      expect(uri.toFilePath(), r'F:\Music\周杰伦 - 不爱我就拉倒.mp3');
+      expect(
+        uri.toFilePath(windows: true),
+        r'F:\Music\周杰伦 - 不爱我就拉倒.mp3',
+      );
     });
 
     test('Windows 正斜杠盘符路径走 file scheme', () {
