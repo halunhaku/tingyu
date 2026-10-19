@@ -1,113 +1,67 @@
-import 'dart:math' as math;
-
-import 'dart:io' show Platform;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
+import '../../data/db/database.dart';
 import '../../data/models/library_summaries.dart';
-import '../shared/cover_art.dart';
-import '../shared/empty_state.dart';
+import '../../design/components/album_card.dart';
+import '../../design/components/buttons.dart';
+import '../../design/components/context_menu.dart';
+import '../../design/components/feedback.dart';
+import '../../design/components/structure.dart';
+import '../../design/layout/form_factor.dart';
+import '../../design/tokens/metrics.dart';
+import '../shared/skeletons.dart';
 
-/// 专辑页：按 `artist + album` 聚合的自适应封面网格（对齐旧版 `AlbumGridView`）。
+/// 专辑页：按 `artist + album` 聚合的封面网格（`DESIGN.md` §5.2 / §6.2）。
 ///
-/// 列宽在 [_minTile] ~ [_maxTile] 之间自适应，窗口越宽列数越多，封面不被拉伸。
+/// 列数按窗口宽度算（[tyGridColumns]），瓦片高度按排版令牌算（[tyTileExtent]），
+/// 页面不写 `childAspectRatio` 这类魔法值；点击进详情，悬停播放钮起播整张专辑。
 class AlbumsPage extends ConsumerWidget {
   const AlbumsPage({super.key});
 
-  /// 单列最小宽度（旧版 `GridItem(.adaptive(minimum: 150, maximum: 190))`）。
-  static const double _minTile = 150;
-
-  /// 单列最大宽度；超过它封面不再跟着变宽。
-  static const double _maxTile = 190;
-
-  static const double _spacing = 16;
-
-  /// 封面下方的文字区高度（专辑名 + 艺术家 + 年份）。
-  static const double _captionHeight = 76;
-
-  static const double _sidePadding = 20;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final TyMetrics metrics = context.metrics;
     final AsyncValue<List<AlbumSummary>> albums = ref.watch(albumsProvider);
-    final TextTheme text = Theme.of(context).textTheme;
+    final int? count = albums.value?.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(_sidePadding, 16, _sidePadding, 0),
-          child: Row(
-            children: <Widget>[
-              if (Platform.isAndroid || Platform.isIOS)
-                IconButton(
-                  tooltip: '返回曲库',
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () =>
-                      context.canPop() ? context.pop() : context.go('/library'),
-                ),
-              Expanded(child: Text('专辑', style: text.titleLarge)),
-              albums.maybeWhen(
-                data: (List<AlbumSummary> list) =>
-                    Text('${list.length} 张', style: text.bodySmall),
-                orElse: () => const SizedBox.shrink(),
-              ),
-            ],
+          padding: EdgeInsets.fromLTRB(
+            metrics.pagePadding,
+            TySpace.x20,
+            metrics.pagePadding,
+            TySpace.x12,
+          ),
+          child: TyPageHeader(
+            title: '专辑',
+            subtitle: count == null ? null : '共 $count 张',
           ),
         ),
         Expanded(
-          child: albums.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (Object error, StackTrace stack) => EmptyState(
-              icon: Icons.error_outline,
-              title: '专辑列表读取失败',
-              message: '$error',
+          child: TyAsyncView<List<AlbumSummary>>(
+            value: albums,
+            loading: (BuildContext context) => const GridSkeleton(),
+            error: (BuildContext context, Object error, StackTrace? stack) =>
+                TyErrorView(
+                  title: '专辑列表读取失败',
+                  detail: '$error',
+                  onRetry: () => ref.invalidate(albumsProvider),
+                ),
+            isEmpty: (List<AlbumSummary> list) => list.isEmpty,
+            empty: (BuildContext context) => TyEmptyState(
+              icon: Icons.album_outlined,
+              title: '还没有专辑',
+              description: '添加来源并同步曲库后，这里会按专辑聚合展示',
+              actionLabel: '添加来源',
+              onAction: () => context.go('/sources'),
             ),
-            data: (List<AlbumSummary> list) {
-              if (list.isEmpty) {
-                return const EmptyState(
-                  icon: Icons.album_outlined,
-                  title: '还没有专辑',
-                  message: '添加来源并同步曲库后，这里会按专辑聚合展示',
-                );
-              }
-              return LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints constraints) {
-                  final double available =
-                      constraints.maxWidth - _sidePadding * 2;
-                  final int columns =
-                      ((available + _spacing) / (_minTile + _spacing))
-                          .floor()
-                          .clamp(1, 12);
-                  final double tile = math.max(
-                    _minTile,
-                    (available - _spacing * (columns - 1)) / columns,
-                  );
-                  final double cover = tile < _maxTile ? tile : _maxTile;
-
-                  return GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(
-                      _sidePadding,
-                      12,
-                      _sidePadding,
-                      24,
-                    ),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: columns,
-                      crossAxisSpacing: _spacing,
-                      mainAxisSpacing: 20,
-                      childAspectRatio: tile / (cover + _captionHeight),
-                    ),
-                    itemCount: list.length,
-                    itemBuilder: (BuildContext context, int index) =>
-                        _AlbumTile(album: list[index], cover: cover),
-                  );
-                },
-              );
-            },
+            data: (BuildContext context, List<AlbumSummary> list) =>
+                _AlbumGrid(albums: list),
           ),
         ),
       ],
@@ -115,63 +69,142 @@ class AlbumsPage extends ConsumerWidget {
   }
 }
 
-/// 网格单元：封面 + 专辑名 + 艺术家 + 年份；整块可点击进专辑详情。
-class _AlbumTile extends StatelessWidget {
-  const _AlbumTile({required this.album, required this.cover});
+/// 网格本体：列数与瓦片高度都来自布局/排版令牌。
+class _AlbumGrid extends ConsumerWidget {
+  const _AlbumGrid({required this.albums});
 
-  final AlbumSummary album;
-
-  final double cover;
+  final List<AlbumSummary> albums;
 
   @override
-  Widget build(BuildContext context) {
-    final TextTheme text = Theme.of(context).textTheme;
-    final ColorScheme scheme = Theme.of(context).colorScheme;
-
-    return InkWell(
-      onTap: () => context.push(
-        '/albums/${Uri.encodeComponent(album.artist)}/${Uri.encodeComponent(album.album)}',
-      ),
-      borderRadius: BorderRadius.circular(8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          CoverArt(coverArtPath: album.coverArtPath, size: cover, radius: 8),
-          const SizedBox(height: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  album.album,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  album.artist,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: text.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  // 年份缺失时用曲目数占位，保持格子高度一致。
-                  album.year?.toString() ?? '${album.trackCount} 首',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: text.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final TyMetrics metrics = context.metrics;
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final int columns = tyGridColumns(constraints.maxWidth, metrics);
+        final double tile =
+            (constraints.maxWidth -
+                TySpace.x2 * metrics.pagePadding -
+                (columns - 1) * metrics.gridGap) /
+            columns;
+        return GridView.builder(
+          padding: EdgeInsets.symmetric(
+            horizontal: metrics.pagePadding,
+            vertical: TySpace.x8,
           ),
-        ],
-      ),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: metrics.gridGap,
+            mainAxisSpacing: metrics.gridGap,
+            mainAxisExtent: tyTileExtent(context, tile),
+          ),
+          itemCount: albums.length,
+          itemBuilder: (BuildContext context, int index) {
+            final AlbumSummary album = albums[index];
+            return TyAlbumCard(
+              width: tile,
+              title: album.album,
+              subtitle: <String>[
+                album.artist,
+                if (album.year != null) '${album.year}年',
+                '${album.trackCount} 首',
+              ].join(' · '),
+              coverPath: album.coverArtPath,
+              coverSeed: '${album.artist} · ${album.album}',
+              onTap: () => context.push(albumRoute(album.album, album.artist)),
+              onPlay: () => _playAlbum(
+                context,
+                ref,
+                AlbumKey(album: album.album, artist: album.artist),
+                shuffle: false,
+              ),
+              onSecondaryTapDown: (TapDownDetails details) => _showAlbumMenu(
+                context,
+                ref,
+                album,
+                details.globalPosition,
+              ),
+              trailing: Builder(
+                builder: (BuildContext buttonContext) => TyIconAction(
+                  icon: Icons.more_horiz,
+                  semanticLabel: '${album.album}：更多操作',
+                  tooltip: '更多',
+                  size: TyIconSize.compact,
+                  onPressed: () => _showAlbumMenu(
+                    context,
+                    ref,
+                    album,
+                    _menuAnchor(buttonContext),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
+}
+
+/// 专辑路由（`docs/UX_REDESIGN.md` §3.3）：专辑名在 path、艺术家在 query。
+String albumRoute(String album, String artist) =>
+    '/album/${Uri.encodeComponent(album)}'
+    '?artist=${Uri.encodeQueryComponent(artist)}';
+
+/// 从某个按钮的渲染盒算菜单锚点（⋯ 按钮场景）。
+Offset _menuAnchor(BuildContext buttonContext) {
+  final RenderObject? box = buttonContext.findRenderObject();
+  if (box is RenderBox && box.hasSize) {
+    return box.localToGlobal(box.size.center(Offset.zero));
+  }
+  return Offset.zero;
+}
+
+/// 起播整张专辑；专辑没有可播放曲目时给一句即时说明，而不是静默无事发生。
+Future<void> _playAlbum(
+  BuildContext context,
+  WidgetRef ref,
+  AlbumKey key, {
+  required bool shuffle,
+}) async {
+  final List<Track> tracks = await ref.read(albumTracksProvider(key).future);
+  if (!context.mounted) {
+    return;
+  }
+  if (tracks.isEmpty) {
+    TySnack.show(context, '「${key.album}」还没有曲目');
+    return;
+  }
+  await ref.read(playbackProvider.notifier).playTracks(tracks, shuffle: shuffle);
+}
+
+/// 专辑卡的上下文菜单（⋯ 与右键/长按共用同一份，`DESIGN.md` §6.4）。
+Future<void> _showAlbumMenu(
+  BuildContext context,
+  WidgetRef ref,
+  AlbumSummary album,
+  Offset position,
+) {
+  final AlbumKey key = AlbumKey(album: album.album, artist: album.artist);
+  return TyContextMenu.show(
+    context,
+    position: position,
+    actions: <TyMenuAction>[
+      TyMenuAction(
+        label: '播放',
+        icon: Icons.play_arrow_outlined,
+        onSelected: () =>
+            _playAlbum(context, ref, key, shuffle: false),
+      ),
+      TyMenuAction(
+        label: '随机播放',
+        icon: Icons.shuffle,
+        onSelected: () => _playAlbum(context, ref, key, shuffle: true),
+      ),
+      TyMenuAction(
+        label: '查看专辑',
+        icon: Icons.album_outlined,
+        onSelected: () => context.push(albumRoute(album.album, album.artist)),
+      ),
+    ],
+  );
 }

@@ -1,0 +1,1304 @@
+{
+  "scope": "proposed P2 specification, no Flutter runtime or visual compliance claim",
+  "passed": true,
+  "errors": [],
+  "contrastPairCount": 198,
+  "contrasts": [
+    {
+      "pair": "light.textPrimary/canvas",
+      "ratio": 16.8486,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/canvas",
+      "ratio": 7.1587,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/canvas",
+      "ratio": 5.7695,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/canvas+surfaceHover",
+      "ratio": 15.5945,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/canvas+surfaceHover",
+      "ratio": 6.6259,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/canvas+surfaceHover",
+      "ratio": 5.3401,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/canvas+surfacePressed",
+      "ratio": 14.3997,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/canvas+surfacePressed",
+      "ratio": 6.1183,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/canvas+surfacePressed",
+      "ratio": 4.931,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/canvas+surfaceSelected",
+      "ratio": 14.3249,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/canvas+surfaceSelected",
+      "ratio": 6.0865,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/canvas+surfaceSelected",
+      "ratio": 4.9053,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.accent/canvas",
+      "ratio": 5.1081,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.success/canvas",
+      "ratio": 6.7051,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.warning/canvas",
+      "ratio": 6.4058,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.danger/canvas",
+      "ratio": 6.1924,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.focus/canvas",
+      "ratio": 5.1081,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "light.controlBoundary/canvas",
+      "ratio": 3.899,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "light.currentTrackText/canvas+selected",
+      "ratio": 7.13,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/surface",
+      "ratio": 17.5639,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/surface",
+      "ratio": 7.4627,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/surface",
+      "ratio": 6.0145,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/surface+surfaceHover",
+      "ratio": 16.2498,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/surface+surfaceHover",
+      "ratio": 6.9043,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/surface+surfaceHover",
+      "ratio": 5.5645,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/surface+surfacePressed",
+      "ratio": 14.998,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/surface+surfacePressed",
+      "ratio": 6.3725,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/surface+surfacePressed",
+      "ratio": 5.1358,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/surface+surfaceSelected",
+      "ratio": 14.894,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/surface+surfaceSelected",
+      "ratio": 6.3283,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/surface+surfaceSelected",
+      "ratio": 5.1002,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.accent/surface",
+      "ratio": 5.325,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.success/surface",
+      "ratio": 6.9898,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.warning/surface",
+      "ratio": 6.6777,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.danger/surface",
+      "ratio": 6.4553,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.focus/surface",
+      "ratio": 5.325,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "light.controlBoundary/surface",
+      "ratio": 4.0645,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "light.currentTrackText/surface+selected",
+      "ratio": 7.4133,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/surfaceSunken",
+      "ratio": 15.4524,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/surfaceSunken",
+      "ratio": 6.5655,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/surfaceSunken",
+      "ratio": 5.2914,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/surfaceSunken+surfaceHover",
+      "ratio": 14.3153,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/surfaceSunken+surfaceHover",
+      "ratio": 6.0824,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/surfaceSunken+surfaceHover",
+      "ratio": 4.902,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/surfaceSunken+surfacePressed",
+      "ratio": 13.2314,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/surfaceSunken+surfacePressed",
+      "ratio": 5.6219,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/surfaceSunken+surfacePressed",
+      "ratio": 4.5309,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/surfaceSunken+surfaceSelected",
+      "ratio": 13.2127,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/surfaceSunken+surfaceSelected",
+      "ratio": 5.6139,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/surfaceSunken+surfaceSelected",
+      "ratio": 4.5245,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.accent/surfaceSunken",
+      "ratio": 4.6848,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.success/surfaceSunken",
+      "ratio": 6.1495,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.warning/surfaceSunken",
+      "ratio": 5.875,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.danger/surfaceSunken",
+      "ratio": 5.6792,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.focus/surfaceSunken",
+      "ratio": 4.6848,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "light.controlBoundary/surfaceSunken",
+      "ratio": 3.5759,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "light.currentTrackText/surfaceSunken+selected",
+      "ratio": 6.5764,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/surfaceRaised",
+      "ratio": 17.5639,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/surfaceRaised",
+      "ratio": 7.4627,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/surfaceRaised",
+      "ratio": 6.0145,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/surfaceRaised+surfaceHover",
+      "ratio": 16.2498,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/surfaceRaised+surfaceHover",
+      "ratio": 6.9043,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/surfaceRaised+surfaceHover",
+      "ratio": 5.5645,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/surfaceRaised+surfacePressed",
+      "ratio": 14.998,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/surfaceRaised+surfacePressed",
+      "ratio": 6.3725,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/surfaceRaised+surfacePressed",
+      "ratio": 5.1358,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/surfaceRaised+surfaceSelected",
+      "ratio": 14.894,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/surfaceRaised+surfaceSelected",
+      "ratio": 6.3283,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/surfaceRaised+surfaceSelected",
+      "ratio": 5.1002,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.accent/surfaceRaised",
+      "ratio": 5.325,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.success/surfaceRaised",
+      "ratio": 6.9898,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.warning/surfaceRaised",
+      "ratio": 6.6777,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.danger/surfaceRaised",
+      "ratio": 6.4553,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.focus/surfaceRaised",
+      "ratio": 5.325,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "light.controlBoundary/surfaceRaised",
+      "ratio": 4.0645,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "light.currentTrackText/surfaceRaised+selected",
+      "ratio": 7.4133,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/surfaceOverlay",
+      "ratio": 17.5639,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/surfaceOverlay",
+      "ratio": 7.4627,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/surfaceOverlay",
+      "ratio": 6.0145,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/surfaceOverlay+surfaceHover",
+      "ratio": 16.2498,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/surfaceOverlay+surfaceHover",
+      "ratio": 6.9043,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/surfaceOverlay+surfaceHover",
+      "ratio": 5.5645,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/surfaceOverlay+surfacePressed",
+      "ratio": 14.998,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/surfaceOverlay+surfacePressed",
+      "ratio": 6.3725,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/surfaceOverlay+surfacePressed",
+      "ratio": 5.1358,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textPrimary/surfaceOverlay+surfaceSelected",
+      "ratio": 14.894,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textSecondary/surfaceOverlay+surfaceSelected",
+      "ratio": 6.3283,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.textTertiary/surfaceOverlay+surfaceSelected",
+      "ratio": 5.1002,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.accent/surfaceOverlay",
+      "ratio": 5.325,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.success/surfaceOverlay",
+      "ratio": 6.9898,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.warning/surfaceOverlay",
+      "ratio": 6.6777,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.danger/surfaceOverlay",
+      "ratio": 6.4553,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.focus/surfaceOverlay",
+      "ratio": 5.325,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "light.controlBoundary/surfaceOverlay",
+      "ratio": 4.0645,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "light.currentTrackText/surfaceOverlay+selected",
+      "ratio": 7.4133,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.onAccent/accent",
+      "ratio": 5.325,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.onAccent/accentHover",
+      "ratio": 6.7958,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.onAccent/accentPressed",
+      "ratio": 8.7422,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "light.placeholderIcon",
+      "ratio": 4.8835,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/canvas",
+      "ratio": 15.828,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/canvas",
+      "ratio": 10.0544,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/canvas",
+      "ratio": 8.3835,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/canvas+surfaceHover",
+      "ratio": 13.6135,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/canvas+surfaceHover",
+      "ratio": 8.6477,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/canvas+surfaceHover",
+      "ratio": 7.2106,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/canvas+surfacePressed",
+      "ratio": 11.9592,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/canvas+surfacePressed",
+      "ratio": 7.5968,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/canvas+surfacePressed",
+      "ratio": 6.3343,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/canvas+surfaceSelected",
+      "ratio": 11.8973,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/canvas+surfaceSelected",
+      "ratio": 7.5575,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/canvas+surfaceSelected",
+      "ratio": 6.3016,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.accent/canvas",
+      "ratio": 9.1801,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.success/canvas",
+      "ratio": 10.0177,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.warning/canvas",
+      "ratio": 10.0323,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.danger/canvas",
+      "ratio": 9.0831,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.focus/canvas",
+      "ratio": 9.1801,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "dark.controlBoundary/canvas",
+      "ratio": 5.161,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "dark.currentTrackText/canvas+selected",
+      "ratio": 6.9003,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/surface",
+      "ratio": 14.6277,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/surface",
+      "ratio": 9.292,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/surface",
+      "ratio": 7.7478,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/surface+surfaceHover",
+      "ratio": 12.4357,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/surface+surfaceHover",
+      "ratio": 7.8995,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/surface+surfaceHover",
+      "ratio": 6.5867,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/surface+surfacePressed",
+      "ratio": 10.8895,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/surface+surfacePressed",
+      "ratio": 6.9174,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/surface+surfacePressed",
+      "ratio": 5.7678,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/surface+surfaceSelected",
+      "ratio": 10.8798,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/surface+surfaceSelected",
+      "ratio": 6.9112,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/surface+surfaceSelected",
+      "ratio": 5.7627,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.accent/surface",
+      "ratio": 8.4839,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.success/surface",
+      "ratio": 9.2581,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.warning/surface",
+      "ratio": 9.2716,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.danger/surface",
+      "ratio": 8.3943,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.focus/surface",
+      "ratio": 8.4839,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "dark.controlBoundary/surface",
+      "ratio": 4.7697,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "dark.currentTrackText/surface+selected",
+      "ratio": 6.3102,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/surfaceSunken",
+      "ratio": 16.4585,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/surfaceSunken",
+      "ratio": 10.455,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/surfaceSunken",
+      "ratio": 8.7175,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/surfaceSunken+surfaceHover",
+      "ratio": 14.2803,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/surfaceSunken+surfaceHover",
+      "ratio": 9.0713,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/surfaceSunken+surfaceHover",
+      "ratio": 7.5638,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/surfaceSunken+surfacePressed",
+      "ratio": 12.5845,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/surfaceSunken+surfacePressed",
+      "ratio": 7.9941,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/surfaceSunken+surfacePressed",
+      "ratio": 6.6656,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/surfaceSunken+surfaceSelected",
+      "ratio": 12.4929,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/surfaceSunken+surfaceSelected",
+      "ratio": 7.9359,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/surfaceSunken+surfaceSelected",
+      "ratio": 6.6171,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.accent/surfaceSunken",
+      "ratio": 9.5458,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.success/surfaceSunken",
+      "ratio": 10.4168,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.warning/surfaceSunken",
+      "ratio": 10.432,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.danger/surfaceSunken",
+      "ratio": 9.445,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.focus/surfaceSunken",
+      "ratio": 9.5458,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "dark.controlBoundary/surfaceSunken",
+      "ratio": 5.3666,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "dark.currentTrackText/surfaceSunken+selected",
+      "ratio": 7.2458,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/surfaceRaised",
+      "ratio": 13.1839,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/surfaceRaised",
+      "ratio": 8.3748,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/surfaceRaised",
+      "ratio": 6.983,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/surfaceRaised+surfaceHover",
+      "ratio": 11.1234,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/surfaceRaised+surfaceHover",
+      "ratio": 7.0659,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/surfaceRaised+surfaceHover",
+      "ratio": 5.8917,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/surfaceRaised+surfacePressed",
+      "ratio": 9.7361,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/surfaceRaised+surfacePressed",
+      "ratio": 6.1847,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/surfaceRaised+surfacePressed",
+      "ratio": 5.1569,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/surfaceRaised+surfaceSelected",
+      "ratio": 9.7805,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/surfaceRaised+surfaceSelected",
+      "ratio": 6.2129,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/surfaceRaised+surfaceSelected",
+      "ratio": 5.1804,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.accent/surfaceRaised",
+      "ratio": 7.6465,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.success/surfaceRaised",
+      "ratio": 8.3442,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.warning/surfaceRaised",
+      "ratio": 8.3564,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.danger/surfaceRaised",
+      "ratio": 7.5658,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.focus/surfaceRaised",
+      "ratio": 7.6465,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "dark.controlBoundary/surfaceRaised",
+      "ratio": 4.2989,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "dark.currentTrackText/surfaceRaised+selected",
+      "ratio": 5.6726,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/surfaceOverlay",
+      "ratio": 11.7568,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/surfaceOverlay",
+      "ratio": 7.4683,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/surfaceOverlay",
+      "ratio": 6.2271,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/surfaceOverlay+surfaceHover",
+      "ratio": 9.8976,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/surfaceOverlay+surfaceHover",
+      "ratio": 6.2873,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/surfaceOverlay+surfaceHover",
+      "ratio": 5.2424,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/surfaceOverlay+surfacePressed",
+      "ratio": 8.6832,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/surfaceOverlay+surfacePressed",
+      "ratio": 5.5159,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/surfaceOverlay+surfacePressed",
+      "ratio": 4.5992,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textPrimary/surfaceOverlay+surfaceSelected",
+      "ratio": 8.7712,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textSecondary/surfaceOverlay+surfaceSelected",
+      "ratio": 5.5717,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.textTertiary/surfaceOverlay+surfaceSelected",
+      "ratio": 4.6458,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.accent/surfaceOverlay",
+      "ratio": 6.8188,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.success/surfaceOverlay",
+      "ratio": 7.441,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.warning/surfaceOverlay",
+      "ratio": 7.4519,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.danger/surfaceOverlay",
+      "ratio": 6.7468,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.focus/surfaceOverlay",
+      "ratio": 6.8188,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "dark.controlBoundary/surfaceOverlay",
+      "ratio": 3.8335,
+      "minimum": 3,
+      "passed": true
+    },
+    {
+      "pair": "dark.currentTrackText/surfaceOverlay+selected",
+      "ratio": 5.0872,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.onAccent/accent",
+      "ratio": 9.1801,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.onAccent/accentHover",
+      "ratio": 11.0104,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.onAccent/accentPressed",
+      "ratio": 7.6947,
+      "minimum": 4.5,
+      "passed": true
+    },
+    {
+      "pair": "dark.placeholderIcon",
+      "ratio": 6.0475,
+      "minimum": 3,
+      "passed": true
+    }
+  ],
+  "mappingChecks": [
+    {
+      "selector": "color.*",
+      "type": "TyColors",
+      "source": "app/lib/design/tokens/color.dart",
+      "memberCount": 27,
+      "check": "lexical source presence, not Dart compile or applied values"
+    },
+    {
+      "selector": "type",
+      "type": "TyType",
+      "source": "app/lib/design/tokens/typography.dart",
+      "memberCount": 13,
+      "check": "lexical source presence, not Dart compile or applied values"
+    },
+    {
+      "selector": "space",
+      "type": "TySpace",
+      "source": "app/lib/design/tokens/metrics.dart",
+      "memberCount": 12,
+      "check": "lexical source presence, not Dart compile or applied values"
+    },
+    {
+      "selector": "radius",
+      "type": "TyRadius",
+      "source": "app/lib/design/tokens/metrics.dart",
+      "memberCount": 6,
+      "check": "lexical source presence, not Dart compile or applied values"
+    },
+    {
+      "selector": "icon",
+      "type": "TyIconSize",
+      "source": "app/lib/design/tokens/metrics.dart",
+      "memberCount": 6,
+      "check": "lexical source presence, not Dart compile or applied values"
+    },
+    {
+      "selector": "motionMs",
+      "type": "TyDuration",
+      "source": "app/lib/design/tokens/motion.dart",
+      "memberCount": 8,
+      "check": "lexical source presence, not Dart compile or applied values"
+    },
+    {
+      "selector": "curves",
+      "type": "TyCurve",
+      "source": "app/lib/design/tokens/motion.dart",
+      "memberCount": 4,
+      "check": "lexical source presence, not Dart compile or applied values"
+    },
+    {
+      "selector": "elevation",
+      "type": "TyElevation",
+      "source": "app/lib/design/tokens/metrics.dart",
+      "memberCount": 4,
+      "check": "lexical source presence, not Dart compile or applied values"
+    },
+    {
+      "selector": "layout",
+      "type": "TyMetrics",
+      "source": "app/lib/design/layout/form_factor.dart",
+      "memberCount": 13,
+      "check": "lexical source presence, not Dart compile or applied values"
+    },
+    {
+      "selector": "player",
+      "type": "TyPlayerStageSize",
+      "source": "app/lib/design/components/player_stage.dart",
+      "memberCount": 5,
+      "check": "lexical source presence, not Dart compile or applied values"
+    },
+    {
+      "selector": "player",
+      "type": "TyPlayerSize",
+      "source": "app/lib/design/components/transport.dart",
+      "memberCount": 4,
+      "check": "lexical source presence, not Dart compile or applied values"
+    },
+    {
+      "selector": "table",
+      "type": "TyTrackTable",
+      "source": "app/lib/design/components/track.dart",
+      "memberCount": 0,
+      "check": "lexical source presence, not Dart compile or applied values"
+    },
+    {
+      "selector": "componentRadius",
+      "type": "TyRadius",
+      "source": "app/lib/design/tokens/metrics.dart",
+      "memberCount": 9,
+      "check": "lexical source presence, not Dart compile or applied values"
+    },
+    {
+      "selector": "aliases",
+      "type": "TyColors",
+      "source": "app/lib/design/tokens/color.dart",
+      "memberCount": 0,
+      "check": "lexical source presence, not Dart compile or applied values"
+    }
+  ],
+  "tableBudgets": {
+    "all": 864,
+    "withoutAlbum": 708,
+    "withoutAlbumArtist": 560,
+    "withoutAlbumArtistSource": 460
+  },
+  "selectedAssetCount": 4,
+  "implementationApplied": false
+}

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "approvedPath": "F:\\project\\tingyu\\docs\\ui-redesign\\p4-quality\\runtime-baselines\\sources-desktop-syncing-dark.png",
+  "actualPath": "F:\\project\\tingyu\\docs\\ui-redesign\\p6a-evidence\\approved-runtime\\sources-desktop-syncing-dark\\sources.png",
+  "diffPath": "F:\\project\\tingyu\\docs\\ui-redesign\\p6a-evidence\\approved-runtime\\sources-desktop-syncing-dark\\baseline.diff.png",
+  "approvedSha256": "5a2cdde0a6fa1328e5b1061df35d0c3fd90c1dfc1d85959d8c499963330eb246",
+  "actualSha256": "5a2cdde0a6fa1328e5b1061df35d0c3fd90c1dfc1d85959d8c499963330eb246",
+  "byteExact": true,
+  "sameDimensions": true,
+  "pixelExact": true,
+  "approvedWidth": 1898,
+  "approvedHeight": 1024,
+  "actualWidth": 1898,
+  "actualHeight": 1024,
+  "totalPixels": 1943552,
+  "differingPixels": 0,
+  "differingPercent": 0.0,
+  "maxChannelDelta": 0,
+  "meanAbsoluteDelta": 0.0,
+  "hasDifferenceBounds": false,
+  "differenceBounds": null
+}

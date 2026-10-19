@@ -1,0 +1,93 @@
+00:00 +0: loading F:/project/tingyu/app/test/webdav_http_integration_test.dart
+00:00 +0: F:/project/tingyu/app/test/webdav_http_integration_test.dart: 真实 loopback HTTP：鉴权、中文路径、503/429 重试与完整扫描
+[webdav] 第 1 次失败（HTTP 503），1ms 后重试
+[webdav] 第 2 次失败（HTTP 429），1ms 后重试
+00:00 +1: F:/project/tingyu/app/test/webdav_http_integration_test.dart: 真实 loopback HTTP：子目录 403 只跳过该目录
+00:00 +2: F:/project/tingyu/app/test/webdav_http_integration_test.dart: 真实 loopback HTTP：取消只保留取消前的完整曲目边界
+00:00 +3: F:/project/tingyu/app/test/quark_http_fixture_test.dart: 真实 loopback HTTP：夸克分页、Cookie 刷新与直链接口契约
+[quark] 第 1 次失败（HTTP 429），1ms 后重试
+00:00 +4: F:/project/tingyu/app/test/webdav_test.dart: WebDavXmlParser 解析带命名空间的 multistatus（collection / 引号 etag / 中文 href）
+00:00 +5: F:/project/tingyu/app/test/webdav_test.dart: WebDavXmlParser 忽略前缀大小写与默认命名空间
+00:00 +6: F:/project/tingyu/app/test/webdav_test.dart: href 解析与路径规范化 已是绝对 URL 时原样使用
+00:00 +7: F:/project/tingyu/app/test/webdav_test.dart: href 解析与路径规范化 站绝对路径拼 scheme + host + port，中文与空格补编码
+00:00 +8: F:/project/tingyu/app/test/webdav_test.dart: href 解析与路径规范化 相对路径按当前目录解析
+00:00 +9: F:/project/tingyu/app/test/webdav_test.dart: href 解析与路径规范化 空 href 返回 null
+00:00 +10: F:/project/tingyu/app/test/webdav_test.dart: href 解析与路径规范化 normalizePath 先 percent-decode 再去首尾斜杠
+00:00 +11: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan PROPFIND 请求形态：Depth/Content-Type/Authorization 与请求体
+00:00 +12: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan BFS 扫描：边界、跳过规则与曲目构造
+00:00 +13: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan maxDepth 限制递归层级
+00:00 +14: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan maxFiles 截断已发现的曲目
+00:00 +15: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan isCancelled 立刻返回且不发起请求
+00:00 +16: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +17: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +18: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +19: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +20: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +21: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +22: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +23: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +23: F:/project/tingyu/app/test/quark_test.dart: getDownloadUrl：错误映射（401 / 31001 / login / 429 / 非 2xx / 非 200 status）
+[quark] 第 1 次失败（HTTP 429），1ms 后重试
+[quark] 第 2 次失败（HTTP 429），1ms 后重试
+[quark] 第 1 次失败（HTTP 429），1ms 后重试
+[quark] 第 2 次失败（HTTP 429），1ms 后重试
+[quark] 第 1 次失败（HTTP 503），1ms 后重试
+[quark] 第 2 次失败（HTTP 503），1ms 后重试
+[quark] 第 1 次失败（HTTP 503），1ms 后重试
+[quark] 第 2 次失败（HTTP 503），1ms 后重试
+[quark] 第 1 次失败（HTTP 500），1ms 后重试
+[quark] 第 2 次失败（HTTP 500），1ms 后重试
+[quark] 第 1 次失败（HTTP 503），1ms 后重试
+[quark] 第 2 次失败（HTTP 503），1ms 后重试
+[quark] 第 1 次失败（HTTP 500），1ms 后重试
+[quark] 第 2 次失败（HTTP 500），1ms 后重试
+00:00 +24: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +25: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +26: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +27: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +28: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +29: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +30: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +31: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +32: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +33: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +34: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:00 +35: F:/project/tingyu/app/test/database_migration_test.dart: 打开已有未设版本号、含 idx_tracks_source 与旧版 sources 表的 SQLite 时不崩溃且自动迁移
+00:00 +36: F:/project/tingyu/app/test/database_migration_test.dart: 打开已有未设版本号、含 idx_tracks_source 与旧版 sources 表的 SQLite 时不崩溃且自动迁移
+00:00 +37: F:/project/tingyu/app/test/database_migration_test.dart: 打开已有未设版本号、含 idx_tracks_source 与旧版 sources 表的 SQLite 时不崩溃且自动迁移
+00:00 +37: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 429 → 默认流控文案
+[webdav] 第 1 次失败（HTTP 429），1ms 后重试
+[webdav] 第 2 次失败（HTTP 429），1ms 后重试
+00:00 +38: F:/project/tingyu/app/test/database_migration_test.dart: 打开已有未设版本号、含 idx_tracks_source 与旧版 sources 表的 SQLite 时不崩溃且自动迁移
+00:00 +38: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 503 且响应体不含 BlockedTemporarily → 临时流控文案
+[webdav] 第 1 次失败（HTTP 503），1ms 后重试
+[webdav] 第 2 次失败（HTTP 503），1ms 后重试
+00:00 +39: F:/project/tingyu/app/test/database_migration_test.dart: 打开已有未设版本号、含 idx_tracks_source 与旧版 sources 表的 SQLite 时不崩溃且自动迁移
+00:00 +39: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 503 且响应体含 BlockedTemporarily → 临时封禁文案
+[webdav] 第 1 次失败（HTTP 503），1ms 后重试
+[webdav] 第 2 次失败（HTTP 503），1ms 后重试
+00:00 +40: F:/project/tingyu/app/test/database_migration_test.dart: 打开已有未设版本号、含 idx_tracks_source 与旧版 sources 表的 SQLite 时不崩溃且自动迁移
+00:00 +40: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 根目录 500 → WebDavServerError
+[webdav] 第 1 次失败（HTTP 500），1ms 后重试
+[webdav] 第 2 次失败（HTTP 500），1ms 后重试
+00:00 +41: F:/project/tingyu/app/test/database_migration_test.dart: 打开已有未设版本号、含 idx_tracks_source 与旧版 sources 表的 SQLite 时不崩溃且自动迁移
+00:00 +41: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 子目录 500 → 跳过该目录但不中断扫描
+[webdav] 第 1 次失败（HTTP 500），1ms 后重试
+[webdav] 第 2 次失败（HTTP 500），1ms 后重试
+00:00 +42: F:/project/tingyu/app/test/database_migration_test.dart: 打开已有未设版本号、含 idx_tracks_source 与旧版 sources 表的 SQLite 时不崩溃且自动迁移
+00:00 +42: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 根目录传输失败 → WebDavNetworkError；子目录失败只跳过
+[webdav] 第 1 次失败（DioException [connection error]: The connection errored: Connection refused This indicates an error which most likely cannot be solved by the library.），1ms 后重试
+[webdav] 第 2 次失败（DioException [connection error]: The connection errored: Connection refused This indicates an error which most likely cannot be solved by the library.），1ms 后重试
+[webdav] 第 1 次失败（DioException [connection error]: The connection errored: Connection refused This indicates an error which most likely cannot be solved by the library.），1ms 后重试
+[webdav] 第 2 次失败（DioException [connection error]: The connection errored: Connection refused This indicates an error which most likely cannot be solved by the library.），1ms 后重试
+00:00 +43: F:/project/tingyu/app/test/database_migration_test.dart: 打开已有未设版本号、含 idx_tracks_source 与旧版 sources 表的 SQLite 时不崩溃且自动迁移
+00:00 +44: F:/project/tingyu/app/test/database_migration_test.dart: 打开已有未设版本号、含 idx_tracks_source 与旧版 sources 表的 SQLite 时不崩溃且自动迁移
+00:00 +45: F:/project/tingyu/app/test/database_migration_test.dart: 打开已有未设版本号、含 idx_tracks_source 与旧版 sources 表的 SQLite 时不崩溃且自动迁移
+00:00 +46: F:/project/tingyu/app/test/database_migration_test.dart: 打开已有未设版本号、含 idx_tracks_source 与旧版 sources 表的 SQLite 时不崩溃且自动迁移
+00:00 +47: F:/project/tingyu/app/test/database_migration_test.dart: 打开已有未设版本号、含 idx_tracks_source 与旧版 sources 表的 SQLite 时不崩溃且自动迁移
+00:00 +48: F:/project/tingyu/app/test/database_migration_test.dart: 打开已有未设版本号、含 idx_tracks_source 与旧版 sources 表的 SQLite 时不崩溃且自动迁移
+00:00 +49: F:/project/tingyu/app/test/database_migration_test.dart: 打开已有未设版本号、含 idx_tracks_source 与旧版 sources 表的 SQLite 时不崩溃且自动迁移
+00:00 +50: F:/project/tingyu/app/test/database_migration_test.dart: 打开已有未设版本号、含 idx_tracks_source 与旧版 sources 表的 SQLite 时不崩溃且自动迁移
+00:01 +51: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +52: F:/project/tingyu/app/test/database_migration_test.dart: 删除迁移过来的来源后重开数据库，不会被 legacy 表重新插回来
+00:01 +53: All tests passed!

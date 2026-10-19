@@ -1,0 +1,368 @@
+00:00 +0: loading F:/project/tingyu/app/test/voice_archive_stage_layout_test.dart
+00:00 +0: F:/project/tingyu/app/test/voice_archive_stage_layout_test.dart: 高手机展示有界预览槽，矮手机保留独立入口
+00:00 +1: F:/project/tingyu/app/test/voice_archive_stage_layout_test.dart: 高手机展示有界预览槽，矮手机保留独立入口
+00:00 +2: F:/project/tingyu/app/test/voice_archive_queue_test.dart: 分组队列不重复当前曲，下一首仍调用队列原始索引
+00:00 +3: F:/project/tingyu/app/test/voice_archive_queue_test.dart: 分组队列不重复当前曲，下一首仍调用队列原始索引
+00:00 +4: F:/project/tingyu/app/test/voice_archive_queue_test.dart: 分组队列不重复当前曲，下一首仍调用队列原始索引
+00:00 +5: F:/project/tingyu/app/test/voice_archive_queue_test.dart: 分组队列不重复当前曲，下一首仍调用队列原始索引
+00:00 +6: F:/project/tingyu/app/test/now_playing_layout_test.dart: 竖屏：传输行贴在下缘（留出 24dp + 手势条），不在底部留大片空白
+00:00 +7: F:/project/tingyu/app/test/now_playing_layout_test.dart: 竖屏：传输行贴在下缘（留出 24dp + 手势条），不在底部留大片空白
+00:00 +8: F:/project/tingyu/app/test/now_playing_layout_test.dart: 竖屏：传输行贴在下缘（留出 24dp + 手势条），不在底部留大片空白
+00:00 +9: F:/project/tingyu/app/test/now_playing_layout_test.dart: 竖屏：传输行贴在下缘（留出 24dp + 手势条），不在底部留大片空白
+00:00 +10: F:/project/tingyu/app/test/now_playing_layout_test.dart: 竖屏：传输行贴在下缘（留出 24dp + 手势条），不在底部留大片空白
+00:00 +11: F:/project/tingyu/app/test/now_playing_layout_test.dart: 竖屏：传输行贴在下缘（留出 24dp + 手势条），不在底部留大片空白
+00:00 +12: F:/project/tingyu/app/test/now_playing_layout_test.dart: 竖屏：传输行贴在下缘（留出 24dp + 手势条），不在底部留大片空白
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: a value less than or equal to <120>
+  Actual: <228.0>
+   Which: is not a value less than or equal to <120>
+传输行应当贴在下缘，实测距屏幕底 228.0dp
+
+When the exception was thrown, this was the stack:
+#4      _stageLayoutCoverage.<anonymous closure> (file:///F:/project/tingyu/app/test/now_playing_layout_test.dart:136:5)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///F:/project/tingyu/app/test/now_playing_layout_test.dart line 136
+The test description was:
+  竖屏：传输行贴在下缘（留出 24dp + 手势条），不在底部留大片空白
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:00 +12 -1: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:00 +12 -1: F:/project/tingyu/app/test/now_playing_layout_test.dart: 竖屏：传输行贴在下缘（留出 24dp + 手势条），不在底部留大片空白 [E]
+  Test failed. See exception logs above.
+  The test description was: 竖屏：传输行贴在下缘（留出 24dp + 手势条），不在底部留大片空白
+  
+00:01 +12 -1: F:/project/tingyu/app/test/now_playing_layout_test.dart: 矮屏（横屏）不溢出：封面收缩，内容可滚动
+Pending timers:
+Timer (duration: 0:00:00.000000, periodic: false), created:
+#0      new FakeTimer._ (package:fake_async/fake_async.dart:342:62)
+#1      FakeAsync._createTimer (package:fake_async/fake_async.dart:260:29)
+#2      FakeAsync.run.<anonymous closure> (package:fake_async/fake_async.dart:185:15)
+#6      StreamQueryStore.markAsClosed (package:drift/src/runtime/executor/stream_queries.dart:156:11)
+#7      QueryStream._onCancelOrPause (package:drift/src/runtime/executor/stream_queries.dart:305:14)
+#8      QueryStream._stream.<anonymous closure>.<anonymous closure> (package:drift/src/runtime/executor/stream_queries.dart:238:9)
+#17     ElementWithFuture.runOnDispose (package:riverpod/src/core/element.dart:318:32)
+#18     ProviderElement.clearState (package:riverpod/src/core/element.dart:1290:5)
+#19     ProviderElement.dispose (package:riverpod/src/core/element.dart:1323:5)
+#20     ElementWithFuture.dispose (package:riverpod/src/core/element.dart:344:11)
+#21     $StreamProviderElement.dispose (package:riverpod/src/providers/stream_provider.dart:163:11)
+#22     ProviderContainer._dispose (package:riverpod/src/core/provider_container.dart:1317:15)
+#23     ProviderContainer.dispose (package:riverpod/src/core/provider_container.dart:1335:21)
+#24     ProviderScopeState.dispose (package:flutter_riverpod/src/core/provider_scope.dart:220:15)
+#25     StatefulElement.unmount (package:flutter/src/widgets/framework.dart:6043:11)
+#26     _InactiveElements._unmount (package:flutter/src/widgets/framework.dart:2119:13)
+#27     ListIterable.forEach (dart:_internal/iterable.dart:49:13)
+#28     _InactiveElements._unmountAll (package:flutter/src/widgets/framework.dart:2128:25)
+#29     BuildOwner.lockState (package:flutter/src/widgets/framework.dart:3033:15)
+#30     BuildOwner.finalizeTree (package:flutter/src/widgets/framework.dart:3357:7)
+#31     AutomatedTestWidgetsFlutterBinding.drawFrame (package:flutter_test/src/binding.dart:2454:19)
+#32     RendererBinding._handlePersistentFrameCallback (package:flutter/src/rendering/binding.dart:558:5)
+#33     SchedulerBinding._invokeFrameCallback (package:flutter/src/scheduler/binding.dart:1430:15)
+#34     SchedulerBinding.handleDrawFrame (package:flutter/src/scheduler/binding.dart:1345:9)
+#35     AutomatedTestWidgetsFlutterBinding.scheduleWarmUpFrame (package:flutter_test/src/binding.dart:2358:5)
+#36     _runWidget (package:flutter/src/widgets/binding.dart:1952:7)
+#37     runApp (package:flutter/src/widgets/binding.dart:1885:3)
+#38     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1941:5)
+#41     TestWidgetsFlutterBinding._runTest (package:flutter_test/src/binding.dart:1927:10)
+#42     AutomatedTestWidgetsFlutterBinding.runTest.<anonymous closure> (package:flutter_test/src/binding.dart:2490:24)
+#43     FakeAsync.run.<anonymous closure>.<anonymous closure> (package:fake_async/fake_async.dart:182:47)
+#48     withClock (package:clock/src/default.dart:52:10)
+#49     FakeAsync.run.<anonymous closure> (package:fake_async/fake_async.dart:182:15)
+#54     FakeAsync.run (package:fake_async/fake_async.dart:181:52)
+#55     AutomatedTestWidgetsFlutterBinding.runTest (package:flutter_test/src/binding.dart:2487:15)
+#56     testWidgets.<anonymous closure> (package:flutter_test/src/widget_tester.dart:184:24)
+#57     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#58     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#59     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+(elided 21 frames from dart:async)
+
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following assertion was thrown running a test:
+A Timer is still pending even after the widget tree was disposed.
+'package:flutter_test/src/binding.dart':
+Failed assertion: line 2543 pos 12: '!timersPending'
+
+When the exception was thrown, this was the stack:
+#2      AutomatedTestWidgetsFlutterBinding._verifyInvariants (package:flutter_test/src/binding.dart:2543:12)
+#3      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1974:7)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided 3 frames from class _AssertionError and package:stack_trace)
+
+The test description was:
+  矮屏（横屏）不溢出：封面收缩，内容可滚动
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:01 +12 -2: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +12 -2: F:/project/tingyu/app/test/now_playing_layout_test.dart: 矮屏（横屏）不溢出：封面收缩，内容可滚动 [E]
+  Test failed. See exception logs above.
+  The test description was: 矮屏（横屏）不溢出：封面收缩，内容可滚动
+  
+00:01 +12 -2: F:/project/tingyu/app/test/now_playing_layout_test.dart: 舞台的文本落在真实 DefaultTextStyle 里（没有 fallback 黄线）
+WARNING (drift): It looks like you've created the database class TingyuDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$TingyuDatabase (package:tingyu/data/db/database.g.dart:2658:39)
+#4      new TingyuDatabase (package:tingyu/data/db/database.dart:22:7)
+#5      databaseProvider.<anonymous closure> (package:tingyu/app/providers.dart:40:35)
+#6      Provider.create (package:riverpod/src/providers/provider.dart:59:36)
+#7      $ProviderElement.create (package:riverpod/src/providers/provider.dart:343:33)
+#8      ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#9      ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#10     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#11     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#12     ProviderElement.listen (package:riverpod/src/core/element.dart:991:28)
+#13     Ref.watch (package:riverpod/src/core/ref.dart:726:20)
+#14     trackRepositoryProvider.<anonymous closure> (package:tingyu/app/providers.dart:59:40)
+#15     Provider.create (package:riverpod/src/providers/provider.dart:59:36)
+#16     $ProviderElement.create (package:riverpod/src/providers/provider.dart:343:33)
+#17     ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#18     ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#19     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#20     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#21     ProviderElement.listen (package:riverpod/src/core/element.dart:991:28)
+#22     Ref.watch (package:riverpod/src/core/ref.dart:726:20)
+#23     allTracksProvider.<anonymous closure> (package:tingyu/app/providers.dart:76:24)
+#24     StreamProvider.create (package:riverpod/src/providers/stream_provider.dart:131:44)
+#25     $StreamProviderElement.create.<anonymous closure> (package:riverpod/src/providers/stream_provider.dart:158:45)
+#26     ElementWithFuture.handleStream.<anonymous closure> (package:riverpod/src/core/element.dart:171:28)
+#27     ElementWithFuture._handleAsync (package:riverpod/src/core/element.dart:282:35)
+#28     ElementWithFuture.handleStream (package:riverpod/src/core/element.dart:165:12)
+#29     $StreamProviderElement.create (package:riverpod/src/providers/stream_provider.dart:158:12)
+#30     ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#31     ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#32     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#33     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#34     ProviderElement.listen (package:riverpod/src/core/element.dart:991:28)
+#35     Ref.watch (package:riverpod/src/core/ref.dart:726:20)
+#36     _tracksByIdProvider.<anonymous closure> (package:tingyu/features/player/queue_panel.dart:256:11)
+#37     Provider.create (package:riverpod/src/providers/provider.dart:59:36)
+#38     $ProviderElement.create (package:riverpod/src/providers/provider.dart:343:33)
+#39     ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#40     ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#41     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#42     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#43     ProviderContainer.listen (package:riverpod/src/core/provider_container.dart:1141:26)
+#44     ConsumerStatefulElement.watch.<anonymous closure> (package:flutter_riverpod/src/core/consumer.dart:490:37)
+#45     _LinkedHashMapMixin.putIfAbsent (dart:_compact_hash:631:23)
+#46     ConsumerStatefulElement.watch (package:flutter_riverpod/src/core/consumer.dart:483:14)
+#47     QueuePanel.build (package:tingyu/features/player/queue_panel.dart:40:47)
+#48     _ConsumerState.build (package:flutter_riverpod/src/core/consumer.dart:283:48)
+#49     StatefulElement.build (package:flutter/src/widgets/framework.dart:5944:27)
+#50     ConsumerStatefulElement.build (package:flutter_riverpod/src/core/consumer.dart:460:20)
+#51     ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5830:15)
+#52     StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5995:11)
+#53     Element.rebuild (package:flutter/src/widgets/framework.dart:5542:7)
+#54     ComponentElement._firstBuild (package:flutter/src/widgets/framework.dart:5812:5)
+#55     StatefulElement._firstBuild (package:flutter/src/widgets/framework.dart:5986:11)
+#56     ComponentElement.mount (package:flutter/src/widgets/framework.dart:5806:5)
+#57     ConsumerStatefulElement.mount (package:flutter_riverpod/src/core/consumer.dart:389:11)
+#58     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#59     Element.updateChild (package:flutter/src/widgets/framework.dart:4072:18)
+#60     ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5854:16)
+#61     Element.rebuild (package:flutter/src/widgets/framework.dart:5542:7)
+#62     ComponentElement._firstBuild (package:flutter/src/widgets/framework.dart:5812:5)
+#63     ComponentElement.mount (package:flutter/src/widgets/framework.dart:5806:5)
+#64     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#65     MultiChildRenderObjectElement.inflateWidget (package:flutter/src/widgets/framework.dart:7277:36)
+#66     MultiChildRenderObjectElement.mount (package:flutter/src/widgets/framework.dart:7292:32)
+#67     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#68     Element.updateChild (package:flutter/src/widgets/framework.dart:4072:18)
+#69     SingleChildRenderObjectElement.mount (package:flutter/src/widgets/framework.dart:7128:14)
+#70     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#71     Element.updateChild (package:flutter/src/widgets/framework.dart:4072:18)
+#72     ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5854:16)
+#73     Element.rebuild (package:flutter/src/widgets/framework.dart:5542:7)
+#74     ComponentElement._firstBuild (package:flutter/src/widgets/framework.dart:5812:5)
+#75     ComponentElement.mount (package:flutter/src/widgets/framework.dart:5806:5)
+#76     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#77     Element.updateChild (package:flutter/src/widgets/framework.dart:4072:18)
+#78     SingleChildRenderObjectElement.mount (package:flutter/src/widgets/framework.dart:7128:14)
+#79     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#80     MultiChildRenderObjectElement.inflateWidget (package:flutter/src/widgets/framework.dart:7277:36)
+#81     MultiChildRenderObjectElement.mount (package:flutter/src/widgets/framework.dart:7292:32)
+#82     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#83     Element.updateChild (package:flutter/src/widgets/framework.dart:4072:18)
+#84     SingleChildRenderObjectElement.mount (package:flutter/src/widgets/framework.dart:7128:14)
+#85     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#86     Element.updateChild (package:flutter/src/widgets/framework.dart:4072:18)
+#87     SingleChildRenderObjectElement.mount (package:flutter/src/widgets/framework.dart:7128:14)
+#88     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#89     Element.updateChild (package:flutter/src/widgets/framework.dart:4072:18)
+#90     SingleChildRenderObjectElement.mount (package:flutter/src/widgets/framework.dart:7128:14)
+#91     Element.inflateWidget (package:flutter/src/widgets/framework.dart:4600:20)
+#92     Element.updateChild (package:flutter/src/widgets/framework.dart:4072:18)
+#93     _LayoutBuilderElement._rebuildWithConstraints.updateChildCallback (package:flutter/src/widgets/layout_builder.dart:247:18)
+#94     BuildOwner.buildScope (package:flutter/src/widgets/framework.dart:3114:19)
+#95     _LayoutBuilderElement._rebuildWithConstraints (package:flutter/src/widgets/layout_builder.dart:270:12)
+#96     RenderAbstractLayoutBuilderMixin.layoutCallback (package:flutter/src/widgets/layout_builder.dart:333:38)
+#97     RenderObjectWithLayoutCallbackMixin.runLayoutCallback.<anonymous closure> (package:flutter/src/rendering/object.dart:4313:33)
+#98     RenderObject.invokeLayoutCallback.<anonymous closure> (package:flutter/src/rendering/object.dart:3042:17)
+#99     PipelineOwner._enableMutationsToDirtySubtrees (package:flutter/src/rendering/object.dart:1223:15)
+#100    RenderObject.invokeLayoutCallback (package:flutter/src/rendering/object.dart:3041:14)
+#101    RenderObjectWithLayoutCallbackMixin.runLayoutCallback (package:flutter/src/rendering/object.dart:4313:5)
+#102    _RenderLayoutBuilder.performLayout (package:flutter/src/widgets/layout_builder.dart:447:5)
+#103    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#104    ChildLayoutHelper.layoutChild (package:flutter/src/rendering/layout_helper.dart:62:11)
+#105    RenderFlex._computeSizes (package:flutter/src/rendering/flex.dart:1275:26)
+#106    RenderFlex.performLayout (package:flutter/src/rendering/flex.dart:1329:32)
+#107    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#108    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#109    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#110    ChildLayoutHelper.layoutChild (package:flutter/src/rendering/layout_helper.dart:62:11)
+#111    RenderStack._computeSize (package:flutter/src/rendering/stack.dart:647:43)
+#112    RenderStack.performLayout (package:flutter/src/rendering/stack.dart:682:12)
+#113    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#114    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#115    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#116    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#117    RenderCustomPaint.performLayout (package:flutter/src/rendering/custom_paint.dart:574:11)
+#118    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#119    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#120    _RenderCustomClip.performLayout (package:flutter/src/rendering/proxy_box.dart:1549:11)
+#121    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#122    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#123    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#124    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#125    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#126    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#127    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#128    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#129    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#130    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#131    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#132    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#133    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#134    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#135    RenderOffstage.performLayout (package:flutter/src/rendering/proxy_box.dart:3923:13)
+#136    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#137    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#138    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#139    _RenderTheaterMixin.layoutChild (package:flutter/src/widgets/overlay.dart:1124:13)
+#140    _RenderTheater.performLayout (package:flutter/src/widgets/overlay.dart:1482:9)
+#141    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#142    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#143    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#144    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#145    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#146    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#147    RenderCustomPaint.performLayout (package:flutter/src/rendering/custom_paint.dart:574:11)
+#148    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#149    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#150    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#151    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#152    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#153    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#154    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#155    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#156    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#157    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#158    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#159    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:118:18)
+#160    RenderObject.layout (package:flutter/src/rendering/object.dart:2923:7)
+#161    RenderView.performLayout (package:flutter/src/rendering/view.dart:292:12)
+#162    RenderObject._layoutWithoutResize (package:flutter/src/rendering/object.dart:2771:7)
+#163    PipelineOwner.flushLayout (package:flutter/src/rendering/object.dart:1174:18)
+#164    PipelineOwner.flushLayout (package:flutter/src/rendering/object.dart:1187:15)
+#165    AutomatedTestWidgetsFlutterBinding.drawFrame (package:flutter_test/src/binding.dart:2434:27)
+#166    RendererBinding._handlePersistentFrameCallback (package:flutter/src/rendering/binding.dart:558:5)
+#167    SchedulerBinding._invokeFrameCallback (package:flutter/src/scheduler/binding.dart:1430:15)
+#168    SchedulerBinding.handleDrawFrame (package:flutter/src/scheduler/binding.dart:1345:9)
+#169    AutomatedTestWidgetsFlutterBinding.pump.<anonymous closure> (package:flutter_test/src/binding.dart:2261:9)
+#170    _rootRun (dart:async/zone_root.dart:35:13)
+#171    _CustomZone.run (dart:async/zone.dart:810:35)
+#172    TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#173    AutomatedTestWidgetsFlutterBinding.pump (package:flutter_test/src/binding.dart:2250:27)
+#174    WidgetTester.pumpWidget.<anonymous closure> (package:flutter_test/src/widget_tester.dart:598:22)
+#175    _rootRun (dart:async/zone_root.dart:35:13)
+#176    _CustomZone.run (dart:async/zone.dart:810:35)
+#177    TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#178    WidgetTester.pumpWidget (package:flutter_test/src/widget_tester.dart:595:27)
+#179    pumpPage (file:///F:/project/tingyu/app/test/now_playing_layout_test.dart:74:16)
+<asynchronous suspension>
+#180    _textStyleCoverage.<anonymous closure> (file:///F:/project/tingyu/app/test/now_playing_layout_test.dart:164:5)
+<asynchronous suspension>
+#181    testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#182    TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+#183    StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+Pending timers:
+Timer (duration: 0:00:00.000000, periodic: false), created:
+#0      new FakeTimer._ (package:fake_async/fake_async.dart:342:62)
+#1      FakeAsync._createTimer (package:fake_async/fake_async.dart:260:29)
+#2      FakeAsync.run.<anonymous closure> (package:fake_async/fake_async.dart:185:15)
+#6      StreamQueryStore.markAsClosed (package:drift/src/runtime/executor/stream_queries.dart:156:11)
+#7      QueryStream._onCancelOrPause (package:drift/src/runtime/executor/stream_queries.dart:305:14)
+#8      QueryStream._stream.<anonymous closure>.<anonymous closure> (package:drift/src/runtime/executor/stream_queries.dart:238:9)
+#17     ElementWithFuture.runOnDispose (package:riverpod/src/core/element.dart:318:32)
+#18     ProviderElement.clearState (package:riverpod/src/core/element.dart:1290:5)
+#19     ProviderElement.dispose (package:riverpod/src/core/element.dart:1323:5)
+#20     ElementWithFuture.dispose (package:riverpod/src/core/element.dart:344:11)
+#21     $StreamProviderElement.dispose (package:riverpod/src/providers/stream_provider.dart:163:11)
+#22     ProviderContainer._dispose (package:riverpod/src/core/provider_container.dart:1317:15)
+#23     ProviderContainer.dispose (package:riverpod/src/core/provider_container.dart:1335:21)
+#24     ProviderScopeState.dispose (package:flutter_riverpod/src/core/provider_scope.dart:220:15)
+#25     StatefulElement.unmount (package:flutter/src/widgets/framework.dart:6043:11)
+#26     _InactiveElements._unmount (package:flutter/src/widgets/framework.dart:2119:13)
+#27     ListIterable.forEach (dart:_internal/iterable.dart:49:13)
+#28     _InactiveElements._unmountAll (package:flutter/src/widgets/framework.dart:2128:25)
+#29     BuildOwner.lockState (package:flutter/src/widgets/framework.dart:3033:15)
+#30     BuildOwner.finalizeTree (package:flutter/src/widgets/framework.dart:3357:7)
+#31     AutomatedTestWidgetsFlutterBinding.drawFrame (package:flutter_test/src/binding.dart:2454:19)
+#32     RendererBinding._handlePersistentFrameCallback (package:flutter/src/rendering/binding.dart:558:5)
+#33     SchedulerBinding._invokeFrameCallback (package:flutter/src/scheduler/binding.dart:1430:15)
+#34     SchedulerBinding.handleDrawFrame (package:flutter/src/scheduler/binding.dart:1345:9)
+#35     AutomatedTestWidgetsFlutterBinding.scheduleWarmUpFrame (package:flutter_test/src/binding.dart:2358:5)
+#36     _runWidget (package:flutter/src/widgets/binding.dart:1952:7)
+#37     runApp (package:flutter/src/widgets/binding.dart:1885:3)
+#38     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1960:7)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided 12 frames from dart:async and package:stack_trace)
+
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following assertion was thrown running a test:
+A Timer is still pending even after the widget tree was disposed.
+'package:flutter_test/src/binding.dart':
+Failed assertion: line 2543 pos 12: '!timersPending'
+
+When the exception was thrown, this was the stack:
+#2      AutomatedTestWidgetsFlutterBinding._verifyInvariants (package:flutter_test/src/binding.dart:2543:12)
+#3      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1974:7)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided 3 frames from class _AssertionError and package:stack_trace)
+
+The test description was:
+  舞台的文本落在真实 DefaultTextStyle 里（没有 fallback 黄线）
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:01 +12 -3: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:01 +12 -3: F:/project/tingyu/app/test/now_playing_layout_test.dart: 舞台的文本落在真实 DefaultTextStyle 里（没有 fallback 黄线） [E]
+  Test failed. See exception logs above.
+  The test description was: 舞台的文本落在真实 DefaultTextStyle 里（没有 fallback 黄线）
+  
+00:01 +13 -3: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 迷你条：推进进度不重建封面与标题
+00:01 +14 -3: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 队列面板：一次取全库元数据，推进进度不重建行，换队列立即跟上
+00:01 +15 -3: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:01 +16 -3: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 封面按显示尺寸解码，不按原图分辨率
+00:01 +17 -3: Some tests failed.
+
+Failing tests:
+  F:/project/tingyu/app/test/now_playing_layout_test.dart: 矮屏（横屏）不溢出：封面收缩，内容可滚动
+  F:/project/tingyu/app/test/now_playing_layout_test.dart: 竖屏：传输行贴在下缘（留出 24dp + 手势条），不在底部留大片空白
+  F:/project/tingyu/app/test/now_playing_layout_test.dart: 舞台的文本落在真实 DefaultTextStyle 里（没有 fallback 黄线）

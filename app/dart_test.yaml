@@ -1,0 +1,5 @@
+# 仅 golden 基准图在 Windows 本机校验：Linux 字体栈不同，CI 上会假失败。
+# 本机需要跑的时候：flutter test --run-skipped -t golden
+tags:
+  golden:
+    skip: "golden 基准图仅在 Windows 本机生成与校验；CI 排除该 tag"

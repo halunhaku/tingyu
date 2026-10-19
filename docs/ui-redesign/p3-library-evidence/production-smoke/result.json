@@ -1,0 +1,17 @@
+{
+  "processId": 18156,
+  "libraryTrack": false,
+  "accessibilityEnabled": false,
+  "cyclesAttempted": 10,
+  "exited": false,
+  "checkedAt": "2026-10-18T21:36:33.4801833+08:00",
+  "namedAccessibilityElements": 1,
+  "nativeAccessibilityErrors": 0,
+  "latestPlaybackSnapshots": [
+    "[snapshot] engine=media_kit (libmpv) processing=ready playing=true position=19170ms duration=120000ms index=0 failure=-",
+    "[snapshot] engine=media_kit (libmpv) processing=ready playing=true position=19220ms duration=120000ms index=0 failure=-",
+    "[snapshot] engine=media_kit (libmpv) processing=ready playing=true position=19300ms duration=120000ms index=0 failure=-",
+    "[snapshot] engine=media_kit (libmpv) processing=ready playing=true position=19380ms duration=120000ms index=0 failure=-",
+    "[snapshot] engine=media_kit (libmpv) processing=ready playing=true position=19430ms duration=120000ms index=0 failure=-"
+  ]
+}

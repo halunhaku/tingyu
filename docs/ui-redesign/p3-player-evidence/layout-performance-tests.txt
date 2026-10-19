@@ -1,0 +1,8 @@
+00:00 +0: loading F:/project/tingyu/app/test/now_playing_layout_test.dart
+00:00 +0: F:/project/tingyu/app/test/now_playing_layout_test.dart: 竖屏：传输行贴在下缘（留出 24dp + 手势条），不在底部留大片空白
+00:00 +1: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:00 +2: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:00 +3: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:00 +4: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:01 +5: F:/project/tingyu/app/test/performance_regression_test.dart: 舞台漂移背景：每帧重绘的是背景层，不重建内容与封面
+00:01 +6: All tests passed!

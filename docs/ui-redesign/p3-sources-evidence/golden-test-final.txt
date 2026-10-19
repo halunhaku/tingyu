@@ -1,0 +1,80 @@
+00:00 +0: loading F:/project/tingyu/app/test/golden/core_pages_golden_test.dart
+00:00 +0: golden: 曲库·歌曲（expanded / dark）
+00:00 +1: golden: 曲库·歌曲（compact / light）
+00:00 +2: golden: 专辑网格（expanded / light）
+00:00 +3: golden: 专辑详情（expanded / light）
+00:00 +4: golden: 搜索·空查询（expanded / light）
+00:01 +5: golden: 搜索·有结果（expanded / dark）
+00:01 +6: golden: 播放队列（pane / light）
+00:01 +7: golden: 歌词空态（pane / dark）
+00:01 +8: golden: 播放舞台（compact / dark）
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following assertion was thrown while running async test code:
+Golden "goldens/stage-compact-dark.png": Pixel test failed, 100.00%, 329160px diff detected.
+Failure feedback can be found at /F:/project/tingyu/app/test/golden/failures
+
+When the exception was thrown, this was the stack:
+#0      LocalFileComparator.compare (package:flutter_test/src/_goldens_io.dart:108:5)
+<asynchronous suspension>
+#1      MatchesGoldenFile.matchAsync.<anonymous closure> (package:flutter_test/src/_matchers_io.dart:124:32)
+<asynchronous suspension>
+<asynchronous suspension>
+#3      _expect.<anonymous closure> (package:matcher/src/expect/expect.dart:153:17)
+<asynchronous suspension>
+<asynchronous suspension>
+#5      expectLater.<anonymous closure> (package:flutter_test/src/widget_tester.dart:508:19)
+<asynchronous suspension>
+#6      main.<anonymous closure> (file:///F:/project/tingyu/app/test/golden/core_pages_golden_test.dart:277:5)
+<asynchronous suspension>
+#7      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#8      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided 3 frames from dart:async and package:stack_trace)
+
+The exception was caught asynchronously.
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:01 +8 -1: golden: 播放舞台（compact / dark） [E]
+  Test failed. See exception logs above.
+  The test description was: golden: 播放舞台（compact / dark）
+
+00:01 +8 -1: golden: 设置（expanded / light）
+00:01 +9 -1: golden: 来源管理（expanded / light）
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following assertion was thrown while running async test code:
+Golden "goldens/sources-expanded-light.png": Pixel test failed, 14.31%, 146572px diff detected.
+Failure feedback can be found at /F:/project/tingyu/app/test/golden/failures
+
+When the exception was thrown, this was the stack:
+#0      LocalFileComparator.compare (package:flutter_test/src/_goldens_io.dart:108:5)
+<asynchronous suspension>
+#1      MatchesGoldenFile.matchAsync.<anonymous closure> (package:flutter_test/src/_matchers_io.dart:124:32)
+<asynchronous suspension>
+<asynchronous suspension>
+#3      _expect.<anonymous closure> (package:matcher/src/expect/expect.dart:153:17)
+<asynchronous suspension>
+<asynchronous suspension>
+#5      expectLater.<anonymous closure> (package:flutter_test/src/widget_tester.dart:508:19)
+<asynchronous suspension>
+#6      main.<anonymous closure> (file:///F:/project/tingyu/app/test/golden/core_pages_golden_test.dart:343:5)
+<asynchronous suspension>
+#7      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#8      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided 3 frames from dart:async and package:stack_trace)
+
+The exception was caught asynchronously.
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:01 +9 -2: golden: 来源管理（expanded / light） [E]
+  Test failed. See exception logs above.
+  The test description was: golden: 来源管理（expanded / light）
+
+00:01 +9 -2: golden: 来源详情（expanded / light）
+00:01 +10 -2: Some tests failed.
+
+Failing tests:
+  F:/project/tingyu/app/test/golden/core_pages_golden_test.dart: golden: 播放舞台（compact / dark）
+  F:/project/tingyu/app/test/golden/core_pages_golden_test.dart: golden: 来源管理（expanded / light）

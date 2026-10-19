@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tingyu/data/db/database.dart';
 import 'package:tingyu/data/models/scanned_track.dart';
+import 'package:tingyu/data/models/search_page_result.dart';
 import 'package:tingyu/data/repositories/playlist_repository.dart';
 import 'package:tingyu/data/repositories/source_repository.dart';
 import 'package:tingyu/data/repositories/track_repository.dart';
@@ -149,5 +150,46 @@ void main() {
     expect(emissions.last['pl-2'], 2);
     // 空歌单不出现在聚合里，UI 用 `?? 0` 兜底。
     expect(emissions.last.containsKey('pl-3'), isFalse);
+  });
+
+  test('按歌单名搜索分页：total 是真实命中数，limit 1 翻两页取到两个', () async {
+    await playlists.create(id: 'pl-1', name: '我的歌单');
+    await playlists.create(id: 'pl-2', name: '歌单二号');
+    await playlists.create(id: 'pl-3', name: '别的名字');
+
+    final SearchPageResult<Playlist> first = await playlists.searchByNamePaged(
+      '歌',
+      limit: 1,
+    );
+    expect(first.total, 2, reason: 'total 是命中总数，不是本页长度');
+    expect(first.items, hasLength(1));
+
+    final SearchPageResult<Playlist> second = await playlists.searchByNamePaged(
+      '歌',
+      limit: 1,
+      offset: 1,
+    );
+    expect(second.total, 2);
+    expect(second.items, hasLength(1));
+    expect(
+      <String>{first.items.single.id, second.items.single.id},
+      <String>{'pl-1', 'pl-2'},
+    );
+  });
+
+  test('按歌单名搜索：未命中与空查询都返回空结果', () async {
+    await playlists.create(id: 'pl-1', name: '我的歌单');
+
+    final SearchPageResult<Playlist> missing =
+        await playlists.searchByNamePaged('不存在');
+    expect(missing.total, 0);
+    expect(missing.items, isEmpty);
+
+    final SearchPageResult<Playlist> blank = await playlists.searchByNamePaged(
+      '   ',
+    );
+    expect(blank.total, 0);
+    expect(blank.items, isEmpty);
+    expect((await playlists.searchByNamePaged('')).total, 0);
   });
 }

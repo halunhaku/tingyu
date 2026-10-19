@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-18",
+  "sourceCommit": "d724d20194359ce2a01a1e640792887f6f4a5d09",
+  "direction": "C",
+  "appSourceChanged": false,
+  "goldensChanged": false,
+  "validation": "198 contrast pairs; source-member lexical mapping; table budgets; four selection hashes",
+  "assets": [
+    {
+      "Path": "F:\\project\\tingyu\\docs\\ui-redesign\\tokens\\voice-archive.v0.1.json",
+      "Hash": "0FCBE2D32CF707AA0B7DAF3E7496E7C5C2867CE70874B54099FBE17B66FD83C9"
+    },
+    {
+      "Path": "F:\\project\\tingyu\\docs\\ui-redesign\\tokens\\flutter-mapping.v0.1.json",
+      "Hash": "D1B361A6FDAE9D7BBC5D610E4142322CEC0AE08FD3A03AA9904713A9CE871516"
+    },
+    {
+      "Path": "F:\\project\\tingyu\\docs\\ui-redesign\\02-design-system.md",
+      "Hash": "E14036C4D0A3CB66A6519F1588A4840AFBC3A3453DE1472292F2E8AA63C67657"
+    },
+    {
+      "Path": "F:\\project\\tingyu\\docs\\ui-redesign\\p2-evidence\\selected-c-gallery.png",
+      "Hash": "445F7BD0E4F071F647A02D69EC1A0BBB0D7A5468E85A0180737908C6897C153A"
+    }
+  ]
+}

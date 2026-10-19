@@ -138,7 +138,8 @@ flutter test
 
 # 打包
 flutter build macos --release        # → build/macos/Build/Products/Release
-flutter build windows --release
+# Windows 必须使用修复后的本地引擎（从仓库根目录运行）
+# ./tools/build-windows-engine.ps1 -Stage App
 flutter build linux --release
 flutter build appbundle --release    # Android
 flutter build ios --release
@@ -146,6 +147,34 @@ flutter build ios --release
 # 改了 data/db/schema.dart 之后必须重新生成（CI 会校验生成代码是否同步）
 dart run build_runner build
 ```
+
+Windows 使用固定版本的本地 Flutter 引擎补丁，修复脱离节点被误选为无障碍根节点及空父节点崩溃，保留 MSAA 读屏接口。构建和打包请遵循 [Windows 引擎构建说明](tools/engine-patches/README.md)，直接使用官方预编译引擎会重新引入此故障。详见 [Windows 崩溃调查与回归记录](docs/windows-now-playing-crash.md)。
+
+### UI 走查截图（Windows）
+
+改完界面后逐页截图核对（空态、暗色、长标题这些都得亲眼看）：
+
+```powershell
+./tools/windows-ui-screenshots.ps1 `
+  -Theme dark `
+  -AppDirectory ./app/build/windows/x64/runner/Release `
+  -OutputDirectory ./app/build/ui-shots/pass1
+```
+
+脚本用 `TINGYU_DEBUG_ROUTE` 逐条打开路由，并喂一段本地静音 WAV 作为播放源
+（队列/舞台/传输条因此不是空态），只截 Flutter 子窗口的客户区；
+`-Theme dark|light` 与 `-Density compact|comfortable` 覆盖主题与密度，
+`-Width/-Height` 给的是**物理**像素（本机 150% 缩放：2160×1350 → 1440×900 逻辑）。
+
+配套两个工具：
+
+- `tools/windows-ui-contact-sheet.ps1`：把一批截图拼成一张带标签的拼版，一次看完一轮走查。
+- `tools/windows-ui-flow-shots.ps1`：按坐标点击并截图，用来走「点击才出现」的界面
+  （例如 `-Steps @('01-add-source-dialog:1331,49')` 打开「添加来源」弹窗）。
+  坐标是**客户区逻辑坐标**（脚本内部 ×DPI 缩放），从已有截图量出来即可。
+
+视觉基线（不替代人工走查）：`cd app && flutter test --run-skipped -t golden`
+校验 12 张核心页面基准图；改版后确认版式是有意变的，用 `--update-goldens` 重新生成并 review 差异。
 
 ### Android 正式签名
 正式分发用的密钥不进仓库。把密钥信息写到 `app/android/key.properties`（已在 `.gitignore` 中）：
@@ -169,6 +198,8 @@ keyPassword=…
 | 变量 | 作用 |
 |---|---|
 | `TINGYU_DEBUG_ROUTE=/sources` | 启动即打开某个页面（截图 / 排查用） |
+| `TINGYU_DEBUG_THEME=dark\|light` | 启动即覆盖主题偏好（走查深浅色用；只影响本次进程，不写回设置） |
+| `TINGYU_DEBUG_DENSITY=compact\|comfortable` | 启动即覆盖界面密度（走查紧凑密度用） |
 | `TINGYU_DEBUG_SCAN_DIR=<目录>` | 在真实进程里跑一次「扫描 → 合并入库」并打印结果 |
 | `TINGYU_DEBUG_LEGACY_JSON=<文件>` | 导入旧版导出的曲库 JSON |
 | `TINGYU_DEBUG_SOURCES=<a,b,...>` | 启动即载入队列并播放，便于脚本化验证播放链路 |

@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tingyu/data/db/database.dart';
 import 'package:tingyu/data/models/library_summaries.dart';
 import 'package:tingyu/data/models/scanned_track.dart';
+import 'package:tingyu/data/models/search_page_result.dart';
+import 'package:tingyu/data/models/track_sort.dart';
 import 'package:tingyu/data/repositories/playlist_repository.dart';
 import 'package:tingyu/data/repositories/track_repository.dart';
 
@@ -315,5 +317,286 @@ void main() {
     final AlbumSummary unknown = albums.last;
     expect(unknown.year, 2011, reason: '未知专辑合并后年份取最大值');
     expect(unknown.trackCount, 2);
+  });
+
+  group('分页搜索', () {
+    /// 直接写库并指定 `dateAdded`：drift 按秒存 DateTime，连续 mergeScan 拿到的
+    /// 可能是同一秒的并列时间，既断言不了"最新的一条"，翻页顺序也不可控。
+    Future<void> seedRecent(int count) async {
+      for (int i = 0; i < count; i++) {
+        await db
+            .into(db.tracks)
+            .insert(
+              TracksCompanion.insert(
+                id: 'recent-$i',
+                sourceId: 'src-1',
+                title: 'r$i',
+                filePathOrUrl: '/music/recent-$i.flac',
+                dateAdded: DateTime.utc(2026, 1, 1).add(Duration(minutes: i)),
+              ),
+            );
+      }
+    }
+
+    test('歌曲分页：45 条命中按 40/5 切页，两页 id 不相交', () async {
+      await tracks.mergeScan(
+        sourceId: 'src-1',
+        scanned: <ScannedTrack>[
+          for (int i = 0; i < 45; i++)
+            scan('/music/hit-$i.flac', title: 'hit $i'),
+        ],
+      );
+
+      final SearchPageResult<Track> first = await tracks.searchTracksPaged(
+        'hit',
+      );
+      expect(first.total, 45, reason: 'total 是真实 COUNT，不是本页长度');
+      expect(first.items, hasLength(40));
+
+      final SearchPageResult<Track> second = await tracks.searchTracksPaged(
+        'hit',
+        offset: 40,
+      );
+      expect(second.total, 45);
+      expect(second.items, hasLength(5));
+
+      final Set<String> firstIds = first.items.map((Track t) => t.id).toSet();
+      final Set<String> secondIds = second.items.map((Track t) => t.id).toSet();
+      expect(firstIds.intersection(secondIds), isEmpty);
+      expect(<String>{...firstIds, ...secondIds}, hasLength(45));
+    });
+
+    test('歌曲分页：中文子串命中，无命中与空查询都返回空结果', () async {
+      await tracks.mergeScan(
+        sourceId: 'src-1',
+        scanned: <ScannedTrack>[
+          scan('/music/1.flac', title: '晴天'),
+          scan('/music/2.flac', title: '晴天娃娃'),
+          scan('/music/3.flac', title: '阴天'),
+        ],
+      );
+
+      final SearchPageResult<Track> chinese = await tracks.searchTracksPaged(
+        '晴',
+      );
+      expect(chinese.total, 2);
+      expect(chinese.items, hasLength(2));
+
+      final SearchPageResult<Track> missing = await tracks.searchTracksPaged(
+        '不存在',
+      );
+      expect(missing.total, 0);
+      expect(missing.items, isEmpty);
+
+      final SearchPageResult<Track> blank = await tracks.searchTracksPaged(
+        '   ',
+      );
+      expect(blank.total, 0);
+      expect(blank.items, isEmpty);
+      expect((await tracks.searchTracksPaged('')).total, 0);
+    });
+
+    test('专辑分页：total 是「艺术家+专辑」组数，limit 1 翻页不重不漏', () async {
+      await tracks.mergeScan(
+        sourceId: 'src-1',
+        scanned: <ScannedTrack>[
+          scan('/music/a1.flac', artist: '甲', album: '同名专辑', title: '一'),
+          scan('/music/a2.flac', artist: '甲', album: '同名专辑', title: '二'),
+        ],
+      );
+
+      final SearchPageResult<AlbumSummary> oneGroup = await tracks
+          .searchAlbumsPaged('同名');
+      expect(oneGroup.total, 1, reason: '同艺术家同名专辑只算一组');
+      expect(oneGroup.items, hasLength(1));
+      expect(oneGroup.items.single.trackCount, 2);
+
+      await tracks.mergeScan(
+        sourceId: 'src-1',
+        scanned: <ScannedTrack>[
+          scan('/music/b1.flac', artist: '乙', album: '同名专辑', title: '三'),
+        ],
+        // 增量合并：这次扫描只带一首歌，权威模式会把上面两首当成"已消失"删掉。
+        removeMissing: false,
+      );
+
+      final SearchPageResult<AlbumSummary> twoGroups = await tracks
+          .searchAlbumsPaged('同名');
+      expect(twoGroups.total, 2, reason: '同名专辑换个艺术家就是另一组');
+
+      final SearchPageResult<AlbumSummary> page1 = await tracks
+          .searchAlbumsPaged('同名', limit: 1);
+      final SearchPageResult<AlbumSummary> page2 = await tracks
+          .searchAlbumsPaged('同名', limit: 1, offset: 1);
+      expect(page1.total, 2);
+      expect(page1.items, hasLength(1));
+      expect(page2.items, hasLength(1));
+      expect(
+        <String>{page1.items.single.artist, page2.items.single.artist},
+        <String>{'甲', '乙'},
+      );
+
+      final SearchPageResult<AlbumSummary> byArtist = await tracks
+          .searchAlbumsPaged('甲');
+      expect(byArtist.total, 1, reason: '按艺术家名也能命中该组');
+    });
+
+    test('艺人分页：total 是艺人数，limit 1 翻两页是两个不同艺人', () async {
+      await tracks.mergeScan(
+        sourceId: 'src-1',
+        scanned: <ScannedTrack>[
+          scan('/music/a1.flac', artist: '歌手甲'),
+          scan('/music/a2.flac', artist: '歌手甲', title: '另一首'),
+          scan('/music/b1.flac', artist: '歌手乙'),
+        ],
+      );
+
+      final SearchPageResult<ArtistSummary> all = await tracks
+          .searchArtistsPaged('歌手');
+      expect(all.total, 2, reason: '同一艺人的多首曲目只算一个人');
+      expect(all.items.map((ArtistSummary a) => a.name).toSet(), <String>{
+        '歌手甲',
+        '歌手乙',
+      });
+      expect(
+        all.items.firstWhere((ArtistSummary a) => a.name == '歌手甲').trackCount,
+        2,
+      );
+
+      final SearchPageResult<ArtistSummary> page1 = await tracks
+          .searchArtistsPaged('歌手', limit: 1);
+      final SearchPageResult<ArtistSummary> page2 = await tracks
+          .searchArtistsPaged('歌手', limit: 1, offset: 1);
+      expect(page1.total, 2);
+      expect(page1.items, hasLength(1));
+      expect(page2.items, hasLength(1));
+      expect(page1.items.single.name, isNot(page2.items.single.name));
+      expect(
+        <String>{page1.items.single.name, page2.items.single.name},
+        <String>{'歌手甲', '歌手乙'},
+      );
+    });
+
+    test('最近添加分页：dateAdded 倒序、真实计数、超出 100 条也不截断', () async {
+      await seedRecent(45);
+
+      final SearchPageResult<Track> first = await tracks.recentlyAddedPaged();
+      expect(first.total, 45);
+      expect(first.items, hasLength(40));
+      expect(first.items.first.title, 'r44', reason: '最新入库的排第一');
+
+      final SearchPageResult<Track> second = await tracks.recentlyAddedPaged(
+        offset: 40,
+      );
+      expect(second.total, 45);
+      expect(second.items, hasLength(5));
+      expect(second.items.last.title, 'r0', reason: '最旧的落到最后一页');
+
+      final Set<String> firstIds = first.items.map((Track t) => t.id).toSet();
+      final Set<String> secondIds = second.items.map((Track t) => t.id).toSet();
+      expect(firstIds.intersection(secondIds), isEmpty);
+    });
+
+    test('曲库列表分页：排序字段并列时按 id 兜底，翻两页不重不漏', () async {
+      await tracks.mergeScan(
+        sourceId: 'src-1',
+        scanned: <ScannedTrack>[
+          for (int i = 0; i < 45; i++)
+            scan(
+              '/music/same-$i.flac',
+              title: '标题$i',
+              artist: '同一艺术家',
+              album: '同一专辑',
+            ),
+        ],
+      );
+
+      final SearchPageResult<Track> first = await tracks.listTracksPaged(
+        sort: TrackSortField.artist,
+      );
+      expect(first.total, 45, reason: '空 query 不过滤，列全库');
+      expect(first.items, hasLength(40));
+
+      final SearchPageResult<Track> second = await tracks.listTracksPaged(
+        sort: TrackSortField.artist,
+        offset: 40,
+      );
+      expect(second.total, 45);
+      expect(second.items, hasLength(5));
+
+      final Set<String> firstIds = first.items.map((Track t) => t.id).toSet();
+      final Set<String> secondIds = second.items.map((Track t) => t.id).toSet();
+      expect(firstIds.intersection(secondIds), isEmpty);
+      expect(<String>{...firstIds, ...secondIds}, hasLength(45));
+    });
+
+    test('曲库列表分页：favoritesOnly 只数收藏，sourceId 与 query 组合过滤', () async {
+      await tracks.mergeScan(
+        sourceId: 'src-1',
+        scanned: <ScannedTrack>[
+          for (int i = 0; i < 5; i++) scan('/music/f-$i.flac', title: '歌$i'),
+        ],
+      );
+      await tracks.mergeScan(
+        sourceId: 'src-2',
+        scanned: <ScannedTrack>[scan('/other/x.flac', title: '别的歌')],
+      );
+      for (final (String source, String path) in <(String, String)>[
+        ('src-1', '/music/f-0.flac'),
+        ('src-1', '/music/f-2.flac'),
+        ('src-2', '/other/x.flac'),
+      ]) {
+        await tracks.setFavorite(
+          TrackRepository.idFor(sourceId: source, filePathOrUrl: path),
+          value: true,
+        );
+      }
+
+      expect((await tracks.listTracksPaged()).total, 6);
+
+      final SearchPageResult<Track> favorites = await tracks.listTracksPaged(
+        favoritesOnly: true,
+      );
+      expect(favorites.total, 3, reason: '收藏过滤后的 total 只数收藏');
+      expect(favorites.items, hasLength(3));
+      expect(favorites.items.every((Track t) => t.isFavorite), isTrue);
+
+      final SearchPageResult<Track> scoped = await tracks.listTracksPaged(
+        favoritesOnly: true,
+        sourceId: 'src-1',
+      );
+      expect(scoped.total, 2);
+      expect(scoped.items, hasLength(2));
+
+      final SearchPageResult<Track> queried = await tracks.listTracksPaged(
+        query: '别的',
+      );
+      expect(queried.total, 1, reason: '非空 query 按标题/艺术家/专辑子串过滤');
+
+      final SearchPageResult<Track> blank = await tracks.listTracksPaged(
+        query: '   ',
+      );
+      expect(blank.total, 6, reason: '空 query 不加文本过滤，列全库');
+    });
+
+    test('曲库列表分页：addedAt 倒序时第一页首条是最新入库的', () async {
+      await seedRecent(45);
+
+      final SearchPageResult<Track> first = await tracks.listTracksPaged(
+        sort: TrackSortField.addedAt,
+        ascending: false,
+      );
+      expect(first.total, 45);
+      expect(first.items, hasLength(40));
+      expect(first.items.first.title, 'r44');
+
+      final SearchPageResult<Track> second = await tracks.listTracksPaged(
+        sort: TrackSortField.addedAt,
+        ascending: false,
+        offset: 40,
+      );
+      expect(second.items, hasLength(5));
+      expect(second.items.last.title, 'r0');
+    });
   });
 }

@@ -1,0 +1,173 @@
+{
+  "status": "planned-not-applied",
+  "tokenFile": "voice-archive.v0.1.json",
+  "scope": "Flutter表现层映射；不自动覆盖app代码",
+  "groups": [
+    {
+      "selector": "color.*",
+      "file": "app/lib/design/tokens/color.dart",
+      "type": "TyColors",
+      "members": "same",
+      "action": "replace-values-after-approval",
+      "check": "fields"
+    },
+    {
+      "selector": "type",
+      "file": "app/lib/design/tokens/typography.dart",
+      "type": "TyType",
+      "members": "same",
+      "action": "reuse",
+      "check": "getters"
+    },
+    {
+      "selector": "space",
+      "file": "app/lib/design/tokens/metrics.dart",
+      "type": "TySpace",
+      "members": "same",
+      "action": "reuse",
+      "check": "static-members"
+    },
+    {
+      "selector": "radius",
+      "file": "app/lib/design/tokens/metrics.dart",
+      "type": "TyRadius",
+      "members": "same",
+      "action": "reuse",
+      "check": "static-members"
+    },
+    {
+      "selector": "icon",
+      "file": "app/lib/design/tokens/metrics.dart",
+      "type": "TyIconSize",
+      "members": "same",
+      "action": "reuse",
+      "check": "static-members"
+    },
+    {
+      "selector": "motionMs",
+      "file": "app/lib/design/tokens/motion.dart",
+      "type": "TyDuration",
+      "members": "same",
+      "action": "reuse",
+      "check": "static-members"
+    },
+    {
+      "selector": "curves",
+      "file": "app/lib/design/tokens/motion.dart",
+      "type": "TyCurve",
+      "members": "same",
+      "action": "reuse",
+      "check": "static-members"
+    },
+    {
+      "selector": "elevation",
+      "file": "app/lib/design/tokens/metrics.dart",
+      "type": "TyElevation",
+      "members": "same",
+      "action": "reuse",
+      "check": "static-members"
+    },
+    {
+      "selector": "layout",
+      "file": "app/lib/design/layout/form_factor.dart",
+      "type": "TyMetrics",
+      "members": {
+        "pagePadding": "pagePadding",
+        "sidebarWidth": "sidebarWidth",
+        "sidebarCollapsedWidth": "sidebarCollapsedWidth",
+        "railWidth": "railWidth",
+        "navBarHeight": "navBarHeight",
+        "miniPlayerHeight": "miniPlayerHeight",
+        "transportHeight": "transportHeight",
+        "rowMinHeight": "rowHeight",
+        "tableRowMinHeight": "tableRowHeight",
+        "compactTableRowMinHeight": "tableRowHeight",
+        "hitTarget": "hitTarget",
+        "buttonHeight": "buttonHeight",
+        "coverList": "coverList"
+      },
+      "check": "fields",
+      "action": "reuse-and-refine-after-approval",
+      "note": "rowHeight改为最小高度；longTitleRowMinHeight是新表现层语义。"
+    },
+    {
+      "selector": "player",
+      "file": "app/lib/design/components/player_stage.dart",
+      "type": "TyPlayerStageSize",
+      "members": {
+        "rightPaneWidth": "rightPaneWidth",
+        "contentMaxWidth": "contentMaxWidth",
+        "coverMax": "coverMax",
+        "coverMin": "coverMin",
+        "topBarHeight": "topBarHeight"
+      },
+      "check": "static-members",
+      "action": "reuse"
+    },
+    {
+      "selector": "player",
+      "file": "app/lib/design/components/transport.dart",
+      "type": "TyPlayerSize",
+      "members": {
+        "transportHitTarget": "transportHitTarget",
+        "seekHitHeight": "barSeekHitHeight",
+        "primaryPlayDiameter": "stagePlay",
+        "timeColumnWidth": "timeColumn"
+      },
+      "check": "static-members",
+      "action": "reuse-or-refine",
+      "note": "seekHitHeight现状24拟提升44；视觉轨道仍4。"
+    },
+    {
+      "selector": "table",
+      "file": "app/lib/design/components/track.dart",
+      "type": "TyTrackTable",
+      "members": {},
+      "check": "type",
+      "action": "new-presentation-geometry",
+      "note": "仅扩展表现层，复用来源仓储与provider。"
+    },
+    {
+      "selector": "componentRadius",
+      "file": "app/lib/design/tokens/metrics.dart",
+      "type": "TyRadius",
+      "members": {
+        "button": "xs",
+        "input": "xs",
+        "tableSelection": "xs",
+        "coverSmall": "xs",
+        "coverStage": "sm",
+        "sourceCard": "sm",
+        "dialog": "md",
+        "sheetTop": "lg",
+        "playControl": "full"
+      },
+      "check": "static-members",
+      "action": "component-aliases-after-approval"
+    },
+    {
+      "selector": "aliases",
+      "file": "app/lib/design/tokens/color.dart",
+      "type": "TyColors",
+      "members": {},
+      "check": "type",
+      "action": "new-semantic-aliases",
+      "note": "选中底上当前曲文字light.accentPressed，避免过低对比。"
+    }
+  ],
+  "materialIntegration": {
+    "file": "app/lib/design/theme.dart",
+    "type": "TyTheme",
+    "member": "colorScheme",
+    "rule": "ThemeData/ColorScheme由TyColors派生，复用现有ThemeExtension"
+  },
+  "unmappedProposals": [
+    "layout.compact.longTitleRowMinHeight",
+    "player.compactCoverPreferred",
+    "player.desktopCoverPreferred",
+    "player.shortHeightQueuePreviewThreshold",
+    "player.queueDurationColumnWidth",
+    "table.*"
+  ],
+  "unmappedMeaning": "已登记的P3表现层扩展，设计细节批准后实施；不是现有能力。"
+}

@@ -1,0 +1,546 @@
+00:00 +0: loading F:/project/tingyu/app/test/ai_client_test.dart
+00:00 +0: F:/project/tingyu/app/test/ai_client_test.dart: AIProviderPreset 服务商预设 预设包含 DeepSeek, 通义千问, Kimi, OpenAI, 本地 Ollama 与自定义
+00:00 +1: F:/project/tingyu/app/test/ai_client_test.dart: AIClient 通信协议与响应解析 标准 OpenAI /chat/completions 请求格式与鉴权头
+00:00 +2: F:/project/tingyu/app/test/ai_client_test.dart: AIClient 通信协议与响应解析 本地 Ollama 无 key 时不附加 Authorization 请求头
+00:00 +3: F:/project/tingyu/app/test/ai_client_test.dart: AIClient 通信协议与响应解析 testConnection 发送探测消息并返回结果
+00:00 +4: F:/project/tingyu/app/test/ai_client_test.dart: AIClient 通信协议与响应解析 HTTP 401 映射为 AIUnauthorizedException
+00:00 +5: F:/project/tingyu/app/test/ai_client_test.dart: AIClient 通信协议与响应解析 HTTP 429 映射为 AIRateLimitedException
+00:00 +6: F:/project/tingyu/app/test/ai_client_test.dart: AIClient 通信协议与响应解析 HTTP 500 / 503 映射为 AIServerException
+00:00 +7: F:/project/tingyu/app/test/ai_client_test.dart: AIClient 通信协议与响应解析 返回结构异常（无 choices）映射为 AIResponseParseException
+00:00 +8: F:/project/tingyu/app/test/ai_library_refactor_service_test.dart: 空曲库时直接完成且不出网
+00:00 +9: F:/project/tingyu/app/test/ai_library_refactor_service_test.dart: 批量清洗已有曲目元数据并成功持久化入库
+00:00 +10: F:/project/tingyu/app/test/ai_library_refactor_service_test.dart: 按 batchSize 分批次并在中途取消时提前终止
+00:00 +11: F:/project/tingyu/app/test/ai_library_refactor_service_test.dart: 按 batchSize 分批次并在中途取消时提前终止
+00:00 +12: F:/project/tingyu/app/test/ai_library_refactor_service_test.dart: 按 batchSize 分批次并在中途取消时提前终止
+00:00 +13: F:/project/tingyu/app/test/ai_library_refactor_service_test.dart: 按 batchSize 分批次并在中途取消时提前终止
+00:00 +14: F:/project/tingyu/app/test/ai_library_refactor_service_test.dart: 按 batchSize 分批次并在中途取消时提前终止
+00:00 +15: F:/project/tingyu/app/test/ai_library_refactor_service_test.dart: 按 batchSize 分批次并在中途取消时提前终止
+00:00 +16: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:00 +17: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:00 +18: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:00 +19: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:00 +20: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:00 +21: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:00 +22: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:00 +23: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:01 +24: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:01 +25: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:01 +26: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:01 +27: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:01 +28: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:01 +29: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:01 +30: F:/project/tingyu/app/test/ai_settings_page_test.dart: AISettingsPage 渲染与切换开关展示详细配置
+00:01 +31: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +32: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +33: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +34: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +35: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +36: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +37: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +38: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +39: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +40: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +41: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +42: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +43: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +44: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +45: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +46: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +47: F:/project/tingyu/app/test/database_migration_test.dart: 旧库升级到 schemaVersion 2 时补齐热路径索引，且不动已有数据
+00:01 +48: F:/project/tingyu/app/test/design_system_render_test.dart: 触控平台：卡片的次要操作不靠 hover 也能看到、能点
+00:01 +49: F:/project/tingyu/app/test/design_system_render_test.dart: 触控平台：卡片的次要操作不靠 hover 也能看到、能点
+00:01 +50: F:/project/tingyu/app/test/design_system_render_test.dart: 触控平台：卡片的次要操作不靠 hover 也能看到、能点
+00:01 +51: F:/project/tingyu/app/test/design_system_render_test.dart: 触控平台：卡片的次要操作不靠 hover 也能看到、能点
+00:01 +51: F:/project/tingyu/app/test/enrichment_service_test.dart: 上游失败时 enrichTrack 返回"没有变化"，而不是抛出
+[enrich] 补全失败「晴天」: SocketException: 网络不可达
+00:01 +52: F:/project/tingyu/app/test/design_system_render_test.dart: 触控平台：卡片的次要操作不靠 hover 也能看到、能点
+00:01 +53: F:/project/tingyu/app/test/design_system_render_test.dart: 触控平台：卡片的次要操作不靠 hover 也能看到、能点
+00:01 +54: F:/project/tingyu/app/test/design_system_render_test.dart: 触控平台：卡片的次要操作不靠 hover 也能看到、能点
+00:01 +55: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +56: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +57: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +58: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +59: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +60: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +61: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +62: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +63: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +64: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +65: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:01 +66: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:02 +67: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:02 +68: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:02 +69: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:02 +70: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:02 +71: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:02 +72: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +73: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +74: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +75: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +76: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +77: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +78: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +79: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +80: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +81: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +82: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +83: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +84: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +85: F:/project/tingyu/app/test/http_retry_test.dart: 退避按指数增长并受上限约束（抖动用固定随机源）
+00:02 +86: F:/project/tingyu/app/test/design_system_render_test.dart: B4 内容页组件 专辑卡 / 艺人行 / 歌单卡 / 详情头图 / 排序菜单 / 命令面板三形态两主题渲染
+00:02 +87: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +88: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +88: F:/project/tingyu/app/test/local_library_scanner_test.dart: 同一张封面重复保存共用同一个文件（一张专辑只落一份盘）
+[cover-store] 清理无引用封面 1 个
+00:02 +89: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +90: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +91: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +92: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +93: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +94: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +95: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +96: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +97: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +98: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +99: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +100: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +101: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +102: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +103: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +104: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +105: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +106: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +107: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +108: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +109: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +110: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +111: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +112: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +113: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +114: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +115: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +116: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +117: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +118: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:02 +119: F:/project/tingyu/app/test/metadata_search_query_test.dart: 打开匹配对话框先填字段，不自动搜索
+00:02 +120: F:/project/tingyu/app/test/metadata_search_query_test.dart: 打开匹配对话框先填字段，不自动搜索
+00:02 +121: F:/project/tingyu/app/test/metadata_search_query_test.dart: 打开匹配对话框先填字段，不自动搜索
+00:02 +122: F:/project/tingyu/app/test/metadata_search_query_test.dart: 打开匹配对话框先填字段，不自动搜索
+00:03 +123: F:/project/tingyu/app/test/metadata_search_query_test.dart: 打开匹配对话框先填字段，不自动搜索
+00:03 +124: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +125: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +126: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +127: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +128: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +128: F:/project/tingyu/app/test/playback_controller_resolve_failure_test.dart: 整队列都取不到直链时，快照里留下带曲名的失败（而不是静默）
+[playback] 无法播放「伊斯坦堡」: 夸克网络连接异常: unknown
+[playback] 跳过无法解析的曲目「伊斯坦堡」: 夸克网络连接异常: unknown
+00:03 +129: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +129: F:/project/tingyu/app/test/playback_controller_resolve_failure_test.dart: 再次失败是新实例：提示才会重新弹
+[playback] 无法播放「伊斯坦堡」: 夸克网络连接异常: unknown
+[playback] 跳过无法解析的曲目「伊斯坦堡」: 夸克网络连接异常: unknown
+[playback] 无法播放「晴天」: 夸克网络连接异常: unknown
+[playback] 跳过无法解析的曲目「晴天」: 夸克网络连接异常: unknown
+00:03 +130: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +130: F:/project/tingyu/app/test/playback_controller_resolve_failure_test.dart: 整队列都解析不出来时也只在点击那一首上报一次，不逐首刷屏
+[playback] 无法播放「伊斯坦布尔」: 夸克网络连接异常: unknown
+[playback] 跳过无法解析的曲目「伊斯坦布尔」: 夸克网络连接异常: unknown
+[playback] 跳过无法解析的曲目「晴天」: 夸克网络连接异常: unknown
+[playback] 跳过无法解析的曲目「可爱女人」: 夸克网络连接异常: unknown
+00:03 +131: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +131: F:/project/tingyu/app/test/playback_controller_resolve_failure_test.dart: 整队列都解析不出来时，不会把失败写成"正在播放"
+[playback] 无法播放「伊斯坦堡」: 夸克网络连接异常: unknown
+[playback] 跳过无法解析的曲目「伊斯坦堡」: 夸克网络连接异常: unknown
+[playback] 跳过无法解析的曲目「晴天」: 夸克网络连接异常: unknown
+00:03 +132: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +132: F:/project/tingyu/app/test/playback_controller_resolve_failure_test.dart: 解析遭遇网络异常时，快照文案被归纳为中文网络提示
+[playback] 无法播放「晴天」: SocketException: OS Error: Network is unreachable
+[playback] 跳过无法解析的曲目「晴天」: SocketException: OS Error: Network is unreachable
+00:03 +133: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +134: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +134: F:/project/tingyu/app/test/playback_controller_resolve_failure_test.dart: 解析遭遇本地目录授权失效时，快照文案保留明确指引
+[playback] 无法播放「晴天」: 本地目录授权已失效，请重新选择音乐文件夹
+[playback] 跳过无法解析的曲目「晴天」: 本地目录授权已失效，请重新选择音乐文件夹
+00:03 +135: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +136: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +136: F:/project/tingyu/app/test/playback_controller_resolve_failure_test.dart: 引擎随后推的快照不会把解析失败擦掉（旧会话仍在 tick）
+[playback] 无法播放「伊斯坦堡」: 夸克网络连接异常: unknown
+[playback] 跳过无法解析的曲目「伊斯坦堡」: 夸克网络连接异常: unknown
+00:03 +137: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +138: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +139: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +140: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +141: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +142: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +143: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +144: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +145: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +146: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +147: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +148: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +149: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +150: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +151: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +152: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +153: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +154: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +155: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +156: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +157: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +158: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +159: F:/project/tingyu/app/test/navigation_gesture_test.dart: 根 Tab 页面 canPop 为 false：系统返回手势直接回到桌面
+00:03 +160: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:04 +161: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:04 +162: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:04 +163: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:04 +164: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:04 +165: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:04 +166: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:04 +167: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:04 +168: F:/project/tingyu/app/test/navigation_gesture_test.dart: 专辑列表 → 专辑详情逐级返回，且详情页自带返回按钮
+00:04 +169: F:/project/tingyu/app/test/library_page_redesign_test.dart: 空库与读取失败使用真实状态，不伪造曲目
+00:04 +170: F:/project/tingyu/app/test/performance_regression_test.dart: 声档静态背景：连续帧不重建内容与封面
+00:04 +171: F:/project/tingyu/app/test/playback_media_kit_processing_test.dart: 未知时长（直链没有 Content-Length）按可播放处理，而不是加载中
+00:04 +172: F:/project/tingyu/app/test/playback_media_kit_processing_test.dart: 队列为空是 idle，真在缓冲是 buffering，播完是 completed
+00:04 +173: F:/project/tingyu/app/test/playback_media_kit_processing_test.dart: 时长已知时也只是 ready（此前它顺带覆盖了这条路径）
+00:04 +174: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 列表循环：队尾按「下一首」回到第一首继续播放
+00:05 +175: F:/project/tingyu/app/test/playback_snapshot_equality_test.dart: PlaybackSnapshot 值比较 字段相同的两份快照相等，hashCode 一致
+00:05 +176: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 列表循环：最后一首播完自动从头继续
+00:05 +177: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 列表循环：最后一首播完自动从头继续
+00:05 +178: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 列表循环：最后一首播完自动从头继续
+00:05 +179: F:/project/tingyu/app/test/playlist_position_test.dart: 曲目被扫描删除后重建：播放列表仍能继续追加曲目（position 无空洞）
+00:05 +180: F:/project/tingyu/app/test/playlist_position_test.dart: 曲目被扫描删除后重建：播放列表仍能继续追加曲目（position 无空洞）
+00:05 +181: F:/project/tingyu/app/test/playlist_position_test.dart: 曲目被扫描删除后重建：播放列表仍能继续追加曲目（position 无空洞）
+00:05 +182: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 单曲循环：播完把当前曲从头重播（引擎不支持循环时的兜底）
+00:05 +183: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 单曲循环：播完把当前曲从头重播（引擎不支持循环时的兜底）
+00:05 +184: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 单曲循环：播完把当前曲从头重播（引擎不支持循环时的兜底）
+00:05 +185: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 单曲循环：播完把当前曲从头重播（引擎不支持循环时的兜底）
+00:05 +186: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 单曲循环：播完把当前曲从头重播（引擎不支持循环时的兜底）
+00:05 +187: F:/project/tingyu/app/test/playlist_repository_test.dart: 删除播放列表级联清理条目，删除曲目也会摘掉条目
+00:05 +188: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 切回不循环/列表循环时，引擎收到的循环模式跟着变
+00:05 +189: F:/project/tingyu/app/test/playlist_repository_test.dart: 删除来源连带删除其曲目与播放列表条目
+00:05 +190: F:/project/tingyu/app/test/playback_queue_wrap_test.dart: 重建队列期间旧会话的进度事件不会把预取塞进旧队列
+00:05 +191: F:/project/tingyu/app/test/playlist_repository_test.dart: watchAll 按名称排序并能收到新增
+00:05 +192: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +193: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +194: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +195: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +196: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +197: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +197: F:/project/tingyu/app/test/preferences_test.dart: 损坏 JSON：默认值启动，错误可诊断，reset 覆盖并清除
+[settings] 读取偏好失败: FormatException: Unexpected end of input (at character 14)
+{"themeMode":
+             ^
+
+00:05 +198: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +199: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +200: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +201: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +202: F:/project/tingyu/app/test/playlist_state_test.dart: 歌单还在加载时显示进度，而不是「播放列表不存在」
+00:05 +203: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +204: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +205: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +206: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:05 +207: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +208: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +209: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +210: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +210: F:/project/tingyu/app/test/quark_test.dart: getDownloadUrl：错误映射（401 / 31001 / login / 429 / 非 2xx / 非 200 status）
+[quark] 第 1 次失败（HTTP 429），1ms 后重试
+[quark] 第 2 次失败（HTTP 429），1ms 后重试
+[quark] 第 1 次失败（HTTP 429），1ms 后重试
+00:06 +211: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +211: F:/project/tingyu/app/test/quark_test.dart: getDownloadUrl：错误映射（401 / 31001 / login / 429 / 非 2xx / 非 200 status）
+[quark] 第 2 次失败（HTTP 429），1ms 后重试
+[quark] 第 1 次失败（HTTP 503），1ms 后重试
+[quark] 第 2 次失败（HTTP 503），1ms 后重试
+[quark] 第 1 次失败（HTTP 503），1ms 后重试
+[quark] 第 2 次失败（HTTP 503），1ms 后重试
+00:06 +212: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +212: F:/project/tingyu/app/test/quark_test.dart: getDownloadUrl：错误映射（401 / 31001 / login / 429 / 非 2xx / 非 200 status）
+[quark] 第 1 次失败（HTTP 500），1ms 后重试
+00:06 +213: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +214: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +214: F:/project/tingyu/app/test/quark_test.dart: getDownloadUrl：错误映射（401 / 31001 / login / 429 / 非 2xx / 非 200 status）
+[quark] 第 2 次失败（HTTP 500），1ms 后重试
+00:06 +215: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +215: F:/project/tingyu/app/test/quark_test.dart: getDownloadUrl：错误映射（401 / 31001 / login / 429 / 非 2xx / 非 200 status）
+[quark] 第 1 次失败（HTTP 503），1ms 后重试
+[quark] 第 2 次失败（HTTP 503），1ms 后重试
+[quark] 第 1 次失败（HTTP 500），1ms 后重试
+[quark] 第 2 次失败（HTTP 500），1ms 后重试
+00:06 +216: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +217: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +218: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +219: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +220: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +221: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +222: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +223: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +224: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +225: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +226: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +227: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +228: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +229: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +230: F:/project/tingyu/app/test/quark_login_render_test.dart: 扫码登录：三形态 × 两主题都渲染，加载用骨架、失败有重试
+00:06 +231: F:/project/tingyu/app/test/router_path_parameters_test.dart: go_router pathParameters 已解码中文与转义路径段
+00:06 +232: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +233: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +234: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +235: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +236: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +237: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +238: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +239: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +240: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +241: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +242: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +243: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +243: F:/project/tingyu/app/test/settings_store_test.dart: 损坏 JSON 抛可恢复错误且保留原文件
+[settings] 读取偏好失败: FormatException: Unexpected character (at character 2)
+{not json
+ ^
+
+00:06 +244: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +245: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +246: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:06 +247: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +248: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +249: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +250: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +251: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +252: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +253: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +254: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +255: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +256: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +257: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +258: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +259: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +260: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +261: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +262: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +263: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +264: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +265: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +266: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +267: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +268: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +268: F:/project/tingyu/app/test/search_page_test.dart: compact：清空按钮同时清掉输入、查询条件与 URL 参数
+WARNING (drift): It looks like you've created the database class TingyuDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database.
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$TingyuDatabase (package:tingyu/data/db/database.g.dart:2658:39)
+#4      new TingyuDatabase (package:tingyu/data/db/database.dart:22:7)
+#5      databaseProvider.<anonymous closure> (package:tingyu/app/providers.dart:40:35)
+#6      Provider.create (package:riverpod/src/providers/provider.dart:59:36)
+#7      $ProviderElement.create (package:riverpod/src/providers/provider.dart:343:33)
+#8      ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#9      ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#10     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#11     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#12     ProviderElement.listen (package:riverpod/src/core/element.dart:991:28)
+#13     Ref.watch (package:riverpod/src/core/ref.dart:726:20)
+#14     trackRepositoryProvider.<anonymous closure> (package:tingyu/app/providers.dart:59:40)
+#15     Provider.create (package:riverpod/src/providers/provider.dart:59:36)
+#16     $ProviderElement.create (package:riverpod/src/providers/provider.dart:343:33)
+#17     ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#18     ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#19     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#20     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#21     ProviderElement.listen (package:riverpod/src/core/element.dart:991:28)
+#22     Ref.watch (package:riverpod/src/core/ref.dart:726:20)
+#23     allTracksProvider.<anonymous closure> (package:tingyu/app/providers.dart:76:24)
+#24     StreamProvider.create (package:riverpod/src/providers/stream_provider.dart:131:44)
+#25     $StreamProviderElement.create.<anonymous closure> (package:riverpod/src/providers/stream_provider.dart:158:45)
+#26     ElementWithFuture.handleStream.<anonymous closure> (package:riverpod/src/core/element.dart:171:28)
+#27     ElementWithFuture._handleAsync (package:riverpod/src/core/element.dart:282:35)
+#28     ElementWithFuture.handleStream (package:riverpod/src/core/element.dart:165:12)
+#29     $StreamProviderElement.create (package:riverpod/src/providers/stream_provider.dart:158:12)
+#30     ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#31     ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#32     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#33     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#34     ProviderElement.listen (package:riverpod/src/core/element.dart:991:28)
+#35     Ref.watch (package:riverpod/src/core/ref.dart:726:20)
+#36     libraryFingerprintProvider.<anonymous closure> (package:tingyu/app/providers.dart:509:11)
+#37     Provider.create (package:riverpod/src/providers/provider.dart:59:36)
+#38     $ProviderElement.create (package:riverpod/src/providers/provider.dart:343:33)
+#39     ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#40     ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#41     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#42     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#43     ProviderElement.listen (package:riverpod/src/core/element.dart:991:28)
+#44     Ref.watch (package:riverpod/src/core/ref.dart:726:20)
+#45     searchOverviewProvider.<anonymous closure> (package:tingyu/app/providers.dart:613:7)
+#46     FutureProvider.create (package:riverpod/src/providers/future_provider.dart:142:46)
+#47     $FutureProviderElement.create.<anonymous closure> (package:riverpod/src/providers/future_provider.dart:167:45)
+#48     ElementWithFuture.handleFuture.<anonymous closure> (package:riverpod/src/core/element.dart:218:30)
+#49     ElementWithFuture._handleAsync (package:riverpod/src/core/element.dart:282:35)
+#50     ElementWithFuture.handleFuture (package:riverpod/src/core/element.dart:212:12)
+#51     $FutureProviderElement.create (package:riverpod/src/providers/future_provider.dart:167:12)
+#52     ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#53     ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#54     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#55     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#56     ProviderContainer.listen (package:riverpod/src/core/provider_container.dart:1141:26)
+#57     ConsumerStatefulElement.watch.<anonymous closure> (package:flutter_riverpod/src/core/consumer.dart:490:37)
+#58     _LinkedHashMapMixin.putIfAbsent (dart:_compact_hash:631:23)
+#59     ConsumerStatefulElement.watch (package:flutter_riverpod/src/core/consumer.dart:483:14)
+#60     _SearchPageState._overview (package:tingyu/features/search/search_page.dart:278:53)
+#61     _SearchPageState._body (package:tingyu/features/search/search_page.dart:212:11)
+#62     _SearchPageState.build (package:tingyu/features/search/search_page.dart:194:25)
+#63     StatefulElement.build (package:flutter/src/widgets/framework.dart:5944:27)
+#64     ConsumerStatefulElement.build (package:flutter_riverpod/src/core/consumer.dart:460:20)
+#65     ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5830:15)
+#66     StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5995:11)
+#67     Element.rebuild (package:flutter/src/widgets/framework.dart:5542:7)
+#68     BuildScope._tryRebuild (package:flutter/src/widgets/framework.dart:2763:15)
+#69     BuildScope._flushDirtyElements (package:flutter/src/widgets/framework.dart:2820:11)
+#70     BuildOwner.buildScope (package:flutter/src/widgets/framework.dart:3124:18)
+#71     AutomatedTestWidgetsFlutterBinding.drawFrame (package:flutter_test/src/binding.dart:2432:19)
+#72     RendererBinding._handlePersistentFrameCallback (package:flutter/src/rendering/binding.dart:558:5)
+#73     SchedulerBinding._invokeFrameCallback (package:flutter/src/scheduler/binding.dart:1430:15)
+#74     SchedulerBinding.handleDrawFrame (package:flutter/src/scheduler/binding.dart:1345:9)
+#75     AutomatedTestWidgetsFlutterBinding.pump.<anonymous closure> (package:flutter_test/src/binding.dart:2261:9)
+#76     _rootRun (dart:async/zone_root.dart:35:13)
+#77     _CustomZone.run (dart:async/zone.dart:810:35)
+#78     TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#79     AutomatedTestWidgetsFlutterBinding.pump (package:flutter_test/src/binding.dart:2250:27)
+#80     WidgetTester.pump.<anonymous closure> (package:flutter_test/src/widget_tester.dart:652:53)
+#81     _rootRun (dart:async/zone_root.dart:35:13)
+#82     _CustomZone.run (dart:async/zone.dart:810:35)
+#83     TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#84     WidgetTester.pump (package:flutter_test/src/widget_tester.dart:652:27)
+#85     main.<anonymous closure> (file:///F:/project/tingyu/app/test/search_page_test.dart:200:18)
+<asynchronous suspension>
+#86     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#87     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+#88     StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:07 +269: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +270: F:/project/tingyu/app/test/search_debounce_test.dart: 搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断
+00:07 +271: F:/project/tingyu/app/test/track_repository_test.dart: mergeScan 首次扫描写入曲目并保留文件事实
+00:07 +272: F:/project/tingyu/app/test/track_repository_test.dart: mergeScan 首次扫描写入曲目并保留文件事实
+00:07 +273: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页使用声档内联搜索，不再重复侧栏搜索
+00:07 +274: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页使用声档内联搜索，不再重复侧栏搜索
+00:07 +275: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页使用声档内联搜索，不再重复侧栏搜索
+00:07 +276: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页使用声档内联搜索，不再重复侧栏搜索
+00:07 +277: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页使用声档内联搜索，不再重复侧栏搜索
+00:07 +278: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页使用声档内联搜索，不再重复侧栏搜索
+00:07 +279: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页使用声档内联搜索，不再重复侧栏搜索
+00:07 +280: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页使用声档内联搜索，不再重复侧栏搜索
+00:07 +281: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页使用声档内联搜索，不再重复侧栏搜索
+00:07 +282: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页使用声档内联搜索，不再重复侧栏搜索
+00:07 +283: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页使用声档内联搜索，不再重复侧栏搜索
+00:07 +284: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页使用声档内联搜索，不再重复侧栏搜索
+00:07 +285: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页使用声档内联搜索，不再重复侧栏搜索
+00:07 +286: F:/project/tingyu/app/test/search_page_test.dart: 桌面：曲库页使用声档内联搜索，不再重复侧栏搜索
+00:07 +287: F:/project/tingyu/app/test/sources_page_redesign_test.dart: 手机 200% 字号不溢出并保留添加入口
+00:07 +288: F:/project/tingyu/app/test/sources_page_redesign_test.dart: 手机 200% 字号不溢出并保留添加入口
+00:07 +289: F:/project/tingyu/app/test/sources_page_redesign_test.dart: 手机 200% 字号不溢出并保留添加入口
+00:07 +290: F:/project/tingyu/app/test/search_page_test.dart: 分组结果给真实总数，超过 5 条时给「查看全部」
+00:07 +291: F:/project/tingyu/app/test/search_page_test.dart: 分组结果给真实总数，超过 5 条时给「查看全部」
+00:07 +292: F:/project/tingyu/app/test/search_page_test.dart: 分组结果给真实总数，超过 5 条时给「查看全部」
+00:07 +293: F:/project/tingyu/app/test/search_page_test.dart: 分组结果给真实总数，超过 5 条时给「查看全部」
+00:07 +294: F:/project/tingyu/app/test/search_page_test.dart: 分组结果给真实总数，超过 5 条时给「查看全部」
+00:07 +295: F:/project/tingyu/app/test/search_page_test.dart: 分组结果给真实总数，超过 5 条时给「查看全部」
+00:07 +296: F:/project/tingyu/app/test/search_page_test.dart: 分组结果给真实总数，超过 5 条时给「查看全部」
+00:07 +297: F:/project/tingyu/app/test/search_page_test.dart: 分组结果给真实总数，超过 5 条时给「查看全部」
+00:07 +298: F:/project/tingyu/app/test/search_page_test.dart: 分组结果给真实总数，超过 5 条时给「查看全部」
+00:07 +299: F:/project/tingyu/app/test/search_page_test.dart: 分组结果给真实总数，超过 5 条时给「查看全部」
+00:07 +300: F:/project/tingyu/app/test/search_page_test.dart: 分组结果给真实总数，超过 5 条时给「查看全部」
+00:07 +301: F:/project/tingyu/app/test/transport_row_layout_test.dart: 五个键等距分布，播放键居中，两侧留白对称
+00:07 +302: F:/project/tingyu/app/test/transport_row_layout_test.dart: 五个键等距分布，播放键居中，两侧留白对称
+00:07 +303: F:/project/tingyu/app/test/transport_row_layout_test.dart: 五个键等距分布，播放键居中，两侧留白对称
+00:08 +304: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +305: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +306: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +307: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +308: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +309: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +310: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +311: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +312: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +313: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +314: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +315: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +316: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +317: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +318: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +319: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +320: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +321: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +322: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +323: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +324: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +325: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +326: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +327: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +328: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 曲库列表：推进进度不重建任何一行，换曲只重建高亮翻转的行
+00:08 +329: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:08 +330: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:08 +331: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:08 +332: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:08 +333: F:/project/tingyu/app/test/webdav_test.dart: WebDavClient.scan 每个目录之间沿用旧版 120ms 限流
+00:08 +334: F:/project/tingyu/app/test/voice_archive_player_test.dart: 失败快照不画正常暂停态，重试调用原队列索引
+00:08 +335: F:/project/tingyu/app/test/voice_archive_player_test.dart: 失败快照不画正常暂停态，重试调用原队列索引
+00:08 +336: F:/project/tingyu/app/test/voice_archive_player_test.dart: 失败快照不画正常暂停态，重试调用原队列索引
+00:08 +336: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 429 → 默认流控文案
+[webdav] 第 1 次失败（HTTP 429），1ms 后重试
+[webdav] 第 2 次失败（HTTP 429），1ms 后重试
+00:08 +337: F:/project/tingyu/app/test/voice_archive_player_test.dart: 失败快照不画正常暂停态，重试调用原队列索引
+00:08 +337: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 503 且响应体不含 BlockedTemporarily → 临时流控文案
+[webdav] 第 1 次失败（HTTP 503），1ms 后重试
+00:08 +338: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 队列面板：一次取全库元数据，推进进度不重建行，换队列立即跟上
+00:08 +338: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 503 且响应体不含 BlockedTemporarily → 临时流控文案
+[webdav] 第 2 次失败（HTTP 503），1ms 后重试
+00:08 +339: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 队列面板：一次取全库元数据，推进进度不重建行，换队列立即跟上
+00:08 +339: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 503 且响应体含 BlockedTemporarily → 临时封禁文案
+[webdav] 第 1 次失败（HTTP 503），1ms 后重试
+[webdav] 第 2 次失败（HTTP 503），1ms 后重试
+00:08 +340: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 队列面板：一次取全库元数据，推进进度不重建行，换队列立即跟上
+00:08 +340: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 根目录 500 → WebDavServerError
+[webdav] 第 1 次失败（HTTP 500），1ms 后重试
+[webdav] 第 2 次失败（HTTP 500），1ms 后重试
+00:08 +341: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 队列面板：一次取全库元数据，推进进度不重建行，换队列立即跟上
+00:08 +341: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 子目录 500 → 跳过该目录但不中断扫描
+[webdav] 第 1 次失败（HTTP 500），1ms 后重试
+[webdav] 第 2 次失败（HTTP 500），1ms 后重试
+00:08 +342: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 队列面板：一次取全库元数据，推进进度不重建行，换队列立即跟上
+00:08 +343: F:/project/tingyu/app/test/voice_archive_player_test.dart: 未知总时长禁用seek并明确显示未知
+00:08 +343: F:/project/tingyu/app/test/webdav_test.dart: 错误映射 根目录传输失败 → WebDavNetworkError；子目录失败只跳过
+[webdav] 第 1 次失败（DioException [connection error]: The connection errored: Connection refused This indicates an error which most likely cannot be solved by the library.），1ms 后重试
+[webdav] 第 2 次失败（DioException [connection error]: The connection errored: Connection refused This indicates an error which most likely cannot be solved by the library.），1ms 后重试
+[webdav] 第 1 次失败（DioException [connection error]: The connection errored: Connection refused This indicates an error which most likely cannot be solved by the library.），1ms 后重试
+[webdav] 第 2 次失败（DioException [connection error]: The connection errored: Connection refused This indicates an error which most likely cannot be solved by the library.），1ms 后重试
+00:08 +344: F:/project/tingyu/app/test/voice_archive_player_test.dart: 未知总时长禁用seek并明确显示未知
+00:08 +345: F:/project/tingyu/app/test/voice_archive_player_test.dart: 未知总时长禁用seek并明确显示未知
+00:08 +346: F:/project/tingyu/app/test/voice_archive_player_test.dart: 未知总时长禁用seek并明确显示未知
+00:08 +347: F:/project/tingyu/app/test/voice_archive_player_test.dart: 未知总时长禁用seek并明确显示未知
+00:08 +348: F:/project/tingyu/app/test/voice_archive_player_test.dart: 未知总时长禁用seek并明确显示未知
+00:08 +349: F:/project/tingyu/app/test/voice_archive_player_test.dart: 未知总时长禁用seek并明确显示未知
+00:08 +350: F:/project/tingyu/app/test/voice_archive_player_test.dart: 未知总时长禁用seek并明确显示未知
+00:08 +351: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +352: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +353: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:08 +354: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:09 +355: F:/project/tingyu/app/test/ui_rebuild_seek_test.dart: 播放条：推进进度只重建进度条，拖动只在松手时 seek 一次
+00:09 +356: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(390.0, 844.0) Brightness.light
+00:09 +357: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(390.0, 844.0) Brightness.light
+00:09 +358: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(844.0, 390.0) Brightness.dark
+00:09 +359: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(844.0, 390.0) Brightness.light
+00:09 +360: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(800.0, 900.0) Brightness.dark
+00:09 +361: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(800.0, 900.0) Brightness.light
+00:09 +362: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(1024.0, 768.0) Brightness.dark
+00:09 +363: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(1024.0, 768.0) Brightness.light
+00:09 +364: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(1440.0, 900.0) Brightness.dark
+00:09 +365: F:/project/tingyu/app/test/voice_archive_player_test.dart: 页面大字不溢出 Size(1440.0, 900.0) Brightness.light
+00:09 +366: All tests passed!

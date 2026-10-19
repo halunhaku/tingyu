@@ -5,24 +5,33 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../data/db/database.dart';
+import '../../design/components/buttons.dart';
+import '../../design/components/cover.dart';
+import '../../design/components/dialogs.dart';
+import '../../design/components/feedback.dart';
+import '../../design/components/inputs.dart';
+import '../../design/layout/form_factor.dart';
+import '../../design/theme.dart';
+import '../../design/tokens/tokens.dart';
+import '../../design/tokens/metrics.dart';
 import '../../sources/scraper/lrclib_provider.dart';
 import '../../sources/scraper/metadata_provider.dart';
 import '../../sources/scraper/netease_provider.dart';
 import '../../sources/scraper/qq_music_provider.dart';
-import '../shared/cover_art.dart';
 
-/// 人工匹配：先填歌名 / 歌手 / 专辑，再搜候选并选定。
+/// 人工匹配：先填歌名 / 歌手 / 专辑，再搜候选并选定（`DESIGN.md` §6.4 的
+/// `TyDialog` 表单：宽 480、逐字段 `errorText`）。
 ///
-/// 对齐旧版 `ManualMatchSheet`，但打开时**不**自动搜索——夸克曲目的文件名
-/// 经常是噪声，一打开就搜会打出一堆无关结果。占位专辑/歌手不预填进输入框。
+/// 打开时**不**自动搜索——夸克曲目的文件名经常是噪声，一打开就搜会打出一堆
+/// 无关结果。占位专辑/歌手不预填进输入框。
 Future<void> showManualMatchDialog(
   BuildContext context,
   WidgetRef ref,
   Track track,
 ) async {
-  await showDialog<void>(
-    context: context,
-    builder: (BuildContext dialogContext) => _ManualMatchDialog(track: track),
+  await showTyDialog<void>(
+    context,
+    child: _ManualMatchDialog(track: track),
   );
 }
 
@@ -54,7 +63,9 @@ class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
   bool _searching = false;
   bool _applying = false;
   bool _didSearch = false;
-  String? _error;
+
+  /// 歌名的字段级错误（`DESIGN.md` §6.4 / `docs/UX_REDESIGN.md` I11）。
+  String? _titleError;
 
   static String _editableArtist(String artist) =>
       artist.trim().isEmpty || artist == '未知艺术家' ? '' : artist;
@@ -70,11 +81,17 @@ class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
     super.dispose();
   }
 
+  void _clearTitleError() {
+    if (_titleError != null) {
+      setState(() => _titleError = null);
+    }
+  }
+
   Future<void> _search() async {
     final String title = _title.text.trim();
     if (title.isEmpty) {
       setState(() {
-        _error = '请先填写歌名';
+        _titleError = '请先填写歌名';
         _candidates = const <MetadataCandidate>[];
         _didSearch = false;
       });
@@ -82,7 +99,7 @@ class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
     }
     setState(() {
       _searching = true;
-      _error = null;
+      _titleError = null;
       _didSearch = true;
     });
     final String artist = _artist.text.trim();
@@ -107,9 +124,6 @@ class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
     setState(() {
       _candidates = results;
       _searching = false;
-      if (results.isEmpty) {
-        _error = '没有找到候选，换个关键词试试';
-      }
     });
   }
 
@@ -125,9 +139,7 @@ class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
         candidate.coverUrl!,
       );
       if (bytes != null) {
-        coverPath = await ref
-            .read(coverStoreProvider)
-            .save(bytes);
+        coverPath = await ref.read(coverStoreProvider).save(bytes);
       }
     }
 
@@ -173,134 +185,203 @@ class _ManualMatchDialogState extends ConsumerState<_ManualMatchDialog> {
   @override
   Widget build(BuildContext context) {
     final bool canSearch = !_searching && _title.text.trim().isNotEmpty;
-    return AlertDialog(
-      title: const Text('匹配元数据'),
-      content: SizedBox(
-        width: 560,
-        height: 460,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: TextField(
-                    controller: _title,
-                    decoration: const InputDecoration(
-                      labelText: '歌名',
-                      isDense: true,
-                    ),
-                    textInputAction: TextInputAction.next,
-                    onChanged: (_) => setState(() {}),
-                    onSubmitted: (_) {
-                      if (canSearch) {
-                        _search();
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _artist,
-                    decoration: const InputDecoration(
-                      labelText: '歌手（选填）',
-                      isDense: true,
-                    ),
-                    textInputAction: TextInputAction.next,
-                    onSubmitted: (_) {
-                      if (canSearch) {
-                        _search();
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: TextField(
-                    controller: _album,
-                    decoration: const InputDecoration(
-                      labelText: '专辑（选填）',
-                      isDense: true,
-                    ),
-                    textInputAction: TextInputAction.search,
-                    onSubmitted: (_) {
-                      if (canSearch) {
-                        _search();
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.tonal(
-                  onPressed: canSearch ? _search : null,
-                  child: const Text('搜索'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '当前：${widget.track.title} · ${widget.track.artist} · ${widget.track.album}',
-              style: Theme.of(context).textTheme.bodySmall,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const Divider(height: 16),
-            Expanded(
-              child: _searching
-                  ? const Center(child: CircularProgressIndicator())
-                  : _candidates.isEmpty
-                  ? Center(
-                      child: Text(
-                        _error ??
-                            (_didSearch ? '没有找到候选，换个关键词试试' : '先填写歌名，再点搜索'),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: _candidates.length,
-                      itemBuilder: (BuildContext context, int index) {
-                        final MetadataCandidate candidate = _candidates[index];
-                        return ListTile(
-                          dense: true,
-                          leading: CoverArt(
-                            coverArtUrl: candidate.coverUrl,
-                            size: 40,
-                            radius: 4,
-                          ),
-                          title: Text(
-                            candidate.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(
-                            '${candidate.artist} · ${candidate.album} · ${candidate.provider}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          trailing: TextButton(
-                            onPressed: _applying
-                                ? null
-                                : () => _apply(candidate),
-                            child: const Text('使用'),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
+
+    return TyDialog(
+      title: '匹配元数据',
+      subtitle:
+          '当前：${widget.track.title} · ${widget.track.artist} · '
+          '${widget.track.album}',
+      form: true,
       actions: <Widget>[
-        TextButton(
+        TyButton(
+          label: '取消',
+          variant: TyButtonVariant.secondary,
+          dense: true,
           onPressed: _applying ? null : () => Navigator.pop(context),
-          child: const Text('取消'),
         ),
       ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          TyTextField(
+            controller: _title,
+            label: '歌名',
+            autofocus: true,
+            errorText: _titleError,
+            onChanged: (String _) => _clearTitleError(),
+            onSubmitted: (String _) {
+              if (canSearch) {
+                _search();
+              }
+            },
+          ),
+          const SizedBox(height: TySpace.x12),
+          TyTextField(
+            controller: _artist,
+            label: '歌手（选填）',
+            onSubmitted: (String _) {
+              if (canSearch) {
+                _search();
+              }
+            },
+          ),
+          const SizedBox(height: TySpace.x12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: <Widget>[
+              Expanded(
+                child: TyTextField(
+                  controller: _album,
+                  label: '专辑（选填）',
+                  onSubmitted: (String _) {
+                    if (canSearch) {
+                      _search();
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: TySpace.x8),
+              TyButton(
+                label: '搜索',
+                icon: Icons.search,
+                variant: TyButtonVariant.secondary,
+                dense: true,
+                onPressed: canSearch ? _search : null,
+              ),
+            ],
+          ),
+          const SizedBox(height: TySpace.x16),
+          if (_searching)
+            const _CandidatesSkeleton()
+          else if (_candidates.isEmpty)
+            TyEmptyState(
+              compact: true,
+              icon: Icons.search,
+              title: _didSearch ? '没有找到候选' : '还没有候选',
+              description: _didSearch ? '换个关键词再搜一次' : '填好歌名后点「搜索」',
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                for (final MetadataCandidate candidate in _candidates)
+                  _CandidateRow(
+                    candidate: candidate,
+                    busy: _applying,
+                    onUse: () => _apply(candidate),
+                  ),
+              ],
+            ),
+        ],
+      ),
     );
   }
+}
+
+/// 候选行：封面 + 标题/来源 + 「使用」。
+class _CandidateRow extends StatelessWidget {
+  const _CandidateRow({
+    required this.candidate,
+    required this.busy,
+    required this.onUse,
+  });
+
+  final MetadataCandidate candidate;
+  final bool busy;
+  final VoidCallback onUse;
+
+  @override
+  Widget build(BuildContext context) {
+    final TyTokens ty = context.ty;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: TySpace.x8),
+      child: Row(
+        children: <Widget>[
+          TyCover(
+            url: candidate.coverUrl,
+            size: context.metrics.coverList,
+            radius: TyRadius.xs,
+            seed: candidate.title,
+          ),
+          const SizedBox(width: TySpace.x12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  candidate.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: ty.typography.bodyM.copyWith(
+                    color: ty.colors.textPrimary,
+                  ),
+                ),
+                Text(
+                  '${candidate.artist} · ${candidate.album} · '
+                  '${candidate.provider}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: ty.typography.bodyS.copyWith(
+                    color: ty.colors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: TySpace.x8),
+          TyButton(
+            label: '使用',
+            variant: TyButtonVariant.secondary,
+            dense: true,
+            onPressed: busy ? null : onUse,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 搜索中的骨架（`DESIGN.md` §2.4：加载用骨架块，不用转圈）。
+class _CandidatesSkeleton extends StatelessWidget {
+  const _CandidatesSkeleton();
+
+  @override
+  Widget build(BuildContext context) => const Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      _CandidateSkeletonRow(),
+      _CandidateSkeletonRow(),
+      _CandidateSkeletonRow(),
+    ],
+  );
+}
+
+class _CandidateSkeletonRow extends StatelessWidget {
+  const _CandidateSkeletonRow();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: TySpace.x8),
+    child: Row(
+      children: <Widget>[
+        TySkeleton(
+          width: context.metrics.coverList,
+          height: context.metrics.coverList,
+          radius: TyRadius.xs,
+        ),
+        const SizedBox(width: TySpace.x12),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              TySkeleton.line(),
+              SizedBox(height: TySpace.x6),
+              TySkeleton.line(width: 160),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }

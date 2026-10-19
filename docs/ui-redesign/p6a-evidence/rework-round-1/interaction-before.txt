@@ -1,0 +1,58 @@
+00:00 +0: loading F:/project/tingyu/app/test/p6a_interaction_contract_test.dart
+00:00 +0: Tab 顺序稳定，Enter 与 Space 驱动同一业务操作
+00:00 +1: 按住 Enter 或 Space 的自动重复不会重复执行操作
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: <2>
+  Actual: <6>
+每次完整的 Enter / Space 按键只能触发一次，自动重复属于同一次按键
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///F:/project/tingyu/app/test/p6a_interaction_contract_test.dart:80:5)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///F:/project/tingyu/app/test/p6a_interaction_contract_test.dart line 80
+The test description was:
+  按住 Enter 或 Space 的自动重复不会重复执行操作
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:00 +1 -1: 按住 Enter 或 Space 的自动重复不会重复执行操作 [E]
+  Test failed. See exception logs above.
+  The test description was: 按住 Enter 或 Space 的自动重复不会重复执行操作
+
+00:00 +1 -1: Esc 关闭浮层并把焦点与可见焦点环还给触发控件
+00:00 +2 -1: 按钮暴露可执行语义动作与禁用状态
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following StateError was thrown running a test:
+Bad state: Finder returned no matching elements.
+
+When the exception was thrown, this was the stack:
+#0      SemanticsController.find (package:flutter_test/src/controller.dart:98:7)
+#1      WidgetController.getSemantics (package:flutter_test/src/controller.dart:2364:79)
+#2      main.<anonymous closure> (file:///F:/project/tingyu/app/test/p6a_interaction_contract_test.dart:156:44)
+<asynchronous suspension>
+#3      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#4      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+The test description was:
+  按钮暴露可执行语义动作与禁用状态
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:00 +2 -2: 按钮暴露可执行语义动作与禁用状态 [E]
+  Test failed. See exception logs above.
+  The test description was: 按钮暴露可执行语义动作与禁用状态
+
+00:00 +2 -2: Some tests failed.
+
+Failing tests:
+  F:/project/tingyu/app/test/p6a_interaction_contract_test.dart: 按住 Enter 或 Space 的自动重复不会重复执行操作
+  F:/project/tingyu/app/test/p6a_interaction_contract_test.dart: 按钮暴露可执行语义动作与禁用状态

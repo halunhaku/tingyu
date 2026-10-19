@@ -1,0 +1,86 @@
+[
+  {
+    "file": "directions/a/desktop-library.png",
+    "width": 1586,
+    "height": 992,
+    "sha256": "91E227C686DDE3DDDA655E2ED7ECD204F8F12BE8D06756B3EBECA0FA662B8006",
+    "bytes": 1478840
+  },
+  {
+    "file": "directions/a/desktop-player.png",
+    "width": 1586,
+    "height": 992,
+    "sha256": "98E20742B7A987A12C6536171AE1C9466A23910391727CD074CE208BB6894A4F",
+    "bytes": 1230760
+  },
+  {
+    "file": "directions/a/mobile-library.png",
+    "width": 853,
+    "height": 1844,
+    "sha256": "C879684E8A2974984C13A2CC2B856D81D13842BEE3BB46CCC2423BC63E66071E",
+    "bytes": 1238875
+  },
+  {
+    "file": "directions/a/mobile-player.png",
+    "width": 853,
+    "height": 1844,
+    "sha256": "687D92EFB34412C7DA2D2A60F2E5C21A0C055736AB4D959CDADF61E6F7815D7E",
+    "bytes": 1328142
+  },
+  {
+    "file": "directions/b/desktop-library.png",
+    "width": 1586,
+    "height": 992,
+    "sha256": "68C1BD1D4CC83DA96AB000547C9270648C49CF16ACE1333E047CD05A0A50E296",
+    "bytes": 1520401
+  },
+  {
+    "file": "directions/b/desktop-player.png",
+    "width": 1586,
+    "height": 992,
+    "sha256": "C5410354B76FD01893CCA6477C16A76DCEDFC41D67A99990EDC6BED24AE8E201",
+    "bytes": 1511924
+  },
+  {
+    "file": "directions/b/mobile-library.png",
+    "width": 853,
+    "height": 1844,
+    "sha256": "B52D7BB85A20E1DB61846DFEC4323D850E6C6B0D5EF1F6F29C0ABE469904014A",
+    "bytes": 1623768
+  },
+  {
+    "file": "directions/b/mobile-player.png",
+    "width": 853,
+    "height": 1844,
+    "sha256": "E590C5F5A5D389D66F6CB0CD6F0E74AD29FD832681B89434230D3056EAB8B1E0",
+    "bytes": 1537905
+  },
+  {
+    "file": "directions/c/desktop-library.png",
+    "width": 1586,
+    "height": 992,
+    "sha256": "C523603B626D08DC13A22879140437A0A3BA84FA39A98D24161FF38D26CA3B84",
+    "bytes": 1283795
+  },
+  {
+    "file": "directions/c/desktop-player.png",
+    "width": 1586,
+    "height": 992,
+    "sha256": "22485E6B59FAC3BEC287EB1B59E2FB7A468B272FF3EB76127683D3D2B640969D",
+    "bytes": 1212165
+  },
+  {
+    "file": "directions/c/mobile-library.png",
+    "width": 853,
+    "height": 1844,
+    "sha256": "317262F5AED97D0FEFB1BEB3820E0AF337DBAE839D70D7F73F439C112E2751E0",
+    "bytes": 1243306
+  },
+  {
+    "file": "directions/c/mobile-player.png",
+    "width": 853,
+    "height": 1844,
+    "sha256": "B69E96F5CAE9A3002F6BF91681E44A0F112924EDD5B7DD2CA41557058D891267",
+    "bytes": 1355368
+  }
+]

@@ -1,0 +1,344 @@
+{
+  "version": "0.1.0",
+  "direction": "C-声档",
+  "date": "2026-10-18",
+  "status": "specification-proposed-not-applied",
+  "units": {
+    "geometry": "Flutter logical px",
+    "font": "Flutter logical px at textScale=1",
+    "duration": "ms",
+    "color": "hex #RRGGBB or #AARRGGBB"
+  },
+  "color": {
+    "light": {
+      "canvas": "#FAFAFC",
+      "surface": "#FFFFFF",
+      "surfaceSunken": "#F0F0F4",
+      "surfaceRaised": "#FFFFFF",
+      "surfaceOverlay": "#FFFFFF",
+      "surfaceHover": "#0A18191D",
+      "surfacePressed": "#1418191D",
+      "surfaceSelected": "#1F9A5D09",
+      "border": "#DFDFE6",
+      "borderStrong": "#7D7D89",
+      "textPrimary": "#18191D",
+      "textSecondary": "#545460",
+      "textTertiary": "#62626E",
+      "textDisabled": "#9B9BA7",
+      "accent": "#9A5D09",
+      "accentHover": "#854E07",
+      "accentPressed": "#703F05",
+      "accentSoft": "#1F9A5D09",
+      "onAccent": "#FFFFFF",
+      "success": "#17663D",
+      "warning": "#855000",
+      "danger": "#AE3028",
+      "focusRing": "#9A5D09",
+      "scrim": "#66000000",
+      "skeletonBase": "#E5E5EC",
+      "skeletonHighlight": "#F2F2F6",
+      "coverPlaceholder": "#E7E7ED"
+    },
+    "dark": {
+      "canvas": "#191A1E",
+      "surface": "#202126",
+      "surfaceSunken": "#15161A",
+      "surfaceRaised": "#282930",
+      "surfaceOverlay": "#30313A",
+      "surfaceHover": "#0FF4F4F6",
+      "surfacePressed": "#1AF4F4F6",
+      "surfaceSelected": "#24E3B56B",
+      "border": "#3D3E48",
+      "borderStrong": "#8A8B99",
+      "textPrimary": "#F4F4F6",
+      "textSecondary": "#C4C4CF",
+      "textTertiary": "#B3B3C0",
+      "textDisabled": "#777783",
+      "accent": "#E3B56B",
+      "accentHover": "#EFC88A",
+      "accentPressed": "#D5A45C",
+      "accentSoft": "#24E3B56B",
+      "onAccent": "#191A1E",
+      "success": "#7DD7A0",
+      "warning": "#E8BF70",
+      "danger": "#FFA39C",
+      "focusRing": "#E3B56B",
+      "scrim": "#99000000",
+      "skeletonBase": "#2C2D35",
+      "skeletonHighlight": "#3A3B45",
+      "coverPlaceholder": "#32333C"
+    }
+  },
+  "type": {
+    "displayL": {
+      "size": 40,
+      "weight": 700,
+      "height": 1.2
+    },
+    "displayM": {
+      "size": 32,
+      "weight": 700,
+      "height": 1.25
+    },
+    "titleXL": {
+      "size": 26,
+      "weight": 600,
+      "height": 1.3
+    },
+    "titleL": {
+      "size": 20,
+      "weight": 600,
+      "height": 1.35
+    },
+    "titleM": {
+      "size": 17,
+      "weight": 600,
+      "height": 1.4
+    },
+    "bodyL": {
+      "size": 16,
+      "weight": 400,
+      "height": 1.6
+    },
+    "bodyM": {
+      "size": 15,
+      "weight": 400,
+      "height": 1.5
+    },
+    "bodyS": {
+      "size": 13,
+      "weight": 400,
+      "height": 1.5
+    },
+    "labelL": {
+      "size": 15,
+      "weight": 500,
+      "height": 1.4
+    },
+    "labelM": {
+      "size": 13,
+      "weight": 500,
+      "height": 1.4
+    },
+    "labelS": {
+      "size": 11,
+      "weight": 600,
+      "height": 1.3,
+      "letterSpacing": 0.3
+    },
+    "numericM": {
+      "size": 15,
+      "weight": 500,
+      "height": 1.4,
+      "tabularFigures": true
+    },
+    "numericS": {
+      "size": 13,
+      "weight": 500,
+      "height": 1.4,
+      "tabularFigures": true
+    }
+  },
+  "space": {
+    "x2": 2,
+    "x4": 4,
+    "x6": 6,
+    "x8": 8,
+    "x12": 12,
+    "x16": 16,
+    "x20": 20,
+    "x24": 24,
+    "x32": 32,
+    "x40": 40,
+    "x48": 48,
+    "x64": 64
+  },
+  "radius": {
+    "xs": 4,
+    "sm": 8,
+    "md": 10,
+    "lg": 14,
+    "xl": 20,
+    "full": 999
+  },
+  "componentRadius": {
+    "button": 4,
+    "input": 4,
+    "tableSelection": 4,
+    "coverSmall": 4,
+    "coverStage": 8,
+    "sourceCard": 8,
+    "dialog": 10,
+    "sheetTop": 14,
+    "playControl": 999
+  },
+  "icon": {
+    "inline": 14,
+    "compact": 16,
+    "normal": 20,
+    "toolbar": 24,
+    "transportSecondary": 28,
+    "playControl": 56
+  },
+  "motionMs": {
+    "micro": 90,
+    "fast": 120,
+    "base": 200,
+    "sheet": 240,
+    "stage": 320,
+    "cover": 180,
+    "shimmer": 1400,
+    "ambient": 24000
+  },
+  "curves": {
+    "standard": [
+      0.2,
+      0,
+      0,
+      1
+    ],
+    "decelerate": [
+      0.05,
+      0.7,
+      0.1,
+      1
+    ],
+    "accelerate": [
+      0.3,
+      0,
+      0.8,
+      0.15
+    ],
+    "linear": [
+      0,
+      0,
+      1,
+      1
+    ]
+  },
+  "breakpoints": {
+    "compactMaxExclusive": 640,
+    "mediumMaxExclusive": 1024
+  },
+  "layout": {
+    "compact": {
+      "pagePadding": 20,
+      "sidebarWidth": 0,
+      "railWidth": 0,
+      "navBarHeight": 64,
+      "miniPlayerHeight": 64,
+      "rowMinHeight": 64,
+      "longTitleRowMinHeight": 88,
+      "hitTarget": 44,
+      "buttonHeight": 44,
+      "coverList": 44
+    },
+    "medium": {
+      "pagePadding": 24,
+      "sidebarWidth": 0,
+      "railWidth": 88,
+      "transportHeight": 72,
+      "rowMinHeight": 52,
+      "tableRowMinHeight": 48,
+      "hitTarget": 40,
+      "buttonHeight": 40,
+      "coverList": 40
+    },
+    "expanded": {
+      "pagePadding": 32,
+      "sidebarWidth": 248,
+      "sidebarCollapsedWidth": 72,
+      "transportHeight": 88,
+      "rowMinHeight": 48,
+      "tableRowMinHeight": 44,
+      "compactTableRowMinHeight": 40,
+      "hitTarget": 36,
+      "buttonHeight": 36,
+      "coverList": 40
+    }
+  },
+  "player": {
+    "rightPaneWidth": 380,
+    "contentMaxWidth": 420,
+    "coverMax": 420,
+    "coverMin": 120,
+    "compactCoverPreferred": 240,
+    "desktopCoverPreferred": 360,
+    "topBarHeight": 48,
+    "transportHitTarget": 48,
+    "seekHitHeight": 44,
+    "primaryPlayDiameter": 56,
+    "shortHeightQueuePreviewThreshold": 720,
+    "timeColumnWidth": 64,
+    "queueDurationColumnWidth": 56
+  },
+  "table": {
+    "columnGap": 12,
+    "columns": {
+      "leading": 40,
+      "cover": 40,
+      "titleMin": 240,
+      "artist": 136,
+      "album": 144,
+      "source": 88,
+      "duration": 56,
+      "more": 36
+    },
+    "minContentWidth": {
+      "all": 864,
+      "withoutAlbum": 708,
+      "withoutAlbumArtist": 560,
+      "withoutAlbumArtistSource": 460
+    },
+    "fallback": "list when available content width <460 or compact form factor"
+  },
+  "elevation": {
+    "none": [],
+    "popover": [
+      {
+        "color": "#1A000000",
+        "blur": 16,
+        "offset": [
+          0,
+          4
+        ]
+      }
+    ],
+    "sheet": [
+      {
+        "color": "#24000000",
+        "blur": 32,
+        "offset": [
+          0,
+          12
+        ]
+      }
+    ],
+    "palette": [
+      {
+        "color": "#2E000000",
+        "blur": 48,
+        "offset": [
+          0,
+          20
+        ]
+      }
+    ]
+  },
+  "aliases": {
+    "currentTrackText": {"light": "accentPressed", "dark": "accent"},
+    "selectedRowText": {"light": "textPrimary", "dark": "textPrimary"},
+    "selectedRowIcon": {"light": "accentPressed", "dark": "accent"},
+    "focus": "focusRing",
+    "divider": "border",
+    "controlBoundary": "borderStrong"
+  },
+  "policy": {
+    "businessLayers": "unchanged",
+    "goldens": "update only after explicit design approval",
+    "darkVisualApproval": "pending",
+    "majorChanges": "require explicit user approval",
+    "coverTintPreference": "preserve existing user setting; do not migrate default",
+    "fontStrategy": "retain TyType platform fallback; pin test-machine files and hashes"
+  }
+}

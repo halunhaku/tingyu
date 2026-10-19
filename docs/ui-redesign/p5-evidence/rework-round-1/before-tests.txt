@@ -1,0 +1,87 @@
+00:00 +0: loading F:/project/tingyu/app/test/p5_review_regression_test.dart
+00:00 +0: 键盘聚焦主按钮时显示统一焦点环
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: exactly one matching candidate
+  Actual: _DescendantWidgetFinder:<Found 0 widgets with key [<'ty-focus-indicator'>] descending from
+widgets with type "TyButton": []>
+   Which: means none were found but one was expected
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///F:/project/tingyu/app/test/p5_review_regression_test.dart:39:5)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///F:/project/tingyu/app/test/p5_review_regression_test.dart line 39
+The test description was:
+  键盘聚焦主按钮时显示统一焦点环
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:00 +0 -1: 键盘聚焦主按钮时显示统一焦点环 [E]
+  Test failed. See exception logs above.
+  The test description was: 键盘聚焦主按钮时显示统一焦点环
+
+00:00 +0 -1: 键盘聚焦图标按钮时显示统一焦点环
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: exactly one matching candidate
+  Actual: _DescendantWidgetFinder:<Found 0 widgets with key [<'ty-focus-indicator'>] descending from
+widgets with type "TyIconAction": []>
+   Which: means none were found but one was expected
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///F:/project/tingyu/app/test/p5_review_regression_test.dart:66:5)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///F:/project/tingyu/app/test/p5_review_regression_test.dart line 66
+The test description was:
+  键盘聚焦图标按钮时显示统一焦点环
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:00 +0 -2: 键盘聚焦图标按钮时显示统一焦点环 [E]
+  Test failed. See exception logs above.
+  The test description was: 键盘聚焦图标按钮时显示统一焦点环
+
+00:00 +0 -2: compact 底部导航只消费一次系统底部安全区
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: a numeric value within <0.5> of <820.0>
+  Actual: <844.0>
+   Which:  differs by <24.0>
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///F:/project/tingyu/app/test/p5_review_regression_test.dart:84:5)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///F:/project/tingyu/app/test/p5_review_regression_test.dart line 84
+The test description was:
+  compact 底部导航只消费一次系统底部安全区
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:00 +0 -3: compact 底部导航只消费一次系统底部安全区 [E]
+  Test failed. See exception logs above.
+  The test description was: compact 底部导航只消费一次系统底部安全区
+
+00:00 +0 -3: Some tests failed.
+
+Failing tests:
+  F:/project/tingyu/app/test/p5_review_regression_test.dart: compact 底部导航只消费一次系统底部安全区
+  F:/project/tingyu/app/test/p5_review_regression_test.dart: 键盘聚焦主按钮时显示统一焦点环
+  F:/project/tingyu/app/test/p5_review_regression_test.dart: 键盘聚焦图标按钮时显示统一焦点环

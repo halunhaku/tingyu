@@ -1,6 +1,15 @@
 cmake_minimum_required(VERSION 3.14)
 project(runner LANGUAGES CXX)
 
+# The stock engine can corrupt its MSAA tree and crash on player navigation.
+# Require the local engine workflow so a routine rebuild cannot ship it again.
+file(READ "${FLUTTER_MANAGED_DIR}/ephemeral/generated_config.cmake"
+  TINGYU_FLUTTER_BUILD_CONFIG)
+if(NOT "${TINGYU_FLUTTER_BUILD_CONFIG}" MATCHES "LOCAL_ENGINE=host_release")
+  message(FATAL_ERROR
+    "Tingyu Windows requires the patched local engine. From the repository root, run tools/build-windows-engine.ps1 -Stage App.")
+endif()
+
 # Define the application target. To change its name, change BINARY_NAME in the
 # top-level CMakeLists.txt, not the value here, or `flutter run` will no longer
 # work.

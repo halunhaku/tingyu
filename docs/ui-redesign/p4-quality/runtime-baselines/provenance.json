@@ -1,0 +1,162 @@
+{
+  "schemaVersion": 1,
+  "designApprovalBaselineCommit": "520d73637ee5b7653f781c7c86ac22eeca314864",
+  "capturedAt": "2026-10-18T22:54:31+08:00",
+  "purpose": "Provide deterministic Windows client-area references for the approved P3 design without changing Flutter content or weakening the pixel comparison.",
+  "approvalScope": "The P3 layouts and visual design were approved. P4 only removes Windows 11 DWM rounding from the fixed capture window so desktop pixels cannot leak through the bottom corners; no visual redesign is implied.",
+  "captureMethod": {
+    "entrypoint": "app/tool/voice_archive_preview.dart",
+    "platform": "Windows",
+    "dpiScale": 1.5,
+    "animationsDisabled": true,
+    "windowCorners": "DWMWA_WINDOW_CORNER_PREFERENCE is set to DWMWCP_DONOTROUND for the fixed preview window before capture.",
+    "cursorHandling": "The pointer is moved to screen coordinate (0,0) before capture to clear hover state. Automated comparison identified the lower-edge artifact as DWM window rounding, not a cursor.",
+    "comparison": "Exact pixel equality with zero tolerance, no masking and no automatic baseline update."
+  },
+  "baselines": [
+    {
+      "id": "library-desktop-dark",
+      "p4Reference": "docs/ui-redesign/p4-quality/runtime-baselines/library-desktop-dark.png",
+      "p4Sha256": "e0296f28393418ade0f4633ffcd10ec36f87fe82b65fb61f38ba22fc29c074a6",
+      "p3SourceReference": "docs/ui-redesign/p3-library-evidence/desktop-dark/library-songs.png",
+      "p3SourceSha256": "39b365a7015aaeaa64ca9c36ebcaf7cfd3475c1bb833ec9cf2e3964446732f3f",
+      "relationship": "dwm-bottom-corners-normalized-only",
+      "differenceDescription": "62 pixels occupy the two bottom rounded-corner regions. The reported bounding rectangle spans the full width because it encloses both corners.",
+      "sourceComparison": {
+        "sameDimensions": true,
+        "differingPixels": 62,
+        "differingPercent": 0.0031900355637513172,
+        "maxChannelDelta": 182,
+        "meanAbsoluteDelta": 0.0025856010027002106,
+        "differenceBounds": {
+          "left": 0,
+          "top": 1014,
+          "right": 1897,
+          "bottom": 1023,
+          "width": 1898,
+          "height": 10
+        }
+      }
+    },
+    {
+      "id": "library-mobile-scale2-light",
+      "p4Reference": "docs/ui-redesign/p4-quality/runtime-baselines/library-mobile-scale2-light.png",
+      "p4Sha256": "f684ac57cf7ff6cd7f23d4b272356cda9d710df31d738f2d13f9fcd00bfdb3cb",
+      "p3SourceReference": "docs/ui-redesign/p3-library-evidence/mobile-scale2/library-songs.png",
+      "p3SourceSha256": "fdd0c8b8d8ed1ca1a4b26e28826dc8934ca4e5dd22007d170efd8da2e9daead7",
+      "relationship": "dwm-bottom-corners-normalized-only",
+      "differenceDescription": "62 pixels occupy the two bottom rounded-corner regions. The reported bounding rectangle spans the full width because it encloses both corners.",
+      "sourceComparison": {
+        "sameDimensions": true,
+        "differingPixels": 62,
+        "differingPercent": 0.008371477565790361,
+        "maxChannelDelta": 94,
+        "meanAbsoluteDelta": 0.0038643820634341962,
+        "differenceBounds": {
+          "left": 0,
+          "top": 1256,
+          "right": 584,
+          "bottom": 1265,
+          "width": 585,
+          "height": 10
+        }
+      }
+    },
+    {
+      "id": "sources-desktop-syncing-dark",
+      "p4Reference": "docs/ui-redesign/p4-quality/runtime-baselines/sources-desktop-syncing-dark.png",
+      "p4Sha256": "5a2cdde0a6fa1328e5b1061df35d0c3fd90c1dfc1d85959d8c499963330eb246",
+      "p3SourceReference": "docs/ui-redesign/p3-sources-evidence/desktop-syncing-dark/sources.png",
+      "p3SourceSha256": "709c04c5788947f7448411a176228d58a8773126f3c3c01d6a6bc31fcbed13a8",
+      "relationship": "dwm-bottom-corners-normalized-only",
+      "differenceDescription": "62 pixels occupy the two bottom rounded-corner regions. The reported bounding rectangle spans the full width because it encloses both corners.",
+      "sourceComparison": {
+        "sameDimensions": true,
+        "differingPixels": 62,
+        "differingPercent": 0.0031900355637513172,
+        "maxChannelDelta": 182,
+        "meanAbsoluteDelta": 0.0025856010027002106,
+        "differenceBounds": {
+          "left": 0,
+          "top": 1014,
+          "right": 1897,
+          "bottom": 1023,
+          "width": 1898,
+          "height": 10
+        }
+      }
+    },
+    {
+      "id": "sources-mobile-relogin-dark",
+      "p4Reference": "docs/ui-redesign/p4-quality/runtime-baselines/sources-mobile-relogin-dark.png",
+      "p4Sha256": "96535497e78958e3d742cbf88f7aec1efe48721fa1a996f00c2f4bf8d9f86ef0",
+      "p3SourceReference": "docs/ui-redesign/p3-sources-evidence/mobile-relogin-dark/sources.png",
+      "p3SourceSha256": "b4aff040e27c8320f3acc323c755fe4b63000467a7e2faa804220ae1281683bd",
+      "relationship": "dwm-bottom-corners-normalized-only",
+      "differenceDescription": "62 pixels occupy the two bottom rounded-corner regions. The reported bounding rectangle spans the full width because it encloses both corners.",
+      "sourceComparison": {
+        "sameDimensions": true,
+        "differingPixels": 62,
+        "differingPercent": 0.008371477565790361,
+        "maxChannelDelta": 175,
+        "meanAbsoluteDelta": 0.006611441919498791,
+        "differenceBounds": {
+          "left": 0,
+          "top": 1256,
+          "right": 584,
+          "bottom": 1265,
+          "width": 585,
+          "height": 10
+        }
+      }
+    },
+    {
+      "id": "stage-desktop-light",
+      "p4Reference": "docs/ui-redesign/p4-quality/runtime-baselines/stage-desktop-light.png",
+      "p4Sha256": "d360293b454d689a5b510310887bf98ea174535394b1ae458c7c88d4c7d2b98b",
+      "p3SourceReference": "docs/ui-redesign/p3-player-evidence/desktop-light-final/stage.png",
+      "p3SourceSha256": "5a625755c7a2528bf84ea472c45aecd9e584d883a239dea18b1ec31e561cf351",
+      "relationship": "dwm-bottom-corners-normalized-only",
+      "differenceDescription": "62 pixels occupy the two bottom rounded-corner regions. The reported bounding rectangle spans the full width because it encloses both corners.",
+      "sourceComparison": {
+        "sameDimensions": true,
+        "differingPixels": 62,
+        "differingPercent": 0.0031900355637513172,
+        "maxChannelDelta": 86,
+        "meanAbsoluteDelta": 0.0012857901409378293,
+        "differenceBounds": {
+          "left": 0,
+          "top": 1014,
+          "right": 1897,
+          "bottom": 1023,
+          "width": 1898,
+          "height": 10
+        }
+      }
+    },
+    {
+      "id": "stage-mobile-dark",
+      "p4Reference": "docs/ui-redesign/p4-quality/runtime-baselines/stage-mobile-dark.png",
+      "p4Sha256": "654858b03566b29a1e018835faffc27e5e65d43a8cece1aaadd58cc0973fa760",
+      "p3SourceReference": "docs/ui-redesign/p3-player-evidence/mobile-dark-final/stage.png",
+      "p3SourceSha256": "283021b2a448540b391e84cc2b25fc0ee985ffd6fa8b278de13f550e297b0288",
+      "relationship": "dwm-bottom-corners-normalized-only",
+      "differenceDescription": "62 pixels occupy the two bottom rounded-corner regions. The reported bounding rectangle spans the full width because it encloses both corners.",
+      "sourceComparison": {
+        "sameDimensions": true,
+        "differingPixels": 62,
+        "differingPercent": 0.008371477565790361,
+        "maxChannelDelta": 188,
+        "meanAbsoluteDelta": 0.0072285008303965646,
+        "differenceBounds": {
+          "left": 0,
+          "top": 1256,
+          "right": 584,
+          "bottom": 1265,
+          "width": 585,
+          "height": 10
+        }
+      }
+    }
+  ]
+}

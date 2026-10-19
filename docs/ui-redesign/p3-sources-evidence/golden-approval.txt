@@ -1,0 +1,31 @@
+Golden 视觉批准记录
+
+批准时间：2026-10-18T22:11:56.3568756+08:00
+批准人：用户
+用户原文：全部批准
+
+批准范围：
+- golden: 来源管理（expanded / light）
+  - 基准文件：app/test/golden/goldens/sources-expanded-light.png
+  - 批准前差异：14.31%（146572 px）
+  - 更新后字节数：12074
+  - 更新后 SHA256：48a8a7cfebb6b7b24bd83c90cee56d6ece4d0837d5ad961b8c23513c4d6a6c3a
+- golden: 播放舞台（compact / dark）
+  - 基准文件：app/test/golden/goldens/stage-compact-dark.png
+  - 批准前差异：100.00%（329160 px）
+  - 更新后字节数：6231
+  - 更新后 SHA256：0cf05d3588fcee2a77a0f9bd456ae23f542e1431dbef6898cac2e747142487c1
+
+执行约束：
+- 只对以上两个具名用例分别执行 Golden 更新。
+- 不对整个 Golden 文件或整个测试套件运行自动更新。
+- 更新后必须用不带 --update-goldens 的完整 Golden 校验证明基准稳定。
+
+批准后校验：
+- 命令：flutter test --run-skipped -t golden test/golden/core_pages_golden_test.dart
+- 结果：12/12 通过
+- 日志：golden-approved-test.txt
+- 退出码：0
+- 格式化：0 changed，日志：golden-approval-format.txt
+- 静态分析：No issues found，日志：golden-approval-analyze.txt
+- 播放与来源重点回归：45/45 通过，日志：golden-approval-regression.txt

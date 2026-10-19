@@ -1,0 +1,5 @@
+Analyzing app...                                                
+
+   info - Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?' - lib\features\player\lyrics_panel.dart:102:15 - use_null_aware_elements
+
+1 issue found. (ran in 4.8s)

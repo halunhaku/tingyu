@@ -1,0 +1,60 @@
+00:00 +0: loading F:/project/tingyu/app/test/p6a_interaction_contract_test.dart
+00:00 +0: F:/project/tingyu/app/test/p6a_interaction_contract_test.dart: Tab 顺序稳定，Enter 与 Space 驱动同一业务操作
+00:00 +1: F:/project/tingyu/app/test/p6a_interaction_contract_test.dart: 按住 Enter 或 Space 的自动重复不会重复执行操作
+00:00 +2: F:/project/tingyu/app/test/p6a_interaction_contract_test.dart: Esc 关闭浮层并把焦点与可见焦点环还给触发控件
+00:00 +3: F:/project/tingyu/app/test/p6a_interaction_contract_test.dart: 按钮暴露可执行语义动作与禁用状态
+test/quark_http_fixture_test.dart:210:51: Error: The getter 'names' isn't defined for the type 'HttpHeaders'.
+ - 'HttpHeaders' is from 'dart:_http'.
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'names'.
+        for (final String name in request.headers.names)
+                                                  ^^^^^
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: true
+  Actual: <false>
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///F:/project/tingyu/app/test/p6a_interaction_contract_test.dart:162:7)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///F:/project/tingyu/app/test/p6a_interaction_contract_test.dart line 162
+The test description was:
+  按钮暴露可执行语义动作与禁用状态
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:00 +3 -1: F:/project/tingyu/app/test/p6a_interaction_contract_test.dart: 按钮暴露可执行语义动作与禁用状态 [E]
+  Test failed. See exception logs above.
+  The test description was: 按钮暴露可执行语义动作与禁用状态
+
+00:00 +3 -2: loading F:/project/tingyu/app/test/quark_http_fixture_test.dart [E]
+  Failed to load "F:/project/tingyu/app/test/quark_http_fixture_test.dart":
+  Compilation failed for testPath=F:/project/tingyu/app/test/quark_http_fixture_test.dart: test/quark_http_fixture_test.dart:210:51: Error: The getter 'names' isn't defined for the type 'HttpHeaders'.
+   - 'HttpHeaders' is from 'dart:_http'.
+  Try correcting the name to the name of an existing getter, or defining a getter or field named 'names'.
+          for (final String name in request.headers.names)
+                                                    ^^^^^
+  .
+00:00 +3 -2: F:/project/tingyu/app/test/webdav_http_integration_test.dart: 真实 loopback HTTP：鉴权、中文路径、503/429 重试与完整扫描
+[webdav] 第 1 次失败（HTTP 503），1ms 后重试
+[webdav] 第 2 次失败（HTTP 429），1ms 后重试
+00:00 +4 -2: F:/project/tingyu/app/test/webdav_http_integration_test.dart: 真实 loopback HTTP：子目录 403 只跳过该目录，取消在条目边界生效
+00:00 +4 -3: F:/project/tingyu/app/test/webdav_http_integration_test.dart: 真实 loopback HTTP：子目录 403 只跳过该目录，取消在条目边界生效 [E]
+  Expected: <1>
+    Actual: <0>
+
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test\webdav_http_integration_test.dart 208:7        main.<fn>
+
+00:00 +4 -3: Some tests failed.
+
+Failing tests:
+  F:/project/tingyu/app/test/p6a_interaction_contract_test.dart: 按钮暴露可执行语义动作与禁用状态
+  F:/project/tingyu/app/test/quark_http_fixture_test.dart: loading F:/project/tingyu/app/test/quark_http_fixture_test.dart
+  F:/project/tingyu/app/test/webdav_http_integration_test.dart: 真实 loopback HTTP：子目录 403 只跳过该目录，取消在条目边界生效
