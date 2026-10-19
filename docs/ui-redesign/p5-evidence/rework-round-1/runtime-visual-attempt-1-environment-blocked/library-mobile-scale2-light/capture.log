@@ -1,0 +1,5 @@
+Exception: F:\project\tingyu\tools\windows-ui-screenshots.ps1:254
+Line |
+ 254 |    Write-Error $_
+     |    ~~~~~~~~~~~~~~
+     | Could not calibrate client area to 585x1266; got 585x1061.

@@ -435,17 +435,20 @@ class _TyAppShellState extends ConsumerState<TyAppShell> {
       ),
       bottomNavigationBar: fullBleed
           ? null
-          : Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                const MiniPlayer(),
-                if (showTabs)
-                  TyBottomNav(
-                    destinations: _tabs,
-                    selectedIndex: _selectedTab(path),
-                    onSelected: (int index) => _navigate(_tabs[index].route),
-                  ),
-              ],
+          : SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  const MiniPlayer(),
+                  if (showTabs)
+                    TyBottomNav(
+                      destinations: _tabs,
+                      selectedIndex: _selectedTab(path),
+                      onSelected: (int index) => _navigate(_tabs[index].route),
+                    ),
+                ],
+              ),
             ),
     );
   }

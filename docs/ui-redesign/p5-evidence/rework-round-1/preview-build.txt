@@ -1,0 +1,4 @@
+Building Windows application...
+Nuget.exe not found, trying to download or use cached version.
+Building Windows application...                                    29.3s
+√ Built build\windows\x64\runner\Release\tingyu.exe

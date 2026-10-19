@@ -1,0 +1,14 @@
+00:00 +0: loading F:/project/tingyu/app/test/ai_client_test.dart
+00:00 +0: F:/project/tingyu/app/test/golden/core_pages_golden_test.dart: golden: 曲库·歌曲（expanded / dark）
+00:00 +1: F:/project/tingyu/app/test/golden/core_pages_golden_test.dart: golden: 曲库·歌曲（compact / light）
+00:00 +2: F:/project/tingyu/app/test/golden/core_pages_golden_test.dart: golden: 专辑网格（expanded / light）
+00:00 +3: F:/project/tingyu/app/test/golden/core_pages_golden_test.dart: golden: 专辑详情（expanded / light）
+00:01 +4: F:/project/tingyu/app/test/golden/core_pages_golden_test.dart: golden: 搜索·空查询（expanded / light）
+00:01 +5: F:/project/tingyu/app/test/golden/core_pages_golden_test.dart: golden: 搜索·有结果（expanded / dark）
+00:01 +6: F:/project/tingyu/app/test/golden/core_pages_golden_test.dart: golden: 播放队列（pane / light）
+00:01 +7: F:/project/tingyu/app/test/golden/core_pages_golden_test.dart: golden: 歌词空态（pane / dark）
+00:01 +8: F:/project/tingyu/app/test/golden/core_pages_golden_test.dart: golden: 播放舞台（compact / dark）
+00:01 +9: F:/project/tingyu/app/test/golden/core_pages_golden_test.dart: golden: 设置（expanded / light）
+00:01 +10: F:/project/tingyu/app/test/golden/core_pages_golden_test.dart: golden: 来源管理（expanded / light）
+00:01 +11: F:/project/tingyu/app/test/golden/core_pages_golden_test.dart: golden: 来源详情（expanded / light）
+00:05 +12: All tests passed!

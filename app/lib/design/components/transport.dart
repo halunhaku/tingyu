@@ -222,6 +222,7 @@ class _TransportKey extends StatelessWidget {
         onTap: onPressed,
         semanticLabel: tooltip,
         cursor: SystemMouseCursors.click,
+        showFocusRing: false,
         builder: (BuildContext context, TyInteractionState state) =>
             TyFocusRing(
               focused: state.focused,
@@ -271,6 +272,7 @@ class _PlayControl extends StatelessWidget {
         onTap: onPressed,
         semanticLabel: label,
         cursor: SystemMouseCursors.click,
+        showFocusRing: false,
         builder: (BuildContext context, TyInteractionState state) {
           final Color background = !enabled
               ? ty.colors.textDisabled

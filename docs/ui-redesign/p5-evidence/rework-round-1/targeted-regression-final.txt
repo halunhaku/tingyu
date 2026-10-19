@@ -1,0 +1,10 @@
+00:00 +0: loading F:/project/tingyu/app/test/p5_review_regression_test.dart
+00:00 +0: F:/project/tingyu/app/test/p5_review_regression_test.dart: 键盘聚焦主按钮时显示统一焦点环
+00:00 +1: F:/project/tingyu/app/test/voice_archive_stage_layout_test.dart: 高手机展示有界预览槽，矮手机保留独立入口
+00:00 +2: F:/project/tingyu/app/test/voice_archive_stage_layout_test.dart: 高手机展示有界预览槽，矮手机保留独立入口
+00:00 +3: F:/project/tingyu/app/test/p5_review_regression_test.dart: compact 底部导航只消费一次系统底部安全区
+00:00 +4: F:/project/tingyu/app/test/p5_review_regression_test.dart: compact 底部导航只消费一次系统底部安全区
+00:00 +5: F:/project/tingyu/app/test/p5_review_regression_test.dart: compact 底部导航只消费一次系统底部安全区
+00:00 +6: F:/project/tingyu/app/test/voice_archive_stage_layout_test.dart: 长标题完整语义，横屏大字时主控仍可到达且无溢出
+00:00 +7: F:/project/tingyu/app/test/p5_review_regression_test.dart: 曲目行读屏不重复，收藏与更多操作保持独立节点
+00:00 +8: All tests passed!

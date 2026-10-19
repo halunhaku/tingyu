@@ -40,10 +40,9 @@ void main() {
   testWidgets('expanded 中高窗按可用高度收敛封面预算', (WidgetTester tester) async {
     await _pumpStage(tester, const Size(1440, 900));
     final double coverHeight = tester.getSize(find.byType(TyCover)).height;
-    final double availableStageHeight =
-        900 - TyPlayerStageSize.topBarHeight;
-    final double expectedCoverHeight = availableStageHeight *
-        TyPlayerStageSize.coverHeightRatio;
+    final double availableStageHeight = 900 - TyPlayerStageSize.topBarHeight;
+    final double expectedCoverHeight =
+        availableStageHeight * TyPlayerStageSize.coverHeightRatio;
 
     expect(coverHeight, expectedCoverHeight);
     expect(coverHeight, lessThan(TyPlayerStageSize.desktopCoverPreferred));
@@ -59,12 +58,25 @@ void main() {
       title: title,
     );
     expect(find.bySemanticsLabel('播放控制'), findsOneWidget);
-    final Rect transport = tester.getRect(
+    final Rect scrollViewport = tester.getRect(
+      find.byType(SingleChildScrollView),
+    );
+    Rect transport = tester.getRect(
       find.byKey(const ValueKey<String>('transport')),
     );
     expect(transport.top, greaterThanOrEqualTo(0));
     expect(transport.bottom, lessThanOrEqualTo(390));
     expect(tester.getSemantics(find.text(title)).label, title);
+
+    await tester.ensureVisible(find.text(title));
+    await tester.pumpAndSettle();
+
+    final Rect titleRect = tester.getRect(find.text(title));
+    expect(titleRect.top, greaterThanOrEqualTo(scrollViewport.top));
+    expect(titleRect.bottom, lessThanOrEqualTo(scrollViewport.bottom));
+    transport = tester.getRect(find.byKey(const ValueKey<String>('transport')));
+    expect(transport.top, greaterThanOrEqualTo(0));
+    expect(transport.bottom, lessThanOrEqualTo(390));
     expect(tester.takeException(), isNull);
   });
 }

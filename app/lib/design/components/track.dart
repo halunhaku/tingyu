@@ -100,7 +100,8 @@ class TyTrackRow extends StatelessWidget {
       onDoubleTap: onDoubleTap,
       onSecondaryTapDown: onSecondaryTapDown,
       semanticLabel:
-          '${track.title} · ${track.artist} · ${track.album}'
+          '${track.title} · ${track.artist} · ${track.album} · '
+          '${formatSeconds(track.duration)}'
           '${showSource && sourceLabel != null ? ' · $sourceLabel' : ''}'
           '${isPlaying ? ' · 正在播放' : ''}',
       cursor: SystemMouseCursors.click,
@@ -128,13 +129,15 @@ class TyTrackRow extends StatelessWidget {
             children: <Widget>[
               SizedBox(
                 width: TySize.trackLeading,
-                child: Center(
-                  child: _LeadingCell(
-                    index: index,
-                    isPlaying: isPlaying,
-                    playing: playing,
-                    showPlay: state.hovered && !touch && onTap != null,
-                    onPlay: onTap,
+                child: ExcludeSemantics(
+                  child: Center(
+                    child: _LeadingCell(
+                      index: index,
+                      isPlaying: isPlaying,
+                      playing: playing,
+                      showPlay: state.hovered && !touch && onTap != null,
+                      onPlay: onTap,
+                    ),
                   ),
                 ),
               ),
@@ -159,75 +162,79 @@ class TyTrackRow extends StatelessWidget {
               ],
               Expanded(
                 flex: 5,
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    right: separateArtistColumn ? TySpace.x12 : 0,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      // 搜索页要把命中子串点亮；其它场景原样 `Text`（少一层 span）。
-                      if (highlightQuery == null || highlightQuery!.isEmpty)
-                        Text(
-                          track.title,
-                          maxLines: titleMaxLines,
-                          overflow: TextOverflow.ellipsis,
-                          style: ty.typography.bodyM.copyWith(
-                            color: isPlaying
-                                ? ty.colors.accent
-                                : ty.colors.textPrimary,
-                            fontWeight: isPlaying
-                                ? FontWeight.w600
-                                : FontWeight.w400,
+                child: ExcludeSemantics(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: separateArtistColumn ? TySpace.x12 : 0,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        // 搜索页要把命中子串点亮；其它场景原样 `Text`（少一层 span）。
+                        if (highlightQuery == null || highlightQuery!.isEmpty)
+                          Text(
+                            track.title,
+                            maxLines: titleMaxLines,
+                            overflow: TextOverflow.ellipsis,
+                            style: ty.typography.bodyM.copyWith(
+                              color: isPlaying
+                                  ? ty.colors.accent
+                                  : ty.colors.textPrimary,
+                              fontWeight: isPlaying
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                            ),
+                          )
+                        else
+                          TyHighlightedText(
+                            text: track.title,
+                            query: highlightQuery!,
+                            maxLines: titleMaxLines,
+                            style: ty.typography.bodyM.copyWith(
+                              color: isPlaying
+                                  ? ty.colors.accent
+                                  : ty.colors.textPrimary,
+                              fontWeight: isPlaying
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                            ),
                           ),
-                        )
-                      else
-                        TyHighlightedText(
-                          text: track.title,
-                          query: highlightQuery!,
-                          maxLines: titleMaxLines,
-                          style: ty.typography.bodyM.copyWith(
-                            color: isPlaying
-                                ? ty.colors.accent
-                                : ty.colors.textPrimary,
-                            fontWeight: isPlaying
-                                ? FontWeight.w600
-                                : FontWeight.w400,
+                        if (!separateArtistColumn) ...<Widget>[
+                          const SizedBox(height: 1),
+                          Text(
+                            showSource && !tableMode
+                                ? <String>[
+                                    track.artist,
+                                    if (showAlbum) track.album,
+                                    ?sourceLabel,
+                                  ].join(' · ')
+                                : track.artist,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: ty.typography.bodyS.copyWith(
+                              color: ty.colors.textSecondary,
+                            ),
                           ),
-                        ),
-                      if (!separateArtistColumn) ...<Widget>[
-                        const SizedBox(height: 1),
-                        Text(
-                          showSource && !tableMode
-                              ? <String>[
-                                  track.artist,
-                                  if (showAlbum) track.album,
-                                  ?sourceLabel,
-                                ].join(' · ')
-                              : track.artist,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: ty.typography.bodyS.copyWith(
-                            color: ty.colors.textSecondary,
-                          ),
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
               if (separateArtistColumn)
                 Expanded(
                   flex: 3,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: TySpace.x12),
-                    child: Text(
-                      track.artist,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: ty.typography.bodyS.copyWith(
-                        color: ty.colors.textSecondary,
+                  child: ExcludeSemantics(
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: TySpace.x12),
+                      child: Text(
+                        track.artist,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: ty.typography.bodyS.copyWith(
+                          color: ty.colors.textSecondary,
+                        ),
                       ),
                     ),
                   ),
@@ -235,14 +242,16 @@ class TyTrackRow extends StatelessWidget {
               if (showAlbum && context.formFactor != FormFactor.compact)
                 Expanded(
                   flex: 3,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: TySpace.x12),
-                    child: Text(
-                      track.album,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: ty.typography.bodyS.copyWith(
-                        color: ty.colors.textSecondary,
+                  child: ExcludeSemantics(
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: TySpace.x12),
+                      child: Text(
+                        track.album,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: ty.typography.bodyS.copyWith(
+                          color: ty.colors.textSecondary,
+                        ),
                       ),
                     ),
                   ),
@@ -252,25 +261,29 @@ class TyTrackRow extends StatelessWidget {
                   context.formFactor != FormFactor.compact)
                 Expanded(
                   flex: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: TySpace.x12),
-                    child: Text(
-                      sourceLabel ?? '未知来源',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: ty.typography.bodyS.copyWith(
-                        color: ty.colors.textSecondary,
+                  child: ExcludeSemantics(
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: TySpace.x12),
+                      child: Text(
+                        sourceLabel ?? '未知来源',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: ty.typography.bodyS.copyWith(
+                          color: ty.colors.textSecondary,
+                        ),
                       ),
                     ),
                   ),
                 ),
               SizedBox(
                 width: TySize.tableDurationColumn,
-                child: Text(
-                  formatSeconds(track.duration),
-                  textAlign: TextAlign.right,
-                  style: ty.typography.numericS.copyWith(
-                    color: ty.colors.textTertiary,
+                child: ExcludeSemantics(
+                  child: Text(
+                    formatSeconds(track.duration),
+                    textAlign: TextAlign.right,
+                    style: ty.typography.numericS.copyWith(
+                      color: ty.colors.textTertiary,
+                    ),
                   ),
                 ),
               ),
@@ -409,24 +422,21 @@ class _TyEqualizerState extends State<TyEqualizer>
     final Color accent = context.ty.colors.accent;
     final bool reduceMotion = MediaQuery.disableAnimationsOf(context);
     const List<double> phases = <double>[0.2, 0.7, 0.45, 0.9];
-    return Semantics(
-      label: '正在播放',
-      child: SizedBox(
-        width: widget.size,
-        height: widget.size,
-        child: reduceMotion
-            ? _bars(accent, const <double>[0.4, 0.8, 0.55, 0.9])
-            : AnimatedBuilder(
-                animation: _controller,
-                builder: (BuildContext context, Widget? child) {
-                  final double t = _controller.value;
-                  return _bars(accent, <double>[
-                    for (final double phase in phases)
-                      0.25 + 0.65 * ((t + phase) % 1.0),
-                  ]);
-                },
-              ),
-      ),
+    return SizedBox(
+      width: widget.size,
+      height: widget.size,
+      child: reduceMotion
+          ? _bars(accent, const <double>[0.4, 0.8, 0.55, 0.9])
+          : AnimatedBuilder(
+              animation: _controller,
+              builder: (BuildContext context, Widget? child) {
+                final double t = _controller.value;
+                return _bars(accent, <double>[
+                  for (final double phase in phases)
+                    0.25 + 0.65 * ((t + phase) % 1.0),
+                ]);
+              },
+            ),
     );
   }
 
