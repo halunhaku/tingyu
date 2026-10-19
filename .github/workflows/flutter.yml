@@ -111,6 +111,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.47.2'
           cache: true
       - name: Install Linux native dependencies
         if: matrix.target == 'linux'
@@ -130,17 +131,52 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: '3.11.9'
-      - name: Build Windows with patched accessibility engine
+      - name: Preflight pinned Flutter SDK
+        if: matrix.target == 'windows'
+        working-directory: .
+        shell: pwsh
+        run: ./tools/build-windows-engine.ps1 -Stage Preflight
+      - name: Bootstrap and sync Windows engine
         if: matrix.target == 'windows'
         working-directory: .
         shell: pwsh
         run: |
           ./tools/bootstrap-windows-engine.ps1 -PythonExecutable (Get-Command python).Source
           ./tools/build-windows-engine.ps1 -Stage Sync -Jobs 2
-          ./tools/build-windows-engine.ps1 -Stage Configure
-          ./tools/build-windows-engine.ps1 -Stage Compile -Jobs 2
-          ./tools/build-windows-engine.ps1 -Stage Test
-          ./tools/build-windows-engine.ps1 -Stage App
+      - name: Configure Windows engine
+        if: matrix.target == 'windows'
+        working-directory: .
+        shell: pwsh
+        run: ./tools/build-windows-engine.ps1 -Stage Configure
+      - name: Restore cached Windows engine build
+        if: matrix.target == 'windows'
+        id: windows-engine-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: app/build/flutter-engine/checkout/engine/src/out/host_release
+          key: windows-engine-host-release-v1-${{ hashFiles('tools/bootstrap-windows-engine.ps1', 'tools/build-windows-engine.ps1', 'tools/windows-engine-env.ps1', 'tools/engine-patches/windows-engine.json', 'tools/engine-patches/190903-null-parent.patch', 'tools/engine-patches/tingyu-accessibility.patch', 'tools/engine-patches/windows-test-aot-fixtures.patch', 'tools/engine-patches/python-requirements.txt') }}
+      - name: Compile Windows engine
+        if: matrix.target == 'windows' && steps.windows-engine-cache.outputs.cache-hit != 'true'
+        working-directory: .
+        shell: pwsh
+        run: ./tools/build-windows-engine.ps1 -Stage Compile -Jobs 2
+      - name: Test Windows accessibility engine
+        if: matrix.target == 'windows'
+        working-directory: .
+        shell: pwsh
+        run: ./tools/build-windows-engine.ps1 -Stage Test
+      - name: Build Windows application
+        if: matrix.target == 'windows'
+        working-directory: .
+        shell: pwsh
+        run: ./tools/build-windows-engine.ps1 -Stage App
+      - name: Save Windows engine build cache
+        if: matrix.target == 'windows' && steps.windows-engine-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        continue-on-error: true
+        with:
+          path: app/build/flutter-engine/checkout/engine/src/out/host_release
+          key: windows-engine-host-release-v1-${{ hashFiles('tools/bootstrap-windows-engine.ps1', 'tools/build-windows-engine.ps1', 'tools/windows-engine-env.ps1', 'tools/engine-patches/windows-engine.json', 'tools/engine-patches/190903-null-parent.patch', 'tools/engine-patches/tingyu-accessibility.patch', 'tools/engine-patches/windows-test-aot-fixtures.patch', 'tools/engine-patches/python-requirements.txt') }}
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:

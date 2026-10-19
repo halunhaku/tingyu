@@ -1,6 +1,6 @@
 param(
   [Parameter(Mandatory=$true)]
-  [ValidateSet('Sync','Configure','Compile','Test','App','Candidate')][string]$Stage,
+  [ValidateSet('Preflight','Sync','Configure','Compile','Test','App','Candidate')][string]$Stage,
   [int]$Jobs = 10,
   [string]$EngineRoot = (Join-Path $PSScriptRoot '../app/build/flutter-engine')
 )
@@ -18,6 +18,37 @@ $fixturePatch = Join-Path $PSScriptRoot 'engine-patches/windows-test-aot-fixture
 if ((Get-FileHash $combinedPatch -Algorithm SHA256).Hash.ToLowerInvariant() -ne $manifest.combinedPatchSha256 -or
     (Get-FileHash $fixturePatch -Algorithm SHA256).Hash.ToLowerInvariant() -ne $manifest.testFixturePatchSha256) {
   throw 'Local engine patch checksums do not match the manifest.'
+}
+function Resolve-FlutterSdkDirectory {
+  if (![string]::IsNullOrWhiteSpace($env:FLUTTER_ROOT)) {
+    $candidate = $env:FLUTTER_ROOT.Trim()
+    if (!(Test-Path -LiteralPath $candidate -PathType Container)) {
+      throw "FLUTTER_ROOT does not point to a directory: $candidate"
+    }
+    return [IO.Path]::GetFullPath($candidate)
+  }
+  $flutterCommand = Get-Command flutter -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+  if (!$flutterCommand -or [string]::IsNullOrWhiteSpace($flutterCommand.Source)) {
+    throw 'Unable to locate Flutter. Set FLUTTER_ROOT or add flutter to PATH.'
+  }
+  return [IO.Path]::GetFullPath((Join-Path (Split-Path $flutterCommand.Source -Parent) '..'))
+}
+function Assert-FlutterSdkRevision {
+  $sdkDirectory = Resolve-FlutterSdkDirectory
+  $sdkRevision = & git -C $sdkDirectory rev-parse HEAD 2>$null
+  if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($sdkRevision)) {
+    throw "Unable to read the Flutter SDK revision from '$sdkDirectory'."
+  }
+  $sdkRevision = $sdkRevision.Trim()
+  Write-Output "Flutter SDK: $sdkDirectory ($sdkRevision)"
+  if ($sdkRevision -ne $manifest.frameworkRevision) {
+    throw "Flutter SDK revision mismatch. SDK root: '$sdkDirectory'; expected: '$($manifest.frameworkRevision)' (Flutter $($manifest.frameworkVersion)); actual: '$sdkRevision'."
+  }
+}
+Assert-FlutterSdkRevision
+if ($Stage -eq 'Preflight') {
+  Write-Output 'Flutter SDK preflight passed.'
+  return
 }
 $revision = & git -C $checkout rev-parse HEAD
 if ($LASTEXITCODE -ne 0 -or $revision -ne $manifest.frameworkRevision) {
@@ -109,10 +140,6 @@ try {
     'App' {
       & git apply --reverse --check $combinedPatch
       if ($LASTEXITCODE -ne 0) { throw 'The complete engine fix has not been applied to this checkout.' }
-      $flutterCommand = (Get-Command flutter).Source
-      $sdkDirectory = [IO.Path]::GetFullPath((Join-Path (Split-Path $flutterCommand) '..'))
-      $sdkRevision = & git -C $sdkDirectory rev-parse HEAD
-      if ($LASTEXITCODE -ne 0 -or $sdkRevision -ne $manifest.frameworkRevision) { throw 'The application SDK must match the pinned engine source revision.' }
       Push-Location (Join-Path $PSScriptRoot '../app')
       try {
         & flutter "--local-engine-src-path=$source" "--local-engine=$($manifest.configuration)" "--local-engine-host=$($manifest.configuration)" build windows --release
