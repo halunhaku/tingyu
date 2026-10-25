@@ -14,6 +14,7 @@ package player
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -109,6 +110,13 @@ type Controller struct {
 	repeat       RepeatMode
 	closed       bool
 
+	// resolveGate serializes resolve+append for the current queue generation:
+	// the prefetch goroutine and a user-visible Next() would otherwise append
+	// entries out of queue order, which is exactly the misaligned index the
+	// 200-track acceptance run looks for. A new queue gets a new gate, so an
+	// abandoned prefetch (still resolving a replaced queue) cannot stall it.
+	resolveGate chan struct{}
+
 	currentIndex int
 	currentTrack *library.Track
 	update       Update
@@ -122,6 +130,11 @@ type Controller struct {
 
 	unsubscribe func()
 	done        chan struct{}
+	// wg covers every goroutine that may call the engine. Close waits for it
+	// before the engine is destroyed: a prefetch that resolved while the app
+	// quit must never append to a destroyed mpv core (a SIGSEGV in mpv, not a
+	// recoverable error).
+	wg sync.WaitGroup
 }
 
 type resolvedItem struct {
@@ -137,12 +150,18 @@ func New(engine Engine, resolve Resolver, history History) *Controller {
 		history:      history,
 		repeat:       RepeatAll, // the Flutter client's default
 		currentIndex: 0,
+		resolveGate:  make(chan struct{}, 1),
 		done:         make(chan struct{}),
 	}
+	c.resolveGate <- struct{}{}
 	c.update = Update{Snapshot: engine.Snapshot(), Repeat: c.repeat}
 	events, unsubscribe := engine.Subscribe()
 	c.unsubscribe = unsubscribe
-	go c.loop(events)
+	c.wg.Add(1)
+	go func() {
+		defer c.wg.Done()
+		c.loop(events)
+	}()
 	return c
 }
 
@@ -189,6 +208,12 @@ func (c *Controller) SetVolume(volume float64) error {
 	return c.engine.SetVolume(volume)
 }
 
+// SetRate sets the playback speed. Audio is pitch-preserved only up to what
+// the engine does by default; the Flutter client exposed 0.5–3.0.
+func (c *Controller) SetRate(rate float64) error {
+	return c.engine.SetRate(rate)
+}
+
 // PlayTracks starts playTracks at start. The queue is rotated so the chosen
 // track plays first and the rest of the list follows, then the beginning:
 // exactly the Flutter controller's sequential order.
@@ -204,6 +229,20 @@ func (c *Controller) PlayTracks(tracks []library.Track, start int) error {
 	rotated = append(rotated, tracks[:start]...)
 
 	c.mu.Lock()
+	if c.closed {
+		c.mu.Unlock()
+		return errors.New("播放器正在关闭")
+	}
+	// Reserve the prefetch goroutine's slot under the same lock that Close
+	// uses to set closed: otherwise it could be added after Close's Wait had
+	// already returned, which is undefined for sync.WaitGroup.
+	c.wg.Add(1)
+	prefetched := false
+	defer func() {
+		if !prefetched {
+			c.wg.Done()
+		}
+	}()
 	c.generation++
 	generation := c.generation
 	c.queue = rotated
@@ -211,6 +250,8 @@ func (c *Controller) PlayTracks(tracks []library.Track, start int) error {
 	c.resolvedNext = 0
 	c.armed = false
 	c.prefetching = false
+	c.resolveGate = make(chan struct{}, 1)
+	c.resolveGate <- struct{}{}
 	c.currentIndex = 0
 	c.currentTrack = &c.queue[0]
 	c.failure = nil
@@ -253,11 +294,20 @@ func (c *Controller) PlayTracks(tracks []library.Track, start int) error {
 		return err
 	}
 	c.notify()
-	go c.ensureAhead(prefetchCount, generation)
+	prefetched = true
+	go func() {
+		defer c.wg.Done()
+		c.ensureAhead(prefetchCount, generation)
+	}()
 	return nil
 }
 
 const prefetchCount = 2
+
+// nextResolveWait is how long Next waits for a prefetch already in flight
+// before it gives up and lets the engine decide. A variable so tests do not
+// have to wait two seconds.
+var nextResolveWait = 2 * time.Second
 
 func (c *Controller) stillCurrent(generation uint64) bool {
 	c.mu.Lock()
@@ -295,13 +345,67 @@ func (c *Controller) ensureAhead(minimum int, generation uint64) {
 
 	for {
 		c.mu.Lock()
-		if c.closed || !c.armed || generation != c.generation {
-			c.mu.Unlock()
+		enough := c.closed || !c.armed || generation != c.generation ||
+			c.resolvedNext >= len(c.queue) || len(c.resolved)-c.currentIndex-1 >= minimum
+		c.mu.Unlock()
+		if enough {
 			return
 		}
-		if c.resolvedNext >= len(c.queue) || len(c.resolved)-c.currentIndex-1 >= minimum {
-			c.mu.Unlock()
+		if !c.appendNextBlocking(generation) {
 			return
+		}
+	}
+}
+
+// gate returns this generation's resolve gate, or nil once it is stale.
+func (c *Controller) gate(generation uint64) chan struct{} {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if generation != c.generation {
+		return nil
+	}
+	return c.resolveGate
+}
+
+// appendNextBlocking resolves and appends the next unresolved queue entry,
+// waiting for a resolve already in flight. The prefetch goroutine uses it.
+func (c *Controller) appendNextBlocking(generation uint64) bool {
+	gate := c.gate(generation)
+	if gate == nil {
+		return false
+	}
+	<-gate
+	defer func() { gate <- struct{}{} }()
+	return c.appendNext(generation)
+}
+
+// appendNextWithin is the user-visible variant: a click waits at most wait for
+// a prefetch already in flight, then gives up instead of stalling the UI.
+func (c *Controller) appendNextWithin(generation uint64, wait time.Duration) bool {
+	gate := c.gate(generation)
+	if gate == nil {
+		return false
+	}
+	timer := time.NewTimer(wait)
+	defer timer.Stop()
+	select {
+	case <-gate:
+	case <-timer.C:
+		return false
+	}
+	defer func() { gate <- struct{}{} }()
+	return c.appendNext(generation)
+}
+
+// appendNext resolves and appends one entry. The gate must be held: the
+// prefetch goroutine and Next() would otherwise append out of queue order,
+// which is exactly the misaligned index the 200-track acceptance run hunts.
+func (c *Controller) appendNext(generation uint64) bool {
+	for {
+		c.mu.Lock()
+		if c.closed || !c.armed || generation != c.generation || c.resolvedNext >= len(c.queue) {
+			c.mu.Unlock()
+			return false
 		}
 		index := c.resolvedNext
 		c.resolvedNext++
@@ -310,25 +414,25 @@ func (c *Controller) ensureAhead(minimum int, generation uint64) {
 
 		item, err := c.resolve(track)
 		if !c.stillCurrent(generation) {
-			return
+			return false
 		}
 		if err != nil {
-			if index == 0 {
-				c.fail(&mpv.Failure{Message: err.Error(), Title: track.Title})
-			}
+			// An unplayable entry is skipped, not fatal: the rest of the queue
+			// is still the user's queue.
 			continue
 		}
 		if err := c.engine.Append(mpv.Item{URI: item.URI, Headers: item.Headers}); err != nil {
-			c.fail(&mpv.Failure{Message: err.Error(), Title: item.Title})
-			return
+			c.fail(&mpv.Failure{Kind: mpv.FailureUnknown, Message: err.Error(), Detail: err.Error(), Title: item.Title})
+			return false
 		}
 		c.mu.Lock()
 		if generation != c.generation {
 			c.mu.Unlock()
-			return
+			return false
 		}
 		c.resolved = append(c.resolved, resolvedItem{item: item, sourceIndex: index})
 		c.mu.Unlock()
+		return true
 	}
 }
 
@@ -352,8 +456,18 @@ func (c *Controller) onSnapshot(snapshot mpv.Snapshot) {
 		Repeat:   c.repeat,
 		Failure:  c.failure,
 	}
-	if snapshot.Failure != nil {
-		c.update.Failure = snapshot.Failure
+	// The engine classifies its own failures (status, transport, decode) from
+	// the lines FFmpeg logs; the controller only adds the title it knows and
+	// keeps the failure until playback actually resumes.
+	if snapshot.Failure != nil && (c.failure == nil || c.failure.Detail != snapshot.Failure.Detail) {
+		failure := *snapshot.Failure
+		if failure.Title == "" && c.currentTrack != nil {
+			failure.Title = c.currentTrack.Title
+		}
+		c.failure = &failure
+	}
+	if c.failure != nil {
+		c.update.Failure = c.failure
 	}
 	generation := c.generation
 	track := c.currentTrack
@@ -493,17 +607,36 @@ func (c *Controller) TogglePlayPause() error {
 }
 
 // Next advances in the queue, wrapping only in repeat-all mode.
+//
+// A click can arrive before the prefetch has appended the next entry (a slow
+// resolver, or 200 short tracks); calling the engine then would do nothing at
+// all and look like a dead button. Resolve one entry first, waiting for a
+// prefetch already in flight but never indefinitely.
 func (c *Controller) Next() error {
 	c.mu.Lock()
-	repeat := c.repeat
+	generation := c.generation
 	index := c.currentIndex
 	itemCount := len(c.resolved)
-	allResolved := len(c.resolved) >= len(c.queue)
+	pending := c.resolvedNext < len(c.queue)
 	c.mu.Unlock()
+	if index+1 >= itemCount && pending {
+		if c.appendNextWithin(generation, nextResolveWait) {
+			c.mu.Lock()
+			index = c.currentIndex
+			itemCount = len(c.resolved)
+			c.mu.Unlock()
+		}
+	}
 	if index+1 < itemCount {
 		return c.engine.Next()
 	}
-	if repeat == RepeatAll && allResolved && itemCount > 0 {
+	c.mu.Lock()
+	repeat := c.repeat
+	// Wrap only when nothing is left to resolve. Wrapping while the prefetch
+	// lagged would jump to the first track instead of advancing.
+	wrapped := RepeatAll == repeat && itemCount > 0 && c.resolvedNext >= len(c.queue)
+	c.mu.Unlock()
+	if wrapped {
 		_ = c.engine.PlayIndex(0)
 		return c.engine.Play()
 	}
@@ -593,5 +726,6 @@ func (c *Controller) Close() error {
 	if c.unsubscribe != nil {
 		c.unsubscribe()
 	}
+	c.wg.Wait()
 	return c.engine.Close()
 }
