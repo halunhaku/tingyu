@@ -2,15 +2,15 @@
 
 日期：2026-10-25（Asia/Shanghai）
 性质：**规划文档**。本 todo 只做规划：未改代码、未删目录、未合并、未打 tag、未执行 spike。
-基线：`main` @ `8d008a2`（已含两份输入报告）。
-口径：**只保留 macOS**。Windows / Linux / Android / iOS 由并行 todo 删除；本方案按"仓库最终只有 macOS 端"编写。开工时若这些目录仍在，属并行未合并，不是基线错误。
+基线：`main` @ `7d842eb765f06fc7fb582f0cc8c9896fba7e90bc` —— 含两份输入报告，以及并行 todo 的 macOS-only 收缩（`1ff8592`：删除 `app/{android,ios,windows,linux}`、`app/packages/*`、`just_audio` 引擎、SAF/书签适配器、移动依赖与五平台 CI job）。本文件最初按 `8d008a2` 写作，合并后已按新基线复核计数、行号与"已落地/未落地"状态（见附录 B）。
+口径：**只保留 macOS**。
 估算性质：文中所有人日均为**粗估**，不构成承诺；凡未实测的结论都标了 `[推断]`。
 
 输入与引用：
 
 - [当前客户端技术底账](../audit/2026-10-25-current-client-review.md)（下称「底账」）
 - [MyGo 可行性调研](../research/2026-10-25-mygo-feasibility.md)（下称「调研」）
-- 本轮补测（只读）：线上库 `PRAGMA user_version`、日期文本格式、表/索引清单、现有工作区目录。命令见附录 B。
+- 本轮补测（只读）：线上库 `PRAGMA user_version`、日期文本格式、表/索引清单、`app/lib` 与 `app/test` 计数、`Contents/Frameworks` 内容、合并后行号与依赖表。命令见附录 B。
 
 ---
 
@@ -34,11 +34,11 @@
 
 | 事实 | 数值 | 来源 |
 |---|---|---|
-| 手写 Dart（`app/lib`，排除 `database.g.dart`） | 33,244 行 / 133 文件 | 底账 §3.1 |
-| 其中界面相关（`design/` + `features/`） | 22,362 行，67.27% | 底账 §9.1 |
-| 测试 | 71 个 Dart 文件，374 个可见用例通过 | 底账 §7.1 |
+| 手写 Dart（`app/lib`，排除 `database.g.dart`） | 33,244 行 / 133 文件（收缩前）→ **当前 32,522 行 / 129 文件** | 底账 §3.1 + 本轮 `git ls-files` |
+| 其中界面相关（`design/` + `features/`） | 22,362 行，67.27%（收缩前口径；四端删除后比例略降，量级不变） | 底账 §9.1 |
+| 测试 | 71 个文件 / 374 用例通过（收缩前）→ **当前 68 个文件** | 底账 §7.1 + 本轮计数 |
 | 支持格式 | `mp3 flac m4a aac wav ogg opus aiff alac` | `app/lib/sources/local/local_library_scanner.dart:50` |
-| macOS 播放实现 | `media_kit` 1.2.6（libmpv）+ `audio_service` 0.18.19；随包 `Frameworks/` 内实测有 `Mpv.framework`、`Avcodec/Avformat/Avutil/Avfilter/Swresample/Swscale.framework`、`media_kit_libs_macos_audio.framework` | 底账 §2.4、§5 + 本轮 `ls`（debug 产物） |
+| macOS 播放实现 | **唯一引擎** `media_kit` 1.2.6（libmpv，`1ff8592` 后工厂只返回它）+ `audio_service` 0.18.19 负责系统会话；随包 `Frameworks/` 内实测有 `Mpv.framework`、`Avcodec/Avformat/Avutil/Avfilter/Swresample/Swscale.framework`、`media_kit_libs_macos_audio.framework` | 底账 §2.4、§5 + 本轮 `ls`（debug 产物） |
 | macOS 部署目标 | 12.0 | `app/macos/Podfile:1`、`project.pbxproj` |
 | 窗口 | 最小 900×600，默认 1180×760 | `app/macos/Runner/MainFlutterWindow.swift` |
 | 沙盒 | 关闭（`app-sandbox=false`），release 开 `network.client` | `app/macos/Runner/Release.entitlements` |
@@ -78,7 +78,7 @@
 
 | # | 能力 | 现状落点 | 结论 | 口径 / 理由 |
 |---|---|---|---|---|
-| 11 | 双引擎工厂（桌面 libmpv / 移动 ExoPlayer·AVPlayer） | `playback/engine_factory.dart` | **简化** | 只剩一个 macOS 引擎，保留 `Engine` 接口以便测试替身 |
+| 11 | 引擎工厂（曾按平台选 libmpv / ExoPlayer·AVPlayer） | `playback/engine_factory.dart` | **简化（已落地）** | `1ff8592` 后工厂只返回 `MediaKitEngine`；本方案继续保留 `Engine` 接口，供测试替身与将来换内核 |
 | 12 | 9 种格式 | 见 §1 | **保留** | libmpv 全覆盖；纯 Go 路线会缺 AAC/ALAC，故不选 |
 | 13 | HTTP Range 流式 + 直链鉴权头（WebDAV Basic、夸克播放头） | `MediaKitEngine._toMedia` | **保留** | mpv 原生支持 Range；头经 `loadfile` 的 per-file options 传入，Go 侧不中转音频字节 |
 | 14 | 跨曲 gapless | libmpv | **保留** | `--gapless-audio=yes` + 预排下一首；**跨格式/跨采样率不保证无缝**（mpv 自身限制），写进验收口径 |
@@ -103,7 +103,7 @@
 | 28 | 夸克网页登录（内嵌 WebView、去 `wv` UA、接管 `intent://`、读 Cookie） | `quark_web_login_page.dart`（3 个已踩坑注释） | **保留** | 换 MyGo 内嵌 `WebView` + `mygo.Cookies`；三个坑必须逐条复验，见 §3.5 |
 | 29 | 夸克直链、分页、深度/数量上限、截断原因 | `quark_drive_client.dart`、`quark_source_adapter.dart` | **保留** | 默认 `maxDepth=5`、`maxFiles=5000` 不变 |
 | 30 | 来源同步编排（进度、取消、权威性、错误、重登录、删除） | `features/sources/source_sync.dart`、`app/source_adapters.dart` | **保留** | 含凭据代际：凭据变更后不能复用缓存的适配器 |
-| 31 | Android SAF 目录树授权 / iOS 安全作用域书签 | `tingyu_saf`、`local_bookmark_source_adapter.dart` | **砍掉** | 随平台消失；`music_sources.local_bookmark` 列保留但不再写（见 §2.4） |
+| 31 | Android SAF 目录树授权 / iOS 安全作用域书签 | `tingyu_saf`、`local_bookmark_source_adapter.dart`（**`1ff8592` 已删除**） | **砍掉（已落地）** | 随平台消失；`music_sources.local_bookmark` 列保留但不再写，schema 注释已同步 |
 
 ### 2.4 元数据、图片、界面、系统集成
 
@@ -127,10 +127,10 @@
 | 47 | 无障碍（语义标注、读屏） | 各处 `Semantics` + 语义测试 | **简化（明确的回归）** | MyGo 自认「文本与集合可达性未完成」（调研 §4.6）。**保留**键盘完全可达 + 焦点环；**读屏体验低于现状**，写入风险与发布说明，M6 后单独排期 |
 | 48 | Golden 视觉回归（12 张，Windows 字体基准） | `test/golden/` | **砍掉** | 换渲染器后像素基准无意义；改为 `ui.Tester` 组件测试 + macOS 人工截图对照 |
 | 49 | 原生应用菜单（播放控制/窗口/帮助）、窗口尺寸 | `main.dart` `PlatformMenuBar`、`MainFlutterWindow.swift` | **保留** | MyGo 自带菜单 API |
-| 50 | 关窗即退出 + 退出前 dispose 播放器 | `AppDelegate.swift`、`main.dart:106-119` | **简化 + 变更** | 见 §5.6 |
+| 50 | 关窗即退出 + 退出前 dispose 播放器 | `AppDelegate.swift`、`main.dart:79-92` | **简化 + 变更** | 见 §5.6 |
 | 51 | 拖放、深链、通知、单实例、自动更新 | 现状无 / MyGo 自带 | **不新增** | 不属本次迁移范围；自动更新只在 M6 作为可选项（§10） |
 | 52 | Developer ID 签名 + 公证 + DMG | 规划中（底账 §7.3 M7 未完成） | **保留（补齐）** | MyGo 自带 dmg/签名/公证流水线；额外二进制（shim/libmpv）需单独签名 |
-| 53 | 五平台 CI + Windows 源码引擎补丁链 | `.github/workflows/flutter.yml`、`tools/*.ps1`、`tools/engine-patches/` | **砍掉** | 随平台删除；新 CI 只留 macOS |
+| 53 | 五平台 CI + Windows 源码引擎补丁链 | `flutter.yml`（已只剩 macOS job）；`tools/*windows*.ps1`、`tools/engine-patches/`、`tools/win-engine-shims/` **仍在仓库** | **砍掉（工具链待清）** | Flutter 客户端的 CI 已收敛；Windows 工具链留到 M7 与客户端一起删，新 CI 用 Go 流水线（M6） |
 
 ### 2.5 重写时必须修掉的现有缺陷（不移植）
 
@@ -144,20 +144,22 @@
 | 来源详情页随播放进度整页重建 | `features/sources/source_page.dart:159` | 订阅切片：只订阅 `playing` 布尔，不订阅 position |
 | 取色在后台 isolate 解码 `dart:ui`（未验证是否成功、失败静默回退） | `features/player/stage_palette.dart` | Go 侧纯计算 + 明确错误日志；不做静默回退 |
 
-### 2.6 随平台消失的能力（明确清单）
+### 2.6 随平台消失的能力（明确清单，多数已落地）
+
+`1ff8592` 已删除四端平台目录、`app/packages/*`、`just_audio` 引擎、SAF/书签适配器与相关依赖。下表按"能力"记账，并标出**仍未清理**的残留（Windows 工具链），那是 M7 的收尾项——不要因为平台目录没了就认为平台收尾已经完成。
 
 | 能力 | 现状 | 消失原因 | 影响 |
 |---|---|---|---|
-| Android SAF 目录树授权与枚举桥 | `tingyu_saf`：Dart 155 行 + Kotlin 312 行 | 平台删除 | 无影响（macOS 用路径访问） |
-| iOS 安全作用域书签与相对路径语义 | Swift 159 行 + `local_bookmark_source_adapter.dart` | 平台删除 | `music_sources.local_bookmark` 列保留为空，兼容旧库 |
-| Windows SMTC 后端 + vendor 补丁 | `packages/audio_service_win`（含 `TINGYU_PATCHES.md`） | 平台删除 | 无影响 |
-| Linux MPRIS（D-Bus） | `audio_service_mpris` 0.2.1 | 平台删除 | 无影响 |
-| Android 通知权限 / 前台媒体服务 / 音频焦点 | `permission_handler`、`audio_session`、`audio_service` | 平台删除 | 桌面无对应概念 |
-| 移动播放引擎 | `just_audio`（ExoPlayer / AVPlayer） | 平台删除 | 只剩 libmpv 一条 |
-| Android WebView 分支（登录分流、QR） | `webview_flutter_android`、`quark_web_login_page.dart` 平台判断 | 平台删除 | macOS 仍保留内嵌 WebView（夸克网页登录） |
-| Windows 源码引擎补丁链 | `tools/*windows*.ps1`、`tools/engine-patches/` | 平台删除 | 维护负担消失（底账 §5 曾列为持续成本） |
-| Golden 视觉回归（Windows 字体/渲染基准） | `test/golden/` 12 张 | 平台删除 + 换渲染器 | 视觉回归改人工 + 组件测试 |
-| 五平台 CI 与发布矩阵 | `flutter.yml` 的 5 个 build job | 平台删除 | 新 CI 只构建 macOS |
+| Android SAF 目录树授权与枚举桥 | **已删除**：`app/packages/tingyu_saf`（Dart 155 + Kotlin 312 行） | 平台删除 | 无影响（macOS 用路径访问） |
+| iOS 安全作用域书签与相对路径语义 | **已删除**：Swift 159 行 + `local_bookmark_source_adapter.dart` | 平台删除 | `music_sources.local_bookmark` 列保留为空，兼容旧库 |
+| Windows SMTC 后端 + vendor 补丁 | **已删除**：`app/packages/audio_service_win`（含 `TINGYU_PATCHES.md`） | 平台删除 | 无影响 |
+| Linux MPRIS（D-Bus） | **已删除依赖**：`audio_service_mpris` | 平台删除 | 无影响 |
+| Android 通知权限 / 前台媒体服务 / 音频焦点 | **已删除依赖**：`permission_handler`、`audio_session` | 平台删除 | 桌面无对应概念 |
+| 移动播放引擎 | **已删除**：`just_audio_engine.dart` 与 `just_audio` 依赖 | 平台删除 | 只剩 libmpv 一条 |
+| Android WebView 分支（登录分流、QR） | **已删除**：`webview_flutter_android` 与 `quark_web_login_page.dart` 的平台判断 | 平台删除 | macOS 仍保留内嵌 WebView（夸克网页登录） |
+| Windows 源码引擎补丁链 | **仍在仓库**：`tools/*windows*.ps1`、`tools/engine-patches/`、`tools/win-engine-shims/` | 平台已删、工具链未清 | M7 收尾删除；在此之前不能对外说"平台收尾完成" |
+| Golden 视觉回归（Windows 字体/渲染基准） | **仍在**：`app/test/golden/`（12 张） | 换渲染器后失效 | MyGo 版改 `ui.Tester` + 人工截图；Flutter 版保留到切换 |
+| 五平台 CI 与发布矩阵 | **已收敛**：`flutter.yml` 只剩 analyze + macOS build + Release | 平台删除 | 新 Go 流水线属 M6 |
 
 > 记录一条不变的事实：**`music_sources.local_bookmark` 与 `local_folder_path` 两列都不删**。旧库里可能已有书签值（底账 §2.3 提到旧版 macOS 迁移过来的书签也落在这里），删列会让旧库回退时丢数据。
 
@@ -431,7 +433,7 @@ macOS 的 Now Playing 面板与控制中心按键归属于**正在出声的应�
 
 ### 5.6 关窗与退出（行为变更）
 
-现状：`applicationShouldTerminateAfterLastWindowClosed = true` + 退出前 dispose 播放器（`main.dart:106-119`）。
+现状：`applicationShouldTerminateAfterLastWindowClosed = true` + 退出前 dispose 播放器（`main.dart:79-92`）。
 新行为：
 
 | 动作 | 行为 |
@@ -458,7 +460,7 @@ macOS 的 Now Playing 面板与控制中心按键归属于**正在出声的应�
 | **M4** 界面 | 令牌 + 组件 + 全部页面（曲库/收藏/专辑/艺术家/歌单/搜索+命令面板/舞台/队列/歌词/设置/引导） | 逐页可完成原有操作；曲库 10,000 行滚动 p95 帧时间 ≤16.7 ms；舞台展开/收起可用（Hero 近似）；歌词随播放高亮 | M1（可与 M2/M3 并行） | 26–38 |
 | **M5** 元数据与图片 | 4 源 + AI + 人工匹配 + 封面缓存/取色 | 对 20 首无标签曲目触发补全 → 标题/封面/歌词落库并在列表与舞台立即刷新（不再需要重启）；离线时静默跳过不弹错 | M3、M4 | 8–12 |
 | **M6** 分发与质量 | 签名、公证、DMG、CI、`ui.Tester` 测试、无障碍键盘路径 | `spctl -a -vv` 通过；空机器安装启动无隔离警告；CI 只跑 macOS：格式化 + `go vet` + 单测 + 构建 + 公证；测试覆盖队列/循环/合并/直链错误等契约 | M5 | 6–10 |
-| **M7** 切换与收尾 | 双轨验收、数据迁移、删除 Flutter 目录与五平台 CI、文档 | 用真实库切换：MyGo 版打开同一 `library.sqlite` 不丢收藏/歌单；Flutter 版仍可回退；仓库只剩 macOS 客户端 | M6 | 5–8 |
+| **M7** 切换与收尾 | 双轨验收、数据迁移、删除 Flutter 客户端与残留 Windows 工具链、文档 | 用真实库切换：MyGo 版打开同一 `library.sqlite` 不丢收藏/歌单；Flutter 版仍可回退；仓库只剩 macOS Go 客户端，`tools/*windows*` 与 `engine-patches/` 已清 | M6 | 5–8 |
 
 顺序与并行：
 
@@ -606,7 +608,7 @@ spike ─► M0 ─► M1 ─► M2 ─┬─► M3 ─┬─► M5 ─► M6 �
 | M4 | 界面（令牌、组件、11 个页面、舞台/队列/歌词、命令面板） | 26–38 |
 | M5 | 元数据 4 源 + AI + 人工匹配 + 图片缓存与取色 | 8–12 |
 | M6 | 签名/公证/DMG/CI/测试体系/无障碍键盘路径 | 6–10 |
-| M7 | 双轨验收、数据切换、删除 Flutter 与五平台 CI、文档 | 5–8 |
+| M7 | 双轨验收、数据切换、删除 Flutter 客户端与残留 Windows 工具链、文档 | 5–8 |
 | — | 测试体系专项（`ui.Tester` + Go 单测，跨里程碑记账） | 8–12 |
 | **合计** | **纯开发** | **92–140** |
 | — | 0.x 升级储备（每季度 1–2 人日，不计入交付） | 8–12 |
@@ -677,9 +679,15 @@ spike ─► M0 ─► M1 ─► M2 ─┬─► M3 ─┬─► M5 ─► M6 �
 ## 附录 B：本方案的复核命令
 
 ```sh
-# 基线
-git log -1 --format=%H main                     # 8d008a2284c26272c73e26c018d782eca361d662
+# 基线（写作时 8d008a2；合并后 7d842eb，含 macOS-only 收缩 1ff8592）
+git log -1 --format=%H main
 git status --short
+
+# 合并后计数（手写 Dart 不含 database.g.dart；测试文件数）
+git ls-files 'app/lib/*.dart' 'app/lib/**/*.dart' | grep -v database.g.dart | wc -l
+git ls-files 'app/test/*.dart' 'app/test/**/*.dart' | wc -l
+ls app                     # 期望只有 lib/ macos/ assets/ test/ tool/
+ls tools                   # 留意 windows*.ps1、engine-patches/ 是否仍残留
 
 # 现存格式与契约
 sed -n '49,60p' app/lib/sources/local/local_library_scanner.dart
