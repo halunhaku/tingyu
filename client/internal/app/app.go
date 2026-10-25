@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -110,6 +111,7 @@ func Main() error {
 	})
 
 	mygo.App.WhenReady(func() {
+		a.installMenu()
 		a.showWindow()
 		a.initSession()
 		a.initTray()
@@ -148,6 +150,11 @@ func Main() error {
 				})
 			}
 		}
+		if rows := strings.TrimSpace(os.Getenv("TINGYU_BENCH_ROWS")); rows != "" {
+			if n, err := strconv.Atoi(rows); err == nil && n > 0 {
+				go a.runScrollBench(n)
+			}
+		}
 		if ms := strings.TrimSpace(os.Getenv("TINGYU_AUTO_QUIT_MS")); ms != "" {
 			if n, err := strconv.Atoi(ms); err == nil && n > 0 {
 				time.AfterFunc(time.Duration(n)*time.Millisecond, func() {
@@ -158,6 +165,83 @@ func Main() error {
 		}
 	})
 	return mygo.App.Run()
+}
+
+// runScrollBench is the real-window half of the M4 frame-time harness: it
+// replaces the visible library with n synthetic rows (same data, new titles)
+// and scrolls the table one step every 16 ms, so MYGO_FRAME_STATS=all logs
+// real window frames. It writes no database: the rows live only in the view
+// model. It needs a visible, unoccluded window (a held window draws no frames,
+// which is why the committed measurement uses ui.Tester; see the M4 record).
+func (a *application) runScrollBench(rows int) {
+	<-a.readyCh
+	time.Sleep(400 * time.Millisecond)
+	// The benchmark needs its frames drawn: bring the window forward and keep
+	// it above other windows while it scrolls.
+	mygo.App.Focus()
+	a.showWindow()
+	a.winMu.Lock()
+	if a.win != nil {
+		a.win.SetAlwaysOnTop(true)
+	}
+	a.winMu.Unlock()
+	time.Sleep(200 * time.Millisecond)
+	if a.lib == nil {
+		a.logf("bench: library unavailable")
+		return
+	}
+	tracks, err := a.lib.Tracks(context.Background())
+	if err != nil || len(tracks) == 0 {
+		a.logf("bench: no source tracks: %v", err)
+		return
+	}
+	base := tracks[0]
+	for _, track := range tracks {
+		if strings.HasPrefix(track.FilePath, "/") {
+			base = track
+			break
+		}
+	}
+	synthetic := make([]library.Track, 0, rows)
+	revs := make(map[string]uint64, rows)
+	for i := 0; i < rows; i++ {
+		track := base
+		track.ID = fmt.Sprintf("bench-%05d", i)
+		track.Title = fmt.Sprintf("基准曲目 %05d", i)
+		track.Artist = fmt.Sprintf("艺术家 %02d", i%37)
+		track.Album = fmt.Sprintf("基准专辑 %03d", i%211)
+		track.PlayCount = 0
+		synthetic = append(synthetic, track)
+		revs[track.ID] = 1
+	}
+	revision := a.model.Revision() + 1
+	a.updateWindow(func() {
+		a.model.SetTracks(synthetic, revision, revs)
+		a.model.State().Library().LoadAll()
+		a.model.State().OpenPage("library")
+	})
+	a.logf("bench: start rows=%d frame=%s", rows, time.Now().Format(time.RFC3339Nano))
+	ticker := time.NewTicker(16 * time.Millisecond)
+	defer ticker.Stop()
+	row := 0
+	for range ticker.C {
+		row += 8
+		if row >= rows-1 {
+			row = rows - 1
+			a.updateWindow(func() { a.model.State().Library().Table().ScrollTo(row, ui.Start) })
+			break
+		}
+		current := row
+		a.updateWindow(func() { a.model.State().Library().Table().ScrollTo(current, ui.Start) })
+	}
+	time.Sleep(400 * time.Millisecond)
+	a.winMu.Lock()
+	if a.win != nil {
+		a.win.SetAlwaysOnTop(false)
+	}
+	a.winMu.Unlock()
+	a.logf("bench: done rows=%d frame=%s", rows, time.Now().Format(time.RFC3339Nano))
+	mygo.App.Quit()
 }
 
 // prepare opens the library and starts the playback kernel. It returns the
@@ -200,6 +284,12 @@ func (a *application) prepare() error {
 
 	a.model = shell.New(tracks, a.path, loadErr)
 	a.model.SetActions(a)
+	if a.dataDir != "" {
+		a.model.ConfigureDataDir(a.dataDir, a.lib != nil && a.lib.Writable())
+	}
+	if a.covers != "" {
+		a.model.SetCoversDir(a.covers)
+	}
 
 	a.engine, err = a.newEngine()
 	if err != nil {
@@ -222,6 +312,7 @@ func (a *application) prepare() error {
 	}
 	if a.lib != nil {
 		a.reloadTracks()
+		a.reloadSources()
 	}
 	return loadErr
 }
@@ -305,6 +396,18 @@ func (a *application) updateWindow(fn func()) {
 	}
 }
 
+func (a *application) reloadSources() {
+	if a.lib == nil {
+		return
+	}
+	sources, err := a.lib.Sources(context.Background())
+	if err != nil {
+		a.logf("library: reload sources: %v", err)
+		return
+	}
+	a.updateWindow(func() { a.model.SetSources(sources) })
+}
+
 func (a *application) reloadTracks() {
 	if a.lib == nil {
 		return
@@ -338,6 +441,8 @@ func (a *application) PlayTracks(tracks []library.Track, start int) error {
 	a.session.force.Store(true)
 	track := tracks[start]
 	a.logf("play: request %q (%s) index=%d", track.Title, track.FilePath, start)
+	rotated := append(append([]library.Track{}, tracks[start:]...), tracks[:start]...)
+	a.updateWindow(func() { a.model.SetQueue(rotated, 0) })
 	if err := a.control.PlayTracks(tracks, start); err != nil {
 		a.logf("play: failed %q: %v", track.Title, err)
 		a.updateWindow(func() { a.model.SetError(err.Error()) })
@@ -381,6 +486,58 @@ func (a *application) SetVolume(volume float64) error {
 	}
 	a.logf("play: volume %.2f", volume)
 	return a.control.SetVolume(volume)
+}
+
+// Queue returns the controller's current queue for the queue page.
+func (a *application) Queue() []library.Track {
+	if a.control == nil {
+		return nil
+	}
+	return a.control.Queue()
+}
+
+// SyncSource re-scans a source's local folder through the same scan path as
+// "add directory" (the kernel has the scan; only the button was missing).
+func (a *application) SyncSource(source library.Source) {
+	if strings.TrimSpace(source.LocalFolderPath) == "" {
+		a.setStatus("来源 " + source.Name + " 没有本地目录，无法同步")
+		return
+	}
+	go a.scanFolder(source.LocalFolderPath)
+}
+
+// SyncAllSources re-scans every local source in turn. Remote sources need M3,
+// so they are skipped rather than attempted and failed.
+func (a *application) SyncAllSources() {
+	if a.lib == nil || !a.lib.Writable() {
+		a.setStatus("只读模式：设置 TINGYU_DATA_DIR 指向曲库副本后才能同步")
+		return
+	}
+	go func() {
+		sources, err := a.lib.Sources(context.Background())
+		if err != nil {
+			a.setStatus("无法读取来源：" + err.Error())
+			return
+		}
+		for _, source := range sources {
+			if source.Kind != "local" || strings.TrimSpace(source.LocalFolderPath) == "" {
+				continue
+			}
+			a.scanFolder(source.LocalFolderPath)
+		}
+	}()
+}
+
+// RevealInFinder shows a local file in Finder; remote paths are ignored.
+func (a *application) RevealInFinder(track library.Track) {
+	if !filepath.IsAbs(track.FilePath) {
+		return
+	}
+	if err := exec.Command("open", "-R", track.FilePath).Start(); err != nil {
+		a.setStatus("无法在访达中显示：" + err.Error())
+		return
+	}
+	a.logf("finder: reveal %s", track.FilePath)
 }
 
 func (a *application) CycleRepeat() player.RepeatMode {
@@ -587,6 +744,7 @@ func (a *application) scanFolder(folder string) {
 	a.logf("scan: folder=%q files=%d stored=%d added=%d updated=%d removed=%d authoritative=%v elapsed=%s",
 		folder, result.Files, count, merge.Added, merge.Updated, merge.Removed, result.Authoritative(), time.Since(started).Round(time.Millisecond))
 	a.reloadTracks()
+	a.reloadSources()
 }
 
 func (a *application) finishScan(status string, err error, started time.Time) {
