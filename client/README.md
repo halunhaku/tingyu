@@ -1,8 +1,8 @@
 # client/：听屿 macOS 客户端（MyGo）
 
-迁移方案 **M1** 的实现（方案 §6 M1 行）：选目录扫描入库、进程内 libmpv 播放、系统媒体会话（Now Playing / 媒体键）、关窗续播。**不实现远端来源**（WebDAV/夸克，M3）、**不做完整界面重画**（M4）、**不做元数据补全**（M5）；**不碰 `app/`**。
+迁移方案 **M1 + M2** 的实现：M1 是选目录扫描入库、进程内 libmpv 播放、系统媒体会话（Now Playing / 媒体键）、关窗续播；M2 是内核生产化（9 格式矩阵、远端 Range/鉴权、gapless、循环三态、失败快照、倍速/音量、200 首队列）。**不实现远端来源**（WebDAV/夸克，M3）、**不做完整界面重画**（M4）、**不做元数据补全**（M5）；**不碰 `app/`**。
 
-验收记录与逐条证据：[`docs/plan/2026-10-25-macos-mygo-m1-record.md`](../docs/plan/2026-10-25-macos-mygo-m1-record.md)。
+验收记录与逐条证据：[M1 记录](../docs/plan/2026-10-25-macos-mygo-m1-record.md)、[M2 记录](../docs/plan/2026-10-25-macos-mygo-m2-record.md)。
 
 ```
 client/
@@ -12,15 +12,20 @@ client/
 ├── internal/
 │   ├── library/                 SQLite：schema 补差、查询、扫描合并、播放历史、revision
 │   ├── scan/                    目录遍历 + 9 格式元数据 + 内容寻址封面
-│   ├── mpv/                     purego libmpv 绑定与播放内核
-│   ├── player/                  播放控制器（预取/世代/循环/历史）
+│   ├── mpv/                     purego libmpv 绑定与播放内核（失败分类、日志信号）
+│   ├── player/                  播放控制器（预取/世代/循环/历史/换队列契约）
 │   ├── mainq/                   主线程投递（libdispatch）
 │   ├── mediasession/            Now Playing / 远程命令 / 封面 / App Nap
 │   ├── shell/                   UI：曲库表格、传输条、扫描面板
-│   └── app/                     装配：窗口、菜单栏、扫描编排、退出
+│   ├── app/                     装配：窗口、菜单栏、扫描编排、退出
+│   ├── rangesrv/                M2 验收用 HTTP 服务：强制 Range、校验 Authorization、可切换 401/403/断网
+│   └── accept/                  M2 验收 harness（9 格式 / 远端 / gapless / 队列 / 循环 / 倍速音量）
+├── cmd/accept/                  验收 harness 入口（不随产品发布）
 ├── scripts/
 │   ├── bundle.sh                编译 + 拷贝并签名 libmpv/FFmpeg frameworks + 组装 .app
-│   └── measure-coldstart.sh     在库副本上测冷启动（进程启动 → 首帧）
+│   ├── measure-coldstart.sh     在库副本上测冷启动（进程启动 → 首帧）
+│   ├── gen-m2-media.sh          ffmpeg 生成 M2 验收媒体（9 格式/gapless/200 首/远端）
+│   └── run-m2-accept.sh         构建并运行 M2 验收 harness，输出 evidence
 └── README.md
 ```
 
@@ -63,9 +68,23 @@ TINGYU_DATA_DIR=/tmp/tingyu-copy /tmp/tingyu
 ## 播放与媒体会话
 
 - 进程内 libmpv（`purego` dlopen，无 cgo）：`idle=yes`、`vo=null`、`gapless-audio=yes`、`ao=coreaudio`。
-- 队列：懒解析 + 预取 2 + 世代号 + armed 闸门；换队列 `stop → playlist-clear → append`；`Get` 完成判定用 `end-file(EOF)` + 末项下标。
-- 单曲循环下发给内核（`loop-file=inf`），列表循环由控制器重播已装载队列，顺序播完停在末尾。
-- 失败只进快照（不抛异常），只有重新出声且位置前进才撤下。
+- 队列：懒解析 + 预取 2 + 世代号 + armed 闸门；换队列 `stop → playlist-clear → append`；完成判定用 `end-file(EOF)` + 末项下标（`eof-reached`/`idle-active` 在曲间与结尾都不可靠，M1 §12.2）。
+- 解析与追加在同一世代的 `resolveGate` 上串行：预取与「下一首」点击不会把队列顺序或下标搞错；解析失败的曲目被跳过，不会打断整条队列。
+- 「下一首」在预取还没追上时会先同步解析一首（最多等 2 秒），否则引擎没有下一项、按钮像坏了；此时**不会**回绕到第一首。
+- 单曲循环下发给内核（`loop-file=inf`），列表循环由控制器重播已装载队列，顺序播完停在末尾并可用 `Play` 重播。
+- 失败只进快照（不抛异常，不静默）：`Failure` 带 `Kind`（network/unauthorized/not-found/decode）、`Message`（中文可执行提示）、`Detail`（引擎原文）与 HTTP `Status`。分类依据是 FFmpeg 在 mpv 日志里打的 `HTTP error 401` 等行（mpv 自己的错误只有 "Failed to open"）。恢复后（重新出声）才撤下；失败后 `Play()` 会重新 `playlist-play-index`，所以「网络回来了点播放」能继续。
+- 每曲头经 `on_load` 钩子下发 `http-header-fields`；切换到无头的曲目会**清空**该属性，避免上一首的 `Authorization` 泄漏给下一个 URL。
+- `Close` 先等在途的预取 goroutine 结束再销毁 mpv core（否则预取会把结果 append 到已销毁的内核）。
+
+## M2 验收 harness
+
+```bash
+./scripts/gen-m2-media.sh                 # ffmpeg → build/m2-media（不入库）
+./scripts/run-m2-accept.sh                # 全部相位，证据在 build/m2-evidence/<时间戳>/
+./scripts/run-m2-accept.sh -phases remote # 单相位：formats|remote|gapless|queue|loops|controls
+```
+
+harness 直接驱动生产的 `internal/mpv` + `internal/player`（与应用同一套装配，只是没有窗口），逐项写出 `report.json` 与服务端请求日志。它会真的出声（coreaudio）；gapless 相位改用 mpv 的 `ao=pcm` 把实际输出渲染成 WAV，再分析静音段与 `AO: [` 设备重建次数。
 - Now Playing / 远程命令：`purego/objc` 直连 MediaPlayer；`(id,index,duration)` 去重，进度 500 ms 节流；播放时持有 App Nap 抑制，退出清空。
 - 关窗继续播放；`App.OnWindowAllClosed` 保留进程，菜单栏有「显示窗口/上一首/播放暂停/下一首/退出」；`Cmd+Q` 走 `OnBeforeQuit` 清 Now Playing、关 mpv、关库。
 
@@ -98,7 +117,7 @@ CGO_ENABLED=0 go build ./... && CGO_ENABLED=0 go vet ./...
 go test ./... && go test -race ./...
 ```
 
-覆盖：只读拒绝、schema 补差、扫描合并语义、revision、播放历史/时长回填、目录遍历、9 格式解析、`mpv_event` 布局、控制器队列/循环/完成/预取世代、扫描进度与双击播放的界面断言。
+覆盖：只读拒绝、schema 补差、扫描合并语义、revision、播放历史/时长回填、目录遍历、9 格式解析、`mpv_event` 布局、控制器队列/循环/完成/预取世代/并发追加顺序/关闭时等待预取、扫描进度与双击播放的界面断言；M2 新增失败分类（HTTP 状态、断网、解码、本地缺失）、未知时长 ≠ loading、buffered 钳制、Range/鉴权测试服务的 401/403/chunked/断网语义。
 
 ## 本阶段不做
 
