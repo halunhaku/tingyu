@@ -137,7 +137,7 @@ class PlaybackSnapshot {
 
   /// 按值比较，**包括** [failure]。
   ///
-  /// 引擎的进度事件每 ~60ms（media_kit）/ ~200ms（just_audio）推一份新快照，
+  /// 引擎的进度事件每 ~60ms（media_kit）推一份新快照，
   /// 若只按实例比较，Riverpod 会把每一次推进都当成"状态变了"，所有 watcher
   /// （迷你条、进度条、歌词……）跟着每次 tick 重建。这里做值比较后，只有真正
   /// 变化的快照才会让 `updateShouldNotify` 成立。

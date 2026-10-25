@@ -8,10 +8,10 @@ import 'playback_item.dart';
 import 'playback_snapshot.dart';
 import 'playback_error_formatter.dart';
 
-/// 桌面（macOS / Windows / Linux）播放引擎，基于 `media_kit`（libmpv）。
+/// macOS 播放引擎，基于 `media_kit`（libmpv）。
 ///
 /// 使用前必须已执行 `MediaKit.ensureInitialized()`。
-/// 选型理由：桌面三平台解码能力一致（FFmpeg）、gapless、缓冲可控，且支持带鉴权头的 URL。
+/// 选型理由：libmpv（FFmpeg）解码能力完整、gapless、缓冲可控，且支持带鉴权头的 URL。
 final class MediaKitEngine extends PlaybackEngineBase {
   MediaKitEngine() : _player = Player() {
     _subscriptions = <StreamSubscription<void>>[

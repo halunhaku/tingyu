@@ -82,32 +82,17 @@ Future<void> showTrackMenu(
 bool _isLocalFile(Track track) => track.filePathOrUrl.startsWith('/');
 
 String _revealLabel() {
-  if (Platform.isMacOS) {
-    return '在访达中显示'; // guard-ok: 菜单文案按宿主平台命名文件管理器
-  }
-  if (Platform.isWindows) {
-    return '在资源管理器中显示'; // guard-ok: 菜单文案按宿主平台命名文件管理器
-  }
-  return '在文件管理器中显示';
+  return '在访达中显示';
 }
 
 Future<void> _revealInFileManager(BuildContext context, Track track) async {
   final String path = track.filePathOrUrl;
   try {
-    if (Platform.isMacOS) {
-      // guard-ok: 只有宿主平台知道「在文件管理器中显示」对应哪个命令
-      await Process.run('open', <String>['-R', path]);
-    } else if (Platform.isWindows) {
-      // guard-ok: 同上，explorer 的选中语义在不同平台完全不同
-      await Process.run('explorer', <String>['/select,', path]);
-    } else {
-      // Linux 桌面没有 open -R；xdg-open 目录即文件管理器。
-      await Process.run('xdg-open', <String>[File(path).parent.path]);
-    }
+    await Process.run('open', <String>['-R', path]);
   } on Object catch (error) {
-    debugPrint('[library] 打开文件管理器失败: $error');
+    debugPrint('[library] 打开访达失败: $error');
     if (context.mounted) {
-      TySnack.show(context, '无法打开文件管理器');
+      TySnack.show(context, '无法打开访达');
     }
   }
 }

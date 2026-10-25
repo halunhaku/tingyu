@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 
 import 'package:drift/drift.dart' show Value;
 import 'package:file_selector/file_selector.dart';
-import 'package:tingyu_saf/tingyu_saf.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -243,72 +241,26 @@ class SourcesPage extends ConsumerWidget {
   }
 
   Future<void> _addLocalFolder(BuildContext context, WidgetRef ref) async {
-    // Android：必须走 SAF 目录授权（分区存储下直接读 /sdcard 会 EACCES）。
-    // iOS：文档选择器 + 安全作用域书签（沙盒外目录拿不到可持久化的路径）。
-    // 桌面：普通文件系统路径，用系统目录选择器。
+    // macOS 单端：普通文件系统路径，用系统目录选择器。
     final String id = 'src-${DateTime.now().microsecondsSinceEpoch}';
-    // guard-ok: 目录选择器按平台能力分支（SAF / 安全书签只存在于对应平台），不是布局分支。
-    if (Platform.isAndroid) {
-      final String? treeUri = await TingyuSaf.pickDirectory();
-      if (treeUri == null || treeUri.isEmpty) {
-        return; // 用户取消
-      }
-      await ref
-          .read(sourceRepositoryProvider)
-          .upsert(
-            MusicSourcesCompanion.insert(
-              id: id,
-              name: _displayNameOfTreeUri(treeUri),
-              kind: 'local',
-              localBookmark: Value<String?>(treeUri),
-            ),
-          );
-      // guard-ok: 同上，iOS 的安全作用域书签只有 iOS 需要。
-    } else if (Platform.isIOS) {
-      final PickedFolder? picked = await TingyuSaf.pickFolderBookmark();
-      if (picked == null) {
-        return; // 用户取消
-      }
-      await ref
-          .read(sourceRepositoryProvider)
-          .upsert(
-            MusicSourcesCompanion.insert(
-              id: id,
-              name: _displayNameOfPath(picked.path),
-              kind: 'local',
-              localBookmark: Value<String?>(picked.bookmark),
-            ),
-          );
-    } else {
-      final String? path = await getDirectoryPath(confirmButtonText: '选择');
-      if (path == null || path.isEmpty) {
-        return;
-      }
-      await ref
-          .read(sourceRepositoryProvider)
-          .upsert(
-            MusicSourcesCompanion.insert(
-              id: id,
-              name: _displayNameOfPath(path),
-              kind: 'local',
-              localFolderPath: Value<String?>(path),
-            ),
-          );
+    final String? path = await getDirectoryPath(confirmButtonText: '选择');
+    if (path == null || path.isEmpty) {
+      return;
     }
+    await ref
+        .read(sourceRepositoryProvider)
+        .upsert(
+          MusicSourcesCompanion.insert(
+            id: id,
+            name: _displayNameOfPath(path),
+            kind: 'local',
+            localFolderPath: Value<String?>(path),
+          ),
+        );
     if (!context.mounted) {
       return;
     }
     await _syncAndReport(context, ref, id);
-  }
-
-  /// 从 SAF tree URI 里取一个可读的目录名（形如 `content://.../tree/primary%3AMusic`）。
-  static String _displayNameOfTreeUri(String treeUri) {
-    final String tail = treeUri.split('/').last;
-    final String decoded = Uri.decodeComponent(tail);
-    final int colon = decoded.indexOf(':');
-    return _displayNameOfPath(
-      colon >= 0 ? decoded.substring(colon + 1) : decoded,
-    );
   }
 
   /// 取目录路径的最后一段作为来源名（`/a/b/音乐` → `音乐`）。
@@ -1059,40 +1011,19 @@ Future<void> confirmDeleteSource(
   await SecureStore().delete(
     SecureStore.accountFor(SecureStore.webdavPasswordPrefix, source.id),
   );
-  // 同时归还系统授权，避免留下僵尸权限：Android 的 SAF 目录授权、iOS 的安全作用域。
-  final String? token = source.localBookmark;
-  // guard-ok: 系统授权归还 API 只在对应平台存在（能力分支，不是依赖平台的布局/样式）。
-  if (Platform.isAndroid && token != null && token.startsWith('content://')) {
-    await TingyuSaf.releasePermission(token);
-    // guard-ok: 同上。
-  } else if (Platform.isIOS && token != null && token.isNotEmpty) {
-    await TingyuSaf.releaseBookmark(token);
-  }
 }
 
-/// 平台入口层：手机直接扫码（WebView 会被夸克拦截）；桌面扫码 / 网页 / Cookie。
+/// 平台入口层：macOS 提供扫码 / 网页 / Cookie 三种登录方式。
 Future<QuarkSession?> obtainQuarkSession(
   BuildContext context, {
   QuarkAuthCore? authCore,
 }) async {
   final QuarkAuthCore core = authCore ?? QuarkAuthCore();
-  const List<_QuarkLoginMethod> mobileMethods = <_QuarkLoginMethod>[
+  const List<_QuarkLoginMethod> methods = <_QuarkLoginMethod>[
     _QuarkLoginMethod.qr,
+    _QuarkLoginMethod.web,
+    _QuarkLoginMethod.paste,
   ];
-  final List<_QuarkLoginMethod> methods = context.traits.touchPrimary
-      ? mobileMethods
-      : <_QuarkLoginMethod>[
-          _QuarkLoginMethod.qr,
-          if (Platform.isMacOS) _QuarkLoginMethod.web,
-          _QuarkLoginMethod.paste,
-        ];
-  if (methods.length == 1) {
-    return Navigator.of(context).push<QuarkSession>(
-      MaterialPageRoute<QuarkSession>(
-        builder: (_) => QuarkQrLoginPage(authCore: core),
-      ),
-    );
-  }
   final _QuarkLoginMethod? method = await showTyDialog<_QuarkLoginMethod>(
     context,
     child: TyDialog(

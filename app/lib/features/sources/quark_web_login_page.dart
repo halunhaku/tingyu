@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 import '../../design/components/buttons.dart';
 import '../../design/components/feedback.dart';
@@ -109,31 +107,14 @@ class _QuarkWebLoginPageState extends State<QuarkWebLoginPage> {
             _handleNavigation(request),
       ),
     );
-    // 控制台日志打给 logcat，便于线上排查登录卡点。
+    // 控制台日志打给系统日志，便于线上排查登录卡点。
     await _controller.setOnConsoleMessage(
       (JavaScriptConsoleMessage message) => debugPrint(
         '[quark-webview] ${message.level.name}: ${message.message}',
       ),
     );
     await _controller.setUserAgent(await _userAgent());
-    await _enableAndroidThirdPartyCookies();
     await _controller.loadRequest(Uri.parse(QuarkWebLoginPage.loginUrl));
-  }
-
-  /// CAS 登录跨 uop / pan / drive 多个域；Android 默认拦截第三方 Cookie。
-  Future<void> _enableAndroidThirdPartyCookies() async {
-    final Object cookiePlatform = WebViewCookieManager().platform;
-    final Object controllerPlatform = _controller.platform;
-    if (controllerPlatform is AndroidWebViewController) {
-      // 默认 false：桌面登录页按 360px 排版，二维码被媒体查询藏掉，只剩两个空输入框。
-      await controllerPlatform.setUseWideViewPort(true);
-      if (cookiePlatform is AndroidWebViewCookieManager) {
-        await cookiePlatform.setAcceptThirdPartyCookies(
-          controllerPlatform,
-          true,
-        );
-      }
-    }
   }
 
   /// 非 http(s) 跳转：尽量抽成 https 回退地址，继续留在本页登录。
@@ -302,15 +283,6 @@ class _QuarkWebLoginPageState extends State<QuarkWebLoginPage> {
         <Factory<OneSequenceGestureRecognizer>>{
           Factory<EagerGestureRecognizer>(EagerGestureRecognizer.new),
         };
-    if (Platform.isAndroid) {
-      return WebViewWidget.fromPlatformCreationParams(
-        params: AndroidWebViewWidgetCreationParams(
-          controller: _controller.platform,
-          displayWithHybridComposition: true,
-          gestureRecognizers: gestures,
-        ),
-      );
-    }
     return WebViewWidget(controller: _controller, gestureRecognizers: gestures);
   }
 

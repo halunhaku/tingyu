@@ -1,16 +1,11 @@
-import 'dart:io' show Platform;
-
-import 'just_audio_engine.dart';
 import 'media_kit_engine.dart';
 import 'playback_engine.dart';
 
-/// 按平台创建播放引擎。
+/// 创建播放引擎。
 ///
-/// 桌面 → `media_kit`（libmpv，统一解码与缓冲控制）；
-/// 移动 → `just_audio`（系统解码器 + 音频会话，配合 `audio_service` 实现后台播放与锁屏控制）。
+/// 听屿现只保留 macOS 单端：`media_kit`（libmpv）是唯一引擎，
+/// 统一解码、缓冲控制、任意 URL + 自定义请求头。
+/// 界面只认 [PlaybackEngine] 接口，换实现不影响上层。
 PlaybackEngine createPlaybackEngine() {
-  if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-    return MediaKitEngine();
-  }
-  return JustAudioEngine();
+  return MediaKitEngine();
 }

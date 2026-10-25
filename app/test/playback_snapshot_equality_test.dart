@@ -6,7 +6,7 @@ import 'package:tingyu/playback/playback_item.dart';
 import 'package:tingyu/playback/playback_snapshot.dart';
 import 'package:tingyu/playback/tingyu_audio_handler.dart';
 
-/// 引擎的进度事件每 ~60ms（media_kit）/ ~200ms（just_audio）推一份快照。快照若只按
+/// 引擎的进度事件每 ~60ms（media_kit）推一份快照。快照若只按
 /// 实例比较，Riverpod 会把每一次推进都当成"状态变了"，迷你条、进度条、歌词等所有
 /// watcher 跟着重建。这个文件守住"值没变就不通知"。
 final class _TickingEngine extends PlaybackEngineBase {

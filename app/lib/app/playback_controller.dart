@@ -157,11 +157,11 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
           await _ensureAhead();
         }
       case PlaybackRepeatMode.off:
-        // just_audio 在播完后 playing 仍为 true（要显式 pause/stop 才变），
+        // libmpv 在播完后 playing 仍可能为 true（要显式 pause 才变），
         // 不暂停的话 UI 与系统媒体会话会一直显示"正在播放"。
         //
-        // 另外必须回到 0：引擎停在 completed 上时 `play()` 是空操作（just_audio
-        // 文档明说），`seekToNext()` 也没有下一首，暂停后就永远出不了声 —— 用户看到
+        // 另外必须回到 0：引擎停在 completed 上时 `play()` 是空操作，
+        // `seekToNext()` 也没有下一首，暂停后就永远出不了声 —— 用户看到
         // "播放键点了没反应"。seek(0) 后 play() 至少能把最后一首重放出来。
         await handler.pause();
         await handler.seek(Duration.zero);
@@ -271,7 +271,7 @@ class PlaybackController extends Notifier<PlaybackSnapshot> {
     }
     if (state.processing == PlaybackProcessing.completed) {
       // 播完停下后再按播放键：引擎停在 completed 上，`play()` 是空操作
-      // （just_audio 文档明说；libmpv 同理会 eof 停住）。必须先把位置拨回去，
+      // （libmpv 会 eof 停住）。必须先把位置拨回去，
       // 否则这个键永远是死的。整轮播完的场景直接重放已解析队列，比只重播最后一首
       // 更符合"再听一遍"的预期。
       if (_repeatMode == PlaybackRepeatMode.all && _queue.isNotEmpty) {
