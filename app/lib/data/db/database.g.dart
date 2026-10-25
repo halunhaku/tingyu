@@ -1666,8 +1666,8 @@ class MusicSource extends DataClass implements Insertable<MusicSource> {
   final String kind;
   final String? localFolderPath;
 
-  /// 系统授权目录的持久化凭据：Android 是 SAF tree URI，iOS 是安全作用域书签（base64）。
-  /// 旧版 macOS 迁移过来的书签也落在这里（桌面来源仍按 `local_folder_path` 访问）。
+  /// 旧版移动端（Android SAF / iOS 安全作用域书签）的授权凭据。
+  /// macOS 单端不再写入，仅保留列以兼容既有曲库与旧版迁移数据。
   final String? localBookmark;
   final String? webdavUrl;
   final String? webdavUsername;

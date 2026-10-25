@@ -63,7 +63,7 @@ class OnboardingPage extends ConsumerWidget {
                       const _SourceHint(
                         icon: Icons.folder_outlined,
                         title: '本地文件夹',
-                        description: 'macOS / Windows 选目录；Android 走系统文件授权',
+                        description: '选择一个音乐目录，扫描后自动入库',
                       ),
                       const SizedBox(height: TySpace.x16),
                       const _SourceHint(

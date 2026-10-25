@@ -6,8 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-/// 凭据存储：WebDAV 密码、Quark Cookie 等只走系统安全存储
-/// （macOS/iOS Keychain、Windows DPAPI、Linux libsecret）。
+/// 凭据存储：WebDAV 密码、Quark Cookie 等只走系统安全存储（macOS Keychain）。
 ///
 /// 与旧版 Swift 的差异：`QuarkCookieStore.swift` 会把 Cookie 额外写一份明文文件兜底，
 /// 这里**不保留**该行为。
@@ -148,11 +147,7 @@ class SecureStore {
     final File file = await _fallbackFile(account);
     await file.writeAsString(value, flush: true);
     // 仅本人可读写：等价于"本地文件存凭据"的最小暴露面。
-    // chmod 只存在于 POSIX；Windows 回退文件继续继承当前用户配置目录的
-    // ACL。两者不是同一套权限模型，但这不能靠调用不存在的命令来弥补。
-    if (!Platform.isWindows) {
-      await Process.run('chmod', <String>['600', file.path]);
-    }
+    await Process.run('chmod', <String>['600', file.path]);
   }
 
   Future<String?> _readFile(String account) async {

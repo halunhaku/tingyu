@@ -1,16 +1,14 @@
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:just_audio/just_audio.dart' as ja;
 
-import '../sources/local/folder_permission.dart';
 import '../sources/quark/quark_drive_client.dart';
 import '../sources/webdav/webdav_client.dart';
 
 /// 播放失败原因的中文化归纳与格式化。
 ///
-/// 抹平 Android (ExoPlayer)、iOS (AVPlayer)、桌面 (libmpv) 以及上游直链解析器
-/// 的原始堆栈和底层英文错误，归纳为用户看得懂的中文提示，同时保留已有业务异常的明确说明。
+/// 抹平 libmpv 以及上游直链解析器的原始堆栈和底层英文错误，
+/// 归纳为用户看得懂的中文提示，同时保留已有业务异常的明确说明。
 abstract final class PlaybackErrorFormatter {
   static const String _cleartextBlocked = '系统已阻止明文 HTTP 请求，请使用 HTTPS 链接';
   static const String _notFound = '音频文件不存在或已被移动';
@@ -31,9 +29,6 @@ abstract final class PlaybackErrorFormatter {
     }
 
     // 1. 已有成熟中文文案的领域业务异常，直接优先保留其描述
-    if (error is FolderPermissionLostException) {
-      return error.toString();
-    }
     if (error is QuarkException) {
       return error.message;
     }
@@ -180,9 +175,6 @@ abstract final class PlaybackErrorFormatter {
   }
 
   static String _extractRawMessage(Object error) {
-    if (error is ja.PlayerException) {
-      return error.message ?? error.toString();
-    }
     if (error is PlatformException) {
       return error.message ?? error.toString();
     }

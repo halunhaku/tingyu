@@ -147,7 +147,7 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
               '播放引擎',
               ref.read(audioHandlerProvider).engineName,
             ),
-            _infoRow('系统媒体会话', 'Now Playing / 媒体键 / 锁屏（audio_service）'),
+            _infoRow('系统媒体会话', 'Now Playing / 媒体键（audio_service）'),
           ],
         ),
         _group(
@@ -188,8 +188,8 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
         ),
         _group(
           SettingsSections.about,
-          footer: '这是纯 Swift 版的重写版本，桌面端（macOS / Windows / Linux）与移动端共用一套代码；'
-              '旧版仍在维护期内，迁移方案见 docs/crossplatform-migration.md。',
+          footer: '这是 Flutter 重写版，现只维护 macOS 单端；'
+              '旧版 Swift 实现冻结在 legacy-swift/，历史迁移记录见 docs/crossplatform-migration.md。',
           children: <Widget>[
             _infoRow('版本', '0.1.0 (Flutter 预览版)'),
             // 构建戳：开发期用来确认"手机上装的到底是哪一次构建"。

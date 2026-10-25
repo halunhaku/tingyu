@@ -3,14 +3,12 @@ import 'dart:io';
 import 'dart:ui' show AppExitResponse, AppExitType, PlatformDispatcher;
 
 import 'package:audio_service/audio_service.dart';
-import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:media_kit/media_kit.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import 'app/preferences.dart';
 import 'app/providers.dart';
@@ -33,13 +31,13 @@ import 'sources/local/local_library_scanner.dart';
 
 Future<void> main() async {
   // 未捕获的异步错误默认只打印一行 "Unhandled Exception"，没有栈，也看不出是谁发的请求 ——
-  // 离线时 just_audio 的本地代理拉上游流失败就是这样漏出来的（见 docs §23 复核）。
+  // 离线时拉上游流失败就是这样漏出来的（见 docs §23 复核）。
   // 整个主体放进 zone 里跑，并带上栈打印：行为不变，但下一次能直接定位到具体请求。
   await runZonedGuarded<Future<void>>(_run, _reportUnhandled);
 }
 
 void _reportUnhandled(Object error, StackTrace stack) {
-  // 依赖内部漏出来的错误常常带着空栈（just_audio 的本地代理就是这样 rethrow 的），
+  // 依赖内部漏出来的错误常常带着空栈（本地代理就是这样 rethrow 的），
   // 这时 `osError` 里的 address/errno 是唯一能指认"是哪条请求"的线索。
   final OSError? osError = switch (error) {
     HandshakeException(:final OSError? osError) => osError,
@@ -62,41 +60,16 @@ Future<void> _run() async {
     return true;
   };
 
-  if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-    MediaKit.ensureInitialized();
-  }
-  // 桌面系统媒体会话：macOS 走 audio_service 自带实现，Windows 由 audio_service_win
-  // 接管 SMTC，Linux 由 audio_service_mpris 接管 MPRIS2；两者均通过
-  // dartPluginClass 自动注册，无需在此手动初始化。
-
-  // Android 13+ 的系统媒体通知需要运行时授权；被拒绝也不影响播放（只是通知栏不显示）。
-  if (Platform.isAndroid) {
-    await Permission.notification.request();
-  }
-
-  // 全面屏手势：内容画到状态栏与手势条之下，留白交给各页面的安全区。
-  // Android 15+ 对 targetSdk 35+ 的应用本来就强制 edge-to-edge，这里显式打开是为
-  // 了让更低版本表现一致，而不是"开启一个可选功能"。
-  if (Platform.isAndroid || Platform.isIOS) {
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  }
-
-  // 移动端必须显式配置音频会话：决定音频焦点、被电话/其他应用打断时的行为，
-  // 以及 iOS 的后台播放与锁屏控制（旧版在 AudioPlayerService 里做了同样的配置）。
-  if (Platform.isAndroid || Platform.isIOS) {
-    final AudioSession session = await AudioSession.instance;
-    await session.configure(const AudioSessionConfiguration.music());
-  }
+  MediaKit.ensureInitialized();
+  // 系统媒体会话：macOS 由 audio_service 自带实现接管 Now Playing 与媒体键，
+  // 通过 dartPluginClass 自动注册，无需在此手动初始化。
 
   final PlaybackEngine engine = createPlaybackEngine();
   final TingyuAudioHandler handler =
       await AudioService.init<TingyuAudioHandler>(
         builder: () => TingyuAudioHandler(engine),
-        config: const AudioServiceConfig(
-          androidNotificationChannelId: 'com.halunhaku.tingyu.audio',
-          androidNotificationChannelName: '听屿播放',
-          androidNotificationOngoing: true,
-        ),
+        // 听屿只跑 macOS：通知渠道等移动端配置不适用，保留默认值即可。
+        config: const AudioServiceConfig(),
       );
 
   await _runDataHarness();
@@ -213,9 +186,6 @@ class _TingyuAppState extends ConsumerState<TingyuApp> {
         );
       },
     );
-    if (!Platform.isMacOS) {
-      return app;
-    }
     final ProviderContainer container = ProviderScope.containerOf(
       context,
       listen: false,
