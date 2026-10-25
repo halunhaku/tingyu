@@ -20,11 +20,52 @@ type Item struct {
 	Headers map[string]string
 }
 
+// FailureKind classifies a failure so the UI can say something a person can
+// act on. mpv's own error is a generic "Failed to open" for every cause; the
+// HTTP status and transport failures are only visible in the lines FFmpeg logs
+// (see loadFailure), which is what turns a 401 into "the link expired or you
+// have no permission" instead of a dead end.
+type FailureKind int
+
+const (
+	// FailureUnknown is a load failure nothing in the log explained.
+	FailureUnknown FailureKind = iota
+	// FailureNetwork means the server could not be reached at all.
+	FailureNetwork
+	// FailureUnauthorized covers 401/403 and expired direct links.
+	FailureUnauthorized
+	// FailureNotFound covers 404 and local files that no longer exist.
+	FailureNotFound
+	// FailureDecode means the bytes arrived but could not be decoded.
+	FailureDecode
+)
+
+func (k FailureKind) String() string {
+	switch k {
+	case FailureNetwork:
+		return "network"
+	case FailureUnauthorized:
+		return "unauthorized"
+	case FailureNotFound:
+		return "not-found"
+	case FailureDecode:
+		return "decode"
+	}
+	return "unknown"
+}
+
 // Failure is a load/decode failure. It travels in Snapshot, never as an error
 // to the caller: the UI listens to snapshots (plan §4.4).
 type Failure struct {
+	Kind FailureKind
+	// Message is the user-facing sentence (Chinese, actionable).
 	Message string
-	Title   string // filled by the controller, which knows the track
+	// Detail is the engine's own text, for logs and bug reports. It never
+	// replaces Message in the UI.
+	Detail string
+	// Status is the HTTP status when the log carried one, else 0.
+	Status int
+	Title  string // filled by the controller, which knows the track
 }
 
 // Processing is the playback phase a UI shows.
@@ -75,6 +116,10 @@ type Config struct {
 	Options map[string]string
 	// AudioClientName is what the audio device calls this app.
 	AudioClientName string
+	// LogLevel raises mpv's log level above the default "warn" (info, debug,
+	// trace). At any level above warn every message also goes to Debug, which
+	// is how the acceptance harness counts audio-device rebuilds.
+	LogLevel string
 	// Debug logs notable events when non-nil.
 	Debug func(format string, args ...any)
 }
@@ -94,7 +139,6 @@ type Player struct {
 	header map[string]string // uri → http-header-fields
 
 	paused         bool
-	eof            bool
 	idle           bool
 	completed      bool
 	pausedForCache bool
@@ -107,8 +151,25 @@ type Player struct {
 	path           string
 	index          int
 
+	// needsReload marks a playlist entry whose last load failed. Play then has
+	// to re-issue playlist-play-index: mpv keeps the entry but sets pause=no on
+	// an idle core does nothing, which is exactly the dead play button users
+	// hit after a dropped network.
+	needsReload bool
+	// headerApplied is the http-header-fields value currently set on the core,
+	// so switching to a file without headers clears the previous ones instead
+	// of leaking the last track's Authorization to the next URL.
+	headerApplied string
+	// loadStatus and loadLog belong to the current load attempt (reset on
+	// start-file). FFmpeg reports the HTTP status and transport errors only in
+	// its log lines, and those lines are the difference between a readable
+	// "link expired" and a useless "loading failed".
+	loadStatus int
+	loadLog    []string
+
 	filesLoaded int
 	underruns   int
+	aoInits     int
 	lastError   string
 	failure     *Failure
 	lastPos     float64
@@ -166,7 +227,7 @@ func NewPlayer(lib *Lib, cfg Config) (*Player, error) {
 		lib.terminateDestroy(ctx)
 		return nil, fmt.Errorf("mpv: initialize: %s", lib.ErrorString(rc))
 	}
-	if rc := lib.requestLog(ctx, bp("warn")); rc < 0 {
+	if rc := lib.requestLog(ctx, bp(p.logLevel())); rc < 0 {
 		p.Close()
 		return nil, fmt.Errorf("mpv: request_log_messages: %s", lib.ErrorString(rc))
 	}
@@ -181,7 +242,6 @@ func NewPlayer(lib *Lib, cfg Config) (*Player, error) {
 		id     uint64
 	}{
 		{"pause", FormatFlag, 1},
-		{"eof-reached", FormatFlag, 2},
 		{"playback-time", FormatDouble, 3},
 		{"duration", FormatDouble, 4},
 		{"idle-active", FormatFlag, 5},
@@ -209,8 +269,22 @@ func NewPlayer(lib *Lib, cfg Config) (*Player, error) {
 	return p, nil
 }
 
+// logLevel is mpv's requested log level; warn unless the caller asked for
+// more detail.
+func (p *Player) logLevel() string {
+	switch strings.ToLower(strings.TrimSpace(p.cfg.LogLevel)) {
+	case "info":
+		return "info"
+	case "debug":
+		return "debug"
+	case "trace":
+		return "trace"
+	}
+	return "warn"
+}
+
 var propNames = map[uint64]string{
-	1: "pause", 2: "eof-reached", 3: "playback-time", 4: "duration",
+	1: "pause", 3: "playback-time", 4: "duration",
 	5: "idle-active", 6: "volume", 7: "speed", 8: "cache-buffering-state",
 	9: "path", 10: "playlist-pos", 11: "paused-for-cache", 12: "demuxer-cache-time",
 }
@@ -272,18 +346,54 @@ func (p *Player) onLogMessage(event *cEvent) {
 	}
 	message := (*cEventLogMessage)(event.Data)
 	level := goString(unsafe.Pointer(message.Level))
+	prefix := goString(unsafe.Pointer(message.Prefix))
 	text := goString(unsafe.Pointer(message.Text))
+	severity := strings.ToLower(level)
 	p.mu.Lock()
-	if strings.EqualFold(level, "error") || strings.EqualFold(level, "fatal") {
+	if severity == "error" || severity == "fatal" {
 		p.lastError = strings.TrimSpace(text)
 	}
 	if strings.Contains(strings.ToLower(text), "underrun") {
 		p.underruns++
 	}
-	p.mu.Unlock()
-	if p.cfg.Debug != nil && (strings.EqualFold(level, "error") || strings.EqualFold(level, "fatal")) {
-		p.cfg.Debug("mpv: %s: %s", level, text)
+	// "AO: [coreaudio] 48000Hz …" is printed once per audio device
+	// (re)initialization. One line across an album is the structural half of
+	// the gapless evidence: the device stream was never torn down.
+	if strings.Contains(text, "AO: [") {
+		p.aoInits++
 	}
+	if severity == "error" || severity == "warn" || severity == "fatal" {
+		p.recordLoadSignal(text)
+	}
+	p.mu.Unlock()
+	if p.cfg.Debug == nil {
+		return
+	}
+	if severity == "error" || severity == "fatal" {
+		p.cfg.Debug("mpv: %s: %s", level, text)
+		return
+	}
+	if p.logLevel() != "warn" {
+		p.cfg.Debug("mpv: %s: %s%s", level, prefix, text)
+	}
+}
+
+// recordLoadSignal keeps the HTTP status and the last few warning/error lines
+// of this load. Caller holds p.mu.
+func (p *Player) recordLoadSignal(text string) {
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return
+	}
+	if match := httpStatusPattern.FindStringSubmatch(trimmed); match != nil && p.loadStatus == 0 {
+		if status, err := strconv.Atoi(match[1]); err == nil {
+			p.loadStatus = status
+		}
+	}
+	if len(p.loadLog) >= 8 {
+		p.loadLog = p.loadLog[1:]
+	}
+	p.loadLog = append(p.loadLog, trimmed)
 }
 
 func (p *Player) onHook(event *cEvent) {
@@ -303,19 +413,31 @@ func (p *Player) onHook(event *cEvent) {
 // applyHeader sets http-header-fields for the file mpv is about to open. The
 // per-file loadfile options the plan first assumed do not exist on 0.36
 // (spike §6.1); this hook is media_kit's own approach on the same library.
+//
+// The property is global, so it is set to the value of the file being opened
+// even when that value is empty: leaving a previous track's Authorization in
+// place would send one source's credentials to the next URL.
 func (p *Player) applyHeader() {
 	path, ok := p.propString("path")
-	if !ok || path == "" {
+	if !ok {
 		return
 	}
 	p.mu.Lock()
-	header, found := p.header[path]
+	header := p.header[path]
+	applied := p.headerApplied
+	p.headerApplied = header
 	p.mu.Unlock()
-	if !found {
+	if applied == header {
 		return
 	}
-	if err := p.setPropertyString("http-header-fields", header); err != nil && p.cfg.Debug != nil {
-		p.cfg.Debug("mpv: set http-header-fields for %s: %v", path, err)
+	if err := p.setPropertyString("http-header-fields", header); err != nil {
+		if p.cfg.Debug != nil {
+			p.cfg.Debug("mpv: set http-header-fields for %s: %v", path, err)
+		}
+		return
+	}
+	if p.cfg.Debug != nil {
+		p.cfg.Debug("mpv: http-header-fields=%q for %s", header, path)
 	}
 }
 
@@ -334,9 +456,6 @@ func (p *Player) onProperty(event *cEvent) {
 		case "pause":
 			significant = p.paused != value
 			p.paused = value
-		case "eof-reached":
-			significant = p.eof != value
-			p.eof = value
 		case "idle-active":
 			significant = p.idle != value
 			p.idle = value
@@ -406,8 +525,10 @@ func (p *Player) onStartFile() {
 	p.position = 0
 	p.duration = 0
 	p.cacheTime = 0
-	p.eof = false
 	p.completed = false
+	p.needsReload = false
+	p.loadStatus = 0
+	p.loadLog = p.loadLog[:0]
 	p.lastPos = 0
 	p.mu.Unlock()
 	p.forcePublish()
@@ -417,6 +538,7 @@ func (p *Player) onFileLoaded() {
 	p.mu.Lock()
 	p.filesLoaded++
 	p.failure = nil
+	p.needsReload = false
 	p.mu.Unlock()
 	p.forcePublish()
 }
@@ -429,13 +551,19 @@ func (p *Player) onEndFile(event *cEvent) {
 	p.mu.Lock()
 	switch end.Reason {
 	case EndFileError:
-		message := p.lib.ErrorString(end.Error)
+		detail := p.lib.ErrorString(end.Error)
 		if p.lastError != "" {
-			message += ": " + p.lastError
+			detail += ": " + p.lastError
 		}
 		if p.failure == nil {
-			p.failure = &Failure{Message: message}
+			uri := p.path
+			if uri == "" && p.index >= 0 && p.index < len(p.items) {
+				uri = p.items[p.index].URI
+			}
+			p.failure = loadFailure(uri, detail, p.loadStatus, strings.Join(p.loadLog, " | "))
 		}
+		p.needsReload = true
+		p.completed = false
 	case EndFileEOF:
 		// The last entry ending is the end of the queue. eof-reached alone
 		// fires between gapless entries too, so the index is the decisive
@@ -494,11 +622,18 @@ func (p *Player) snapshotLocked() Snapshot {
 	}
 	p.lastPos = p.position
 
+	buffered := p.position + p.cacheTime
+	if p.duration > 0 && buffered > p.duration {
+		buffered = p.duration
+	}
+	if buffered < p.position {
+		buffered = p.position
+	}
 	snapshot := Snapshot{
 		At:        time.Now(),
 		Position:  secondsDuration(p.position),
 		Duration:  secondsDuration(p.duration),
-		Buffered:  secondsDuration(p.position + p.cacheTime),
+		Buffered:  secondsDuration(buffered),
 		Index:     p.index,
 		Rate:      p.speed,
 		Volume:    p.volume / 100,
@@ -507,11 +642,15 @@ func (p *Player) snapshotLocked() Snapshot {
 		Underruns: p.underruns,
 		Failure:   p.failure,
 	}
-	snapshot.Playing = !p.paused && !p.eof && !p.idle && p.path != ""
+	// completed is set only by end-file(EOF) on the last entry. It is
+	// deliberately not inferred from eof-reached/idle-active: eof-reached is
+	// true for a moment between gapless entries too, and idle-active never
+	// becomes true on this build at the end of the playlist (M1 record §12.2).
+	snapshot.Playing = !p.paused && !p.idle && !p.completed && p.path != "" && p.failure == nil
 	switch {
 	case len(p.items) == 0:
 		snapshot.Processing = Idle
-	case p.completed || (p.eof && p.idle):
+	case p.completed:
 		snapshot.Processing = Completed
 		snapshot.Playing = false
 	case p.pausedForCache || (p.cacheBuffering > 0 && p.cacheBuffering < 100):
@@ -562,6 +701,15 @@ func (p *Player) Underruns() int {
 	return p.underruns
 }
 
+// AOInits is how many times the audio output was (re)initialized. One across
+// an album is the structural half of the gapless evidence: the device stream
+// was never torn down between tracks.
+func (p *Player) AOInits() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.aoInits
+}
+
 // FilesLoaded is how many files mpv has finished loading.
 func (p *Player) FilesLoaded() int {
 	p.mu.Lock()
@@ -604,7 +752,6 @@ func (p *Player) SetQueue(items []Item, start int) error {
 	p.path = items[start].URI
 	p.position = 0
 	p.duration = 0
-	p.eof = false
 	p.completed = false
 	p.failure = nil
 	p.lastError = ""
@@ -670,15 +817,21 @@ func sortedMapKeys(m map[string]string) []string {
 	return keys
 }
 
-// Play unpauses. A queue stopped at its end is restarted at the current index
-// first, because mpv ignores pause=no when it sits idle after EOF.
+// Play unpauses. A queue stopped at its end, or an entry whose last load
+// failed, is restarted at the current index first: mpv ignores pause=no when
+// it sits idle, which is the dead play button users hit after a dropped
+// network (M2 acceptance: the failure must be recoverable).
 func (p *Player) Play() error {
 	p.mu.Lock()
-	idle := p.idle || p.eof
+	reload := p.needsReload || p.completed || p.idle
 	index := p.index
 	hasItems := len(p.items) > 0
+	if reload {
+		p.completed = false
+		p.needsReload = false
+	}
 	p.mu.Unlock()
-	if idle && hasItems && index >= 0 {
+	if reload && hasItems && index >= 0 {
 		if err := p.Command("playlist-play-index", strconv.Itoa(index)); err != nil && p.cfg.Debug != nil {
 			p.cfg.Debug("mpv: replay index %d: %v", index, err)
 		}
