@@ -1,5 +1,5 @@
 name: tingyu
-description: "听屿：连接本地文件夹、WebDAV 私人云与夸克网盘的跨平台音乐播放器。"
+description: "听屿：连接本地文件夹、WebDAV 私人云与夸克网盘的 macOS 音乐播放器。"
 publish_to: 'none'
 version: 2.0.0-preview+5
 
@@ -9,12 +9,6 @@ environment:
 dependencies:
   audio_metadata_reader: ^1.8.0
   audio_service: ^0.18.19
-  audio_service_mpris: ^0.2.1
-  # Windows SMTC 后端：上游 0.0.3 有野线程竞态闪退（见 packages/audio_service_win/TINGYU_PATCHES.md），
-  # vendor 进仓库自带补丁，不再用 hosted 版。
-  audio_service_win:
-    path: packages/audio_service_win
-  audio_session: ^0.2.4
   cached_network_image: ^4.0.0
   dio: ^5.11.1
   drift: ^2.35.0
@@ -24,19 +18,13 @@ dependencies:
   flutter_riverpod: ^3.4.3
   flutter_secure_storage: ^11.1.0
   go_router: ^18.0.1
-  just_audio: ^0.10.6
   media_kit: ^1.2.6
   media_kit_libs_audio: ^1.0.7
   path: ^1.9.1
   path_provider: ^2.1.6
-  permission_handler: ^11.4.0
-  # 本地插件：Android SAF 目录授权与枚举（Android 10+ 访问本地音乐的唯一正路）
   qr_flutter: ^4.1.0
-  tingyu_saf:
-    path: packages/tingyu_saf
   url_launcher: ^6.3.2
   webview_flutter: ^4.14.1
-  webview_flutter_android: ^4.14.1
   xml: ^7.0.1
 dev_dependencies:
   flutter_test:

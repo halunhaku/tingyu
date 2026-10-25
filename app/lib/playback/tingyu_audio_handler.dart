@@ -9,12 +9,10 @@ import 'playback_snapshot.dart';
 /// 播放引擎与系统媒体会话之间的唯一桥接点。
 ///
 /// 职责边界：把 [PlaybackEngine] 的快照翻译成 `audio_service` 的
-/// [playbackState] / [mediaItem] / [queue]，反向把系统指令（媒体键、锁屏、
-/// SMTC、MPRIS、通知栏）转发给引擎。
-/// 平台映射由 `audio_service` 及其平台实现完成：
-/// macOS/iOS → MPNowPlayingInfoCenter + MPRemoteCommandCenter，
-/// Android → MediaSession，Windows → SMTC（`audio_service_win`），
-/// Linux → MPRIS2（`audio_service_mpris`）。
+/// [playbackState] / [mediaItem] / [queue]，反向把系统指令（媒体键、Now Playing）
+/// 转发给引擎。
+/// 平台映射由 `audio_service` 的 macOS 实现完成：
+/// macOS → MPNowPlayingInfoCenter + MPRemoteCommandCenter。
 final class TingyuAudioHandler extends BaseAudioHandler
     with QueueHandler, SeekHandler {
   TingyuAudioHandler(

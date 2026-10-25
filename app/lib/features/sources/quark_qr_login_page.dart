@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:tingyu_saf/tingyu_saf.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../design/components/buttons.dart';
@@ -149,9 +147,6 @@ class _QuarkQrLoginPageState extends State<QuarkQrLoginPage>
           });
         case QuarkQrPhase.scanned:
           setState(() => _status = '已确认，正在返回听屿…');
-          if (Platform.isAndroid) {
-            await TingyuSaf.bringToForeground();
-          }
           try {
             final QuarkSession authenticated = await widget.authCore
                 .authenticate(result.cookie ?? '');
@@ -184,15 +179,10 @@ class _QuarkQrLoginPageState extends State<QuarkQrLoginPage>
   /// 同机无法扫描自己的屏幕，可把二维码链接交给夸克 App 打开确认。
   Future<void> _openInQuarkApp(String qrContent) async {
     try {
-      bool opened = false;
-      if (Platform.isAndroid) {
-        opened = await TingyuSaf.openInQuark(qrContent);
-      } else {
-        opened = await launchUrl(
-          Uri.parse(qrContent),
-          mode: LaunchMode.externalApplication,
-        );
-      }
+      final bool opened = await launchUrl(
+        Uri.parse(qrContent),
+        mode: LaunchMode.externalApplication,
+      );
       if (mounted) {
         setState(
           () => _status = opened ? '已打开夸克 App，请在里面点确认' : '没找到夸克 App，请先安装后再点按钮',

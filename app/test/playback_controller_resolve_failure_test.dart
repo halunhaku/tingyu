@@ -11,8 +11,6 @@ import 'package:tingyu/playback/tingyu_audio_handler.dart';
 
 import 'dart:io';
 
-import 'package:tingyu/sources/local/folder_permission.dart';
-
 /// 取直链失败（离线时的夸克）发生在引擎之前，没有引擎事件可以依赖：
 /// 以前它只进 logcat，界面"点了没反应"。现在控制器把同样的失败写进快照，
 /// 由 `PlaybackFailureListener` 弹提示 —— 这个文件守住这条行为。
@@ -81,14 +79,6 @@ final class _NetworkErrorResolver extends TrackResolver {
   @override
   Future<PlaybackItem> resolve(Track track) async =>
       throw const SocketException('OS Error: Network is unreachable');
-}
-
-final class _PermissionLostResolver extends TrackResolver {
-  _PermissionLostResolver(super.ref);
-
-  @override
-  Future<PlaybackItem> resolve(Track track) async =>
-      throw const FolderPermissionLostException();
 }
 
 Track _track(String id, String title) => Track(
@@ -210,29 +200,6 @@ void main() {
     expect(failure, isNotNull);
     expect(failure!.title, '晴天');
     expect(failure.message, '无法播放：网络连接失败，请检查网络设置');
-  });
-
-  test('解析遭遇本地目录授权失效时，快照文案保留明确指引', () async {
-    final ProviderContainer container = ProviderContainer(
-      overrides: [
-        audioHandlerProvider.overrideWithValue(
-          TingyuAudioHandler(_IdleEngine()),
-        ),
-        trackResolverProvider.overrideWith(
-          (Ref ref) => _PermissionLostResolver(ref),
-        ),
-      ],
-    );
-    addTearDown(container.dispose);
-
-    await container.read(playbackProvider.notifier).playTracks(<Track>[
-      _track('t1', '晴天'),
-    ]);
-
-    final PlaybackFailure? failure = container.read(playbackProvider).failure;
-    expect(failure, isNotNull);
-    expect(failure!.title, '晴天');
-    expect(failure.message, '无法播放：本地目录授权已失效，请重新选择音乐文件夹');
   });
 
   test('引擎随后推的快照不会把解析失败擦掉（旧会话仍在 tick）', () async {

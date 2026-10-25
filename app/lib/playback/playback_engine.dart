@@ -82,8 +82,8 @@ abstract base class PlaybackEngineBase implements PlaybackEngine {
   @override
   PlaybackSnapshot get current => _snapshot;
 
-  /// 默认不改变引擎的循环行为，真实引擎各自覆盖（just_audio → LoopMode，media_kit →
-  /// PlaylistMode）。放在基类而不是强制每个实现，是因为引擎不支持时控制器的
+  /// 默认不改变引擎的循环行为，真实引擎各自覆盖（media_kit → PlaylistMode）。
+  /// 放在基类而不是强制每个实现，是因为引擎不支持时控制器的
   /// completed 兜底（回到 0 重播）仍然成立，只是单曲循环会有一声静音空档。
   @override
   Future<void> setRepeatMode(PlaybackRepeatMode mode) async {}

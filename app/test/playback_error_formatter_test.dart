@@ -2,15 +2,13 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:just_audio/just_audio.dart' as ja;
 import 'package:tingyu/playback/playback_error_formatter.dart';
-import 'package:tingyu/sources/local/folder_permission.dart';
 import 'package:tingyu/sources/quark/quark_drive_client.dart';
 import 'package:tingyu/sources/webdav/webdav_client.dart';
 
 void main() {
   group('PlaybackErrorFormatter 播放失败文案中文化归类', () {
-    test('明文 HTTP 请求被系统拦截（Android cleartext 策略）', () {
+    test('明文 HTTP 请求被系统拦截', () {
       final PlatformException ex = PlatformException(
         code: '1',
         message: 'Cleartext HTTP traffic to dl.example.com not permitted',
@@ -30,12 +28,10 @@ void main() {
       );
       expect(PlaybackErrorFormatter.format(fsEx), '音频文件不存在或已被移动');
 
-      final ja.PlayerException ja404 = ja.PlayerException(
-        0,
-        'Response code: 404',
-        0,
+      expect(
+        PlaybackErrorFormatter.format('Response code: 404'),
+        '音频文件不存在或已被移动',
       );
-      expect(PlaybackErrorFormatter.format(ja404), '音频文件不存在或已被移动');
 
       expect(
         PlaybackErrorFormatter.format(
@@ -70,11 +66,7 @@ void main() {
       );
     });
 
-    test('目录授权失效与各来源认证/权限异常', () {
-      const FolderPermissionLostException folderEx =
-          FolderPermissionLostException();
-      expect(PlaybackErrorFormatter.format(folderEx), '本地目录授权已失效，请重新选择音乐文件夹');
-
+    test('各来源认证/权限异常', () {
       const QuarkUnauthenticated quarkAuth = QuarkUnauthenticated();
       expect(PlaybackErrorFormatter.format(quarkAuth), '夸克网盘登录凭据已失效，请重新登录');
 
@@ -90,12 +82,10 @@ void main() {
         'WebDAV 拒绝访问该目录 (403 Forbidden)',
       );
 
-      final ja.PlayerException ja403 = ja.PlayerException(
-        0,
-        'Response code: 403',
-        0,
+      expect(
+        PlaybackErrorFormatter.format('Response code: 403'),
+        '服务器拒绝访问，可能无权限或链接已过期',
       );
-      expect(PlaybackErrorFormatter.format(ja403), '服务器拒绝访问，可能无权限或链接已过期');
     });
 
     test('流控与频控限流', () {
@@ -106,19 +96,14 @@ void main() {
           WebDavRateLimited.temporaryFlowControl();
       expect(PlaybackErrorFormatter.format(webdavRate), contains('503 临时流控'));
 
-      final ja.PlayerException ja429 = ja.PlayerException(
-        0,
-        'Response code: 429',
-        0,
+      expect(
+        PlaybackErrorFormatter.format('Response code: 429'),
+        '请求过于频繁或服务器维护中，请稍候再试',
       );
-      expect(PlaybackErrorFormatter.format(ja429), '请求过于频繁或服务器维护中，请稍候再试');
-
-      final ja.PlayerException ja503 = ja.PlayerException(
-        0,
-        'Response code: 503',
-        0,
+      expect(
+        PlaybackErrorFormatter.format('Response code: 503'),
+        '请求过于频繁或服务器维护中，请稍候再试',
       );
-      expect(PlaybackErrorFormatter.format(ja503), '请求过于频繁或服务器维护中，请稍候再试');
     });
 
     test('Java IllegalArgumentException 与非法参数/URL', () {
@@ -133,12 +118,12 @@ void main() {
     });
 
     test('音频格式不受支持或文件损坏', () {
-      final ja.PlayerException formatEx = ja.PlayerException(
-        0,
-        'UnrecognizedInputFormatException: None of the available extractors could read the stream',
-        0,
+      expect(
+        PlaybackErrorFormatter.format(
+          'UnrecognizedInputFormatException: None of the available extractors could read the stream',
+        ),
+        '音频格式不受支持或文件已损坏',
       );
-      expect(PlaybackErrorFormatter.format(formatEx), '音频格式不受支持或文件已损坏');
 
       expect(
         PlaybackErrorFormatter.format('Demuxer error: no stream found'),
@@ -146,10 +131,7 @@ void main() {
       );
     });
 
-    test('ExoPlayer 原生通用 Source error', () {
-      final ja.PlayerException srcEx = ja.PlayerException(0, 'Source error', 0);
-      expect(PlaybackErrorFormatter.format(srcEx), '音频资源读取失败');
-
+    test('原生通用 Source error', () {
       expect(PlaybackErrorFormatter.format('Source error'), '音频资源读取失败');
     });
 
