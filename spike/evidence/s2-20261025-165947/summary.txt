@@ -1,0 +1,15 @@
+应用退出码: 由上面 wait 决定（0=正常）
+收到的媒体会话命令总数: 105
+toggle 收到: 101
+changePlaybackPosition(seek) 收到: 0
+--- 命令延迟 ---
+latency: toggle 9.0 ms; pause 9.0 ms; play 7.0 ms
+--- mediaremoted：我们的进程是否成为 activePlayerPath ---
+Creating nowPlayingClient for 【 􁊸 LOCL (Mac) ❯ 􀐥 com.halunhaku.tingyu.spike.spike-app (19188) ❯ 􀽍 default 】
+activePlayerPath changed from <【 􁊸 LOCL (Mac) ❯ 􀐥 com.bytedance.douyin.desktop (75363) ❯ 􀽍 default 】> to <【 􁊸 LOCL (Mac) ❯ 􀐥 com.halunhaku.tingyu.spike.spike-app (19188) ❯ 􀽍 default 】>
+activePlayerPath changed from <【 􁊸 LOCL (Mac) ❯ 􀐥 com.halunhaku.tingyu.spike.spike-app (19188) ❯ 􀽍 default 】> to <【 􁊸 LOCL (Mac) ❯ 􀐥 com.bytedance.douyin.desktop (75363) ❯ 􀽍 default 】>
+--- mediaremoted：supportedCommands / CanBeNowPlayingPlayer ---
+匹配行数: 23
+--- pmset 断言（来自 app.log）---
+17:00:16.338 MARK auto: pmset 断言 pid 19188(spike-app): [0x0003660e000190ab] 00:00:00 PreventUserIdleSystemSleep named: "spike-mediasession: playing audio" | pid 769(coreaudiod): [0x000365f20001909d] 00:00:28 PreventUserIdleSystemSleep named: "com.apple.audio.B
+17:00:22.206 MARK auto: 释放后 pmset 断言 pid 769(coreaudiod): [0x000365f20001909d] 00:00:33 PreventUserIdleSystemSleep named: "com.apple.audio.BuiltInSpeakerDevice.context.preventuseridlesleep" | Resources: audio-out BuiltInSpeakerDevice | pid 769(coreaudiod): [0x

@@ -1,0 +1,2 @@
+{"apiVersion":131073,"at":"2026-10-25T17:05:08.443639+08:00","kind":"init","options":{"ao":"coreaudio","audio-client-name":"听屿Spike","audio-display":"no","cache":"yes","demuxer-max-bytes":"1048576","demuxer-readahead-secs":"1","gapless-audio":"yes","idle":"yes","keep-open":"no","msg-level":"all=info","terminal":"no","vo":"null","volume-max":"100"}}
+{"at":"2026-10-25T17:05:08.444232+08:00","kind":"closed"}

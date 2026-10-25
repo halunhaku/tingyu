@@ -1,0 +1,136 @@
+[   0.000][d][global] user path: '/Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/evidence/s1-20261025-170450/s1/mpv-remote-range-player.log' -> '/Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/evidence/s1-20261025-170450/s1/mpv-remote-range-player.log'
+[   8.657][v][cplayer] mpv 0.36.0 Copyright © 2000-2023 mpv/MPlayer/mplayer2 projects
+[   8.657][v][cplayer]  built on Sun Sep 24 10:53:39 2023
+[   8.657][v][cplayer] FFmpeg version: 6.0
+[   8.657][v][cplayer] FFmpeg library versions:
+[   8.657][v][cplayer]    libavutil       58.2.100
+[   8.657][v][cplayer]    libavcodec      60.3.100
+[   8.657][v][cplayer]    libavformat     60.3.100
+[   8.657][v][cplayer]    libswscale      7.1.100
+[   8.657][v][cplayer]    libavfilter     9.3.100
+[   8.657][v][cplayer]    libswresample   4.10.100
+[   8.657][v][cplayer] 
+[   8.657][v][cplayer] Configuration: -Dgpl=false -Dcplayer=false -Dlibmpv=true -Dbuild-date=true -Dtests=false -Dta-leak-report=false -Dcdda=disabled -Dcplugins=disabled -Ddvbin=disabled -Ddvdnav=disabled -Diconv=enabled -Djavascript=disabled -Dlcms2=disabled -Dlibarchive=disabled -Dlibavdevice=disabled -Dlibbluray=disabled -Dlua=disabled -Dpthread-debug=disabled -Drubberband=disabled -Dsdl2=disabled -Dsdl2-gamepad=disabled -Dstdatomic=disabled -Duchardet=disabled -Duwp=disabled -Dvapoursynth=disabled -Dvector=disabled -Dwin32-internal-pthreads=disabled -Dzimg=disabled -Dzlib=disabled -Dalsa=disabled -Daudiounit=disabled -Dcoreaudio=enabled -Djack=disabled -Dopenal=disabled -Dopensles=disabled -Doss-audio=disabled -Dpipewire=disabled -Dpulse=disabled -Dsdl2-audio=disabled -Dsndio=disabled -Dwasapi=disabled -Dcaca=disabled -Dcocoa=enabled -Dd3d11=disabled -Ddirect3d=disabled -Ddrm=disabled -Degl=disabled -Degl-android=disabled -Degl-angle=disabled -Degl-angle-lib=disabled -Degl-angle-win32=disabled -Degl-drm=disabled -Degl-wayland=disabled -Degl-x11=disabled -Dgbm=disabled -Dgl=disabled -Dgl-cocoa=disabled -Dgl-dxinterop=disabled -Dgl-win32=disabled -Dgl-x11=disabled -Djpeg=disabled -Dlibplacebo=disabled -Drpi=disabled -Dsdl2-video=disabled -Dshaderc=disabled -Dsixel=disabled -Dspirv-cross=disabled -Dplain-gl=disabled -Dvdpau=disabled -Dvdpau-gl-x11=disabled -Dvaapi=disabled -Dvaapi-drm=disabled -Dvaapi-wayland=disabled -Dvaapi-x11=disabled -Dvaapi-x-egl=disabled -Dvulkan=disabled -Dwayland=disabled -Dx11=disabled -Dxv=disabled -Dandroid-media-ndk=disabled -Dcuda-hwaccel=disabled -Dcuda-interop=disabled -Dd3d-hwaccel=disabled -Dd3d9-hwaccel=disabled -Dgl-dxinterop-d3d9=disabled -Dios-gl=disabled -Drpi-mmal=disabled -Dvideotoolbox-gl=disabled -Dmacos-10-11-features=disabled -Dmacos-10-12-2-features=disabled -Dmacos-10-14-features=disabled -Dmacos-cocoa-cb=disabled -Dmacos-media-player=disabled -Dmacos-touchbar=disabled -Dswift-build=disabled -Dswift-flags= -Dhtml-build=disabled -Dmanpage-build=disabled -Dpdf-build=disabled -Dprefix=/Users/runner/work/libmpv-darwin-build/libmpv-darwin-build/build/intermediate/mpv_macos-arm64-audio --cross-file=/Users/runner/work/libmpv-darwin-build/libmpv-darwin-build/cross-files/macos-arm64.ini
+[   8.657][v][cplayer] List of enabled features: av-channel-layout avif_muxer bsd-fstatfs build-date cocoa coreaudio darwin debug ffmpeg glob glob-posix iconv jpegxl libdl libm osx-thread-name posix posix_shm threads
+[   8.657][v][cplayer] mpv 0.36.0 Copyright © 2000-2023 mpv/MPlayer/mplayer2 projects
+[   8.657][v][cplayer]  built on Sun Sep 24 10:53:39 2023
+[   8.657][v][cplayer] FFmpeg version: 6.0
+[   8.657][v][cplayer] FFmpeg library versions:
+[   8.657][v][cplayer]    libavutil       58.2.100
+[   8.657][v][cplayer]    libavcodec      60.3.100
+[   8.657][v][cplayer]    libavformat     60.3.100
+[   8.657][v][cplayer]    libswscale      7.1.100
+[   8.657][v][cplayer]    libavfilter     9.3.100
+[   8.657][v][cplayer]    libswresample   4.10.100
+[   8.657][v][cplayer] 
+[   8.658][v][cplayer] Configuration: -Dgpl=false -Dcplayer=false -Dlibmpv=true -Dbuild-date=true -Dtests=false -Dta-leak-report=false -Dcdda=disabled -Dcplugins=disabled -Ddvbin=disabled -Ddvdnav=disabled -Diconv=enabled -Djavascript=disabled -Dlcms2=disabled -Dlibarchive=disabled -Dlibavdevice=disabled -Dlibbluray=disabled -Dlua=disabled -Dpthread-debug=disabled -Drubberband=disabled -Dsdl2=disabled -Dsdl2-gamepad=disabled -Dstdatomic=disabled -Duchardet=disabled -Duwp=disabled -Dvapoursynth=disabled -Dvector=disabled -Dwin32-internal-pthreads=disabled -Dzimg=disabled -Dzlib=disabled -Dalsa=disabled -Daudiounit=disabled -Dcoreaudio=enabled -Djack=disabled -Dopenal=disabled -Dopensles=disabled -Doss-audio=disabled -Dpipewire=disabled -Dpulse=disabled -Dsdl2-audio=disabled -Dsndio=disabled -Dwasapi=disabled -Dcaca=disabled -Dcocoa=enabled -Dd3d11=disabled -Ddirect3d=disabled -Ddrm=disabled -Degl=disabled -Degl-android=disabled -Degl-angle=disabled -Degl-angle-lib=disabled -Degl-angle-win32=disabled -Degl-drm=disabled -Degl-wayland=disabled -Degl-x11=disabled -Dgbm=disabled -Dgl=disabled -Dgl-cocoa=disabled -Dgl-dxinterop=disabled -Dgl-win32=disabled -Dgl-x11=disabled -Djpeg=disabled -Dlibplacebo=disabled -Drpi=disabled -Dsdl2-video=disabled -Dshaderc=disabled -Dsixel=disabled -Dspirv-cross=disabled -Dplain-gl=disabled -Dvdpau=disabled -Dvdpau-gl-x11=disabled -Dvaapi=disabled -Dvaapi-drm=disabled -Dvaapi-wayland=disabled -Dvaapi-x11=disabled -Dvaapi-x-egl=disabled -Dvulkan=disabled -Dwayland=disabled -Dx11=disabled -Dxv=disabled -Dandroid-media-ndk=disabled -Dcuda-hwaccel=disabled -Dcuda-interop=disabled -Dd3d-hwaccel=disabled -Dd3d9-hwaccel=disabled -Dgl-dxinterop-d3d9=disabled -Dios-gl=disabled -Drpi-mmal=disabled -Dvideotoolbox-gl=disabled -Dmacos-10-11-features=disabled -Dmacos-10-12-2-features=disabled -Dmacos-10-14-features=disabled -Dmacos-cocoa-cb=disabled -Dmacos-media-player=disabled -Dmacos-touchbar=disabled -Dswift-build=disabled -Dswift-flags= -Dhtml-build=disabled -Dmanpage-build=disabled -Dpdf-build=disabled -Dprefix=/Users/runner/work/libmpv-darwin-build/libmpv-darwin-build/build/intermediate/mpv_macos-arm64-audio --cross-file=/Users/runner/work/libmpv-darwin-build/libmpv-darwin-build/cross-files/macos-arm64.ini
+[   8.658][v][cplayer] List of enabled features: av-channel-layout avif_muxer bsd-fstatfs build-date cocoa coreaudio darwin debug ffmpeg glob glob-posix iconv jpegxl libdl libm osx-thread-name posix posix_shm threads
+[   8.658][d][global] home path: '' -> '-'
+[   8.658][d][global] user path: '~~home/' -> ''
+[   8.658][d][global] user path: '~~old_home/' -> ''
+[   8.658][d][global] user path: '/Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/evidence/s1-20261025-170450/s1/mpv-remote-range-player.log' -> '/Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/evidence/s1-20261025-170450/s1/mpv-remote-range-player.log'
+[   8.658][d][osx] Exiting...
+[   8.659][v][cplayer] Set property: volume="40.00" -> 1
+[   8.659][d][cplayer] Run command: loadfile, flags=64, args=[url="http://127.0.0.1:59283/long96.flac", flags="replace", options=""]
+[   8.659][d][global] state path: 'watch_later' -> '-'
+[   8.659][v][cplayer] Running hook: main/on_load
+[   8.659][v][cplayer] Set property: http-header-fields="Authorization: Basic c3Bpa2U6czNjcmV0" -> 1
+[   8.659][v][ffmpeg] Opening http://127.0.0.1:59283/long96.flac
+[   8.659][d][ffmpeg] tcp: Starting connection attempt to 127.0.0.1 port 59283
+[   8.660][d][ffmpeg] tcp: Successfully connected to 127.0.0.1 port 59283
+[   8.661][v][ffmpeg] Could not set AVOption tls_verify='0'
+[   8.661][d][ffmpeg] resize stream to 131072 bytes, drop 0 bytes
+[   8.661][v][ffmpeg] Mime-type: 'audio/flac'
+[   8.661][d][ffmpeg] Stream opened successfully.
+[   8.661][v][demux] Trying demuxers for level=normal.
+[   8.661][d][demux] Trying demuxer: disc (force-level: normal)
+[   8.661][d][demux] Trying demuxer: edl (force-level: normal)
+[   8.661][d][demux] Trying demuxer: cue (force-level: normal)
+[   8.661][d][demux] Trying demuxer: rawaudio (force-level: normal)
+[   8.661][d][demux] Trying demuxer: rawvideo (force-level: normal)
+[   8.661][d][demux] Trying demuxer: mkv (force-level: normal)
+[   8.661][d][demux] Trying demuxer: lavf (force-level: normal)
+[   8.663][v][lavf] Found 'flac' at score=100 size=2048.
+[   8.663][v][lavf] avformat_find_stream_info() finished after 40688 bytes.
+[   8.663][v][demux] Detected file format: flac (libavformat)
+[   8.663][v][cplayer] Opening done: http://127.0.0.1:59283/long96.flac
+[   8.664][v][lavf] select track 0
+[   8.664][i][cplayer]  (+) Audio --aid=1 (flac 2ch 96000Hz)
+[   8.664][v][ad] Codec list:
+[   8.664][v][ad]     flac - (null)
+[   8.664][v][ad] Opening decoder flac
+[   8.664][v][ad] Requesting 1 threads for decoding.
+[   8.664][v][ad] Selected codec: flac ((null))
+[   8.664][v][af] User filter list:
+[   8.664][v][af]   (empty)
+[   8.664][v][cplayer] Starting playback...
+[   8.664][d][lavf] stream 0: resize index to 128
+[   8.664][v][af] [in] 96000Hz stereo 2ch s32
+[   8.664][v][af] [userspeed] 96000Hz stereo 2ch s32
+[   8.664][v][af] [userspeed] (disabled)
+[   8.664][v][af] [convert] 96000Hz stereo 2ch s32
+[   8.664][v][ao] Trying audio driver 'coreaudio'
+[   8.664][v][ao/coreaudio] requested format: 96000 Hz, stereo channels, s32
+[   8.664][v][ao/coreaudio] selected audio output device: MacBook Air扬声器 (89)
+[   8.665][v][ao/coreaudio] input channel layout:
+[   8.665][v][ao/coreaudio] layout: tag: <0>, bitmap: <0>, descriptions <2>
+[   8.665][v][ao/coreaudio]  - description 0: label <4294967295, 64>,  flags: <0>, coords: <0.000000, 0.000000, 0.000000>
+[   8.665][v][ao/coreaudio]  - description 1: label <4294967295, 64>,  flags: <0>, coords: <0.000000, 0.000000, 0.000000>
+[   8.665][v][ao/coreaudio] mp chmap: unknown2
+[   8.665][v][ao/coreaudio] input channel layout:
+[   8.665][v][ao/coreaudio] layout: tag: <0>, bitmap: <0>, descriptions <2>
+[   8.665][v][ao/coreaudio]  - description 0: label <1, 0>,  flags: <0>, coords: <0.000000, 0.000000, 0.000000>
+[   8.665][v][ao/coreaudio]  - description 1: label <2, 1>,  flags: <0>, coords: <0.000000, 0.000000, 0.000000>
+[   8.665][v][ao/coreaudio] mp chmap: stereo
+[   8.665][v][ao/coreaudio] Channel layouts:
+[   8.665][v][ao/coreaudio]  - stereo
+[   8.665][v][ao/coreaudio]  - mono
+[   8.665][v][ao/coreaudio] result: stereo
+[   8.667][v][ao/coreaudio] Latency property cntl: 60 frames
+[   8.667][v][ao/coreaudio] Latency property zisf: 512 frames
+[   8.667][v][ao/coreaudio] Latency property tfas: 48 frames
+[   8.667][v][ao/coreaudio] Device sample rate: 48000.000000
+[   8.667][v][ao/coreaudio] audiounit latency [us]: 177
+[   8.667][v][ao/coreaudio] device latency [us]: 12916
+[   8.667][v][ao/coreaudio] using soft-buffer of 19200 samples.
+[   8.667][i][cplayer] AO: [coreaudio] 96000Hz stereo 2ch s32
+[   8.667][v][cplayer] AO: Description: CoreAudio AudioUnit
+[   8.667][v][af] [convert] (disabled)
+[   8.667][v][af] [out] 96000Hz stereo 2ch s32
+[   8.668][v][cplayer] audio ready
+[   8.668][v][cplayer] starting audio playback
+[   8.671][v][cplayer] playback restart complete @ -0.000000, audio=playing, video=eof
+[   9.727][d][cplayer] Run command: seek, flags=64, args=[target="10.000000", flags="absolute", legacy="unused"]
+[   9.728][v][lavf] queuing seek to 10.000000
+[   9.728][v][lavf] cached range 0: 0.000000 <-> 7.466667 (bof=1, eof=0)
+[   9.728][v][lavf] execute seek (to 10.000000 flags 32)
+[   9.728][v][ffmpeg] stream level seek from 917504 to 2369133
+[   9.728][v][cplayer] hr-seek, skipping to 10.000000
+[   9.728][d][ffmpeg] tcp: Starting connection attempt to 127.0.0.1 port 59283
+[   9.728][d][ffmpeg] tcp: Successfully connected to 127.0.0.1 port 59283
+[   9.734][v][ffmpeg] stream level seek from 2370158 to 2367085
+[   9.734][d][ffmpeg] tcp: Starting connection attempt to 127.0.0.1 port 59283
+[   9.734][d][ffmpeg] tcp: Successfully connected to 127.0.0.1 port 59283
+[   9.746][v][ffmpeg] stream level seek from 2370158 to 2362989
+[   9.747][d][ffmpeg] tcp: Starting connection attempt to 127.0.0.1 port 59283
+[   9.747][d][ffmpeg] tcp: Successfully connected to 127.0.0.1 port 59283
+[   9.748][v][ffmpeg] stream level seek from 2370158 to 1189166
+[   9.748][d][ffmpeg] tcp: Starting connection attempt to 127.0.0.1 port 59283
+[   9.749][d][ffmpeg] tcp: Successfully connected to 127.0.0.1 port 59283
+[   9.749][v][ffmpeg] stream level seek from 1225752 to 1176600
+[   9.749][d][ffmpeg] tcp: Starting connection attempt to 127.0.0.1 port 59283
+[   9.750][d][ffmpeg] tcp: Successfully connected to 127.0.0.1 port 59283
+[   9.750][v][lavf] seek done
+[   9.750][d][lavf] stream 0: resize index to 128
+[   9.751][v][cplayer] audio ready
+[   9.754][v][cplayer] starting audio playback
+[   9.754][v][cplayer] playback restart complete @ 10.000000, audio=playing, video=eof
+[  10.647][d][main] Exiting...
+[  10.647][d][cplayer] Run command: quit, flags=64, args=[code="0"]
+[  10.647][v][cplayer] EOF code: 5  
+[  10.647][d][ad] Uninit decoder.
+[  10.647][d][cplayer] Terminating demuxers...
+[  10.648][d][ffmpeg] AVIOContext: Statistics: 1890781 bytes read, 5 seeks
+[  10.649][d][cplayer] Done terminating demuxers.
+[  10.649][v][cplayer] finished playback, success (reason 3)
+[  10.649][i][cplayer] 

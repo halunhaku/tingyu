@@ -39,3 +39,12 @@ app/**/Flutter/ephemeral/
 app/**/*.xcworkspace/xcuserdata/
 # flutter create 生成的 workspace 必须入库，覆盖上面的 project.xcworkspace 规则
 !app/macos/Runner.xcworkspace
+
+# spike：现场生成的测试媒体与构建产物
+spike/testdata/media/*.flac
+spike/testdata/media/*.png
+spike/build/
+spike/**/spike-audio
+spike/**/spike-session
+spike/**/spike-app
+spike/evidence/**/*.wav

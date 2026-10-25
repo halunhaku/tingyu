@@ -1,0 +1,5 @@
+{"apiVersion":131073,"at":"2026-10-25T17:05:08.429285+08:00","kind":"init","options":{"ao":"coreaudio","audio-client-name":"听屿Spike","audio-display":"no","gapless-audio":"yes","idle":"yes","keep-open":"no","msg-level":"all=info","terminal":"no","vo":"null","volume-max":"100"}}
+{"at":"2026-10-25T17:05:08.429743+08:00","name":"start-file"}
+{"at":"2026-10-25T17:05:08.429909+08:00","name":"hook","text":"on_load"}
+{"at":"2026-10-25T17:05:08.438206+08:00","name":"end-file","endReason":4,"err":-13}
+{"at":"2026-10-25T17:05:08.43872+08:00","kind":"closed"}

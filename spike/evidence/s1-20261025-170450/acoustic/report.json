@@ -1,0 +1,52 @@
+{
+  "phase": "acoustic",
+  "host": {
+    "arch": "arm64",
+    "cpu": "Apple M4",
+    "goVersion": "go1.27.3",
+    "macOS": "27.2",
+    "mpvClientAPI": "0x20001",
+    "os": "darwin",
+    "race": "false"
+  },
+  "startedAt": "2026-10-25T17:05:39.447454+08:00",
+  "finishedAt": "2026-10-25T17:05:47.445874+08:00",
+  "thresholds": [
+    {
+      "id": 0,
+      "name": "麦克风回环：扬声器放 440 Hz 测试音时，离屏录音的主能量落在目标频带",
+      "pass": true,
+      "skipped": false,
+      "data": {
+        "attempts": [
+          {
+            "attempt": 1,
+            "bandEnergy_400_480": 0.102,
+            "bestFreq": 436.805,
+            "file": "mic-loopback-1.wav",
+            "peakDBFS": -3.08,
+            "rmsDBFS": -18.981,
+            "snrFixed440": -33.315,
+            "snrSearch": -12.509
+          },
+          {
+            "attempt": 2,
+            "bandEnergy_400_480": 0.836,
+            "bestFreq": 436.835,
+            "file": "mic-loopback-2.wav",
+            "peakDBFS": -13.358,
+            "rmsDBFS": -24.168,
+            "snrFixed440": -23.452,
+            "snrSearch": -5.882
+          }
+        ],
+        "bestBandEnergy": 0.836,
+        "bestSNRSearch": -5.882
+      },
+      "note": "判定 = 400–480 Hz 频带能量占全带 ≥50%，或扫描式 Goertzel ≥10 dB（最多录 3 次取最优，因为机器上还有别的应用在出声）"
+    }
+  ],
+  "notes": [
+    "媒体目录 /Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/testdata/media"
+  ]
+}
