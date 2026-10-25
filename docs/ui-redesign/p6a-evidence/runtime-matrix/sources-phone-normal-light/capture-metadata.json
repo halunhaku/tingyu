@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-19T11:16:09.7461112+08:00",
+  "appDirectory": "F:\\project\\tingyu\\app\\build\\windows\\x64\\runner\\Release",
+  "requestedClientWidth": 585,
+  "requestedClientHeight": 1266,
+  "expectedDpiScale": 1.5,
+  "captures": [
+    {
+      "route": "/sources",
+      "file": "sources.png",
+      "clientWidth": 585,
+      "clientHeight": 1266,
+      "dpiScale": 1.5,
+      "expectedDpiScale": 1.5,
+      "theme": "light",
+      "density": "comfortable",
+      "previewState": "normal",
+      "previewScale": 1.0,
+      "previewCover": "none",
+      "previewCoverPath": "F:\\project\\tingyu\\docs\\ui-redesign\\p6a-evidence\\runtime-matrix\\sources-phone-normal-light\\.tingyu-no-cover-42330b223e2d4539b5740c054bce8ab7.png",
+      "animationsDisabled": true,
+      "captureMethod": "CopyFromScreen with DWM rounded corners disabled",
+      "windowCorners": "do-not-round",
+      "cursorPosition": {
+        "x": 0,
+        "y": 0
+      },
+      "sha256": "87efc4d21aad0488c4a3716c22cd1f20f9164bf4f6bb114d866a5c0720a17b45"
+    }
+  ]
+}

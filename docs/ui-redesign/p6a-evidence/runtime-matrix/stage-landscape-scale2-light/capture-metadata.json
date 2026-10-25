@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-19T11:17:28.8681283+08:00",
+  "appDirectory": "F:\\project\\tingyu\\app\\build\\windows\\x64\\runner\\Release",
+  "requestedClientWidth": 1266,
+  "requestedClientHeight": 585,
+  "expectedDpiScale": 1.5,
+  "captures": [
+    {
+      "route": "/stage",
+      "file": "stage.png",
+      "clientWidth": 1266,
+      "clientHeight": 585,
+      "dpiScale": 1.5,
+      "expectedDpiScale": 1.5,
+      "theme": "light",
+      "density": "comfortable",
+      "previewState": "normal",
+      "previewScale": 2.0,
+      "previewCover": "fixture",
+      "previewCoverPath": "F:\\project\\tingyu\\app\\tool\\fixtures\\voice-archive-cover.png",
+      "animationsDisabled": true,
+      "captureMethod": "CopyFromScreen with DWM rounded corners disabled",
+      "windowCorners": "do-not-round",
+      "cursorPosition": {
+        "x": 0,
+        "y": 0
+      },
+      "sha256": "28166441610b5dd66525417d49f07922b8acec1b1678768642e0da626794efcd"
+    }
+  ]
+}

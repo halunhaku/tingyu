@@ -12,10 +12,14 @@ on:
       - 'v*'
     paths:
       - 'app/**'
+      - 'tools/**'
+      - 'docs/ui-redesign/p4-quality/**'
       - '.github/workflows/flutter.yml'
   pull_request:
     paths:
       - 'app/**'
+      - 'tools/**'
+      - 'docs/ui-redesign/p4-quality/**'
       - '.github/workflows/flutter.yml'
   workflow_dispatch:
 
@@ -33,9 +37,13 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
+      - name: Verify approved visual asset seal
+        working-directory: .
+        run: sha256sum --check docs/ui-redesign/p4-quality/approved-visual-assets.sha256
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.47.2'
           cache: true
       # media_kit / audio_service_mpris / flutter_secure_storage 在 Linux 上需要这些原生依赖才能解析与构建
       - name: Install Linux native dependencies
@@ -45,6 +53,8 @@ jobs:
             libmpv-dev libsecret-1-dev libayatana-appindicator3-dev \
             ninja-build libgtk-3-dev pkg-config
       - run: flutter pub get
+      - name: Format check for P4 changes
+        run: dart format --output=none --set-exit-if-changed lib/data/secure_store.dart
       # drift 的 database.g.dart 是提交进仓库的；schema 改了却忘记重新生成，
       # 会在运行时才发现。这里用"重新生成后必须无 diff"来兜底。
       - name: Verify generated drift code is up to date
@@ -52,7 +62,9 @@ jobs:
           dart run build_runner build
           git diff --exit-code --stat
       - run: flutter analyze
-      - run: flutter test
+      # golden 基准图只在 Windows 本机校验（app/dart_test.yaml 也做了 skip 兜底）；
+      # 这里显式排除，避免 CI 引入字体栈差异导致的假失败。
+      - run: flutter test --exclude-tags golden
 
   build:
     name: build (${{ matrix.name }})
@@ -99,6 +111,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.47.2'
           cache: true
       - name: Install Linux native dependencies
         if: matrix.target == 'linux'
@@ -111,7 +124,59 @@ jobs:
       # 运行期需要的凭据（Android 签名密钥）在 CI 里没有，所以 release job 只做
       # 未签名/调试签名的构建验证；正式分发用仓库 Secrets 走本地打包（见 README）。
       - name: Build
+        if: matrix.target != 'windows'
         run: flutter build ${{ matrix.target }} --release ${{ matrix.build_args }}
+      - name: Set up engine Python
+        if: matrix.target == 'windows'
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11.9'
+      - name: Preflight pinned Flutter SDK
+        if: matrix.target == 'windows'
+        working-directory: .
+        shell: pwsh
+        run: ./tools/build-windows-engine.ps1 -Stage Preflight
+      - name: Bootstrap and sync Windows engine
+        if: matrix.target == 'windows'
+        working-directory: .
+        shell: pwsh
+        run: |
+          ./tools/bootstrap-windows-engine.ps1 -PythonExecutable (Get-Command python).Source
+          ./tools/build-windows-engine.ps1 -Stage Sync -Jobs 2
+      - name: Configure Windows engine
+        if: matrix.target == 'windows'
+        working-directory: .
+        shell: pwsh
+        run: ./tools/build-windows-engine.ps1 -Stage Configure
+      - name: Restore cached Windows engine build
+        if: matrix.target == 'windows'
+        id: windows-engine-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: app/build/flutter-engine/checkout/engine/src/out/host_release
+          key: windows-engine-host-release-v1-${{ hashFiles('tools/bootstrap-windows-engine.ps1', 'tools/build-windows-engine.ps1', 'tools/windows-engine-env.ps1', 'tools/engine-patches/windows-engine.json', 'tools/engine-patches/190903-null-parent.patch', 'tools/engine-patches/tingyu-accessibility.patch', 'tools/engine-patches/windows-test-aot-fixtures.patch', 'tools/engine-patches/python-requirements.txt') }}
+      - name: Compile Windows engine
+        if: matrix.target == 'windows' && steps.windows-engine-cache.outputs.cache-hit != 'true'
+        working-directory: .
+        shell: pwsh
+        run: ./tools/build-windows-engine.ps1 -Stage Compile -Jobs 2
+      - name: Test Windows accessibility engine
+        if: matrix.target == 'windows'
+        working-directory: .
+        shell: pwsh
+        run: ./tools/build-windows-engine.ps1 -Stage Test
+      - name: Build Windows application
+        if: matrix.target == 'windows'
+        working-directory: .
+        shell: pwsh
+        run: ./tools/build-windows-engine.ps1 -Stage App
+      - name: Save Windows engine build cache
+        if: matrix.target == 'windows' && steps.windows-engine-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        continue-on-error: true
+        with:
+          path: app/build/flutter-engine/checkout/engine/src/out/host_release
+          key: windows-engine-host-release-v1-${{ hashFiles('tools/bootstrap-windows-engine.ps1', 'tools/build-windows-engine.ps1', 'tools/windows-engine-env.ps1', 'tools/engine-patches/windows-engine.json', 'tools/engine-patches/190903-null-parent.patch', 'tools/engine-patches/tingyu-accessibility.patch', 'tools/engine-patches/windows-test-aot-fixtures.patch', 'tools/engine-patches/python-requirements.txt') }}
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:

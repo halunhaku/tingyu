@@ -4,203 +4,271 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
 import '../../data/db/database.dart';
+import '../../design/components/buttons.dart';
+import '../../design/components/context_menu.dart';
+import '../../design/components/feedback.dart';
+import '../../design/components/playlist_card.dart';
+import '../../design/components/structure.dart';
+import '../../design/layout/form_factor.dart';
+import '../../design/tokens/metrics.dart';
 import '../shared/add_to_playlist.dart';
-import '../shared/empty_state.dart';
+import '../shared/skeletons.dart';
 
-/// 歌单页：新建、重命名、删除，点击进入歌单详情。
+/// 歌单页：2×2 封面拼贴网格，首个瓦片是「新建歌单」（`DESIGN.md` §5.2 / §6.2）。
 ///
-/// 对应旧版 `Sources/UI/iOS/IOSPlaylistsView.swift`：右上角新建，列表显示每个
-/// 歌单的曲目数；重命名/删除走长按菜单（桌面侧栏的等价入口在 `AppShell`）。
+/// 重命名/删除走 `TyContextMenu`（⋯ 与右键/长按同一份菜单），删除需二次确认。
 class PlaylistsPage extends ConsumerWidget {
   const PlaylistsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final TyMetrics metrics = context.metrics;
     final AsyncValue<List<Playlist>> playlists = ref.watch(playlistsProvider);
+    final int? count = playlists.value?.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          child: Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  '歌单',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => _createPlaylist(context, ref),
-                icon: const Icon(Icons.add),
-                label: const Text('新建'),
+          padding: EdgeInsets.fromLTRB(
+            metrics.pagePadding,
+            TySpace.x20,
+            metrics.pagePadding,
+            TySpace.x12,
+          ),
+          child: TyPageHeader(
+            title: '歌单',
+            subtitle: count == null ? null : '共 $count 个',
+            actions: <Widget>[
+              TyButton(
+                label: '新建歌单',
+                icon: Icons.add,
+                variant: TyButtonVariant.secondary,
+                dense: true,
+                onPressed: () => createPlaylist(context, ref),
               ),
             ],
           ),
         ),
         Expanded(
-          child: playlists.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (Object error, StackTrace stack) => EmptyState(
-              icon: Icons.error_outline,
-              title: '歌单读取失败',
-              message: '$error',
-            ),
-            data: (List<Playlist> list) {
-              if (list.isEmpty) {
-                return EmptyState(
-                  icon: Icons.queue_music,
-                  title: '还没有歌单',
-                  message: '点右上角「新建」，或在歌曲上选择「添加到播放列表…」',
-                  action: FilledButton(
-                    onPressed: () => _createPlaylist(context, ref),
-                    child: const Text('新建歌单'),
-                  ),
-                );
-              }
-              return ListView.separated(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
+          child: TyAsyncView<List<Playlist>>(
+            value: playlists,
+            loading: (BuildContext context) =>
+                const GridSkeleton(shortSubtitle: true),
+            error: (BuildContext context, Object error, StackTrace? stack) =>
+                TyErrorView(
+                  title: '歌单读取失败',
+                  detail: '$error',
+                  onRetry: () => ref.invalidate(playlistsProvider),
                 ),
-                itemCount: list.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (BuildContext context, int index) =>
-                    _PlaylistTile(playlist: list[index]),
-              );
-            },
+            isEmpty: (List<Playlist> list) => list.isEmpty,
+            empty: (BuildContext context) => TyEmptyState(
+              icon: Icons.queue_music_outlined,
+              title: '还没有歌单',
+              description: '在歌曲上选择「添加到播放列表…」，或点上面的「新建歌单」',
+              actionLabel: '新建歌单',
+              onAction: () => createPlaylist(context, ref),
+            ),
+            data: (BuildContext context, List<Playlist> list) =>
+                _PlaylistGrid(playlists: list),
           ),
         ),
       ],
     );
   }
-
-  /// 新建歌单；id 与「添加到播放列表…」里的就地新建保持同一套约定。
-  static Future<void> _createPlaylist(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
-    final String? name = await promptPlaylistName(
-      context,
-      title: '新建歌单',
-      confirmLabel: '创建',
-    );
-    if (name == null || name.trim().isEmpty) {
-      return;
-    }
-    await ref
-        .read(playlistRepositoryProvider)
-        .create(
-          id: 'pl-${DateTime.now().microsecondsSinceEpoch}',
-          name: name.trim(),
-        );
-  }
 }
 
-/// 歌单行：名称 + 曲目数；长按或尾部按钮弹出重命名/删除。
-class _PlaylistTile extends ConsumerWidget {
-  const _PlaylistTile({required this.playlist});
+/// 网格本体：首个瓦片是「新建歌单」，其余是歌单卡。
+class _PlaylistGrid extends ConsumerWidget {
+  const _PlaylistGrid({required this.playlists});
 
-  final Playlist playlist;
+  final List<Playlist> playlists;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 曲目数走一次聚合查询；原先每个歌单各 JOIN 全表只为了印一个数字。
+    final TyMetrics metrics = context.metrics;
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final int columns = tyGridColumns(constraints.maxWidth, metrics);
+        final double tile =
+            (constraints.maxWidth -
+                TySpace.x2 * metrics.pagePadding -
+                (columns - 1) * metrics.gridGap) /
+            columns;
+        return GridView.builder(
+          padding: EdgeInsets.symmetric(
+            horizontal: metrics.pagePadding,
+            vertical: TySpace.x8,
+          ),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: metrics.gridGap,
+            mainAxisSpacing: metrics.gridGap,
+            mainAxisExtent: tyTileExtent(context, tile),
+          ),
+          itemCount: playlists.length + 1,
+          itemBuilder: (BuildContext context, int index) {
+            if (index == 0) {
+              return TyNewPlaylistCard(
+                width: tile,
+                onTap: () => createPlaylist(context, ref),
+              );
+            }
+            return _PlaylistTile(playlist: playlists[index - 1], width: tile);
+          },
+        );
+      },
+    );
+  }
+}
+
+/// 单张歌单卡：拼贴封面取前 4 首曲目的封面，副标题是真实曲目数。
+class _PlaylistTile extends ConsumerWidget {
+  const _PlaylistTile({required this.playlist, required this.width});
+
+  final Playlist playlist;
+  final double width;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<Map<String, int>> counts = ref.watch(
       playlistTrackCountsProvider,
     );
-    final String subtitle = counts.when(
-      loading: () => '读取中…',
-      error: (Object error, StackTrace stack) => '曲目读取失败',
-      data: (Map<String, int> byPlaylist) =>
-          '${byPlaylist[playlist.id] ?? 0} 首',
-    );
+    final List<Track> tracks =
+        ref.watch(playlistTracksProvider(playlist.id)).value ??
+        const <Track>[];
+    final int? count = counts.value?[playlist.id];
 
-    return ListTile(
-      leading: const Icon(Icons.queue_music),
-      title: Text(playlist.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(subtitle),
-      trailing: IconButton(
-        tooltip: '更多',
-        icon: const Icon(Icons.more_vert),
-        onPressed: () => _showMenu(context, ref),
-      ),
+    return TyPlaylistCard(
+      width: width,
+      title: playlist.name,
+      subtitle: count == null ? null : '$count 首',
+      coverPaths: <String>[
+        for (final Track track in tracks)
+          if (track.coverArtPath != null && track.coverArtPath!.isNotEmpty)
+            track.coverArtPath!,
+      ].take(4).toList(),
       onTap: () => context.push('/playlist/${playlist.id}'),
-      onLongPress: () => _showMenu(context, ref),
-    );
-  }
-
-  Future<void> _showMenu(BuildContext context, WidgetRef ref) async {
-    final String? selected = await showModalBottomSheet<String>(
-      context: context,
-      builder: (BuildContext sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            ListTile(
-              title: Text(
-                playlist.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: const Text('重命名'),
-              onTap: () => Navigator.pop(sheetContext, 'rename'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline),
-              title: const Text('删除歌单'),
-              onTap: () => Navigator.pop(sheetContext, 'delete'),
-            ),
-            const SizedBox(height: 8),
-          ],
+      onPlay: () => _play(context, ref, tracks),
+      onSecondaryTapDown: (TapDownDetails details) =>
+          _showMenu(context, ref, details.globalPosition),
+      trailing: Builder(
+        builder: (BuildContext buttonContext) => TyIconAction(
+          icon: Icons.more_horiz,
+          semanticLabel: '${playlist.name}：更多操作',
+          tooltip: '更多',
+          size: TyIconSize.compact,
+          onPressed: () => _showMenu(context, ref, _menuAnchor(buttonContext)),
         ),
       ),
     );
-    if (selected == null || !context.mounted) {
+  }
+
+  /// 起播整张歌单：空歌单不静默——给一句即时说明，而不是清掉当前播放。
+  void _play(BuildContext context, WidgetRef ref, List<Track> tracks) {
+    if (tracks.isEmpty) {
+      TySnack.show(context, '「${playlist.name}」还没有曲目');
       return;
     }
-
-    switch (selected) {
-      case 'rename':
-        final String? name = await promptPlaylistName(
-          context,
-          title: '重命名歌单',
-          confirmLabel: '保存',
-          initial: playlist.name,
-        );
-        if (name == null || name.trim().isEmpty) {
-          return;
-        }
-        await ref
-            .read(playlistRepositoryProvider)
-            .rename(playlist.id, name.trim());
-      case 'delete':
-        final bool? confirmed = await showDialog<bool>(
-          context: context,
-          builder: (BuildContext dialogContext) => AlertDialog(
-            title: Text('删除歌单「${playlist.name}」？'),
-            content: const Text('歌单里的曲目本身不会被删除。'),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text('删除'),
-              ),
-            ],
-          ),
-        );
-        if (confirmed != true) {
-          return;
-        }
-        await ref.read(playlistRepositoryProvider).delete(playlist.id);
-    }
+    ref.read(playbackProvider.notifier).playTracks(tracks);
   }
+
+  /// 歌单卡的上下文菜单：播放 / 重命名 / 删除歌单（危险项单独分组）。
+  Future<void> _showMenu(
+    BuildContext context,
+    WidgetRef ref,
+    Offset position,
+  ) {
+    return TyContextMenu.show(
+      context,
+      position: position,
+      actions: <TyMenuAction>[
+        TyMenuAction(
+          label: '播放',
+          icon: Icons.play_arrow_outlined,
+          onSelected: () => _play(
+            context,
+            ref,
+            ref.read(playlistTracksProvider(playlist.id)).value ??
+                const <Track>[],
+          ),
+        ),
+        TyMenuAction(
+          label: '重命名',
+          icon: Icons.edit_outlined,
+          onSelected: () => renamePlaylist(context, ref, playlist),
+        ),
+        TyMenuAction(
+          label: '删除歌单',
+          icon: Icons.delete_outline,
+          destructive: true,
+          onSelected: () => deletePlaylist(context, ref, playlist),
+        ),
+      ],
+    );
+  }
+}
+
+/// ⋯ 按钮的菜单锚点（全局坐标）。
+Offset _menuAnchor(BuildContext buttonContext) {
+  final RenderObject? box = buttonContext.findRenderObject();
+  if (box is RenderBox && box.hasSize) {
+    return box.localToGlobal(box.size.center(Offset.zero));
+  }
+  return Offset.zero;
+}
+
+/// 新建歌单；id 与「添加到播放列表…」里的就地新建保持同一套约定。
+Future<void> createPlaylist(BuildContext context, WidgetRef ref) async {
+  final String? name = await promptPlaylistName(
+    context,
+    title: '新建歌单',
+    confirmLabel: '创建',
+  );
+  if (name == null || name.trim().isEmpty) {
+    return;
+  }
+  await ref
+      .read(playlistRepositoryProvider)
+      .create(
+        id: 'pl-${DateTime.now().microsecondsSinceEpoch}',
+        name: name.trim(),
+      );
+}
+
+/// 重命名歌单；空名字与取消都不改数据。
+Future<void> renamePlaylist(
+  BuildContext context,
+  WidgetRef ref,
+  Playlist playlist,
+) async {
+  final String? name = await promptPlaylistName(
+    context,
+    title: '重命名歌单',
+    confirmLabel: '保存',
+    initial: playlist.name,
+  );
+  if (name == null || name.trim().isEmpty) {
+    return;
+  }
+  await ref.read(playlistRepositoryProvider).rename(playlist.id, name.trim());
+}
+
+/// 删除歌单：危险操作必须二次确认（`DESIGN.md` §2.4）。
+Future<void> deletePlaylist(
+  BuildContext context,
+  WidgetRef ref,
+  Playlist playlist,
+) async {
+  final bool confirmed = await tyConfirm(
+    context,
+    title: '删除歌单「${playlist.name}」？',
+    message: '歌单里的曲目本身不会被删除。',
+    confirmLabel: '删除',
+    destructive: true,
+  );
+  if (!confirmed) {
+    return;
+  }
+  await ref.read(playlistRepositoryProvider).delete(playlist.id);
 }

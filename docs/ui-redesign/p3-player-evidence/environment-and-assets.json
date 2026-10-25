@@ -1,0 +1,134 @@
+{
+  "flutter": "3.47.2",
+  "dart": "3.13.2",
+  "platform": "Windows",
+  "dpiScale": 1.5,
+  "fixture": "app/tool/voice_archive_preview.dart",
+  "fixtureProgressSeconds": 84,
+  "desktopClientPixels": [
+    1898,
+    1024
+  ],
+  "mobileClientPixels": [
+    585,
+    1266
+  ],
+  "goldenUpdated": false,
+  "coverGeneration": {
+    "tool": "image_gen.imagegen",
+    "reference": "directions/c/desktop-player.png",
+    "promptSummary": "Original square photographic album cover: quiet pale sea, isolated dark rock, warm hazy sky; no text, logos or UI."
+  },
+  "files": [
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\desktop-dark-final\\stage.png",
+      "sha256": "ab6e601eada9d12705e0b02eea61f09f2212d77ff00caadba007f6d6c3e8d2ff"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\desktop-light\\stage.png",
+      "sha256": "40f43a24b59d22080b2f0a7a24f151a202d98ebd819879aa512669ab8ec036e3"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\desktop-light-final\\stage.png",
+      "sha256": "5a625755c7a2528bf84ea472c45aecd9e584d883a239dea18b1ec31e561cf351"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\empty-final\\stage.png",
+      "sha256": "02744a9a47514ce218c02b9fb50a2813f070b5a66ebbe1ef281d44cbd2be6c1e"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\failure\\stage.png",
+      "sha256": "a1a3c82217b792958adecd6f93e4f440e877f47d18920b9a4dbadb0fb483a8b7"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\golden-diffs\\stage-compact-dark_isolatedDiff.png",
+      "sha256": "118571f54e9b7e56bca0f5e2cf3829189871df363f95b48d86ee1edbe2993e49"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\golden-diffs\\stage-compact-dark_maskedDiff.png",
+      "sha256": "118571f54e9b7e56bca0f5e2cf3829189871df363f95b48d86ee1edbe2993e49"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\golden-diffs\\stage-compact-dark_masterImage.png",
+      "sha256": "10eda4c413af37282de85ee26779dd75b5c768f23ca58dd3fa7a21b0f05e20f6"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\golden-diffs\\stage-compact-dark_testImage.png",
+      "sha256": "0cf05d3588fcee2a77a0f9bd456ae23f542e1431dbef6898cac2e747142487c1"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\long-landscape\\stage.png",
+      "sha256": "41d7cc619025d592dbe87bd5bff785f7ab01d41f987836f0e2186425be06de7c"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\long-landscape-final\\stage.png",
+      "sha256": "8973e77976cf421cb7ba1dd08817fb25359afea43e39fdbbad5d244e9841e035"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\mobile-dark\\stage.png",
+      "sha256": "d31c6c18c9bf37b2f203be45289d04397df4ad13c0f7d8a42a3bef0ddd769563"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\mobile-dark-final\\stage.png",
+      "sha256": "283021b2a448540b391e84cc2b25fc0ee985ffd6fa8b278de13f550e297b0288"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\mobile-light\\stage-tab-lyrics.png",
+      "sha256": "2f439616890c8d8e33bd9207a36a384ad652023556641181308a56520ca755cc"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\mobile-light-final\\stage-tab-lyrics.png",
+      "sha256": "61701cd6c5a2ab79fa3562f682c20435d2408e74bb34a2e819950d6ef6aea850"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\production-smoke\\01-playing.png",
+      "sha256": "2136c8dc9983133f57020c16475e2391c2e75756b324c4b585a703eab60b80d1"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\production-smoke\\02-expanded.png",
+      "sha256": "1979837b3e3cfc1f42571a2027b44f45eb66c9bb9b11216abb71dc0654bcec1c"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\production-smoke\\03-after-navigation.png",
+      "sha256": "ff5ca5431f9205b978ca92cf6528b47749d3831d4f26967f8f4118203a22f232"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\production-smoke-final\\01-playing.png",
+      "sha256": "61012c7ec41ecdf508c1e48dc5b856f85eb252400572873e219a63e21298db0f"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\production-smoke-final\\02-expanded.png",
+      "sha256": "3280ad26abbb32a71092e357dff2957405e93661309db2f57022164948c1f7ff"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\production-smoke-final\\03-after-navigation.png",
+      "sha256": "1dcd45bfca28bfccd69852c164f708761f88dd46d9028ad7f8cc80f4b0c3476b"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\production-stage\\stage.png",
+      "sha256": "12642d490ac3b95b52089bcc1cddf09b58a64bc18162ec22810fc72c60f35f63"
+    },
+    {
+      "path": "docs\\ui-redesign\\p3-player-evidence\\unknown\\stage.png",
+      "sha256": "bc970f7069277dfc3aef822d6be92ff0a4e188cacec3eed0cd6324243cf2e6fc"
+    },
+    {
+      "path": "app\\tool\\fixtures\\voice-archive-cover.png",
+      "sha256": "6ce3bea4bfbe50978e6bd557508fe91ccc2ffe66428c965b0f5206b0634b4381"
+    }
+  ],
+  "fonts": [
+    {
+      "path": "C:\\Windows\\Fonts\\msyh.ttc",
+      "sha256": "d79c55e68b1131eea0cc1c47be4f572d964f28c682e143db2ad09c1e4cb07a3f"
+    },
+    {
+      "path": "C:\\Windows\\Fonts\\msyhbd.ttc",
+      "sha256": "4508821b3dffe01f0ef5e5326a3e60df705a44633858811f67b6982dce3f6ee6"
+    },
+    {
+      "path": "C:\\Windows\\Fonts\\segoeui.ttf",
+      "sha256": "704eada12961a27fd271f7d3b09e2066520e758390c1776744eff430fee30f6e"
+    }
+  ]
+}

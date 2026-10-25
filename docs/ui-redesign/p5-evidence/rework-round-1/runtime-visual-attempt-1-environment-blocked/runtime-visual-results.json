@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-19T10:21:06.3034526+08:00",
+  "approvedBaselineCommit": "520d73637ee5b7653f781c7c86ac22eeca314864",
+  "currentCommit": "b30e159ca8f34adc19643e69d612b8d8f4911aeb",
+  "platform": "Windows",
+  "fixture": "app/tool/voice_archive_preview.dart",
+  "fixtureSha256": "c73447d61c314cb3e4f6e29514bf93a23bae5321fdbbbd23d8904d7f4aa35ec3",
+  "fixtureCover": "app/tool/fixtures/voice-archive-cover.png",
+  "fixtureCoverSha256": "6ce3bea4bfbe50978e6bd557508fe91ccc2ffe66428c965b0f5206b0634b4381",
+  "runtimeBaselineProvenance": "docs/ui-redesign/p4-quality/runtime-baselines/provenance.json",
+  "runtimeBaselineProvenanceSha256": "dc6ff876ebd3bd0aa7325a19f556c432c0b53df4b281d649529cc3a3d6a6c262",
+  "flutter": {
+    "frameworkVersion": "3.47.2",
+    "frameworkRevision": "d3b14c876900e553bc736ca19295fc09e3853e8e",
+    "dartSdkVersion": "3.13.2"
+  },
+  "fonts": [
+    {
+      "path": "C:\\Windows\\Fonts\\msyh.ttc",
+      "sha256": "d79c55e68b1131eea0cc1c47be4f572d964f28c682e143db2ad09c1e4cb07a3f"
+    },
+    {
+      "path": "C:\\Windows\\Fonts\\msyhbd.ttc",
+      "sha256": "4508821b3dffe01f0ef5e5326a3e60df705a44633858811f67b6982dce3f6ee6"
+    },
+    {
+      "path": "C:\\Windows\\Fonts\\segoeui.ttf",
+      "sha256": "704eada12961a27fd271f7d3b09e2066520e758390c1776744eff430fee30f6e"
+    }
+  ],
+  "animationsDisabled": true,
+  "overallPassed": false,
+  "cases": [
+    {
+      "id": "library-desktop-dark",
+      "route": "/library/songs",
+      "viewport": {
+        "width": 1898,
+        "height": 1024,
+        "dpiScale": 1.5
+      },
+      "theme": "dark",
+      "previewState": "normal",
+      "previewScale": 1,
+      "cover": "none",
+      "passed": false,
+      "error": "Runtime capture failed; see F:\\project\\tingyu\\docs\\ui-redesign\\p5-evidence\\rework-round-1\\runtime-visual\\library-desktop-dark\\capture.log",
+      "captureLog": "library-desktop-dark/capture.log",
+      "compareLog": "library-desktop-dark/compare.log"
+    },
+    {
+      "id": "library-mobile-scale2-light",
+      "route": "/library/songs",
+      "viewport": {
+        "width": 585,
+        "height": 1266,
+        "dpiScale": 1.5
+      },
+      "theme": "light",
+      "previewState": "normal",
+      "previewScale": 2,
+      "cover": "none",
+      "passed": false,
+      "error": "Runtime capture failed; see F:\\project\\tingyu\\docs\\ui-redesign\\p5-evidence\\rework-round-1\\runtime-visual\\library-mobile-scale2-light\\capture.log",
+      "captureLog": "library-mobile-scale2-light/capture.log",
+      "compareLog": "library-mobile-scale2-light/compare.log"
+    },
+    {
+      "id": "sources-desktop-syncing-dark",
+      "route": "/sources",
+      "viewport": {
+        "width": 1898,
+        "height": 1024,
+        "dpiScale": 1.5
+      },
+      "theme": "dark",
+      "previewState": "syncing",
+      "previewScale": 1,
+      "cover": "none",
+      "passed": false,
+      "error": "Runtime capture failed; see F:\\project\\tingyu\\docs\\ui-redesign\\p5-evidence\\rework-round-1\\runtime-visual\\sources-desktop-syncing-dark\\capture.log",
+      "captureLog": "sources-desktop-syncing-dark/capture.log",
+      "compareLog": "sources-desktop-syncing-dark/compare.log"
+    },
+    {
+      "id": "sources-mobile-relogin-dark",
+      "route": "/sources",
+      "viewport": {
+        "width": 585,
+        "height": 1266,
+        "dpiScale": 1.5
+      },
+      "theme": "dark",
+      "previewState": "relogin",
+      "previewScale": 1,
+      "cover": "none",
+      "passed": false,
+      "error": "Runtime capture failed; see F:\\project\\tingyu\\docs\\ui-redesign\\p5-evidence\\rework-round-1\\runtime-visual\\sources-mobile-relogin-dark\\capture.log",
+      "captureLog": "sources-mobile-relogin-dark/capture.log",
+      "compareLog": "sources-mobile-relogin-dark/compare.log"
+    },
+    {
+      "id": "stage-desktop-light",
+      "route": "/stage",
+      "viewport": {
+        "width": 1898,
+        "height": 1024,
+        "dpiScale": 1.5
+      },
+      "theme": "light",
+      "previewState": "normal",
+      "previewScale": 1,
+      "cover": "fixture",
+      "passed": false,
+      "error": "Runtime capture failed; see F:\\project\\tingyu\\docs\\ui-redesign\\p5-evidence\\rework-round-1\\runtime-visual\\stage-desktop-light\\capture.log",
+      "captureLog": "stage-desktop-light/capture.log",
+      "compareLog": "stage-desktop-light/compare.log"
+    },
+    {
+      "id": "stage-mobile-dark",
+      "route": "/stage",
+      "viewport": {
+        "width": 585,
+        "height": 1266,
+        "dpiScale": 1.5
+      },
+      "theme": "dark",
+      "previewState": "normal",
+      "previewScale": 1,
+      "cover": "fixture",
+      "passed": false,
+      "error": "Runtime capture failed; see F:\\project\\tingyu\\docs\\ui-redesign\\p5-evidence\\rework-round-1\\runtime-visual\\stage-mobile-dark\\capture.log",
+      "captureLog": "stage-mobile-dark/capture.log",
+      "compareLog": "stage-mobile-dark/compare.log"
+    }
+  ],
+  "limitations": [
+    "Windows fixed preview only; this does not prove Android, iOS, macOS or Linux rendering.",
+    "The preview fixture does not exercise real Quark, WebDAV, database or playback-engine behavior.",
+    "Pixel equality proves regression against the approved Windows baselines, not general commercial visual quality."
+  ]
+}

@@ -1,0 +1,5 @@
+Exception: F:\project\tingyu\tools\windows-ui-screenshots.ps1:254
+Line |
+ 254 |    Write-Error $_
+     |    ~~~~~~~~~~~~~~
+     | DPI 缩放不匹配（/stage）：期望 1.5，实际 1

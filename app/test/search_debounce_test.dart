@@ -6,7 +6,10 @@ import 'package:tingyu/app/providers.dart';
 import 'package:tingyu/data/cover_store.dart';
 import 'package:tingyu/data/db/database.dart';
 import 'package:tingyu/data/enrichment_service.dart';
+import 'package:tingyu/data/models/library_query.dart';
 import 'package:tingyu/data/models/scanned_track.dart';
+import 'package:tingyu/data/models/search_overview.dart';
+import 'package:tingyu/data/models/search_page_result.dart';
 import 'package:tingyu/data/repositories/track_repository.dart';
 import 'package:tingyu/sources/scraper/metadata_enricher.dart';
 
@@ -61,14 +64,13 @@ class _GatedService extends _CountingService {
 }
 
 void main() {
-  test('搜索：敲键不查库，停顿后才查；命中被截断时记录上报 truncated', () async {
+  test('搜索：敲键不查库，停顿后才查；分页查询给真实总数，不再静默截断', () async {
     final TingyuDatabase db = openTestDatabase();
     addTearDown(db.close);
     final TrackRepository repo = TrackRepository(db);
     await repo.mergeScan(
       sourceId: 's',
       scanned: <ScannedTrack>[
-        // 250 首同名歌，必被 200 条上限截断。
         for (int i = 0; i < 250; i++) _scan('song$i'),
         _scan('needle'),
       ],
@@ -79,49 +81,47 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    AsyncValue<SearchResults>? latest;
-    final ProviderSubscription<AsyncValue<SearchResults>> sub = container.listen(
-      searchResultsProvider,
-      (AsyncValue<SearchResults>? _, AsyncValue<SearchResults> next) =>
-          latest = next,
-      fireImmediately: true,
-    );
-    addTearDown(sub.close);
-    await pumpEventQueue();
-
-    expect(latest!.value!.tracks.length, 251, reason: '空查询给全库');
-    expect(latest!.value!.limit, searchResultLimit);
-    expect(latest!.value!.truncated, isFalse);
-
     // 输入框立刻反映（标题/清除按钮要用），但查询词还停在防抖之前。
     container.read(searchQueryProvider.notifier).set('needle');
-    container.read(debouncedSearchQueryProvider.notifier).set('needle');
     expect(container.read(searchQueryProvider), 'needle');
     expect(container.read(debouncedSearchQueryProvider), isEmpty);
-    await pumpEventQueue();
-    expect(
-      latest!.value!.tracks.length,
-      251,
-      reason: '防抖窗口内仍然是全库（没有发起搜索查询）',
-    );
 
     await Future<void>.delayed(searchDebounce * 2);
     await pumpEventQueue();
     expect(container.read(debouncedSearchQueryProvider), 'needle');
-    expect(latest!.value!.tracks.length, 1);
-    expect(latest!.value!.truncated, isFalse);
 
+    // 250 条命中：总数必须是真实 COUNT，而且不再有 200 条硬上限。
+    const SearchPageRequest first = SearchPageRequest(text: 'song', limit: 40);
+    final SearchPageResult<Track> firstPage = await container.read(
+      searchSongsPageProvider(first).future,
+    );
+    expect(firstPage.total, 250, reason: '总数是过滤后的全量，不是本页长度');
+    expect(firstPage.items.length, 40, reason: '一页只回 40 条');
+
+    final SearchPageResult<Track> secondPage = await container.read(
+      searchSongsPageProvider(first.nextPage()).future,
+    );
+    expect(secondPage.items.length, 40);
+    expect(
+      secondPage.items.first.id,
+      isNot(firstPage.items.first.id),
+      reason: '翻页必须给出不同的曲目',
+    );
+
+    // 「全部」视图同样给真实总数（四条只读查询，各自带 COUNT）。
+    // 它读的是防抖后的查询词，所以先把词换成 'song' 并等过防抖窗口。
     container.read(debouncedSearchQueryProvider.notifier).set('song');
     await Future<void>.delayed(searchDebounce * 2);
     await pumpEventQueue();
-    expect(latest!.value!.tracks.length, searchResultLimit);
-    expect(latest!.value!.truncated, isTrue, reason: '250 命中被截到 200，必须上报');
+    final SearchOverview overview = await container.read(
+      searchOverviewProvider.future,
+    );
+    expect(overview.songs.total, 250);
 
-    // 清空（含只剩空白）立刻回到全库，不等防抖，也不会闪一下空结果。
+    // 清空（含只剩空白）立刻生效，不等防抖，也不会闪一下旧结果。
     container.read(debouncedSearchQueryProvider.notifier).set('   ');
     expect(container.read(debouncedSearchQueryProvider), isEmpty);
     await pumpEventQueue();
-    expect(latest!.value!.tracks.length, 251);
   });
 
   test('自动补全：本会话只跑一次；没有缺失元数据的歌时一次都不跑', () async {
@@ -143,10 +143,8 @@ void main() {
     await container.read(autoLibraryEnrichmentProvider.future);
     expect(service.calls, 0, reason: '没有缺失元数据的歌时跳过整个遍历');
 
-    await TrackRepository(db).mergeScan(
-      sourceId: 's',
-      scanned: <ScannedTrack>[_scan('a')],
-    );
+    await TrackRepository(db)
+        .mergeScan(sourceId: 's', scanned: <ScannedTrack>[_scan('a')]);
     // 曲库页刷新会 invalidate；同一个会话内不得重跑整库网络遍历。
     container.invalidate(autoLibraryEnrichmentProvider);
     await container.read(autoLibraryEnrichmentProvider.future);
@@ -167,10 +165,9 @@ void main() {
   test('自动补全：provider 释放后不再继续遍历剩下的歌', () async {
     final TingyuDatabase db = openTestDatabase();
     addTearDown(db.close);
-    await TrackRepository(db).mergeScan(
-      sourceId: 's',
-      scanned: <ScannedTrack>[_scan('a'), _scan('b')],
-    );
+    await TrackRepository(
+      db,
+    ).mergeScan(sourceId: 's', scanned: <ScannedTrack>[_scan('a'), _scan('b')]);
 
     final _GatedService service = _GatedService(tracks: TrackRepository(db));
     final ProviderContainer container = ProviderContainer(
@@ -197,9 +194,7 @@ void main() {
     // 100 首：封面、歌词、时长全缺（夸克整库就是这种状态）。
     await tracks.mergeScan(
       sourceId: 's',
-      scanned: <ScannedTrack>[
-        for (int i = 0; i < 100; i++) _scan('t$i'),
-      ],
+      scanned: <ScannedTrack>[for (int i = 0; i < 100; i++) _scan('t$i')],
     );
 
     final _CountingService service = _CountingService(tracks: tracks);

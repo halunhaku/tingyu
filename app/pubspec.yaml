@@ -1,7 +1,7 @@
 name: tingyu
 description: "听屿：连接本地文件夹、WebDAV 私人云与夸克网盘的跨平台音乐播放器。"
 publish_to: 'none'
-version: 2.0.0-preview+4
+version: 2.0.0-preview+5
 
 environment:
   sdk: ^3.13.2
@@ -10,7 +10,10 @@ dependencies:
   audio_metadata_reader: ^1.8.0
   audio_service: ^0.18.19
   audio_service_mpris: ^0.2.1
-  audio_service_win: ^0.0.3
+  # Windows SMTC 后端：上游 0.0.3 有野线程竞态闪退（见 packages/audio_service_win/TINGYU_PATCHES.md），
+  # vendor 进仓库自带补丁，不再用 hosted 版。
+  audio_service_win:
+    path: packages/audio_service_win
   audio_session: ^0.2.4
   cached_network_image: ^4.0.0
   dio: ^5.11.1

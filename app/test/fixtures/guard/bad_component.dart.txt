@@ -1,0 +1,17 @@
+import 'package:flutter/material.dart';
+
+final Widget bad = Container(
+  color: Color(0xFF123456),
+  padding: EdgeInsets.all(8),
+  child: Text(
+    'bad',
+    style: TextStyle(fontSize: 13),
+  ),
+);
+
+final Widget bad2 = SizedBox(
+  width: 40,
+  child: Icon(Icons.close, color: Colors.red),
+);
+
+bool isAndroid() => Platform.isAndroid;

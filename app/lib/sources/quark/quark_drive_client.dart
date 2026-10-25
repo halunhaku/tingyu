@@ -132,10 +132,14 @@ class QuarkDriveClient {
     DateTime Function()? clock,
     Duration? folderDelay,
     HttpRetry? retry,
+    Uri? pcBaseUrl,
+    Uri? cdnBaseUrl,
   }) : _dio = dio ?? Dio(_baseOptions()),
        _clock = clock ?? DateTime.now,
        folderDelay = folderDelay ?? defaultFolderDelay,
-       _retry = retry ?? const HttpRetry();
+       _retry = retry ?? const HttpRetry(),
+       _pcBaseUrl = _validatedBaseUrl(pcBaseUrl, _pcHost),
+       _cdnBaseUrl = _validatedBaseUrl(cdnBaseUrl, _cdnHost);
 
   /// 幂等请求的重试策略（测试注入零延迟，避免用例真的等退避）。
   final HttpRetry _retry;
@@ -185,6 +189,11 @@ class QuarkDriveClient {
     sendTimeout: resourceTimeout,
   );
 
+  /// 生产固定夸克端点；自动化集成可用只读本地 HTTP fixture 覆盖。
+  final Uri _pcBaseUrl;
+
+  final Uri _cdnBaseUrl;
+
   final Dio _dio;
 
   final DateTime Function() _clock;
@@ -209,8 +218,10 @@ class QuarkDriveClient {
 
   /// 用轻量的 file/sort 请求校验会话，并区分凭据失效与临时网络故障。
   Future<QuarkSessionCheck> validateSession(QuarkSession session) async {
-    const String url =
-        '$_pcHost/1/clouddrive/file/sort?pr=ucpro&fr=pc&uc_param_str=&pdir_fid=0&_page=1&_size=1';
+    final String url = _endpointUrl(
+      _pcBaseUrl,
+      '1/clouddrive/file/sort?pr=ucpro&fr=pc&uc_param_str=&pdir_fid=0&_page=1&_size=1',
+    );
     if (session.isEmpty) {
       return const QuarkSessionCheck(state: QuarkSessionState.expired);
     }
@@ -316,8 +327,10 @@ class QuarkDriveClient {
     required int page,
     required QuarkSession session,
   }) async {
-    final String url =
-        '$_pcHost/1/clouddrive/file/sort?pr=ucpro&fr=pc&uc_param_str=&pdir_fid=$fid&_page=$page&_size=$_pageSize&_fetch_total=1&_sort=file_type:asc,file_name:asc';
+    final String url = _endpointUrl(
+      _pcBaseUrl,
+      '1/clouddrive/file/sort?pr=ucpro&fr=pc&uc_param_str=&pdir_fid=$fid&_page=$page&_size=$_pageSize&_fetch_total=1&_sort=file_type:asc,file_name:asc',
+    );
 
     final _QuarkResponse response = await _send(url, session: session);
     if (response.statusCode == 401 || response.statusCode == 403) {
@@ -507,8 +520,8 @@ class QuarkDriveClient {
     }
 
     final List<String> endpoints = <String>[
-      '$_pcHost/1/clouddrive/file/download?pr=ucpro&fr=pc',
-      '$_cdnHost/1/clouddrive/file/download?pr=ucpro&fr=pc',
+      _endpointUrl(_pcBaseUrl, '1/clouddrive/file/download?pr=ucpro&fr=pc'),
+      _endpointUrl(_cdnBaseUrl, '1/clouddrive/file/download?pr=ucpro&fr=pc'),
     ];
 
     QuarkException lastError = QuarkParseError('获取下载直链失败');
@@ -643,12 +656,8 @@ class QuarkDriveClient {
     // 列目录 / 取直链都是幂等的：网盘风控（429）、服务端 5xx、连接抖动值得重放。
     // 旧实现一次失败就让整次扫描或播放报错，用户只能反复手点。
     return _retry.run<_QuarkResponse>(
-      run: (int attempt) => _sendOnce(
-        endpoint,
-        session: session,
-        jsonBody: jsonBody,
-        body: body,
-      ),
+      run: (int attempt) =>
+          _sendOnce(endpoint, session: session, jsonBody: jsonBody, body: body),
       shouldRetry: (Object? error, _QuarkResponse? result) =>
           result == null || HttpRetry.retryableStatus(result.statusCode),
       onRetry:
@@ -718,6 +727,37 @@ class QuarkDriveClient {
     }
     return headers;
   }
+
+  static Uri _validatedBaseUrl(Uri? override, String fallback) {
+    final Uri base = override ?? Uri.parse(fallback);
+    if (!base.hasScheme ||
+        base.host.isEmpty ||
+        base.hasQuery ||
+        base.hasFragment) {
+      throw ArgumentError.value(
+        base,
+        'baseUrl',
+        'must be an absolute HTTP(S) base URL without query or fragment',
+      );
+    }
+    if (base.scheme != 'http' && base.scheme != 'https') {
+      throw ArgumentError.value(
+        base,
+        'baseUrl',
+        'scheme must be http or https',
+      );
+    }
+    return base.replace(
+      path: base.path.isEmpty
+          ? '/'
+          : base.path.endsWith('/')
+          ? base.path
+          : '${base.path}/',
+    );
+  }
+
+  static String _endpointUrl(Uri base, String relativePathAndQuery) =>
+      base.resolve(relativePathAndQuery).toString();
 
   static String _bodyText(Object? data) {
     if (data is String) {

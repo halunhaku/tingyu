@@ -12,14 +12,18 @@ import 'package:go_router/go_router.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'app/preferences.dart';
 import 'app/providers.dart';
 import 'app/router.dart';
-import 'app/theme.dart';
 import 'data/db/database.dart';
 import 'data/legacy_import.dart';
 import 'data/models/library_summaries.dart';
 import 'data/repositories/source_repository.dart';
 import 'data/repositories/track_repository.dart';
+import 'data/settings_store.dart';
+import 'design/layout/form_factor.dart';
+import 'design/tokens/tokens.dart';
+import 'design/theme.dart';
 import 'features/shared/playback_failure_listener.dart';
 import 'playback/engine_factory.dart';
 import 'playback/playback_engine.dart';
@@ -127,41 +131,87 @@ Future<void> _run() async {
 }
 
 /// 应用根：MaterialApp.router + macOS 原生菜单栏。
-class TingyuApp extends StatefulWidget {
+class TingyuApp extends ConsumerStatefulWidget {
   const TingyuApp({super.key});
 
   @override
-  State<TingyuApp> createState() => _TingyuAppState();
+  ConsumerState<TingyuApp> createState() => _TingyuAppState();
 }
 
-class _TingyuAppState extends State<TingyuApp> {
+class _TingyuAppState extends ConsumerState<TingyuApp> {
   late final GoRouter _router = createRouter(
-    // 调试用：`TINGYU_DEBUG_ROUTE=/albums` 可直接打开某个页面（截图/排查用）。
+    // 调试用：`TINGYU_DEBUG_ROUTE=/library/albums` 可直接打开某个页面（截图/排查用）。
     initialLocation:
         Platform.environment['TINGYU_DEBUG_ROUTE']?.trim().isNotEmpty ?? false
         ? Platform.environment['TINGYU_DEBUG_ROUTE']!.trim()
-        : '/library',
-    // 与旧版一致：移动端与桌面端是两套布局（移动端底部 Tab + 迷你播放条）。
-    // `TINGYU_DEBUG_MOBILE_SHELL=1` 在桌面上强制走手机外壳：配合
-    // `TINGYU_DEBUG_WINDOW=390x844` 就能在台式机上核对手机排版与截图（真机回归的补充）。
-    mobile:
-        Platform.isAndroid ||
-        Platform.isIOS ||
-        Platform.environment['TINGYU_DEBUG_MOBILE_SHELL'] == '1',
+        : '/library/songs',
   );
+
+  /// 走查用：`TINGYU_DEBUG_THEME=dark|light` 覆盖主题偏好（截图 / 排查用）。
+  ///
+  /// 只影响本次进程，不写回 `settings.json`——否则「看一眼深色模式」会改掉用户设置。
+  static final ThemeMode? _debugThemeMode =
+      switch (Platform.environment['TINGYU_DEBUG_THEME']?.trim().toLowerCase()) {
+        'dark' => ThemeMode.dark,
+        'light' => ThemeMode.light,
+        _ => null,
+      };
+
+  /// 走查用：`TINGYU_DEBUG_DENSITY=compact|comfortable` 覆盖密度偏好。
+  static final TyDensity? _debugDensity =
+      switch (Platform.environment['TINGYU_DEBUG_DENSITY']
+          ?.trim()
+          .toLowerCase()) {
+        'compact' => TyDensity.compact,
+        'comfortable' => TyDensity.comfortable,
+        _ => null,
+      };
 
   @override
   Widget build(BuildContext context) {
+    final AppPreferences preferences =
+        ref.watch(preferencesProvider).value?.preferences ??
+        AppPreferences.defaults;
+    final TyDensity density = _debugDensity ?? preferences.density;
     final Widget app = MaterialApp.router(
       title: '听屿',
       debugShowCheckedModeBanner: false,
-      theme: buildTingyuTheme(Brightness.light),
-      darkTheme: buildTingyuTheme(Brightness.dark),
-      themeMode: ThemeMode.system,
+      theme: TyTheme.build(brightness: Brightness.light, density: density),
+      darkTheme: TyTheme.build(brightness: Brightness.dark, density: density),
+      themeMode: _debugThemeMode ?? preferences.themeMode,
       routerConfig: _router,
-      // 放在这里（而非各页面里）是为了让桌面/移动两套外壳共用同一个提示出口。
-      builder: (BuildContext context, Widget? child) =>
-          PlaybackFailureListener(child: child ?? const SizedBox.shrink()),
+      // 宽度 → 结构 / 平台 → 交互能力；所有页面与组件都从这里读令牌。
+      builder: (BuildContext context, Widget? child) {
+        return LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final MediaQueryData media = MediaQuery.of(context);
+            // 一次测量同时决定作用域、provider 桥与窗口提示，三处不会漂移。
+            final Size size =
+                constraints.hasBoundedWidth && constraints.hasBoundedHeight
+                ? Size(constraints.maxWidth, constraints.maxHeight)
+                : media.size;
+            final FormFactor formFactor = FormFactor.ofWidth(size.width);
+            final TargetPlatform platform = Theme.of(context).platform;
+            return MediaQuery(
+              data: media.copyWith(size: size),
+              child: ProviderScope(
+                overrides: [
+                  formFactorProvider.overrideWithValue(formFactor),
+                ],
+                child: TyLayoutScope.forSize(
+                  size,
+                  density: density,
+                  platform: platform,
+                  // 放在根部（而非各页面里）是为了让桌面/移动两套外壳共用同一个提示出口。
+                  child: PlaybackFailureListener(
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
     if (!Platform.isMacOS) {
       return app;
@@ -247,40 +297,40 @@ class _TingyuAppState extends State<TingyuApp> {
               LogicalKeyboardKey.digit1,
               meta: true,
             ),
-            onSelected: () => router.go('/library'),
+            onSelected: () => router.go('/library/songs'),
           ),
           PlatformMenuItem(
-            label: '专辑',
+            label: '搜索',
             shortcut: const SingleActivator(
               LogicalKeyboardKey.digit2,
               meta: true,
             ),
-            onSelected: () => router.go('/albums'),
-          ),
-          PlatformMenuItem(
-            label: '艺术家',
-            shortcut: const SingleActivator(
-              LogicalKeyboardKey.digit3,
-              meta: true,
-            ),
-            onSelected: () => router.go('/artists'),
+            onSelected: () => router.go('/search'),
           ),
           PlatformMenuItem(
             label: '收藏',
             shortcut: const SingleActivator(
-              LogicalKeyboardKey.digit4,
+              LogicalKeyboardKey.digit3,
               meta: true,
             ),
             onSelected: () => router.go('/favorites'),
           ),
           PlatformMenuItem(
-            label: '正在播放',
+            label: '音乐来源',
             shortcut: const SingleActivator(
-              LogicalKeyboardKey.keyN,
+              LogicalKeyboardKey.digit4,
+              meta: true,
+            ),
+            onSelected: () => router.go('/sources'),
+          ),
+          PlatformMenuItem(
+            label: '播放舞台',
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyP,
               meta: true,
               shift: true,
             ),
-            onSelected: () => router.go('/now-playing'),
+            onSelected: () => router.go('/stage'),
           ),
         ],
       ),
@@ -366,7 +416,8 @@ Future<void> _runVerifyHarness(TingyuAudioHandler handler) async {
       .map((String source) => source.trim())
       .where((String source) => source.isNotEmpty)
       .toList(growable: false);
-  if (sources.isEmpty) {
+  if (sources.isEmpty &&
+      Platform.environment['TINGYU_DEBUG_PLAYBACK_LOG'] != '1') {
     return;
   }
 
@@ -378,6 +429,10 @@ Future<void> _runVerifyHarness(TingyuAudioHandler handler) async {
       'failure=${snapshot.failure?.message ?? '-'}',
     ),
   );
+
+  if (sources.isEmpty) {
+    return;
+  }
 
   final List<PlaybackItem> items = sources
       .map(

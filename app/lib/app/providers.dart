@@ -2,11 +2,15 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../data/cover_store.dart';
 import '../data/db/database.dart';
 import '../data/enrichment_service.dart';
+import '../data/models/library_query.dart';
 import '../data/models/library_summaries.dart';
+import '../data/models/search_page_result.dart';
+import '../data/models/search_overview.dart';
 import '../data/repositories/playlist_repository.dart';
 import '../data/repositories/source_repository.dart';
 import '../data/repositories/track_repository.dart';
@@ -132,8 +136,39 @@ final NotifierProvider<SearchQueryController, String> searchQueryProvider =
 /// 搜索防抖窗口：输入停顿这么久才真正查库。
 ///
 /// 侧栏是「每敲一个字符 set 一次」，直接查库等于每个字符跑一次整库 LIKE；
-/// 220ms 大致是连续打字的间隔上限，快速输入时只有最后一帧会落到数据库。
-const Duration searchDebounce = Duration(milliseconds: 220);
+/// 250ms 是 `docs/UX_REDESIGN.md` §5.5 的统一口径（全应用一个值），
+/// 快速输入时只有最后一帧会落到数据库。
+const Duration searchDebounce = Duration(milliseconds: 250);
+
+/// 最近搜索词上限：内存 ≤ 10 条，**不落库**（`docs/UX_REDESIGN.md` §4.2）。
+const int recentSearchLimit = 10;
+
+/// 最近搜索词（进程内）：搜索页空查询时给「刚才找过什么」。
+class RecentSearchesController extends Notifier<List<String>> {
+  @override
+  List<String> build() => const <String>[];
+
+  /// 记一次搜索；重复词提前、超出上限截断。
+  void remember(String value) {
+    final String trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+    state = <String>[
+      trimmed,
+      for (final String item in state)
+        if (item != trimmed) item,
+    ].take(recentSearchLimit).toList(growable: false);
+  }
+
+  void clear() => state = const <String>[];
+}
+
+final NotifierProvider<RecentSearchesController, List<String>>
+recentSearchesProvider =
+    NotifierProvider<RecentSearchesController, List<String>>(
+      RecentSearchesController.new,
+    );
 
 /// 防抖后的查询词；曲库查询只认它。
 class DebouncedSearchQueryController extends Notifier<String> {
@@ -167,53 +202,6 @@ final NotifierProvider<DebouncedSearchQueryController, String>
 debouncedSearchQueryProvider =
     NotifierProvider<DebouncedSearchQueryController, String>(
       DebouncedSearchQueryController.new,
-    );
-
-/// 搜索命中上限；与 `TrackRepository.watchSearch` 的默认 limit 保持一致。
-const int searchResultLimit = 200;
-
-/// 搜索结果记录：
-/// - `tracks`：命中曲目（或查询为空时的全库列表）；
-/// - `limit`：本次查询上限；
-/// - `truncated`：命中数触到上限、结果被静默截断（UI 应提示「仅显示前 N 条」）。
-typedef SearchResults = ({List<Track> tracks, int limit, bool truncated});
-
-/// 当前列表（搜索命中或全库）＋截断信号。
-///
-/// 仓库层把搜索硬截到 [searchResultLimit] 条，超出部分丢得无声无息；
-/// `truncated` 把这件事暴露给 UI，免得用户以为曲库只有这么多歌。
-final StreamProvider<SearchResults> searchResultsProvider =
-    StreamProvider<SearchResults>((Ref ref) {
-      final String query = ref.watch(debouncedSearchQueryProvider).trim();
-      final TrackRepository tracks = ref.watch(trackRepositoryProvider);
-      if (query.isEmpty) {
-        return tracks.watchAll().map(
-          (List<Track> list) =>
-              (tracks: list, limit: searchResultLimit, truncated: false),
-        );
-      }
-      return tracks
-          .watchSearch(query, limit: searchResultLimit)
-          .map(
-            (List<Track> list) => (
-              tracks: list,
-              limit: searchResultLimit,
-              truncated: list.length >= searchResultLimit,
-            ),
-          );
-    });
-
-/// 当前列表（搜索命中或全库）；数据库变化后立即推送，避免首次空结果被缓存。
-///
-/// 保留这个名字：曲库页与既有测试都直接拿它的 `AsyncValue<List<Track>>`；
-/// 需要截断提示的地方改看 [searchResultsProvider]。
-/// 由 [searchResultsProvider] 同步映射而来（`whenData` 不另开数据库订阅也即无延迟），
-/// 所以这里只是一个 `Provider` 而不再是流。
-final Provider<AsyncValue<List<Track>>> visibleTracksProvider =
-    Provider<AsyncValue<List<Track>>>(
-      (Ref ref) => ref
-          .watch(searchResultsProvider)
-          .whenData((SearchResults results) => results.tracks),
     );
 
 /// 「最近添加」：按 dateAdded 倒序取前 100，并随入库实时刷新。
@@ -385,9 +373,8 @@ final FutureProvider<void> autoLibraryEnrichmentProvider = FutureProvider<void>(
     }
     // 封面 → 歌词 → 时长：前者是列表里最显眼的缺失，后者只影响一个数字。
     pending.sort(
-      (Track a, Track b) => _enrichmentPriority(a).compareTo(
-        _enrichmentPriority(b),
-      ),
+      (Track a, Track b) =>
+          _enrichmentPriority(a).compareTo(_enrichmentPriority(b)),
     );
     final List<Track> batch = pending
         .take(autoEnrichmentLimit)
@@ -463,6 +450,7 @@ class AISettingsNotifier extends AsyncNotifier<AISettings> {
   Future<AISettings> build() {
     return ref.watch(aiSettingsRepositoryProvider).load();
   }
+
   Future<void> save(AISettings settings) async {
     state = AsyncValue<AISettings>.data(settings);
     await ref.read(aiSettingsRepositoryProvider).save(settings);
@@ -503,3 +491,167 @@ bool trackNeedsEnrichment(Track track) =>
     // 时长为 0：夸克 / WebDAV 的目录接口不报时长，搜索来源的候选里带 ——
     // 不补的话整库都显示 `--:--`（播放时也能补，但那只覆盖听过的歌）。
     track.duration <= 0;
+
+// ------------------------------------------------------ 分页曲库与搜索（B4）
+
+/// 曲库列表页大小：约两屏，滚动到底再取下一页。
+const int libraryPageSize = 40;
+
+/// 搜索「全部」视图里每组先露出的条数（精确总数另外给）。
+const int searchGroupPreviewSize = 5;
+
+/// 曲库内容指纹：分页查询是 `Future`（不是 Stream），靠它感知「库变了」。
+///
+/// 长度 / 收藏数 / 最新入库时间任一变化都说明列表要重取。做成一个 int 是为了
+/// 让分页 provider 只要 `watch` 一下就自动刷新，不必在每个写库点手动 invalidate。
+final Provider<int> libraryFingerprintProvider = Provider<int>((Ref ref) {
+  final List<Track> tracks =
+      ref.watch(allTracksProvider).value ?? const <Track>[];
+  int favorites = 0;
+  DateTime? latest;
+  for (final Track track in tracks) {
+    if (track.isFavorite) {
+      favorites++;
+    }
+    if (latest == null || track.dateAdded.isAfter(latest)) {
+      latest = track.dateAdded;
+    }
+  }
+  return Object.hash(tracks.length, favorites, latest);
+});
+
+/// 曲库单页取数：键含完整查询条件与偏移，值相等即复用。
+final libraryTracksPageProvider =
+    FutureProvider.family<SearchPageResult<Track>, LibraryPageRequest>((
+      Ref ref,
+      LibraryPageRequest request,
+    ) {
+      // 指纹变化 → 本页自动重取。
+      ref.watch(libraryFingerprintProvider);
+      return ref
+          .watch(trackRepositoryProvider)
+          .listTracksPaged(
+            query: request.query.text,
+            favoritesOnly: request.query.favoritesOnly,
+            sourceId: request.query.sourceId,
+            sort: request.query.sort,
+            ascending: request.query.ascending,
+            offset: request.offset,
+            limit: request.limit,
+          );
+    });
+
+/// 搜索页四组分页（「查看全部」后按 40 条一页继续取）。
+final searchSongsPageProvider =
+    FutureProvider.family<SearchPageResult<Track>, SearchPageRequest>((
+      Ref ref,
+      SearchPageRequest request,
+    ) {
+      ref.watch(libraryFingerprintProvider);
+      return ref
+          .watch(trackRepositoryProvider)
+          .searchTracksPaged(
+            request.text,
+            offset: request.offset,
+            limit: request.limit,
+          );
+    });
+
+final searchAlbumsPageProvider =
+    FutureProvider.family<SearchPageResult<AlbumSummary>, SearchPageRequest>((
+      Ref ref,
+      SearchPageRequest request,
+    ) {
+      ref.watch(libraryFingerprintProvider);
+      return ref
+          .watch(trackRepositoryProvider)
+          .searchAlbumsPaged(
+            request.text,
+            offset: request.offset,
+            limit: request.limit,
+          );
+    });
+
+final searchArtistsPageProvider =
+    FutureProvider.family<SearchPageResult<ArtistSummary>, SearchPageRequest>((
+      Ref ref,
+      SearchPageRequest request,
+    ) {
+      ref.watch(libraryFingerprintProvider);
+      return ref
+          .watch(trackRepositoryProvider)
+          .searchArtistsPaged(
+            request.text,
+            offset: request.offset,
+            limit: request.limit,
+          );
+    });
+
+final searchPlaylistsPageProvider =
+    FutureProvider.family<SearchPageResult<Playlist>, SearchPageRequest>((
+      Ref ref,
+      SearchPageRequest request,
+    ) {
+      ref.watch(libraryFingerprintProvider);
+      return ref
+          .watch(playlistRepositoryProvider)
+          .searchByNamePaged(
+            request.text,
+            offset: request.offset,
+            limit: request.limit,
+          );
+    });
+
+/// 搜索「全部」视图：四组并行取前 [searchGroupPreviewSize] 条 + 精确总数。
+///
+/// 四路并行（record `.wait`）而不是串行 await：搜索延迟是这页唯一的性能指标。
+final searchOverviewProvider = FutureProvider<SearchOverview>((Ref ref) async {
+  final String query = ref.watch(debouncedSearchQueryProvider).trim();
+  if (query.isEmpty) {
+    return SearchOverview.empty;
+  }
+  ref.watch(libraryFingerprintProvider);
+  final TrackRepository tracks = ref.watch(trackRepositoryProvider);
+  final PlaylistRepository playlists = ref.watch(playlistRepositoryProvider);
+  final (
+    SearchPageResult<Track> songs,
+    SearchPageResult<AlbumSummary> albums,
+    SearchPageResult<ArtistSummary> artists,
+    SearchPageResult<Playlist> playlistHits,
+  ) = await (
+    tracks.searchTracksPaged(query, limit: searchGroupPreviewSize),
+    tracks.searchAlbumsPaged(query, limit: searchGroupPreviewSize),
+    tracks.searchArtistsPaged(query, limit: searchGroupPreviewSize),
+    playlists.searchByNamePaged(query, limit: searchGroupPreviewSize),
+  ).wait;
+  return SearchOverview(
+    songs: SearchGroup<Track>(items: songs.items, total: songs.total),
+    albums: SearchGroup<AlbumSummary>(items: albums.items, total: albums.total),
+    artists: SearchGroup<ArtistSummary>(
+      items: artists.items,
+      total: artists.total,
+    ),
+    playlists: SearchGroup<Playlist>(
+      items: playlistHits.items,
+      total: playlistHits.total,
+    ),
+  );
+});
+
+/// 命令面板空查询时的「最近添加」提示。
+final FutureProvider<List<Track>> paletteRecentProvider =
+    FutureProvider<List<Track>>((Ref ref) async {
+      ref.watch(libraryFingerprintProvider);
+      final SearchPageResult<Track> page = await ref
+          .watch(trackRepositoryProvider)
+          .recentlyAddedPaged(limit: searchGroupPreviewSize);
+      return page.items;
+    });
+
+/// 应用数据目录（数据库、封面缓存、偏好文件都在这儿）。
+///
+/// 做成 provider 而不是在页面里现调 `getApplicationSupportDirectory()`：
+/// 配置页每次重建都会重问一次系统目录，而且测试没法替换（平台通道在
+/// widget 测试里没有实现，直接抛 MissingPluginException）。
+final FutureProvider<Directory> dataDirectoryProvider =
+    FutureProvider<Directory>((Ref ref) => getApplicationSupportDirectory());

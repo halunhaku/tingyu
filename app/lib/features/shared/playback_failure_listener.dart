@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../design/components/feedback.dart';
 import '../../playback/playback_snapshot.dart';
 
 /// 把播放失败（[PlaybackSnapshot.failure]）弹成 SnackBar。
@@ -27,15 +28,10 @@ class PlaybackFailureListener extends ConsumerWidget {
         return;
       }
       final String title = failure.title ?? '';
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              title.isEmpty ? failure.message : '「$title」${failure.message}',
-            ),
-          ),
-        );
+      TySnack.show(
+        context,
+        title.isEmpty ? failure.message : '「$title」${failure.message}',
+      );
     });
     return child;
   }

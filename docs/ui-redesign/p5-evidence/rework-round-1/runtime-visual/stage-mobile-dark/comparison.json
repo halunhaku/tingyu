@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "approvedPath": "F:\\project\\tingyu\\docs\\ui-redesign\\p4-quality\\runtime-baselines\\stage-mobile-dark.png",
+  "actualPath": "F:\\project\\tingyu\\docs\\ui-redesign\\p5-evidence\\rework-round-1\\runtime-visual\\stage-mobile-dark\\stage.png",
+  "diffPath": "F:\\project\\tingyu\\docs\\ui-redesign\\p5-evidence\\rework-round-1\\runtime-visual\\stage-mobile-dark\\baseline.diff.png",
+  "approvedSha256": "654858b03566b29a1e018835faffc27e5e65d43a8cece1aaadd58cc0973fa760",
+  "actualSha256": "654858b03566b29a1e018835faffc27e5e65d43a8cece1aaadd58cc0973fa760",
+  "byteExact": true,
+  "sameDimensions": true,
+  "pixelExact": true,
+  "approvedWidth": 585,
+  "approvedHeight": 1266,
+  "actualWidth": 585,
+  "actualHeight": 1266,
+  "totalPixels": 740610,
+  "differingPixels": 0,
+  "differingPercent": 0.0,
+  "maxChannelDelta": 0,
+  "meanAbsoluteDelta": 0.0,
+  "hasDifferenceBounds": false,
+  "differenceBounds": null
+}

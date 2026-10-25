@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "approvedPath": "F:\\project\\tingyu\\docs\\ui-redesign\\p4-quality\\runtime-baselines\\library-mobile-scale2-light.png",
+  "actualPath": "F:\\project\\tingyu\\docs\\ui-redesign\\p4-evidence\\runtime-visual\\library-mobile-scale2-light\\library-songs.png",
+  "diffPath": "F:\\project\\tingyu\\docs\\ui-redesign\\p4-evidence\\runtime-visual\\library-mobile-scale2-light\\baseline.diff.png",
+  "approvedSha256": "f684ac57cf7ff6cd7f23d4b272356cda9d710df31d738f2d13f9fcd00bfdb3cb",
+  "actualSha256": "f684ac57cf7ff6cd7f23d4b272356cda9d710df31d738f2d13f9fcd00bfdb3cb",
+  "byteExact": true,
+  "sameDimensions": true,
+  "pixelExact": true,
+  "approvedWidth": 585,
+  "approvedHeight": 1266,
+  "actualWidth": 585,
+  "actualHeight": 1266,
+  "totalPixels": 740610,
+  "differingPixels": 0,
+  "differingPercent": 0.0,
+  "maxChannelDelta": 0,
+  "meanAbsoluteDelta": 0.0,
+  "hasDifferenceBounds": false,
+  "differenceBounds": null
+}

@@ -1,0 +1,26 @@
+import 'package:flutter/material.dart';
+
+import '../../design/tokens/metrics.dart';
+import '../../design/tokens/tokens.dart';
+
+final Widget good = Builder(
+  builder: (BuildContext context) {
+    final TyTokens ty = context.ty;
+    return Container(
+      color: ty.colors.surface,
+      padding: const EdgeInsets.all(TySpace.x8),
+      child: SizedBox(
+        width: TySize.trackLeading,
+        child: Icon(
+          Icons.close,
+          color: Colors.transparent, // 允许：透明不是颜色选择。
+          size: TyIconSize.normal,
+        ),
+      ),
+    );
+  },
+);
+
+final BoxBorder qrBorder = Border.all(
+  color: Colors.white, // guard-ok: 二维码扫描要求纯白底，token 无法表达。
+);

@@ -148,7 +148,11 @@ class SecureStore {
     final File file = await _fallbackFile(account);
     await file.writeAsString(value, flush: true);
     // 仅本人可读写：等价于"本地文件存凭据"的最小暴露面。
-    await Process.run('chmod', <String>['600', file.path]);
+    // chmod 只存在于 POSIX；Windows 回退文件继续继承当前用户配置目录的
+    // ACL。两者不是同一套权限模型，但这不能靠调用不存在的命令来弥补。
+    if (!Platform.isWindows) {
+      await Process.run('chmod', <String>['600', file.path]);
+    }
   }
 
   Future<String?> _readFile(String account) async {

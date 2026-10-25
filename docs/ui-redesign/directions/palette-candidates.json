@@ -1,0 +1,62 @@
+{
+  "A": {
+    "light": {
+      "colors": [
+        "#F8F7F3",
+        "#202322",
+        "#426457"
+      ],
+      "textOnCanvas": 14.79,
+      "accentOnCanvas": 6.14
+    },
+    "dark": {
+      "colors": [
+        "#171C19",
+        "#F1F2EB",
+        "#A9C5AE"
+      ],
+      "textOnCanvas": 15.32,
+      "accentOnCanvas": 9.28
+    }
+  },
+  "B": {
+    "light": {
+      "colors": [
+        "#F3F7FB",
+        "#152638",
+        "#24697A"
+      ],
+      "textOnCanvas": 14.28,
+      "accentOnCanvas": 5.78
+    },
+    "dark": {
+      "colors": [
+        "#101827",
+        "#EFF3FA",
+        "#63CCD9"
+      ],
+      "textOnCanvas": 15.97,
+      "accentOnCanvas": 9.45
+    }
+  },
+  "C": {
+    "light": {
+      "colors": [
+        "#FAFAFC",
+        "#18191D",
+        "#9A5D09"
+      ],
+      "textOnCanvas": 16.85,
+      "accentOnCanvas": 5.11
+    },
+    "dark": {
+      "colors": [
+        "#191A1E",
+        "#F4F4F6",
+        "#E3B56B"
+      ],
+      "textOnCanvas": 15.83,
+      "accentOnCanvas": 9.18
+    }
+  }
+}

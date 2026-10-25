@@ -1,0 +1,291 @@
+{
+  "generatedAt": "2026-10-18T22:06:19.9720481+08:00",
+  "branch": "codex/ui-p3-sources",
+  "baseCommit": "ac44d791e1999f0815b3feeca9348f0462840573",
+  "fixture": "app/tool/voice_archive_preview.dart",
+  "fixtureData": "3 fictional sources; 228 tracks; fixed 2026-10-04/05/06 sync dates; no database, network or credentials",
+  "engineConfiguration": "host_release",
+  "reviewStatus": "implementation complete; source visual, player stage and both named Golden baselines approved and validated",
+  "sourceHashes": [
+    {
+      "path": "app/lib/design/components/source_card.dart",
+      "sha256": "694cae65f20320305de13e7c54683e474b9a5f3ac5a45e46f6dc18d7aa34274e"
+    },
+    {
+      "path": "app/lib/design/layout/app_shell.dart",
+      "sha256": "f0b4cf8efed3d5cd7637ba935a23207125aee35be1b79617ed4ad04162af33c7"
+    },
+    {
+      "path": "app/lib/features/sources/source_status.dart",
+      "sha256": "c0894f2b69d698fcd2fc8001cc7984b17174f474550c9e795535b5d24f81d192"
+    },
+    {
+      "path": "app/lib/features/sources/sources_page.dart",
+      "sha256": "62f836fb87177ac26829991d5b8aa69efe71beac358e16796bb24b3cefee932f"
+    },
+    {
+      "path": "app/test/sources_page_redesign_test.dart",
+      "sha256": "7d070720cc81b1bb08fc450995261bc96731a768cc8c1db1904a267a0a93cdbc"
+    },
+    {
+      "path": "app/test/golden/core_pages_golden_test.dart",
+      "sha256": "3f543049451ccad303ba8d4ea3924daf3c2a2b6afda860090a1000ab4e5239f1"
+    },
+    {
+      "path": "app/tool/source_archive_fixtures.dart",
+      "sha256": "b4014fe3f6db2cdb4343a6da427eae3503de271e7de6e1f2424cc0a360cf6d08"
+    },
+    {
+      "path": "app/tool/voice_archive_preview.dart",
+      "sha256": "c73447d61c314cb3e4f6e29514bf93a23bae5321fdbbbd23d8904d7f4aa35ec3"
+    }
+  ],
+  "captures": [
+    {
+      "path": "docs/ui-redesign/p3-sources-evidence/desktop-light/sources.png",
+      "state": "normal",
+      "theme": "light",
+      "density": "compact",
+      "textScale": 1,
+      "physicalWidth": 1898,
+      "physicalHeight": 1024,
+      "dpiScale": 1.5,
+      "logicalWidth": 1265.33,
+      "logicalHeight": 682.67,
+      "bytes": 82876,
+      "sha256": "017a027ace4628cd03b30212d785ffaf1220ffe57faadabbfffbf81eb7d600a8"
+    },
+    {
+      "path": "docs/ui-redesign/p3-sources-evidence/desktop-dark/sources.png",
+      "state": "normal",
+      "theme": "dark",
+      "density": "compact",
+      "textScale": 1,
+      "physicalWidth": 1898,
+      "physicalHeight": 1024,
+      "dpiScale": 1.5,
+      "logicalWidth": 1265.33,
+      "logicalHeight": 682.67,
+      "bytes": 82544,
+      "sha256": "045fe2bc69c27a1ef6ecbe395002ef3a2f11259f8483f26d79765ea79ab0d749"
+    },
+    {
+      "path": "docs/ui-redesign/p3-sources-evidence/desktop-medium-light/sources.png",
+      "state": "normal",
+      "theme": "light",
+      "density": "compact",
+      "textScale": 1,
+      "physicalWidth": 1200,
+      "physicalHeight": 1289,
+      "dpiScale": 1.5,
+      "logicalWidth": 800.0,
+      "logicalHeight": 859.33,
+      "bytes": 70696,
+      "sha256": "f4ba17e2b297c6d469834fc98038b6b56d646c4ac02e4ccda785eb43f7e35c94"
+    },
+    {
+      "path": "docs/ui-redesign/p3-sources-evidence/mobile-light/sources.png",
+      "state": "normal",
+      "theme": "light",
+      "density": "compact",
+      "textScale": 1,
+      "physicalWidth": 585,
+      "physicalHeight": 1266,
+      "dpiScale": 1.5,
+      "logicalWidth": 390.0,
+      "logicalHeight": 844.0,
+      "bytes": 49065,
+      "sha256": "b805f9c5d0dc220a4a99b76353039ad471e85d331ccafbc05bd9a7751ccc4ee4"
+    },
+    {
+      "path": "docs/ui-redesign/p3-sources-evidence/mobile-scale2/sources.png",
+      "state": "normal",
+      "theme": "light",
+      "density": "compact",
+      "textScale": 2,
+      "physicalWidth": 585,
+      "physicalHeight": 1266,
+      "dpiScale": 1.5,
+      "logicalWidth": 390.0,
+      "logicalHeight": 844.0,
+      "bytes": 49808,
+      "sha256": "c6024f1bc916bebb8eaec5162bcc3bae78af14f0a08560b67dc7e0bc94953880"
+    },
+    {
+      "path": "docs/ui-redesign/p3-sources-evidence/mobile-empty/sources.png",
+      "state": "empty",
+      "theme": "light",
+      "density": "compact",
+      "textScale": 1,
+      "physicalWidth": 585,
+      "physicalHeight": 1266,
+      "dpiScale": 1.5,
+      "logicalWidth": 390.0,
+      "logicalHeight": 844.0,
+      "bytes": 38983,
+      "sha256": "180011b2aa067cc09a17a8b08c97bb31f1f35048b4d53ebdd852eddc550b02ac"
+    },
+    {
+      "path": "docs/ui-redesign/p3-sources-evidence/desktop-syncing-dark/sources.png",
+      "state": "syncing",
+      "theme": "dark",
+      "density": "compact",
+      "textScale": 1,
+      "physicalWidth": 1898,
+      "physicalHeight": 1024,
+      "dpiScale": 1.5,
+      "logicalWidth": 1265.33,
+      "logicalHeight": 682.67,
+      "bytes": 77392,
+      "sha256": "709c04c5788947f7448411a176228d58a8773126f3c3c01d6a6bc31fcbed13a8"
+    },
+    {
+      "path": "docs/ui-redesign/p3-sources-evidence/mobile-relogin-dark/sources.png",
+      "state": "relogin",
+      "theme": "dark",
+      "density": "compact",
+      "textScale": 1,
+      "physicalWidth": 585,
+      "physicalHeight": 1266,
+      "dpiScale": 1.5,
+      "logicalWidth": 390.0,
+      "logicalHeight": 844.0,
+      "bytes": 50571,
+      "sha256": "b4aff040e27c8320f3acc323c755fe4b63000467a7e2faa804220ae1281683bd"
+    },
+    {
+      "path": "docs/ui-redesign/p3-sources-evidence/mobile-error-dark/sources.png",
+      "state": "error",
+      "theme": "dark",
+      "density": "compact",
+      "textScale": 1,
+      "physicalWidth": 585,
+      "physicalHeight": 1266,
+      "dpiScale": 1.5,
+      "logicalWidth": 390.0,
+      "logicalHeight": 844.0,
+      "bytes": 21725,
+      "sha256": "e753ca59abff1c50373dd31dc78b7770977266caf782d79fef5e166535d1a3ee"
+    }
+  ],
+  "gates": {
+    "format": {
+      "exitCode": 0,
+      "changed": 0,
+      "files": 1,
+      "log": "golden-approval-format.txt"
+    },
+    "flutterAnalyze": {
+      "exitCode": 0,
+      "result": "No issues found",
+      "log": "golden-approval-analyze.txt"
+    },
+    "targetedTests": {
+      "passed": 45,
+      "failed": 0,
+      "exitCode": 0,
+      "log": "golden-approval-regression.txt"
+    },
+    "targetedTestsBeforeApproval": {
+      "passed": 23,
+      "failed": 0,
+      "exitCode": 0,
+      "log": "targeted-tests-final.txt"
+    },
+    "fullNonGoldenTests": {
+      "total": 361,
+      "passed": 360,
+      "failed": 1,
+      "exitCode": 1,
+      "knownFailure": "source_adapter_cache_test invokes unavailable chmod on Windows",
+      "log": "full-tests-final.txt"
+    },
+    "goldenTests": {
+      "total": 12,
+      "passed": 12,
+      "failed": 0,
+      "exitCode": 0,
+      "updateGoldens": false,
+      "log": "golden-approved-test.txt"
+    },
+    "goldenTestsBeforeApproval": {
+      "total": 12,
+      "passed": 10,
+      "failed": 2,
+      "exitCode": 1,
+      "updateGoldens": false,
+      "log": "golden-test-final.txt"
+    },
+    "previewReleaseBuild": {
+      "exitCode": 0,
+      "log": "preview-build-final.txt"
+    },
+    "productionReleaseBuild": {
+      "exitCode": 0,
+      "log": "production-build-final.txt"
+    },
+    "productionSmoke": {
+      "exitCode": 0,
+      "cyclesAttempted": 10,
+      "playing": true,
+      "engine": "media_kit (libmpv)",
+      "positionMs": 19510,
+      "durationMs": 120000,
+      "exited": false,
+      "evidence": "production-smoke-final/result.json"
+    }
+  },
+  "goldenApproval": {
+    "approvedAt": "2026-10-18T22:11:56.3568756+08:00",
+    "approvedBy": "user",
+    "userStatement": "全部批准",
+    "record": "golden-approval.txt",
+    "updateScope": "named cases only; no whole-file or whole-suite automatic update",
+    "postApprovalValidation": {
+      "total": 12,
+      "passed": 12,
+      "exitCode": 0,
+      "log": "golden-approved-test.txt"
+    }
+  },
+  "goldenComparisons": [
+    {
+      "test": "sources-expanded-light",
+      "path": "app/test/golden/goldens/sources-expanded-light.png",
+      "passed": true,
+      "approved": true,
+      "priorApprovalDiff": "14.31%",
+      "bytes": 12074,
+      "sha256": "48a8a7cfebb6b7b24bd83c90cee56d6ece4d0837d5ad961b8c23513c4d6a6c3a",
+      "action": "named-case-only baseline update; full validation passed"
+    },
+    {
+      "test": "stage-compact-dark",
+      "path": "app/test/golden/goldens/stage-compact-dark.png",
+      "passed": true,
+      "approved": true,
+      "priorApprovalDiff": "100.00%",
+      "bytes": 6231,
+      "sha256": "0cf05d3588fcee2a77a0f9bd456ae23f542e1431dbef6898cac2e747142487c1",
+      "action": "named-case-only baseline update; full validation passed"
+    }
+  ],
+  "visualReview": {
+    "automatedReworkRounds": 1,
+    "remainingBlockingVisualIssues": [],
+    "fixedIssues": [
+      "390dp at 200% text: source name and status pill no longer compete on one row",
+      "Quark relogin failure is placed first so its recovery action is visible in the mobile first viewport",
+      "Source read errors remove internal Bad state/Exception/StateError prefixes",
+      "Fixture sync timestamps are fixed to 2026-10-06, 2026-10-05 and 2026-10-04"
+    ]
+  },
+  "limitations": [
+    "Windows only; Android, iOS, macOS and Linux were not exercised on devices.",
+    "The source fixture proves current rendering with fixed data; Quark and WebDAV authentication, sync and remote playback were not exercised.",
+    "No manual screen-reader or complete keyboard-focus review was performed.",
+    "Approval covers the fixed Windows Golden and fixture render only; it does not cover Android, iOS, macOS, Linux or real remote-source behavior.",
+    "The approved Golden baselines are stable under the recorded Windows Flutter test environment; visual approval is not a substitute for manual screen-reader validation.",
+    "Production smoke screenshots and generated audio were removed; fixed fixture screenshots are retained."
+  ]
+}

@@ -1,0 +1,134 @@
+00:00 +0: loading F:/project/tingyu/app/test/form_factor_test.dart
+00:00 +0: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:00 +1: F:/project/tingyu/app/test/form_factor_test.dart: medium rail 六个目的地齐全
+00:00 +2: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:00 +3: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:00 +4: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:00 +5: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:00 +6: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:00 +7: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:00 +8: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:00 +9: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:00 +10: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面曲库显示来源，播放全部与单曲点击都走原播放控制器
+00:00 +11: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:00 +12: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:00 +13: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:00 +14: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:00 +15: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:01 +16: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:01 +17: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:01 +18: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:01 +19: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:01 +20: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:01 +20: F:/project/tingyu/app/test/search_page_test.dart: compact：清空按钮同时清掉输入、查询条件与 URL 参数
+WARNING (drift): It looks like you've created the database class TingyuDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database.
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new _$TingyuDatabase (package:tingyu/data/db/database.g.dart:2658:39)
+#4      new TingyuDatabase (package:tingyu/data/db/database.dart:22:7)
+#5      databaseProvider.<anonymous closure> (package:tingyu/app/providers.dart:40:35)
+#6      Provider.create (package:riverpod/src/providers/provider.dart:59:36)
+#7      $ProviderElement.create (package:riverpod/src/providers/provider.dart:343:33)
+#8      ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#9      ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#10     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#11     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#12     ProviderElement.listen (package:riverpod/src/core/element.dart:991:28)
+#13     Ref.watch (package:riverpod/src/core/ref.dart:726:20)
+#14     trackRepositoryProvider.<anonymous closure> (package:tingyu/app/providers.dart:59:40)
+#15     Provider.create (package:riverpod/src/providers/provider.dart:59:36)
+#16     $ProviderElement.create (package:riverpod/src/providers/provider.dart:343:33)
+#17     ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#18     ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#19     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#20     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#21     ProviderElement.listen (package:riverpod/src/core/element.dart:991:28)
+#22     Ref.watch (package:riverpod/src/core/ref.dart:726:20)
+#23     allTracksProvider.<anonymous closure> (package:tingyu/app/providers.dart:76:24)
+#24     StreamProvider.create (package:riverpod/src/providers/stream_provider.dart:131:44)
+#25     $StreamProviderElement.create.<anonymous closure> (package:riverpod/src/providers/stream_provider.dart:158:45)
+#26     ElementWithFuture.handleStream.<anonymous closure> (package:riverpod/src/core/element.dart:171:28)
+#27     ElementWithFuture._handleAsync (package:riverpod/src/core/element.dart:282:35)
+#28     ElementWithFuture.handleStream (package:riverpod/src/core/element.dart:165:12)
+#29     $StreamProviderElement.create (package:riverpod/src/providers/stream_provider.dart:158:12)
+#30     ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#31     ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#32     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#33     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#34     ProviderElement.listen (package:riverpod/src/core/element.dart:991:28)
+#35     Ref.watch (package:riverpod/src/core/ref.dart:726:20)
+#36     libraryFingerprintProvider.<anonymous closure> (package:tingyu/app/providers.dart:509:11)
+#37     Provider.create (package:riverpod/src/providers/provider.dart:59:36)
+#38     $ProviderElement.create (package:riverpod/src/providers/provider.dart:343:33)
+#39     ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#40     ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#41     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#42     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#43     ProviderElement.listen (package:riverpod/src/core/element.dart:991:28)
+#44     Ref.watch (package:riverpod/src/core/ref.dart:726:20)
+#45     searchOverviewProvider.<anonymous closure> (package:tingyu/app/providers.dart:613:7)
+#46     FutureProvider.create (package:riverpod/src/providers/future_provider.dart:142:46)
+#47     $FutureProviderElement.create.<anonymous closure> (package:riverpod/src/providers/future_provider.dart:167:45)
+#48     ElementWithFuture.handleFuture.<anonymous closure> (package:riverpod/src/core/element.dart:218:30)
+#49     ElementWithFuture._handleAsync (package:riverpod/src/core/element.dart:282:35)
+#50     ElementWithFuture.handleFuture (package:riverpod/src/core/element.dart:212:12)
+#51     $FutureProviderElement.create (package:riverpod/src/providers/future_provider.dart:167:12)
+#52     ProviderElement.buildState (package:riverpod/src/core/element.dart:751:28)
+#53     ProviderElement.mount (package:riverpod/src/core/element.dart:587:7)
+#54     ProviderElement.flush (package:riverpod/src/core/element.dart:704:9)
+#55     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#56     ProviderContainer.listen (package:riverpod/src/core/provider_container.dart:1141:26)
+#57     ConsumerStatefulElement.watch.<anonymous closure> (package:flutter_riverpod/src/core/consumer.dart:490:37)
+#58     _LinkedHashMapMixin.putIfAbsent (dart:_compact_hash:631:23)
+#59     ConsumerStatefulElement.watch (package:flutter_riverpod/src/core/consumer.dart:483:14)
+#60     _SearchPageState._overview (package:tingyu/features/search/search_page.dart:278:53)
+#61     _SearchPageState._body (package:tingyu/features/search/search_page.dart:212:11)
+#62     _SearchPageState.build (package:tingyu/features/search/search_page.dart:194:25)
+#63     StatefulElement.build (package:flutter/src/widgets/framework.dart:5944:27)
+#64     ConsumerStatefulElement.build (package:flutter_riverpod/src/core/consumer.dart:460:20)
+#65     ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5830:15)
+#66     StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5995:11)
+#67     Element.rebuild (package:flutter/src/widgets/framework.dart:5542:7)
+#68     BuildScope._tryRebuild (package:flutter/src/widgets/framework.dart:2763:15)
+#69     BuildScope._flushDirtyElements (package:flutter/src/widgets/framework.dart:2820:11)
+#70     BuildOwner.buildScope (package:flutter/src/widgets/framework.dart:3124:18)
+#71     AutomatedTestWidgetsFlutterBinding.drawFrame (package:flutter_test/src/binding.dart:2432:19)
+#72     RendererBinding._handlePersistentFrameCallback (package:flutter/src/rendering/binding.dart:558:5)
+#73     SchedulerBinding._invokeFrameCallback (package:flutter/src/scheduler/binding.dart:1430:15)
+#74     SchedulerBinding.handleDrawFrame (package:flutter/src/scheduler/binding.dart:1345:9)
+#75     AutomatedTestWidgetsFlutterBinding.pump.<anonymous closure> (package:flutter_test/src/binding.dart:2261:9)
+#76     _rootRun (dart:async/zone_root.dart:35:13)
+#77     _CustomZone.run (dart:async/zone.dart:810:35)
+#78     TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#79     AutomatedTestWidgetsFlutterBinding.pump (package:flutter_test/src/binding.dart:2250:27)
+#80     WidgetTester.pump.<anonymous closure> (package:flutter_test/src/widget_tester.dart:652:53)
+#81     _rootRun (dart:async/zone_root.dart:35:13)
+#82     _CustomZone.run (dart:async/zone.dart:810:35)
+#83     TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#84     WidgetTester.pump (package:flutter_test/src/widget_tester.dart:652:27)
+#85     main.<anonymous closure> (file:///F:/project/tingyu/app/test/search_page_test.dart:200:18)
+<asynchronous suspension>
+#86     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#87     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+#88     StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +21: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:01 +22: F:/project/tingyu/app/test/performance_regression_test.dart: 2000 首的曲库：只构建可见行，滚到底不抛异常
+00:01 +23: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面列按内容宽度先收专辑，保留艺术家与来源
+00:01 +24: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面列按内容宽度先收专辑，保留艺术家与来源
+00:01 +25: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面列按内容宽度先收专辑，保留艺术家与来源
+00:01 +26: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面列按内容宽度先收专辑，保留艺术家与来源
+00:01 +27: F:/project/tingyu/app/test/library_page_redesign_test.dart: 桌面列按内容宽度先收专辑，保留艺术家与来源
+00:01 +28: F:/project/tingyu/app/test/search_page_test.dart: 分组结果给真实总数，超过 5 条时给「查看全部」
+00:01 +29: F:/project/tingyu/app/test/search_page_test.dart: 分组结果给真实总数，超过 5 条时给「查看全部」
+00:01 +30: F:/project/tingyu/app/test/library_page_redesign_test.dart: 639/640 切换列表与表格，1024 内容宽度恢复完整来源列
+00:01 +31: F:/project/tingyu/app/test/library_page_redesign_test.dart: 639/640 切换列表与表格，1024 内容宽度恢复完整来源列
+00:02 +32: F:/project/tingyu/app/test/library_page_redesign_test.dart: 手机分段导航与内联搜索仍使用原路由
+00:02 +33: F:/project/tingyu/app/test/library_page_redesign_test.dart: 空库与读取失败使用真实状态，不伪造曲目
+00:02 +34: All tests passed!

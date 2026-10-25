@@ -1,0 +1,67 @@
+[
+  {
+    "Path": "F:\\project\\tingyu\\docs\\ui-redesign\\evidence\\desktop-dark\\library-songs.png",
+    "Algorithm": "SHA256",
+    "Hash": "9E24D922881AFCB26BD112E53F75DBD5B647E0F271C0FAB3C37C5525DB5C6194"
+  },
+  {
+    "Path": "F:\\project\\tingyu\\docs\\ui-redesign\\evidence\\desktop-dark\\queue.png",
+    "Algorithm": "SHA256",
+    "Hash": "B61B62A9118ED02F7A0713AA04B69583EAD58ACCCCE688CEFE880FDD91D33DE7"
+  },
+  {
+    "Path": "F:\\project\\tingyu\\docs\\ui-redesign\\evidence\\desktop-dark\\search.png",
+    "Algorithm": "SHA256",
+    "Hash": "0057D45C46009A4C9C3AE882DD2DA471A4CB5C46BB9548B86EE01D2315A2AA58"
+  },
+  {
+    "Path": "F:\\project\\tingyu\\docs\\ui-redesign\\evidence\\desktop-dark\\settings.png",
+    "Algorithm": "SHA256",
+    "Hash": "A521DCA8E36788B01E92D65C227B27DDDFB801582814F56A954CA5034CD0B8BC"
+  },
+  {
+    "Path": "F:\\project\\tingyu\\docs\\ui-redesign\\evidence\\desktop-dark\\sources.png",
+    "Algorithm": "SHA256",
+    "Hash": "DFCC2CADF9C7674420F950333CB888E42E325D829C34968BA0C94106DF5D11C8"
+  },
+  {
+    "Path": "F:\\project\\tingyu\\docs\\ui-redesign\\evidence\\desktop-dark\\stage.png",
+    "Algorithm": "SHA256",
+    "Hash": "7DB7C4D3212D65043ADF9F344D35A2BF26FB55B2BFEF81760B796663691140E0"
+  },
+  {
+    "Path": "F:\\project\\tingyu\\docs\\ui-redesign\\evidence\\desktop-light\\library-songs.png",
+    "Algorithm": "SHA256",
+    "Hash": "1DD3B025AB91CC083C30F56F6FD5B52F4CB1EF78536749D3EBEC93B052A9AD5F"
+  },
+  {
+    "Path": "F:\\project\\tingyu\\docs\\ui-redesign\\evidence\\desktop-light\\stage.png",
+    "Algorithm": "SHA256",
+    "Hash": "FBEF7AA09B5D464A5D81C6778DFC7CBB46BD8C675EA9028EFE692298A51A397A"
+  },
+  {
+    "Path": "F:\\project\\tingyu\\docs\\ui-redesign\\evidence\\medium-dark\\sources.png",
+    "Algorithm": "SHA256",
+    "Hash": "C5663D5CBD61A42EAF395E15A916FA31D45F1CADFF091EE6A363A1708C4510BD"
+  },
+  {
+    "Path": "F:\\project\\tingyu\\docs\\ui-redesign\\evidence\\mobile-light\\library-songs.png",
+    "Algorithm": "SHA256",
+    "Hash": "8059EB35D04CD3A87AB82D1D19BE00290B704AFB126A8757B28EE1EFF27DDC1C"
+  },
+  {
+    "Path": "F:\\project\\tingyu\\docs\\ui-redesign\\evidence\\mobile-light\\queue.png",
+    "Algorithm": "SHA256",
+    "Hash": "8502DDB4665A18F55A7F1C56D14107E7BC5476E63F9668277B2663A73905B357"
+  },
+  {
+    "Path": "F:\\project\\tingyu\\docs\\ui-redesign\\evidence\\mobile-light\\sources.png",
+    "Algorithm": "SHA256",
+    "Hash": "7FF3CF17F92CE6B4E2EFAABE102A38DF708CA2040D02858511735772877899D5"
+  },
+  {
+    "Path": "F:\\project\\tingyu\\docs\\ui-redesign\\evidence\\mobile-light\\stage.png",
+    "Algorithm": "SHA256",
+    "Hash": "1AA533D7E1FCCCE95BD399EA2E8E085D9B9444B0D7B46B566D128C1EC3BDC82B"
+  }
+]

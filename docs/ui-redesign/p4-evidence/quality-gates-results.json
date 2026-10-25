@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "requestedStage": "all",
+  "startedAt": "2026-10-18T23:09:26.6637994+08:00",
+  "finishedAt": "2026-10-18T23:12:33.5999684+08:00",
+  "durationSeconds": 186.936,
+  "branch": "codex/ui-p4-gates",
+  "commit": "05bc260e885a477b8c52ec8419288e53717046bd",
+  "passed": true,
+  "environment": {
+    "platform": "Microsoft Windows NT 10.0.26300.0",
+    "powershell": "7.6.5",
+    "flutter": {
+      "frameworkVersion": "3.47.2",
+      "frameworkRevision": "d3b14c876900e553bc736ca19295fc09e3853e8e",
+      "dartSdkVersion": "3.13.2"
+    }
+  },
+  "gates": [
+    {
+      "id": "visual-asset-seal",
+      "displayName": "Approved visual asset SHA256 seal",
+      "command": "verify F:\\project\\tingyu\\docs\\ui-redesign\\p4-quality\\approved-visual-assets.sha256",
+      "workingDirectory": "F:\\project\\tingyu",
+      "startedAt": "2026-10-18T23:09:26.6678155+08:00",
+      "finishedAt": "2026-10-18T23:09:26.7020654+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/visual-asset-seal.txt"
+    },
+    {
+      "id": "format",
+      "displayName": "Format check for P4 Dart changes",
+      "command": "dart format --output=none --set-exit-if-changed lib/data/secure_store.dart",
+      "workingDirectory": "F:\\project\\tingyu\\app",
+      "startedAt": "2026-10-18T23:09:26.7107372+08:00",
+      "finishedAt": "2026-10-18T23:09:27.2440117+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/format.txt"
+    },
+    {
+      "id": "analyze",
+      "displayName": "Flutter static analysis",
+      "command": "flutter analyze",
+      "workingDirectory": "F:\\project\\tingyu\\app",
+      "startedAt": "2026-10-18T23:09:27.2451759+08:00",
+      "finishedAt": "2026-10-18T23:09:32.5585059+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/analyze.txt"
+    },
+    {
+      "id": "non-golden-tests",
+      "displayName": "All non-Golden Dart and Flutter tests",
+      "command": "flutter test --exclude-tags golden",
+      "workingDirectory": "F:\\project\\tingyu\\app",
+      "startedAt": "2026-10-18T23:09:32.5589648+08:00",
+      "finishedAt": "2026-10-18T23:09:47.1023490+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/non-golden-tests.txt"
+    },
+    {
+      "id": "widget-interactions",
+      "displayName": "Critical widget and interaction tests",
+      "command": "flutter test test/design_guard_test.dart test/form_factor_test.dart test/async_state_test.dart test/now_playing_layout_test.dart test/transport_row_layout_test.dart test/library_page_redesign_test.dart test/sources_page_redesign_test.dart test/search_page_test.dart test/navigation_gesture_test.dart test/ui_rebuild_seek_test.dart test/performance_regression_test.dart test/quark_login_render_test.dart",
+      "workingDirectory": "F:\\project\\tingyu\\app",
+      "startedAt": "2026-10-18T23:09:47.1064394+08:00",
+      "finishedAt": "2026-10-18T23:09:53.0016178+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/widget-interactions.txt"
+    },
+    {
+      "id": "golden",
+      "displayName": "Verify all approved Golden images without updating them",
+      "command": "flutter test --run-skipped -t golden test/golden/core_pages_golden_test.dart",
+      "workingDirectory": "F:\\project\\tingyu\\app",
+      "startedAt": "2026-10-18T23:09:53.0025820+08:00",
+      "finishedAt": "2026-10-18T23:09:57.4182205+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/golden.txt"
+    },
+    {
+      "id": "visual-preview-build",
+      "displayName": "Build fixed-data preview with pinned Windows engine",
+      "command": "flutter --local-engine-src-path=F:\\project\\tingyu\\app\\build\\flutter-engine\\checkout\\engine\\src --local-engine=host_release --local-engine-host=host_release build windows --release -t tool/voice_archive_preview.dart",
+      "workingDirectory": "F:\\project\\tingyu\\app",
+      "startedAt": "2026-10-18T23:09:57.4235686+08:00",
+      "finishedAt": "2026-10-18T23:10:14.0154428+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/visual-preview-build.txt"
+    },
+    {
+      "id": "runtime-visual",
+      "displayName": "Capture and pixel-compare six approved runtime states",
+      "command": "C:\\Users\\qq120\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\powershell\\pwsh.exe -NoProfile -ExecutionPolicy Bypass -File F:\\project\\tingyu\\tools\\p4-runtime-visual.ps1 -RepositoryRoot F:\\project\\tingyu -CasesFile docs/ui-redesign/p4-quality/runtime-visual-cases.json -OutputDirectory docs/ui-redesign/p4-evidence/runtime-visual",
+      "workingDirectory": "F:\\project\\tingyu",
+      "startedAt": "2026-10-18T23:10:14.0163873+08:00",
+      "finishedAt": "2026-10-18T23:11:46.3602309+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/runtime-visual.txt"
+    },
+    {
+      "id": "production-build",
+      "displayName": "Build production Windows application with pinned engine",
+      "command": "C:\\Users\\qq120\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\powershell\\pwsh.exe -NoProfile -ExecutionPolicy Bypass -File F:\\project\\tingyu\\tools\\build-windows-engine.ps1 -Stage App",
+      "workingDirectory": "F:\\project\\tingyu",
+      "startedAt": "2026-10-18T23:11:46.3612617+08:00",
+      "finishedAt": "2026-10-18T23:12:04.1327598+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/production-build.txt"
+    },
+    {
+      "id": "production-smoke",
+      "displayName": "Real local playback and navigation smoke",
+      "command": "C:\\Users\\qq120\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\powershell\\pwsh.exe -NoProfile -ExecutionPolicy Bypass -File F:\\project\\tingyu\\tools\\windows-smoke-test.ps1 -AppDirectory F:\\project\\tingyu\\app\\build\\windows\\x64\\runner\\Release -OutputDirectory F:\\project\\tingyu\\app\\build\\p4-production-smoke\\20261018-231204 -Cycles 10",
+      "workingDirectory": "F:\\project\\tingyu",
+      "startedAt": "2026-10-18T23:12:04.1357563+08:00",
+      "finishedAt": "2026-10-18T23:12:33.5944331+08:00",
+      "exitCode": 0,
+      "passed": true,
+      "log": "gates/production-smoke.txt"
+    }
+  ],
+  "evidence": {
+    "goldenDirectory": "app/test/golden/goldens",
+    "runtimeVisualDirectory": "runtime-visual",
+    "productionSmokeDirectory": "production-smoke",
+    "approvedVisualSeal": "docs/ui-redesign/p4-quality/approved-visual-assets.sha256"
+  },
+  "limitations": [
+    "Only Windows runtime visual and production smoke gates were executed locally.",
+    "CI build success for Android, iOS, macOS and Linux does not prove their runtime interaction or visual quality.",
+    "No real Quark/WebDAV credentials or remote playback were used.",
+    "No manual screen-reader review is represented by these automated gates."
+  ]
+}

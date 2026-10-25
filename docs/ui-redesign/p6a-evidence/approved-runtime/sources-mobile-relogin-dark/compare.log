@@ -1,0 +1,6 @@
+Visual comparison passed.
+approvedSha256=96535497e78958e3d742cbf88f7aec1efe48721fa1a996f00c2f4bf8d9f86ef0
+actualSha256=96535497e78958e3d742cbf88f7aec1efe48721fa1a996f00c2f4bf8d9f86ef0
+pixelExact=True
+byteExact=True
+differingPixels=0

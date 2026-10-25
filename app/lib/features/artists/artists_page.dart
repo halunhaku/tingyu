@@ -1,17 +1,25 @@
 import 'dart:typed_data';
 
-import 'dart:io' show Platform;
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
+import '../../data/db/database.dart';
 import '../../data/models/library_summaries.dart';
-import '../shared/empty_state.dart';
+import '../../design/components/artist_row.dart';
+import '../../design/components/buttons.dart';
+import '../../design/components/context_menu.dart';
+import '../../design/components/feedback.dart';
+import '../../design/components/structure.dart';
+import '../../design/layout/form_factor.dart';
+import '../../design/tokens/metrics.dart';
+import '../shared/skeletons.dart';
 
 /// 艺术家头像字节：按名字缓存（`ArtistAvatarStore` 自带内存 + 磁盘缓存与并发收敛）。
+///
+/// 头像来自网易云，`ArtistAvatarStore` 只给 bytes（内存 + 应用支持目录缓存），
+/// 所以直接喂给 `TyArtistRow.avatarBytes`，不为展示再造一条文件路径。
 ///
 /// 不显式标注 `FutureProviderFamily<Uint8List?, String>`：Riverpod 3 把该类型
 /// 挪到了 `package:flutter_riverpod/misc.dart`，这里靠推断保持主入口 import。
@@ -20,137 +28,147 @@ final artistAvatarProvider = FutureProvider.family<Uint8List?, String>(
       ref.watch(artistAvatarStoreProvider).avatar(artist),
 );
 
-/// 艺术家头像：命中头像缓存显示图片，否则回落到名字首字占位。
-///
-/// 列表与详情页共用，尺寸由调用方给（列表 44，详情 120 左右）。
-class ArtistAvatar extends ConsumerWidget {
-  const ArtistAvatar({super.key, required this.artist, this.size = 44});
-
-  final String artist;
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<Uint8List?> avatar = ref.watch(
-      artistAvatarProvider(artist),
-    );
-
-    return ClipOval(
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: avatar.maybeWhen(
-          data: (Uint8List? bytes) => bytes == null || bytes.isEmpty
-              ? _initial(context)
-              : Image.memory(
-                  bytes,
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
-                  // 头像最小只画到 44px，按显示尺寸解码，别把原图整张铺进内存。
-                  cacheWidth: math.max(
-                    1,
-                    (size * MediaQuery.devicePixelRatioOf(context)).round(),
-                  ),
-                ),
-          // 拉取中或失败（离线、查不到）都先用首字占位，不再阻塞列表。
-          orElse: () => _initial(context),
-        ),
-      ),
-    );
-  }
-
-  Widget _initial(BuildContext context) {
-    final ColorScheme scheme = Theme.of(context).colorScheme;
-    final String name = artist.trim();
-
-    return ColoredBox(
-      color: scheme.primaryContainer,
-      child: Center(
-        child: Text(
-          name.isEmpty ? '?' : String.fromCharCode(name.runes.first),
-          style: TextStyle(
-            fontSize: size * 0.4,
-            fontWeight: FontWeight.w600,
-            color: scheme.onPrimaryContainer,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 艺术家页：头像 + 名字 + 曲目数，点击进入艺术家详情。
+/// 艺术家页：列表（头像 44 + 名称 + 曲目数 + chevron），可扫读性优于网格
+/// （`docs/UX_REDESIGN.md` §5.2），点击进入艺术家详情。
 class ArtistsPage extends ConsumerWidget {
   const ArtistsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final TyMetrics metrics = context.metrics;
     final AsyncValue<List<ArtistSummary>> artists = ref.watch(artistsProvider);
-    final TextTheme text = Theme.of(context).textTheme;
+    final int? count = artists.value?.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-          child: Row(
-            children: <Widget>[
-              if (Platform.isAndroid || Platform.isIOS)
-                IconButton(
-                  tooltip: '返回曲库',
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () =>
-                      context.canPop() ? context.pop() : context.go('/library'),
-                ),
-              Expanded(child: Text('艺术家', style: text.titleLarge)),
-              artists.maybeWhen(
-                data: (List<ArtistSummary> list) =>
-                    Text('${list.length} 位', style: text.bodySmall),
-                orElse: () => const SizedBox.shrink(),
-              ),
-            ],
+          padding: EdgeInsets.fromLTRB(
+            metrics.pagePadding,
+            TySpace.x20,
+            metrics.pagePadding,
+            TySpace.x12,
+          ),
+          child: TyPageHeader(
+            title: '艺术家',
+            subtitle: count == null ? null : '共 $count 位',
           ),
         ),
         Expanded(
-          child: artists.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (Object error, StackTrace stack) => EmptyState(
-              icon: Icons.error_outline,
-              title: '艺术家列表读取失败',
-              message: '$error',
+          child: TyAsyncView<List<ArtistSummary>>(
+            value: artists,
+            loading: (BuildContext context) =>
+                const TrackRowsSkeleton(rows: 8),
+            error: (BuildContext context, Object error, StackTrace? stack) =>
+                TyErrorView(
+                  title: '艺术家列表读取失败',
+                  detail: '$error',
+                  onRetry: () => ref.invalidate(artistsProvider),
+                ),
+            isEmpty: (List<ArtistSummary> list) => list.isEmpty,
+            empty: (BuildContext context) => TyEmptyState(
+              icon: Icons.person_outline,
+              title: '还没有艺术家',
+              description: '添加来源并同步曲库后，这里会按艺术家聚合展示',
+              actionLabel: '添加来源',
+              onAction: () => context.go('/sources'),
             ),
-            data: (List<ArtistSummary> list) {
-              if (list.isEmpty) {
-                return const EmptyState(
-                  icon: Icons.person_outline,
-                  title: '还没有艺术家',
-                  message: '添加来源并同步曲库后，这里会按艺术家聚合展示',
-                );
-              }
-              return ListView.builder(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-                itemCount: list.length,
-                itemBuilder: (BuildContext context, int index) {
-                  final ArtistSummary artist = list[index];
-                  return ListTile(
-                    leading: ArtistAvatar(artist: artist.name),
-                    title: Text(
-                      artist.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text('${artist.trackCount} 首'),
-                    onTap: () => context.push(
-                      '/artists/${Uri.encodeComponent(artist.name)}',
-                    ),
-                  );
-                },
-              );
-            },
+            data: (BuildContext context, List<ArtistSummary> list) =>
+                ListView.builder(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: metrics.pagePadding,
+                    vertical: TySpace.x8,
+                  ),
+                  itemCount: list.length,
+                  itemBuilder: (BuildContext context, int index) =>
+                      _ArtistListRow(artist: list[index]),
+                ),
           ),
         ),
       ],
     );
   }
+}
+
+/// 单行艺术家：头像拿到前先画首字占位，不阻塞列表。
+class _ArtistListRow extends ConsumerWidget {
+  const _ArtistListRow({required this.artist});
+
+  final ArtistSummary artist;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return TyArtistRow(
+      name: artist.name,
+      subtitle: '${artist.trackCount} 首',
+      avatarBytes: ref.watch(artistAvatarProvider(artist.name)).value,
+      onTap: () => context.push('/artist/${Uri.encodeComponent(artist.name)}'),
+      onSecondaryTapDown: (TapDownDetails details) =>
+          _showMenu(context, ref, details.globalPosition),
+      trailing: Builder(
+        builder: (BuildContext buttonContext) => TyIconAction(
+          icon: Icons.more_horiz,
+          semanticLabel: '${artist.name}：更多操作',
+          tooltip: '更多',
+          size: TyIconSize.compact,
+          onPressed: () => _showMenu(context, ref, _menuAnchor(buttonContext)),
+        ),
+      ),
+    );
+  }
+
+  /// 艺术家行的上下文菜单：播放 / 随机 / 查看艺术家。
+  Future<void> _showMenu(
+    BuildContext context,
+    WidgetRef ref,
+    Offset position,
+  ) async {
+    Future<void> play({required bool shuffle}) async {
+      final List<Track> tracks = await ref.read(
+        artistTracksProvider(artist.name).future,
+      );
+      if (!context.mounted) {
+        return;
+      }
+      if (tracks.isEmpty) {
+        TySnack.show(context, '「${artist.name}」还没有曲目');
+        return;
+      }
+      await ref
+          .read(playbackProvider.notifier)
+          .playTracks(tracks, shuffle: shuffle);
+    }
+
+    await TyContextMenu.show(
+      context,
+      position: position,
+      actions: <TyMenuAction>[
+        TyMenuAction(
+          label: '播放',
+          icon: Icons.play_arrow_outlined,
+          onSelected: () => play(shuffle: false),
+        ),
+        TyMenuAction(
+          label: '随机播放',
+          icon: Icons.shuffle,
+          onSelected: () => play(shuffle: true),
+        ),
+        TyMenuAction(
+          label: '查看艺术家',
+          icon: Icons.person_outline,
+          onSelected: () =>
+              context.push('/artist/${Uri.encodeComponent(artist.name)}'),
+        ),
+      ],
+    );
+  }
+}
+
+/// ⋯ 按钮的菜单锚点（全局坐标）。
+Offset _menuAnchor(BuildContext buttonContext) {
+  final RenderObject? box = buttonContext.findRenderObject();
+  if (box is RenderBox && box.hasSize) {
+    return box.localToGlobal(box.size.center(Offset.zero));
+  }
+  return Offset.zero;
 }

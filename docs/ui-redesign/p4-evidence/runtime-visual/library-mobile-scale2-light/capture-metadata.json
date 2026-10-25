@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-18T23:10:44.7095761+08:00",
+  "appDirectory": "F:\\project\\tingyu\\app\\build\\windows\\x64\\runner\\Release",
+  "requestedClientWidth": 585,
+  "requestedClientHeight": 1266,
+  "expectedDpiScale": 1.5,
+  "captures": [
+    {
+      "route": "/library/songs",
+      "file": "library-songs.png",
+      "clientWidth": 585,
+      "clientHeight": 1266,
+      "dpiScale": 1.5,
+      "expectedDpiScale": 1.5,
+      "theme": "light",
+      "density": "comfortable",
+      "previewState": "normal",
+      "previewScale": 2.0,
+      "previewCover": "none",
+      "previewCoverPath": "F:\\project\\tingyu\\docs\\ui-redesign\\p4-evidence\\runtime-visual\\library-mobile-scale2-light\\.tingyu-no-cover-0def02e77eb04ee8b36bea249c2b79e6.png",
+      "animationsDisabled": true,
+      "captureMethod": "CopyFromScreen with DWM rounded corners disabled",
+      "windowCorners": "do-not-round",
+      "cursorPosition": {
+        "x": 0,
+        "y": 0
+      },
+      "sha256": "f684ac57cf7ff6cd7f23d4b272356cda9d710df31d738f2d13f9fcd00bfdb3cb"
+    }
+  ]
+}
