@@ -1,6 +1,6 @@
 # client/：听屿 macOS 客户端（MyGo）
 
-迁移方案 **M1 + M2** 的实现：M1 是选目录扫描入库、进程内 libmpv 播放、系统媒体会话（Now Playing / 媒体键）、关窗续播；M2 是内核生产化（9 格式矩阵、远端 Range/鉴权、gapless、循环三态、失败快照、倍速/音量、200 首队列）。**不实现远端来源**（WebDAV/夸克，M3）、**不做完整界面重画**（M4）、**不做元数据补全**（M5）；**不碰 `app/`**。
+迁移方案 **M1 + M2 + M4** 的实现：M1 是选目录扫描入库、进程内 libmpv 播放、系统媒体会话（Now Playing / 媒体键）、关窗续播；M2 是内核生产化（9 格式矩阵、远端 Range/鉴权、gapless、循环三态、失败快照、倍速/音量、200 首队列）；M4 是「声档」设计令牌、全部页面、舞台/队列/歌词与命令面板。**不实现远端来源**（WebDAV/夸克，M3）、**不做元数据补全与封面取色**（M5）；M4 只在界面与装配层，**不碰 `app/`、不碰内核包**。
 
 验收记录与逐条证据：[M1 记录](../docs/plan/2026-10-25-macos-mygo-m1-record.md)、[M2 记录](../docs/plan/2026-10-25-macos-mygo-m2-record.md)。
 
@@ -16,16 +16,23 @@ client/
 │   ├── player/                  播放控制器（预取/世代/循环/历史/换队列契约）
 │   ├── mainq/                   主线程投递（libdispatch）
 │   ├── mediasession/            Now Playing / 远程命令 / 封面 / App Nap
-│   ├── shell/                   UI：曲库表格、传输条、扫描面板
-│   ├── app/                     装配：窗口、菜单栏、扫描编排、退出
+│   ├── ui/
+│   │   ├── tokens/              「声档」令牌：深浅色、字号、间距、圆角、动效
+│   │   ├── model/               视图状态：分页/排序/过滤、专辑/艺术家分组、搜索、LRC、设置
+│   │   ├── components/          封面、曲目列表、传输条、舞台/歌词/队列、命令面板
+│   │   └── pages/               曲库、收藏、专辑、艺术家、歌单、搜索、舞台、队列、歌词、设置、来源、引导
+│   ├── shell/                   外壳：侧栏、页面调度、快捷键、装配 Model
+│   ├── app/                     装配：窗口、应用菜单、扫描编排、退出
 │   ├── rangesrv/                M2 验收用 HTTP 服务：强制 Range、校验 Authorization、可切换 401/403/断网
 │   └── accept/                  M2 验收 harness（9 格式 / 远端 / gapless / 队列 / 循环 / 倍速音量）
-├── cmd/accept/                  验收 harness 入口（不随产品发布）
+├── cmd/accept/                  M2 验收 harness 入口（不随产品发布）
+├── tools/screenshots/           M4 截图：同一 View 经 ui.Render 渲染各页深/浅
 ├── scripts/
 │   ├── bundle.sh                编译 + 拷贝并签名 libmpv/FFmpeg frameworks + 组装 .app
 │   ├── measure-coldstart.sh     在库副本上测冷启动（进程启动 → 首帧）
 │   ├── gen-m2-media.sh          ffmpeg 生成 M2 验收媒体（9 格式/gapless/200 首/远端）
-│   └── run-m2-accept.sh         构建并运行 M2 验收 harness，输出 evidence
+│   ├── run-m2-accept.sh         构建并运行 M2 验收 harness，输出 evidence
+│   └── measure-scroll.sh        M4 10,000 行滚动帧时间与原始采样
 └── README.md
 ```
 
@@ -117,8 +124,30 @@ CGO_ENABLED=0 go build ./... && CGO_ENABLED=0 go vet ./...
 go test ./... && go test -race ./...
 ```
 
-覆盖：只读拒绝、schema 补差、扫描合并语义、revision、播放历史/时长回填、目录遍历、9 格式解析、`mpv_event` 布局、控制器队列/循环/完成/预取世代/并发追加顺序/关闭时等待预取、扫描进度与双击播放的界面断言；M2 新增失败分类（HTTP 状态、断网、解码、本地缺失）、未知时长 ≠ loading、buffered 钳制、Range/鉴权测试服务的 401/403/chunked/断网语义。
+覆盖：只读拒绝、schema 补差、扫描合并语义、revision、播放历史/时长回填、目录遍历、9 格式解析、`mpv_event` 布局、控制器队列/循环/完成/预取世代/并发追加顺序/关闭时等待预取、扫描进度与双击播放的界面断言；M2 新增失败分类（HTTP 状态、断网、解码、本地缺失）、未知时长 ≠ loading、buffered 钳制、Range/鉴权测试服务的 401/403/chunked/断网语义；M4 新增分页闸门、刷新保页、搜索防抖、LRC、专辑/艺术家分组、命令面板、舞台展开/收起、歌词高亮/seek、设置落盘与逐页交互。
+
+## M4 界面
+
+- **令牌**：`internal/ui/tokens` 与 `app/lib/design/tokens` 同源（颜色、13 档字号、4pt 间距、圆角、动效时长）；深/浅两套由 `settings.json` 的 `themeMode` 决定，密度（舒适/紧凑）影响行高、页边距与侧栏宽度。
+- **页面**：曲库、收藏（歌曲/专辑两段）、专辑、艺术家、歌单、搜索、舞台、队列、歌词、设置、来源管理、引导。
+- **分页**：每页 40；滚动近底或「加载更多」触发，`loading/done` 闸门保证一次一页；行键带行级 revision，元数据写回只重建该行。
+- **舞台**：路由级展开/收起（Esc/返回），封面与传输条封面用 MyGo 的 `Match` 共享元素近似 Hero；歌词随播放高亮并可点行 seek，队列侧栏只读可跳播。
+- **命令面板**：⌘K；独立查询与 250 ms 防抖；歌曲/专辑/艺术家 + 快捷入口；↑↓/Enter/Esc。
+- **快捷键**：⌘K、⌘F、⌘,、⌘1–4、⌘⇧P、⌘L、⌘U、Space、⌘←/→、⌘⇧←/→（±10 s）、⌘↑/↓（音量）；应用菜单含「听屿/播放/前往」。
+
+### 只读与需内核支持
+
+未设置 `TINGYU_DATA_DIR` 时客户端仍只读；M4 的外观偏好只在可写副本下落盘。收藏写入、歌单读写、来源删除、元数据/歌词抓取属于内核或后续里程碑，界面会显示「需内核支持」而不是伪造成功；歌单页因此在数据层就绪前不显示假数据。
+
+### 性能与截图
+
+```bash
+MYGO_FRAME_STATS=all ./scripts/measure-scroll.sh
+CGO_ENABLED=0 go run ./tools/screenshots -data /tmp/tingyu-copy -out ../docs/screenshots
+```
+
+`measure-scroll.sh` 用 10,000 行、全表遍历、`ui.Tester` 与 MyGo 帧统计给出 p50/p95/p99 并导原始采样；截图走同一个 `View`，用 `ui.Render` 以 1200×760 @2× 渲染深/浅两套；偏好写临时目录，库副本只读。
 
 ## 本阶段不做
 
-远端来源（WebDAV/夸克）、收藏/歌单/元数据的写路径、完整界面与分页（M4）、搜索/歌词/舞台、签名公证与 DMG（M6）、Intel 实机验证。
+远端来源（WebDAV/夸克，M3）、收藏/歌单/元数据的写路径（需内核）、封面取色与元数据补全（M5）、签名公证与 DMG（M6）、Intel 实机验证、读屏无障碍专项（M6 后）。

@@ -1,34 +1,20 @@
-// Package shell is the M1 UI: sidebar, library table, scan progress and the
-// transport. It holds no window, no database handle and no engine; the app
-// package wires its buttons to the controller.
+// Package shell is the M4 window: sidebar, page dispatch, transport, command
+// palette and the keyboard shortcuts. It holds no window, no database handle
+// and no engine; the app package wires its actions to the playback kernel.
 package shell
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 
 	"github.com/halunhaku/tingyu/client/internal/library"
 	"github.com/halunhaku/tingyu/client/internal/player"
+	"github.com/halunhaku/tingyu/client/internal/ui/components"
+	"github.com/halunhaku/tingyu/client/internal/ui/model"
+	"github.com/halunhaku/tingyu/client/internal/ui/pages"
+	"github.com/halunhaku/tingyu/client/internal/ui/tokens"
 )
-
-// navItem is one sidebar entry. Only the library exists in M1; the others are
-// placeholders for M4 and say so instead of pretending to work.
-type navItem struct {
-	label  string
-	active bool
-}
-
-var navItems = []navItem{
-	{label: "曲库", active: true},
-	{label: "收藏"},
-	{label: "专辑"},
-	{label: "艺术家"},
-	{label: "歌单"},
-	{label: "搜索"},
-	{label: "设置"},
-}
 
 // Window sizes. The assembly opens the window with these; the minimum is the
 // acceptance floor (900×600).
@@ -39,415 +25,319 @@ const (
 	MinimumHeight = 600
 )
 
-// Actions are what the view can ask the app to do. The app implements them;
-// tests pass a recorder.
-type Actions interface {
-	PlayTracks(tracks []library.Track, start int) error
-	TogglePlayPause() error
-	Next() error
-	Previous() error
-	Seek(position time.Duration) error
-	SetVolume(volume float64) error
-	CycleRepeat() player.RepeatMode
-	ChooseDirectory()
-}
+// Actions are what the view can ask the app to do (the model's interface, kept
+// here so the app keeps implementing shell.Actions as it did in M1).
+type Actions = model.Actions
 
 // ScanState is what the view shows about a scan.
-type ScanState struct {
-	Running bool
-	Done    int
-	Total   int
-	Path    string
-	Status  string
-	Error   string
-}
-
-// rowKey is the table's row identity: the track id plus its row revision, so
-// a metadata-only change rebuilds that row (and only that row). This is the
-// audit's "刷新指纹遗漏元数据" fix in the immediate-mode world.
-type rowKey struct {
-	ID  string
-	Rev uint64
-}
+type ScanState = model.ScanState
 
 // Model is the state the window shows.
 type Model struct {
-	actions Actions
-	tracks  []library.Track
-	rowRevs map[string]uint64
-	rev     uint64
-	dbPath  string
-	loadErr error
-
-	table    ui.ListState
-	selected int
-
-	playing  player.Update
-	hasQueue bool
-	volume   float64
-	repeat   player.RepeatMode
-
-	seekValue   float64
-	seekPressed bool
-
-	scan    ScanState
-	status  string
-	failure string
+	state *model.State
 }
 
 // New builds a model. loadErr means the library could not be opened at all;
 // the window explains it instead of showing a blank table.
 func New(tracks []library.Track, dbPath string, loadErr error) *Model {
-	m := &Model{
-		tracks:  tracks,
-		dbPath:  dbPath,
-		loadErr: loadErr,
-		volume:  1,
-		repeat:  player.RepeatAll,
-	}
-	m.table.Key = func(row int) any {
-		if row < 0 || row >= len(m.tracks) {
-			return row
-		}
-		return rowKey{ID: m.tracks[row].ID, Rev: m.rowRevs[m.tracks[row].ID]}
-	}
-	m.table.Label = func(row int) string {
-		if row < 0 || row >= len(m.tracks) {
-			return ""
-		}
-		return m.tracks[row].Title
-	}
-	return m
+	return &Model{state: model.New(tracks, dbPath, loadErr)}
 }
+
+// State exposes the view state for the assembly (menus, acceptance hooks).
+func (m *Model) State() *model.State { return m.state }
 
 // SetActions installs the callbacks.
-func (m *Model) SetActions(actions Actions) { m.actions = actions }
+func (m *Model) SetActions(actions Actions) { m.state.SetActions(actions) }
 
-// SetTracks replaces the visible library. revision is the library's write
-// counter and rowRevs the per-row counters; both are kept so the view can
-// rebuild when metadata (not just the row count) changed.
+// SetTracks replaces the visible library with its revision and row revisions.
 func (m *Model) SetTracks(tracks []library.Track, revision uint64, rowRevs map[string]uint64) {
-	previousID := ""
-	if m.selected >= 0 && m.selected < len(m.tracks) {
-		previousID = m.tracks[m.selected].ID
-	}
-	m.tracks = tracks
-	m.rev = revision
-	m.rowRevs = rowRevs
-	m.selected = -1
-	for i, track := range tracks {
-		if track.ID == previousID {
-			m.selected = i
-			break
-		}
-	}
+	m.state.SetTracks(tracks, revision, rowRevs)
 }
 
-// Revision returns the library revision the view last showed.
-func (m *Model) Revision() uint64 { return m.rev }
+// SetSources replaces the source list.
+func (m *Model) SetSources(sources []library.Source) { m.state.SetSources(sources) }
 
-// SetPlayer applies a playback update.
+// SetPlayer applies a playback update and records the queue.
 func (m *Model) SetPlayer(update player.Update) {
-	m.playing = update
-	m.hasQueue = update.Track != nil
-	if update.Track != nil && update.PlayCount > 0 {
-		for i := range m.tracks {
-			if m.tracks[i].ID == update.Track.ID {
-				m.tracks[i].PlayCount = update.PlayCount
-				break
-			}
-		}
-	}
-	if update.Failure != nil {
-		m.failure = update.Failure.Message
-	} else if update.Snapshot.Playing {
-		m.failure = ""
-	}
-	if update.Repeat != m.repeat {
-		m.repeat = update.Repeat
-	}
-	if update.Snapshot.Volume > 0 {
-		m.volume = update.Snapshot.Volume
+	m.state.SetPlayer(update)
+	if update.Track != nil && len(m.state.Queue()) == 0 {
+		// A queue the UI did not start (media keys) still shows something.
+		m.state.SetQueue([]library.Track{*update.Track}, update.Index)
 	}
 }
 
-// Volume returns the volume the view shows.
-func (m *Model) Volume() float64 { return m.volume }
+// SetQueue records the queue the controller was given.
+func (m *Model) SetQueue(queue []library.Track, index int) { m.state.SetQueue(queue, index) }
 
 // SetScan updates the scan panel.
-func (m *Model) SetScan(state ScanState) { m.scan = state }
+func (m *Model) SetScan(state ScanState) { m.state.SetScan(state) }
 
-// SetStatus sets the line under the header.
-func (m *Model) SetStatus(status string) { m.status = status }
+// SetStatus sets the line beside a page title.
+func (m *Model) SetStatus(status string) { m.state.SetStatus(status) }
 
-// SetError sets an error line shown next to the status.
-func (m *Model) SetError(message string) { m.failure = message }
+// SetError sets the error line.
+func (m *Model) SetError(message string) { m.state.SetError(message) }
+
+// SetCoversDir is where content-addressed cover files live.
+func (m *Model) SetCoversDir(dir string) { m.state.SetCoversDir(dir) }
+
+// ConfigureDataDir loads settings.json and records the read-only rule.
+func (m *Model) ConfigureDataDir(dataDir string, writable bool) {
+	m.state.ConfigureDataDir(dataDir, writable)
+}
 
 // Scan returns the scan state (the app uses it for logging).
-func (m *Model) Scan() ScanState { return m.scan }
+func (m *Model) Scan() ScanState { return m.state.Scan() }
 
 // Tracks returns the tracks the view shows.
-func (m *Model) Tracks() []library.Track { return m.tracks }
+func (m *Model) Tracks() []library.Track { return m.state.AllTracks() }
 
+// Volume returns the volume the view shows.
+func (m *Model) Volume() float64 { return m.state.Volume() }
+
+// Revision returns the library revision the view last showed.
+func (m *Model) Revision() uint64 { return m.state.LibraryRevision() }
+
+// View builds the window.
 func (m *Model) View(c *ui.Context) {
-	c.Root().Background(c.Theme().Background)
-	ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
-		m.sidebar(c)
-		m.content(c)
-	})
-}
+	s := m.state
+	s.Tick(c.Now())
+	dark := s.Settings().Dark(c.Theme().Dark)
+	d := components.Resolve(c, dark, s.Settings().Compact())
+	handleShortcuts(c, s)
 
-func (m *Model) sidebar(c *ui.Context) {
-	t := c.Theme()
-	ui.Column(c).Width(216).Padding(16, 14).Gap(4).Background(t.Surface).Children(func() {
-		ui.Text(c, "听屿").FontSize(20).Bold()
-		ui.Text(c, "M1 主线").FontSize(11).TextColor(t.TextMuted)
-		ui.Box(c).Height(10)
-		for _, item := range navItems {
-			if item.active {
-				ui.Row(c).Padding(7, 10).Radius(6).Background(t.Accent).Children(func() {
-					ui.Text(c, item.label).FontSize(13).TextColor(t.AccentText)
-				})
-				continue
-			}
-			ui.Row(c).Padding(7, 10).Gap(8).Children(func() {
-				ui.Text(c, item.label).FontSize(13).TextColor(t.TextMuted)
-				ui.Spacer(c)
-				ui.Text(c, "M4").FontSize(10).TextColor(t.TextMuted)
-			})
-		}
-		ui.Spacer(c)
-		ui.Text(c, m.sidebarStatus()).FontSize(11).TextColor(t.TextMuted)
-	})
-}
-
-func (m *Model) sidebarStatus() string {
-	if m.playing.Snapshot.Playing {
-		return "正在播放"
-	}
-	if m.hasQueue {
-		return "已暂停"
-	}
-	return "本地曲库"
-}
-
-func (m *Model) content(c *ui.Context) {
-	t := c.Theme()
-	ui.Column(c).Grow(1).Padding(20, 18).Gap(10).Background(t.Background).Children(func() {
-		m.header(c)
-		if m.failure != "" && m.loadErr == nil {
-			ui.Textf(c, "⚠ %s", m.failure).FontSize(11).TextColor(t.Danger).SingleLine()
-		}
-		if m.scan.Running || m.scan.Status != "" || m.scan.Error != "" {
-			m.scanPanel(c)
-		}
-		if m.loadErr != nil {
-			m.errorPanel(c)
-			return
-		}
-		if len(m.tracks) == 0 {
-			ui.Column(c).Grow(1).Center().Gap(8).Children(func() {
-				ui.Text(c, "曲库为空").FontSize(14).TextColor(t.TextMuted)
-				ui.Text(c, "点「添加目录…」选一个音乐文件夹，扫描后会出现在这里").FontSize(12).TextColor(t.TextMuted)
-			})
-		} else {
-			m.trackTable(c)
-		}
-		m.transport(c)
-		ui.Row(c).Gap(8).Children(func() {
-			ui.Text(c, m.dbPath).FontSize(10).TextColor(t.TextMuted).SingleLine()
-			ui.Text(c, "· 写入仅限扫描入库与播放历史").FontSize(10).TextColor(t.TextMuted)
-		})
-	})
-}
-
-func (m *Model) header(c *ui.Context) {
-	t := c.Theme()
-	ui.Row(c).AlignItems(ui.Center).Gap(10).Children(func() {
-		ui.Text(c, "曲库").FontSize(22).Bold()
-		ui.Textf(c, "%d 首", len(m.tracks)).FontSize(12).TextColor(t.TextMuted)
-		ui.Spacer(c)
-		if m.status != "" {
-			ui.Text(c, m.status).FontSize(11).TextColor(t.TextMuted).SingleLine()
-		}
-		ui.Button(c, "添加目录…").OnClick(func() {
-			if m.actions != nil {
-				m.actions.ChooseDirectory()
-			}
-		})
-	})
-}
-
-func (m *Model) scanPanel(c *ui.Context) {
-	t := c.Theme()
-	ui.Column(c).Gap(4).Padding(10, 8).Radius(6).Background(t.Surface).Children(func() {
-		if m.scan.Running {
-			ui.Row(c).Gap(8).Children(func() {
-				ui.Spinner(c)
-				if m.scan.Total > 0 {
-					ui.Textf(c, "正在扫描 %d/%d", m.scan.Done, m.scan.Total).FontSize(12)
-				} else {
-					ui.Text(c, "正在扫描…").FontSize(12)
-				}
-				ui.Text(c, m.scan.Path).FontSize(10).TextColor(t.TextMuted).SingleLine()
-			})
-			if m.scan.Total > 0 {
-				ui.Progress(c, float64(m.scan.Done)/float64(m.scan.Total))
-			}
-			return
-		}
-		color := t.TextMuted
-		text := m.scan.Status
-		if m.scan.Error != "" {
-			color = t.Danger
-			text = m.scan.Error
-		}
-		if text != "" {
-			ui.Text(c, text).FontSize(12).TextColor(color)
-		}
-	})
-}
-
-func (m *Model) trackTable(c *ui.Context) {
-	columns := []ui.TableColumn{
-		{Title: "曲名"},
-		{Title: "艺术家", Width: 170},
-		{Title: "专辑", Width: 210},
-		{Title: "时长", Width: 70, Align: ui.End},
-		{Title: "播放", Width: 56, Align: ui.End},
-	}
-	m.table.Selected = &m.selected
-	if ui.Table(c, &m.table, columns, len(m.tracks), func(row, col int) {
-		track := m.tracks[row]
-		current := m.playing.Track != nil && m.playing.Track.ID == track.ID
-		switch col {
-		case 0:
-			title := track.Title
-			if current {
-				title = "▶ " + title
-			}
-			ui.Text(c, title).SingleLine()
-		case 1:
-			ui.Text(c, track.Artist).SingleLine()
-		case 2:
-			ui.Text(c, track.Album).SingleLine()
-		case 3:
-			ui.Text(c, formatDuration(track.Duration)).SingleLine()
-		case 4:
-			ui.Textf(c, "%d", track.PlayCount).SingleLine()
-		}
-	}).Grow(1).Submitted() {
-		m.playSelected()
-	}
-}
-
-func (m *Model) playSelected() {
-	if m.actions == nil || m.selected < 0 || m.selected >= len(m.tracks) {
+	if s.ShouldOnboard() {
+		pages.Onboarding(c, d, s)
 		return
 	}
-	_ = m.actions.PlayTracks(m.tracks, m.selected)
+	if s.Page() == model.PageStage {
+		pages.Stage(c, d, s)
+		components.Palette(c, d, s)
+		return
+	}
+
+	c.Root().Background(d.P.Canvas)
+	ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
+		sidebar(c, d, s)
+		ui.Column(c).Grow(1).FillHeight().Background(d.P.Canvas).Children(func() {
+			page(c, d, s)
+			components.Transport(c, d, s)
+		})
+	})
+	components.Palette(c, d, s)
 }
 
-func (m *Model) transport(c *ui.Context) {
-	t := c.Theme()
-	ui.Column(c).Gap(6).Padding(12, 10).Radius(8).Background(t.Surface).Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Gap(10).Children(func() {
-			title := "未在播放"
-			subtitle := ""
-			if m.playing.Track != nil {
-				title = m.playing.Track.Title
-				subtitle = m.playing.Track.Artist + " · " + m.playing.Track.Album
-			}
+func page(c *ui.Context, d components.Design, s *model.State) {
+	switch s.Page() {
+	case model.PageLibrary:
+		pages.Library(c, d, s)
+	case model.PageFavorites:
+		pages.Favorites(c, d, s)
+	case model.PageAlbums:
+		pages.Albums(c, d, s)
+	case model.PageArtists:
+		pages.Artists(c, d, s)
+	case model.PagePlaylists:
+		pages.Playlists(c, d, s)
+	case model.PageSearch:
+		pages.Search(c, d, s)
+	case model.PageSettings:
+		pages.Settings(c, d, s)
+	case model.PageSources:
+		pages.Sources(c, d, s)
+	case model.PageQueue:
+		pages.Queue(c, d, s)
+	case model.PageLyrics:
+		pages.Lyrics(c, d, s)
+	case model.PageAlbumDetail:
+		pages.AlbumDetail(c, d, s)
+	case model.PageArtistDetail:
+		pages.ArtistDetail(c, d, s)
+	default:
+		pages.Library(c, d, s)
+	}
+}
+
+func sidebar(c *ui.Context, d components.Design, s *model.State) {
+	ui.Column(c).Width(d.SidebarWidth()).FillHeight().Padding(tokens.Space16, tokens.Space12).
+		Gap(tokens.Space8).Background(d.P.Surface).BorderWidth(0, 1, 0, 0).
+		BorderColor(d.P.Border).Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space8).Children(func() {
+			ui.Box(c).Size(26, 26).Radius(tokens.RadiusSM).Background(d.P.Accent).Center().Children(func() {
+				ui.Icon(c, components.IconMusic).FontSize(15).TextColor(d.P.OnAccent)
+			})
+			ui.Column(c).Gap(1).Children(func() {
+				d.Text(c, tokens.TitleM, "听屿").TextColor(d.P.TextPrimary)
+				d.Text(c, tokens.LabelS, "声档").TextColor(d.P.TextTertiary)
+			})
+		})
+		query := s.SidebarQuery()
+		focus := s.TakeSearchFocus()
+		d.SearchBox(c, &query, "侧栏搜索", "搜索歌曲、专辑、艺术家", focus,
+			func() { s.SetSidebarQuery(query) }, nil, nil).
+			Tooltip("搜索（⌘K 命令面板，⌘F 聚焦）")
+		ui.Scroll(c).Grow(1).Children(func() {
 			ui.Column(c).Gap(2).Children(func() {
-				ui.Text(c, title).FontSize(13).Bold().SingleLine()
-				if subtitle != "" {
-					ui.Text(c, subtitle).FontSize(10).TextColor(t.TextMuted).SingleLine()
+				navItem(c, d, s, "曲库", model.PageLibrary)
+				navItem(c, d, s, "收藏", model.PageFavorites)
+				navItem(c, d, s, "专辑", model.PageAlbums)
+				navItem(c, d, s, "艺术家", model.PageArtists)
+				navItem(c, d, s, "歌单", model.PagePlaylists)
+				navItem(c, d, s, "搜索", model.PageSearch)
+				ui.Box(c).Height(tokens.Space8)
+				ui.Row(c).AlignItems(ui.Center).Children(func() {
+					d.Text(c, tokens.LabelS, "来源").TextColor(d.P.TextTertiary)
+					ui.Spacer(c)
+					if b := d.Button(c, "管理").FontSize(11); b.Clicked() {
+						s.OpenPage(model.PageSources)
+					}
+				})
+				if len(s.Sources()) == 0 {
+					ui.Row(c).Padding(tokens.Space8, tokens.Space4).Children(func() {
+						d.Text(c, tokens.BodyS, "尚未添加来源").TextColor(d.P.TextTertiary)
+					})
 				}
-			})
-			ui.Spacer(c)
-			ui.Button(c, "上一首").OnClick(func() {
-				if m.actions != nil {
-					_ = m.actions.Previous()
+				for _, source := range s.Sources() {
+					source := source
+					row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space6).
+						Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM)
+					if row.Hovered() {
+						row.Background(d.P.Hover)
+					}
+					row.OnClick(func() {
+						s.Library().SetSource(source.ID)
+						s.OpenPage(model.PageLibrary)
+					})
+					row.Children(func() {
+						ui.Icon(c, components.IconFolder).FontSize(tokens.IconCompact).TextColor(d.P.TextTertiary)
+						d.Text(c, tokens.BodyS, source.Name).TextColor(d.P.TextSecondary).Grow(1).SingleLine()
+						d.Textf(c, tokens.LabelS, "%d", source.TrackCount).TextColor(d.P.TextTertiary)
+					})
 				}
-			})
-			label := "播放"
-			if m.playing.Snapshot.Playing {
-				label = "暂停"
-			}
-			ui.Button(c, label).OnClick(func() {
-				if m.actions != nil {
-					_ = m.actions.TogglePlayPause()
-				}
-			})
-			ui.Button(c, "下一首").OnClick(func() {
-				if m.actions != nil {
-					_ = m.actions.Next()
-				}
-			})
-			ui.Button(c, "循环："+m.repeat.String()).OnClick(func() {
-				if m.actions != nil {
-					m.repeat = m.actions.CycleRepeat()
-				}
+				ui.Box(c).Height(tokens.Space8)
+				ui.Row(c).AlignItems(ui.Center).Children(func() {
+					d.Text(c, tokens.LabelS, "播放列表").TextColor(d.P.TextTertiary)
+					ui.Spacer(c)
+					newPlaylist := d.Button(c, "").Padding(2).Radius(tokens.RadiusXS).Label("新建播放列表")
+					newPlaylist.Children(func() {
+						ui.Icon(c, components.IconPlus).FontSize(tokens.IconCompact).TextColor(d.P.TextTertiary)
+					})
+					if newPlaylist.Clicked() {
+						s.AskKernel("歌单创建（playlists 表写入）")
+					}
+				})
+				ui.Row(c).Padding(tokens.Space8, tokens.Space4).Children(func() {
+					d.Text(c, tokens.BodyS, "尚未创建播放列表").TextColor(d.P.TextTertiary)
+				})
 			})
 		})
-		ui.Row(c).AlignItems(ui.Center).Gap(10).Children(func() {
-			position := m.playing.Snapshot.Position
-			duration := m.playing.Snapshot.Duration
-			if duration <= 0 && m.playing.Track != nil {
-				duration = m.playing.Track.Duration
-			}
-			end := duration.Seconds()
-			if end <= 0 {
-				end = 1
-			}
-			if !m.seekPressed {
-				m.seekValue = position.Seconds()
-			}
-			ui.Text(c, formatDuration(position)).FontSize(10).TextColor(t.TextMuted)
-			slider := ui.Slider(c, &m.seekValue, 0, end).Grow(1)
-			if slider.Pressed() {
-				m.seekPressed = true
-			}
-			if slider.Changed() {
-				if m.actions != nil {
-					_ = m.actions.Seek(time.Duration(m.seekValue * float64(time.Second)))
-				}
-			}
-			if m.seekPressed && !slider.Pressed() {
-				m.seekPressed = false
-			}
-			ui.Text(c, formatDuration(duration)).FontSize(10).TextColor(t.TextMuted)
-			ui.Text(c, "音量").FontSize(10).TextColor(t.TextMuted)
-			volume := m.volume
-			volumeSlider := ui.Slider(c, &volume, 0, 1).Width(110)
-			if volumeSlider.Changed() {
-				m.volume = volume
-				if m.actions != nil {
-					_ = m.actions.SetVolume(volume)
-				}
-			}
+		ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space8).Children(func() {
+			navItem(c, d, s, "设置", model.PageSettings)
 		})
+		d.Text(c, tokens.LabelS, model.Version).TextColor(d.P.TextTertiary)
 	})
 }
 
-func (m *Model) errorPanel(c *ui.Context) {
-	t := c.Theme()
-	ui.Column(c).Grow(1).Center().Gap(10).Children(func() {
-		ui.Text(c, "无法打开曲库").FontSize(18).Bold()
-		ui.Text(c, m.loadErr.Error()).FontSize(12).TextColor(t.Danger)
-		ui.Text(c, m.dbPath).FontSize(11).TextColor(t.TextMuted).SingleLine()
-		ui.Text(c, "不创建、不迁移、不修复数据库；请检查 TINGYU_DATA_DIR 指向的副本").FontSize(11).TextColor(t.TextMuted)
+func navItem(c *ui.Context, d components.Design, s *model.State, label, page string) {
+	active := s.Page() == page
+	row := ui.Row(c).FillWidth().Padding(tokens.Space10, tokens.Space6).Radius(tokens.RadiusMD).
+		AlignItems(ui.Center)
+	if active {
+		row.Background(d.P.Selected)
+	} else if row.Hovered() {
+		row.Background(d.P.Hover)
+	}
+	row.OnClick(func() { s.OpenPage(page) })
+	row.Children(func() {
+		color := d.P.TextSecondary
+		if active {
+			color = d.P.Accent
+		}
+		d.Text(c, tokens.BodyM, label).TextColor(color)
 	})
 }
 
-// formatDuration shows a track's length as 3:49, or 1:02:03 past an hour.
-func formatDuration(d time.Duration) string {
-	if d < 0 {
-		d = 0
-	}
-	seconds := int64(d / time.Second)
-	if seconds >= 3600 {
-		return fmt.Sprintf("%d:%02d:%02d", seconds/3600, seconds%3600/60, seconds%60)
-	}
-	return fmt.Sprintf("%d:%02d", seconds/60, seconds%60)
+func handleShortcuts(c *ui.Context, s *model.State) {
+	c.OnShortcut(ui.Cmd, ui.KeyK, func() {
+		if s.Palette().Open {
+			s.ClosePalette()
+			return
+		}
+		s.OpenPalette()
+	})
+	c.OnShortcut(ui.Cmd, ui.KeyF, func() {
+		if s.Page() != model.PageSearch {
+			s.OpenPage(model.PageSearch)
+		}
+		s.RequestSearchFocus()
+	})
+	c.OnShortcut(ui.Cmd, ui.KeyComma, func() { s.OpenPage(model.PageSettings) })
+	c.OnShortcut(ui.Cmd, ui.Key1, func() { s.OpenPage(model.PageLibrary) })
+	c.OnShortcut(ui.Cmd, ui.Key2, func() { s.OpenPage(model.PageSearch) })
+	c.OnShortcut(ui.Cmd, ui.Key3, func() { s.OpenPage(model.PageFavorites) })
+	c.OnShortcut(ui.Cmd, ui.Key4, func() { s.OpenPage(model.PageSources) })
+	c.OnShortcut(ui.Cmd|ui.Shift, ui.KeyP, func() { s.OpenStage() })
+	c.OnShortcut(ui.Cmd, ui.KeyL, func() { s.OpenPage(model.PageLyrics) })
+	c.OnShortcut(ui.Cmd, ui.KeyU, func() { s.OpenPage(model.PageQueue) })
+	c.OnShortcut(0, ui.KeyEscape, func() {
+		switch {
+		case s.Palette().Open:
+			s.ClosePalette()
+		case s.Page() == model.PageStage:
+			s.CloseStage()
+		}
+	})
+	c.OnShortcut(0, ui.KeySpace, func() {
+		if a := s.Actions(); a != nil {
+			_ = a.TogglePlayPause()
+		}
+	})
+	c.OnShortcut(ui.Cmd, ui.KeyLeft, func() {
+		if a := s.Actions(); a != nil {
+			_ = a.Previous()
+		}
+	})
+	c.OnShortcut(ui.Cmd, ui.KeyRight, func() {
+		if a := s.Actions(); a != nil {
+			_ = a.Next()
+		}
+	})
+	c.OnShortcut(ui.Cmd|ui.Shift, ui.KeyLeft, func() { seekBy(s, -10*time.Second) })
+	c.OnShortcut(ui.Cmd|ui.Shift, ui.KeyRight, func() { seekBy(s, 10*time.Second) })
+	c.OnShortcut(ui.Cmd, ui.KeyUp, func() { volumeBy(s, 0.05) })
+	c.OnShortcut(ui.Cmd, ui.KeyDown, func() { volumeBy(s, -0.05) })
 }
+
+func seekBy(s *model.State, delta time.Duration) {
+	update := s.Player()
+	if update.Track == nil {
+		return
+	}
+	target := update.Snapshot.Position + delta
+	if target < 0 {
+		target = 0
+	}
+	if update.Snapshot.Duration > 0 && target > update.Snapshot.Duration {
+		target = update.Snapshot.Duration
+	}
+	if a := s.Actions(); a != nil {
+		_ = a.Seek(target)
+	}
+}
+
+func volumeBy(s *model.State, delta float64) {
+	volume := s.Volume() + delta
+	if volume < 0 {
+		volume = 0
+	}
+	if volume > 1 {
+		volume = 1
+	}
+	s.SetVolume(volume)
+	if a := s.Actions(); a != nil {
+		_ = a.SetVolume(volume)
+	}
+}
+
+// Formatting helpers kept for the M1 tests that call them.
+func formatDuration(d time.Duration) string { return model.FormatDuration(d) }

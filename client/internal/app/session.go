@@ -255,6 +255,60 @@ func (a *application) queueSize(update player.Update) queueBounds {
 	}
 }
 
+// --- application menu ------------------------------------------------
+
+// installMenu builds the macOS menu the design calls for: 听屿 (settings,
+// sources, quit), 播放 (play/pause, previous/next, stage), 前往 (the pages),
+// plus the standard Edit and Window menus. Menu actions run on the main
+// thread; model changes go through updateWindow so the next frame shows them.
+func (a *application) installMenu() {
+	openPage := func(page string) func(*mygo.MenuItem, *mygo.Window) {
+		return func(*mygo.MenuItem, *mygo.Window) {
+			a.updateWindow(func() { a.model.State().OpenPage(page) })
+		}
+	}
+	commands := func(id string) func(*mygo.MenuItem, *mygo.Window) {
+		return func(*mygo.MenuItem, *mygo.Window) {
+			a.updateWindow(func() { a.model.State().RunCommand(id) })
+		}
+	}
+	menu := mygo.NewMenu([]*mygo.MenuItem{
+		{Label: "听屿", Submenu: []*mygo.MenuItem{
+			{Role: mygo.RoleAbout},
+			mygo.Separator(),
+			{Label: "设置…", Accelerator: "Cmd+,", Click: openPage("settings")},
+			{Label: "来源管理…", Click: openPage("sources")},
+			mygo.Separator(),
+			{Role: mygo.RoleHide},
+			{Role: mygo.RoleHideOthers},
+			{Role: mygo.RoleUnhide},
+			mygo.Separator(),
+			{Role: mygo.RoleQuit},
+		}},
+		{Role: mygo.RoleEditMenu},
+		{Label: "播放", Submenu: []*mygo.MenuItem{
+			{Label: "播放 / 暂停", Accelerator: "Cmd+P", Click: commands("media.toggle")},
+			{Label: "上一首", Accelerator: "Cmd+Left", Click: func(*mygo.MenuItem, *mygo.Window) { _ = a.Previous() }},
+			{Label: "下一首", Accelerator: "Cmd+Right", Click: func(*mygo.MenuItem, *mygo.Window) { _ = a.Next() }},
+			mygo.Separator(),
+			{Label: "打开播放舞台", Accelerator: "Cmd+Shift+P", Click: commands("go.stage")},
+		}},
+		{Label: "前往", Submenu: []*mygo.MenuItem{
+			{Label: "曲库", Accelerator: "Cmd+1", Click: openPage("library")},
+			{Label: "搜索", Accelerator: "Cmd+2", Click: openPage("search")},
+			{Label: "收藏", Accelerator: "Cmd+3", Click: openPage("favorites")},
+			{Label: "音乐来源", Accelerator: "Cmd+4", Click: openPage("sources")},
+			mygo.Separator(),
+			{Label: "播放队列", Accelerator: "Cmd+U", Click: openPage("queue")},
+			{Label: "歌词", Accelerator: "Cmd+L", Click: openPage("lyrics")},
+		}},
+		{Role: mygo.RoleWindowMenu},
+		{Role: mygo.RoleHelp},
+	})
+	mygo.App.SetMenu(menu)
+	a.logf("menu: application menu installed")
+}
+
 // --- menu bar -------------------------------------------------------
 
 func (a *application) initTray() {

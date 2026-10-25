@@ -30,6 +30,9 @@ func newStartup() *startup {
 		} else {
 			s.file = file
 			s.logger.SetOutput(file)
+			// MyGo's frame statistics log through the standard logger; keep
+			// them in the same file as the app's own marks.
+			log.SetOutput(file)
 		}
 	}
 	if start, ok := processStart(); ok {
