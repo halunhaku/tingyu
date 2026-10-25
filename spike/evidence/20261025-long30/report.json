@@ -1,0 +1,35 @@
+{
+  "phase": "long",
+  "host": {
+    "arch": "arm64",
+    "cpu": "Apple M4",
+    "goVersion": "go1.27.3",
+    "macOS": "27.2",
+    "mpvClientAPI": "0x20001",
+    "os": "darwin",
+    "race": "false"
+  },
+  "startedAt": "2026-10-25T16:34:42.483384+08:00",
+  "finishedAt": "2026-10-25T17:04:43.694394+08:00",
+  "thresholds": [
+    {
+      "id": 8,
+      "name": "播放 30 分钟：RSS ≤300 MB、单核 CPU ≤10%",
+      "pass": true,
+      "skipped": false,
+      "data": {
+        "avgCPU": 2.166,
+        "maxCPU": 4.2,
+        "minutes": 30,
+        "peakRSSMB": 34.594,
+        "samples": 61,
+        "samplesPath": "resource-samples.jsonl",
+        "thresholds": "RSS ≤300 MB，单核 CPU ≤10%",
+        "underruns": 0
+      }
+    }
+  ],
+  "notes": [
+    "媒体目录 /Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/testdata/media"
+  ]
+}

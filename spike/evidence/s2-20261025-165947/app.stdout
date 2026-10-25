@@ -1,0 +1,142 @@
+16:59:48.220 MARK mpv ready apiVersion=0x20001 mediaDir=/Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/testdata/media
+16:59:48.237 MARK mediasession ready
+16:59:48.240 MARK auto: 开始加载队列（loop-file=inf，保证长窗口期间一直在出声）
+16:59:48.458 MARK 窗口已创建
+16:59:48.543 MARK metadata pushed: 验证小样 · 第一首 duration=3.00 artwork=/Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/testdata/media/cover.png
+16:59:48.583 MARK state pushed playing=true position=0.01
+16:59:49.389 MARK auto: 出声 position=1.02 duration=3.00
+16:59:49.395 MARK auto: current-ao=coreaudio
+16:59:50.599 MARK auto: nowPlaying 读回 {"album":"验证小样","artist":"听屿 spike","artworkPresent":true,"duration":3,"elapsed":0.014712666666666707,"externalContentIdentifier":"tingyu:验证小样 · 第一首|听屿 spike|验证小样","playbackState":1,"rate":1,"title":"验证小样 · 第一首"}
+16:59:50.604 MARK auto: 保持播放 25s，等外部探针
+16:59:53.177 MARK remote-command toggle arg=0.000
+16:59:53.241 MARK state pushed playing=false position=1.84
+16:59:55.037 MARK remote-command pause arg=0.000
+16:59:56.892 MARK remote-command play arg=0.000
+16:59:57.041 MARK state pushed playing=true position=1.94
+16:59:58.809 MARK remote-command toggle arg=0.000
+16:59:58.828 MARK remote-command toggle arg=0.000
+16:59:58.850 MARK remote-command toggle arg=0.000
+16:59:58.871 MARK remote-command toggle arg=0.000
+16:59:58.892 MARK remote-command toggle arg=0.000
+16:59:58.914 MARK remote-command toggle arg=0.000
+16:59:58.934 MARK remote-command toggle arg=0.000
+16:59:58.955 MARK remote-command toggle arg=0.000
+16:59:58.977 MARK remote-command toggle arg=0.000
+16:59:58.998 MARK remote-command toggle arg=0.000
+16:59:59.019 MARK remote-command toggle arg=0.000
+16:59:59.040 MARK remote-command toggle arg=0.000
+16:59:59.040 MARK state pushed playing=false position=0.84
+16:59:59.062 MARK remote-command toggle arg=0.000
+16:59:59.083 MARK remote-command toggle arg=0.000
+16:59:59.105 MARK remote-command toggle arg=0.000
+16:59:59.125 MARK remote-command toggle arg=0.000
+16:59:59.147 MARK remote-command toggle arg=0.000
+16:59:59.167 MARK remote-command toggle arg=0.000
+16:59:59.189 MARK remote-command toggle arg=0.000
+16:59:59.210 MARK remote-command toggle arg=0.000
+16:59:59.231 MARK remote-command toggle arg=0.000
+16:59:59.254 MARK remote-command toggle arg=0.000
+16:59:59.275 MARK remote-command toggle arg=0.000
+16:59:59.296 MARK remote-command toggle arg=0.000
+16:59:59.318 MARK remote-command toggle arg=0.000
+16:59:59.338 MARK remote-command toggle arg=0.000
+16:59:59.360 MARK remote-command toggle arg=0.000
+16:59:59.383 MARK remote-command toggle arg=0.000
+16:59:59.403 MARK remote-command toggle arg=0.000
+16:59:59.425 MARK remote-command toggle arg=0.000
+16:59:59.440 MARK state pushed playing=true position=1.02
+16:59:59.449 MARK remote-command toggle arg=0.000
+16:59:59.468 MARK remote-command toggle arg=0.000
+16:59:59.489 MARK remote-command toggle arg=0.000
+16:59:59.511 MARK remote-command toggle arg=0.000
+16:59:59.532 MARK remote-command toggle arg=0.000
+16:59:59.553 MARK remote-command toggle arg=0.000
+16:59:59.576 MARK remote-command toggle arg=0.000
+16:59:59.597 MARK remote-command toggle arg=0.000
+16:59:59.618 MARK remote-command toggle arg=0.000
+16:59:59.639 MARK remote-command toggle arg=0.000
+16:59:59.641 MARK state pushed playing=false position=1.14
+16:59:59.660 MARK remote-command toggle arg=0.000
+16:59:59.679 MARK remote-command toggle arg=0.000
+16:59:59.701 MARK remote-command toggle arg=0.000
+16:59:59.722 MARK remote-command toggle arg=0.000
+16:59:59.742 MARK remote-command toggle arg=0.000
+16:59:59.764 MARK remote-command toggle arg=0.000
+16:59:59.787 MARK remote-command toggle arg=0.000
+16:59:59.808 MARK remote-command toggle arg=0.000
+16:59:59.829 MARK remote-command toggle arg=0.000
+16:59:59.851 MARK remote-command toggle arg=0.000
+16:59:59.872 MARK remote-command toggle arg=0.000
+16:59:59.893 MARK remote-command toggle arg=0.000
+16:59:59.914 MARK remote-command toggle arg=0.000
+16:59:59.936 MARK remote-command toggle arg=0.000
+16:59:59.957 MARK remote-command toggle arg=0.000
+16:59:59.978 MARK remote-command toggle arg=0.000
+16:59:59.998 MARK remote-command toggle arg=0.000
+17:00:00.019 MARK remote-command toggle arg=0.000
+17:00:00.041 MARK state pushed playing=true position=1.34
+17:00:00.041 MARK remote-command toggle arg=0.000
+17:00:00.062 MARK remote-command toggle arg=0.000
+17:00:00.084 MARK remote-command toggle arg=0.000
+17:00:00.105 MARK remote-command toggle arg=0.000
+17:00:00.126 MARK remote-command toggle arg=0.000
+17:00:00.148 MARK remote-command toggle arg=0.000
+17:00:00.170 MARK remote-command toggle arg=0.000
+17:00:00.191 MARK remote-command toggle arg=0.000
+17:00:00.212 MARK remote-command toggle arg=0.000
+17:00:00.234 MARK remote-command toggle arg=0.000
+17:00:00.255 MARK remote-command toggle arg=0.000
+17:00:00.277 MARK remote-command toggle arg=0.000
+17:00:00.298 MARK remote-command toggle arg=0.000
+17:00:00.320 MARK remote-command toggle arg=0.000
+17:00:00.341 MARK remote-command toggle arg=0.000
+17:00:00.362 MARK remote-command toggle arg=0.000
+17:00:00.384 MARK remote-command toggle arg=0.000
+17:00:00.405 MARK remote-command toggle arg=0.000
+17:00:00.427 MARK remote-command toggle arg=0.000
+17:00:00.441 MARK state pushed playing=false position=1.54
+17:00:00.451 MARK remote-command toggle arg=0.000
+17:00:00.470 MARK remote-command toggle arg=0.000
+17:00:00.492 MARK remote-command toggle arg=0.000
+17:00:00.513 MARK remote-command toggle arg=0.000
+17:00:00.534 MARK remote-command toggle arg=0.000
+17:00:00.557 MARK remote-command toggle arg=0.000
+17:00:00.577 MARK remote-command toggle arg=0.000
+17:00:00.599 MARK remote-command toggle arg=0.000
+17:00:00.620 MARK remote-command toggle arg=0.000
+17:00:00.642 MARK state pushed playing=true position=1.61
+17:00:00.642 MARK remote-command toggle arg=0.000
+17:00:00.663 MARK remote-command toggle arg=0.000
+17:00:00.684 MARK remote-command toggle arg=0.000
+17:00:00.705 MARK remote-command toggle arg=0.000
+17:00:00.726 MARK remote-command toggle arg=0.000
+17:00:00.747 MARK remote-command toggle arg=0.000
+17:00:00.770 MARK remote-command toggle arg=0.000
+17:00:00.791 MARK remote-command toggle arg=0.000
+17:00:00.812 MARK remote-command toggle arg=0.000
+17:00:00.834 MARK remote-command toggle arg=0.000
+17:00:00.855 MARK remote-command toggle arg=0.000
+17:00:00.877 MARK remote-command toggle arg=0.000
+17:00:00.898 MARK remote-command toggle arg=0.000
+17:00:00.919 MARK remote-command toggle arg=0.000
+17:00:02.768 MARK remote-command next arg=0.000
+17:00:02.841 MARK metadata pushed: 验证小样 · 第二首 duration=3.00 artwork=/Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/testdata/media/cover.png
+17:00:04.514 MARK remote-command prev arg=0.000
+17:00:04.641 MARK metadata pushed: 验证小样 · 第一首 duration=3.00 artwork=/Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/testdata/media/cover.png
+17:00:15.608 MARK auto: 保持结束 position=1.99，期间收到命令 8 条
+17:00:15.613 MARK auto: 已注册命令 play,pause,togglePlayPause,nextTrack,previousTrack,changePlaybackPosition
+17:00:16.338 MARK auto: pmset 断言 pid 19188(spike-app): [0x0003660e000190ab] 00:00:00 PreventUserIdleSystemSleep named: "spike-mediasession: playing audio" | pid 769(coreaudiod): [0x000365f20001909d] 00:00:28 PreventUserIdleSystemSleep named: "com.apple.audio.BuiltInSpeakerDevice.context.preventuseridlesleep" | Resources: audio-out BuiltInSpeakerDevice | pid 769(coreaudiod): [0x000364930001844e] 00:06:19 PreventUserIdleSystemSleep named: "com.apple.audio.BuiltInSpeakerDevice.context.preventuseridlesleep" | Resources: audio-out BuiltInSpeakerDevice | pid 769(coreaudiod): [0x0003631400018674] 00:12:42 PreventUserIdleSystemSleep named: "com.apple.audio.AudioTap-E48FF6CD-A89C-4E30-9046-083EAFAA1DCB.context.preventuseridlesleep" | Resources: audio-in 0D7714A7-AE69-4AEE-A7BE-07074ABB0844 | pid 769(coreaudiod): [0x000362d900018ead] 00:13:41 PreventUserIdleSystemSleep named: "com.apple.audio.BuiltInSpeakerDevice.context.preventuseridlesleep" | Resources: audio-out BuiltInSpeakerDevice | pid 769(coreaudiod): [0x0003601100018dd1] 00:25:33 PreventUserIdleSystemSleep named: "com.apple.audio.BuiltInSpeakerDevice.context.preventuseridlesleep" | Resources: audio-out BuiltInSpeakerDevice | pid 769(coreaudiod): [0x00034d030001a6af] 01:46:51 PreventUserIdleSystemSleep named: "com.apple.audio.BuiltInSpeakerDevice.context.preventuseridlesleep" | Resources: audio-out BuiltInSpeakerDevice | pid 75363(抖音): [0x0003649300018fb1] 00:06:18 NoIdleSleepAssertion named: "Playing audio"
+17:00:16.342 MARK auto: 抑制期间 position=0.00
+17:00:16.729 MARK auto: 隐藏前 position=0.35 paused=false
+17:00:16.737 MARK auto: 窗口已隐藏
+17:00:21.759 MARK auto: 隐藏 5s 采样 position=[0.61 0.81 1.08 1.32 1.55 1.85 2.11 2.36 2.56 -0.19 0.08 0.33 0.59 0.85 1.08 1.34 1.57 1.83 2.08 2.34]（继续播放=true）
+17:00:21.766 MARK auto: 隐藏期间 nowPlaying 读回 {"album":"验证小样","artist":"听屿 spike","artworkPresent":true,"duration":3,"elapsed":1.6132010000000032,"externalContentIdentifier":"tingyu:验证小样 · 第一首|听屿 spike|验证小样","playbackState":1,"rate":1,"title":"验证小样 · 第一首"}
+17:00:22.206 MARK auto: 释放后 pmset 断言 pid 769(coreaudiod): [0x000365f20001909d] 00:00:33 PreventUserIdleSystemSleep named: "com.apple.audio.BuiltInSpeakerDevice.context.preventuseridlesleep" | Resources: audio-out BuiltInSpeakerDevice | pid 769(coreaudiod): [0x000364930001844e] 00:06:24 PreventUserIdleSystemSleep named: "com.apple.audio.BuiltInSpeakerDevice.context.preventuseridlesleep" | Resources: audio-out BuiltInSpeakerDevice | pid 769(coreaudiod): [0x0003631400018674] 00:12:48 PreventUserIdleSystemSleep named: "com.apple.audio.AudioTap-E48FF6CD-A89C-4E30-9046-083EAFAA1DCB.context.preventuseridlesleep" | Resources: audio-in 0D7714A7-AE69-4AEE-A7BE-07074ABB0844 | pid 769(coreaudiod): [0x000362d900018ead] 00:13:47 PreventUserIdleSystemSleep named: "com.apple.audio.BuiltInSpeakerDevice.context.preventuseridlesleep" | Resources: audio-out BuiltInSpeakerDevice | pid 769(coreaudiod): [0x0003601100018dd1] 00:25:39 PreventUserIdleSystemSleep named: "com.apple.audio.BuiltInSpeakerDevice.context.preventuseridlesleep" | Resources: audio-out BuiltInSpeakerDevice | pid 769(coreaudiod): [0x00034d030001a6af] 01:46:57 PreventUserIdleSystemSleep named: "com.apple.audio.BuiltInSpeakerDevice.context.preventuseridlesleep" | Resources: audio-out BuiltInSpeakerDevice | pid 75363(抖音): [0x0003649300018fb1] 00:06:24 NoIdleSleepAssertion named: "Playing audio"
+17:00:22.209 MARK auto: 关窗（Window.Close）
+17:00:22.217 MARK window-all-closed：按 §5.6 保留进程，继续播放
+17:00:27.239 MARK auto: 关窗 5s 采样 position=[0.07 0.33 0.59 0.8 1.04 1.34 1.57 1.85 2.04 2.3 2.55 -0.19 0.07 0.33 0.59 0.8 1.09 1.32 1.57 1.8]（继续播放=true，进程存活）
+17:00:27.245 MARK auto: 关窗后 nowPlaying 读回 {"album":"验证小样","artist":"听屿 spike","artworkPresent":true,"duration":3,"elapsed":1.6132010000000032,"externalContentIdentifier":"tingyu:验证小样 · 第一首|听屿 spike|验证小样","playbackState":1,"rate":1,"title":"验证小样 · 第一首"}
+17:00:27.850 MARK auto: Clear 之后 nowPlaying 读回 {}
+17:00:27.854 MARK auto: done
+17:00:27.857 MARK before-quit：Clear 媒体会话
+17:00:27.883 MARK app 退出

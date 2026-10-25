@@ -1,0 +1,12 @@
+{"apiVersion":131073,"at":"2026-10-25T17:05:09.654892+08:00","kind":"init","options":{"ao":"pcm","ao-pcm-file":"/Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/evidence/s1-20261025-170450/s1/gapless-no.wav","audio-client-name":"听屿Spike","audio-display":"no","gapless-audio":"yes","idle":"yes","keep-open":"no","msg-level":"all=info","terminal":"no","vo":"null","volume-max":"100"}}
+{"at":"2026-10-25T17:05:09.655027+08:00","name":"start-file"}
+{"at":"2026-10-25T17:05:09.655086+08:00","name":"hook","text":"on_load"}
+{"at":"2026-10-25T17:05:09.658967+08:00","name":"file-loaded"}
+{"at":"2026-10-25T17:05:09.660609+08:00","name":"playback-restart"}
+{"at":"2026-10-25T17:05:09.662519+08:00","name":"end-file"}
+{"at":"2026-10-25T17:05:09.662539+08:00","name":"start-file","playlistPos":1}
+{"at":"2026-10-25T17:05:09.66261+08:00","name":"hook","text":"on_load"}
+{"at":"2026-10-25T17:05:09.666114+08:00","name":"file-loaded","playlistPos":1}
+{"at":"2026-10-25T17:05:09.667213+08:00","name":"playback-restart","playlistPos":1}
+{"at":"2026-10-25T17:05:09.668803+08:00","name":"end-file"}
+{"at":"2026-10-25T17:05:09.773782+08:00","kind":"closed"}

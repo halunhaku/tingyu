@@ -1,0 +1,8 @@
+send next ×1 at 17:00:02.761 → 接受 1 次
+{"at":"17:00:03.065","attributedToUs":false,"nowPlayingPID":0,"selfPID":19284,"systemIsPlaying":false,"tile":"(nil)"}
+send prev ×1 at 17:00:04.508 → 接受 1 次
+{"at":"17:00:04.811","attributedToUs":false,"nowPlayingPID":0,"selfPID":19289,"systemIsPlaying":false,"tile":"(nil)"}
+send seek ×1 at 17:00:06.239 → 接受 1 次
+{"at":"17:00:06.542","attributedToUs":false,"nowPlayingPID":0,"selfPID":19299,"systemIsPlaying":false,"tile":"(nil)"}
+send seekus ×1 at 17:00:07.984 → 接受 1 次
+{"at":"17:00:08.288","attributedToUs":false,"nowPlayingPID":0,"selfPID":19320,"systemIsPlaying":false,"tile":"(nil)"}

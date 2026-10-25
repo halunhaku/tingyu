@@ -1,0 +1,7 @@
+
+=== stress 结果 ===
+[通过] #7 200 次 setQueue/seek：无崩溃、无竞态，且每次迭代都真的出声
+        说明: 崩溃会直接杀掉进程（进程内 C 库）；竞态由 -race 构建下的运行结果证明。
+        数据: {"audibleRuns":200,"events":4000,"failures":0,"finalDuration":6,"finalPosition":0.05,"iterationMaxMs":413.132,"iterationP50Ms":104.361,"iterations":200,"pathMismatch":0,"pathMismatchSamples":[],"raceBuild":true,"totalSec":21.323,"underruns":0}
+
+报告: /Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/evidence/s1-20261025-170450/stress/report.json

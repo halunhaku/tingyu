@@ -1,0 +1,41 @@
+{
+  "phase": "stress",
+  "host": {
+    "arch": "arm64",
+    "cpu": "Apple M4",
+    "goVersion": "go1.27.3",
+    "macOS": "27.2",
+    "mpvClientAPI": "0x20001",
+    "os": "darwin",
+    "race": "true"
+  },
+  "startedAt": "2026-10-25T17:05:14.090739+08:00",
+  "finishedAt": "2026-10-25T17:05:35.942961+08:00",
+  "thresholds": [
+    {
+      "id": 7,
+      "name": "200 次 setQueue/seek：无崩溃、无竞态，且每次迭代都真的出声",
+      "pass": true,
+      "skipped": false,
+      "data": {
+        "audibleRuns": 200,
+        "events": 4000,
+        "failures": 0,
+        "finalDuration": 6,
+        "finalPosition": 0.05,
+        "iterationMaxMs": 413.132,
+        "iterationP50Ms": 104.361,
+        "iterations": 200,
+        "pathMismatch": 0,
+        "pathMismatchSamples": [],
+        "raceBuild": true,
+        "totalSec": 21.323,
+        "underruns": 0
+      },
+      "note": "崩溃会直接杀掉进程（进程内 C 库）；竞态由 -race 构建下的运行结果证明。"
+    }
+  ],
+  "notes": [
+    "媒体目录 /Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/testdata/media"
+  ]
+}

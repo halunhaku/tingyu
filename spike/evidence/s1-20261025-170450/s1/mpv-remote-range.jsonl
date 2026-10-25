@@ -1,0 +1,9 @@
+{"apiVersion":131073,"at":"2026-10-25T17:05:06.419215+08:00","kind":"init","options":{"ao":"coreaudio","audio-client-name":"听屿Spike","audio-display":"no","cache":"yes","demuxer-max-bytes":"1048576","demuxer-readahead-secs":"1","gapless-audio":"yes","idle":"yes","keep-open":"no","log-file":"/Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/evidence/s1-20261025-170450/s1/mpv-remote-range-player.log","msg-level":"all=info","terminal":"no","vo":"null","volume-max":"100"}}
+{"at":"2026-10-25T17:05:06.419428+08:00","name":"start-file"}
+{"at":"2026-10-25T17:05:06.419563+08:00","kind":"on_load_header_set","path":"http://127.0.0.1:59283/long96.flac"}
+{"at":"2026-10-25T17:05:06.419506+08:00","name":"hook","text":"on_load"}
+{"at":"2026-10-25T17:05:06.424507+08:00","name":"file-loaded"}
+{"at":"2026-10-25T17:05:06.432021+08:00","name":"playback-restart"}
+{"at":"2026-10-25T17:05:07.488267+08:00","name":"seek"}
+{"at":"2026-10-25T17:05:07.511757+08:00","name":"playback-restart"}
+{"at":"2026-10-25T17:05:08.419367+08:00","kind":"closed"}
