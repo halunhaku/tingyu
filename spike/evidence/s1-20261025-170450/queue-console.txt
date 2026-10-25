@@ -1,0 +1,6 @@
+
+=== queue 结果 ===
+[通过] #0 换队列：clear+append+play-index 与 stop/clear、replace 的语义差异
+        数据: {"note":"场景：正在播 album1 时把队列换成 [short, tone48] 并从 short 开始；correct=队列 2 项且当前文件是 short","steps":[{"beforePath":"album1.flac","correct":false,"count":3,"duration":3,"err":"","idle":false,"path":"album1.flac","paused":false,"playlistPos":0,"strategy":"A：playlist-clear + append×2 + play-index 0（方案 §4.5 的写法）"},{"beforePath":"album1.flac","correct":true,"count":2,"duration":1.5,"err":"","idle":false,"path":"short.flac","paused":false,"playlistPos":0,"strategy":"B：stop → clear → append×2 → play-index 0"},{"beforePath":"short.flac","correct":true,"count":2,"duration":1.5,"err":"","idle":false,"path":"short.flac","paused":true,"playlistPos":0,"strategy":"C：loadfile short replace → append tone48 → pause"}]}
+
+报告: /Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/evidence/s1-20261025-170450/queue/report.json

@@ -1,0 +1,3 @@
+{"at":"2026-10-25T09:05:08.430533Z","method":"GET","path":"/tone48.flac","range":"bytes=0-","auth_ok":false,"status":401,"bytes_sent":12,"req_headers":{"Authorization":"absent","Icy-MetaData":"1","Range":"bytes=0-","Referer":"","User-Agent":"libmpv"}}
+{"at":"2026-10-25T09:05:08.434828Z","method":"GET","path":"/tone48.flac","range":"bytes=0-","auth_ok":false,"status":401,"bytes_sent":12,"req_headers":{"Authorization":"absent","Icy-MetaData":"1","Range":"bytes=0-","Referer":"","User-Agent":"libmpv"}}
+{"at":"2026-10-25T09:05:08.449863Z","method":"GET","path":"/tone48.flac","range":"bytes=0-","auth_ok":true,"status":206,"bytes_sent":368182,"req_headers":{"Authorization":"ok","Icy-MetaData":"1","Range":"bytes=0-","Referer":"","User-Agent":"libmpv"}}

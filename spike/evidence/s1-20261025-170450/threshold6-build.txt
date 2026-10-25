@@ -1,0 +1,15 @@
+$ CGO_ENABLED=0 go build ./...
+exit=0
+$ go vet ./...
+exit=0
+$ gofmt -l .
+$ CGO_ENABLED=0 go test -race ./...
+?   	github.com/halunhaku/tingyu/spike/cmd/spike-app	[no test files]
+?   	github.com/halunhaku/tingyu/spike/cmd/spike-audio	[no test files]
+?   	github.com/halunhaku/tingyu/spike/cmd/spike-np	[no test files]
+?   	github.com/halunhaku/tingyu/spike/cmd/spike-session	[no test files]
+ok  	github.com/halunhaku/tingyu/spike/internal/httpsrv	(cached)
+ok  	github.com/halunhaku/tingyu/spike/internal/mainq	(cached)
+ok  	github.com/halunhaku/tingyu/spike/internal/mediasession	(cached)
+ok  	github.com/halunhaku/tingyu/spike/internal/mpv	(cached)
+ok  	github.com/halunhaku/tingyu/spike/internal/probe	1.884s

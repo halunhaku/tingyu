@@ -1,0 +1,249 @@
+{
+  "phase": "s1",
+  "host": {
+    "arch": "arm64",
+    "cpu": "Apple M4",
+    "goVersion": "go1.27.3",
+    "macOS": "27.2",
+    "mpvClientAPI": "0x20001",
+    "os": "darwin",
+    "race": "false"
+  },
+  "startedAt": "2026-10-25T17:04:57.258662+08:00",
+  "finishedAt": "2026-10-25T17:05:09.777793+08:00",
+  "thresholds": [
+    {
+      "id": 1,
+      "name": "出声 tone96.flac（96000 Hz / 24 bit）",
+      "pass": true,
+      "skipped": false,
+      "data": {
+        "aoLogLine": "AO: [coreaudio] 96000Hz stereo 2ch s32",
+        "currentAO": "coreaudio",
+        "deviceBefore": "MacBook Air扬声器",
+        "deviceDuringPlayback": "MacBook Air扬声器",
+        "deviceRunningDuringPlayback": true,
+        "duration": 6,
+        "expectedRate": "96000",
+        "file": "tone96.flac",
+        "mpvVersion": "mpv 0.36.0",
+        "paused": false,
+        "positionAdvanced": true,
+        "positionAfterMs1_2": 1.708,
+        "reachedPosition": 1.233,
+        "timeToAudibleMs": 1284.322,
+        "underruns": 0,
+        "underrunsFinal": 0
+      }
+    },
+    {
+      "id": 1,
+      "name": "出声 tone48.flac（48000 Hz / 24 bit）",
+      "pass": true,
+      "skipped": false,
+      "data": {
+        "aoLogLine": "AO: [coreaudio] 48000Hz stereo 2ch s32",
+        "currentAO": "coreaudio",
+        "deviceBefore": "MacBook Air扬声器",
+        "deviceDuringPlayback": "MacBook Air扬声器",
+        "deviceRunningDuringPlayback": true,
+        "duration": 6,
+        "expectedRate": "48000",
+        "file": "tone48.flac",
+        "mpvVersion": "mpv 0.36.0",
+        "paused": false,
+        "positionAdvanced": true,
+        "positionAfterMs1_2": 1.709,
+        "reachedPosition": 1.234,
+        "timeToAudibleMs": 1282.006,
+        "underruns": 0,
+        "underrunsFinal": 0
+      }
+    },
+    {
+      "id": 2,
+      "name": "结束回调 ≤150 ms（3/3）",
+      "pass": true,
+      "skipped": false,
+      "data": {
+        "latenciesMs": [
+          -243.883,
+          -244.103,
+          -243.998
+        ],
+        "measureMethod": "2 ms 同步轮询 audio-pts（AO 已送出的音频 PTS）外推到 duration，与 end-file(eof) 事件到达时间之差；负值=事件早于音频设备排空（audioClockTailMs 即排空尾巴），即回调不会晚于文件结束",
+        "passRule": "三次延迟均 ≤150 ms（负值同样算通过：早到不是迟到）",
+        "runs": [
+          {
+            "audioClockTailMs": 245.284,
+            "duration": 1.5,
+            "endReason": 0,
+            "endReasonName": "eof",
+            "eofReachedProperty": false,
+            "lastAudioPts": 1.255,
+            "latencyMs": -243.883,
+            "maxAudioPts": 1.255,
+            "playbackTimeAtEvent": 0,
+            "run": 1
+          },
+          {
+            "audioClockTailMs": 244.706,
+            "duration": 1.5,
+            "endReason": 0,
+            "endReasonName": "eof",
+            "eofReachedProperty": false,
+            "lastAudioPts": 1.255,
+            "latencyMs": -244.103,
+            "maxAudioPts": 1.255,
+            "playbackTimeAtEvent": 0,
+            "run": 2
+          },
+          {
+            "audioClockTailMs": 245.449,
+            "duration": 1.5,
+            "endReason": 0,
+            "endReasonName": "eof",
+            "eofReachedProperty": false,
+            "lastAudioPts": 1.255,
+            "latencyMs": -243.998,
+            "maxAudioPts": 1.255,
+            "playbackTimeAtEvent": 0,
+            "run": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "name": "远端 Range：seek 到 50% 后 ≤300 ms 恢复出声 + 服务端可见 Range 请求",
+      "pass": true,
+      "skipped": false,
+      "data": {
+        "cacheOptions": {
+          "cache": "yes",
+          "demuxer-max-bytes": "1048576",
+          "demuxer-readahead-secs": "1"
+        },
+        "cachedBeforeSeek": 7.477,
+        "duration": 20,
+        "lastPos": 10.823,
+        "rangeRequestsAfterSeek": [
+          "206 bytes=2369133-",
+          "206 bytes=0-",
+          "206 bytes=2367085-",
+          "206 bytes=2362989-",
+          "206 bytes=1189166-",
+          "206 bytes=1176600-"
+        ],
+        "requestsAfterSeek": 6,
+        "resumeMs": 104.206,
+        "seekTarget": 10,
+        "started": true,
+        "statusCountsAfterSeek": {
+          "206": 6
+        },
+        "totalRangeRequests": 6,
+        "totalRequests": 6,
+        "url": "http://127.0.0.1:59283/long96.flac"
+      }
+    },
+    {
+      "id": 4,
+      "name": "不带头：服务端 401 且播放失败",
+      "pass": true,
+      "skipped": false,
+      "data": {
+        "authFlags": [
+          "401/auth=false",
+          "401/auth=false"
+        ],
+        "endFileError": -13,
+        "endFileReason": 4,
+        "endFileReasonName": "error",
+        "gotEndFile": true,
+        "httpStatuses": {
+          "401": 2
+        },
+        "position": 0,
+        "serverSaw401": true
+      }
+    },
+    {
+      "id": 4,
+      "name": "loadfile 第 4 参数下发 per-file options",
+      "pass": false,
+      "skipped": false,
+      "data": {
+        "command": "loadfile \u003curl\u003e replace -1 http-header-fields=Authorization: Basic ***",
+        "httpStatusesAfter": {},
+        "loadError": "mpv command [loadfile http://127.0.0.1:59293/tone48.flac replace -1 http-header-fields=Authorization: Basic c3Bpa2U6czNjcmV0]: invalid parameter",
+        "played": false
+      },
+      "note": "这条是方案 §4.5 的假设；实测在这份 mpv 0.36 上直接报 invalid parameter（见 loadError）"
+    },
+    {
+      "id": 4,
+      "name": "on_load 钩子 + set_property http-header-fields（按曲目下发）",
+      "pass": true,
+      "skipped": false,
+      "data": {
+        "authorizedRequests": 1,
+        "duration": 6,
+        "httpStatuses": {
+          "206": 1
+        },
+        "loadError": "",
+        "played": true,
+        "position": 1.042
+      }
+    },
+    {
+      "id": 5,
+      "name": "gapless：同专辑连播间隙 ≤20 ms（单个 AO 会话、6 s 连续波形）",
+      "pass": true,
+      "skipped": false,
+      "data": {
+        "aoInitCount": 1,
+        "endFileCount": 2,
+        "gapMs": 0,
+        "gaplessAudio": "yes",
+        "method": "mpv ao=pcm 渲染实际音频输出 → 纯 Go 分析静音段（-60 dBFS、≥5 ms）；同时用日志里 'AO: [' 行数判断音频设备流是否被重建",
+        "renderedDurationSec": 6,
+        "renderedPeakDBFS": -21.074,
+        "renderedRMSDBFS": -24.084,
+        "renderedWav": "gapless-yes.wav",
+        "silencesAtBoundary": [],
+        "startFileCount": 2,
+        "toneSNR_1200": -6.02,
+        "toneSNR_1k": -6.021,
+        "totalSamplesSec": 6
+      }
+    },
+    {
+      "id": 5,
+      "name": "gapless 对照组：gapless-audio=no 应看到 AO 重建（证明测量方法有灵敏度）",
+      "pass": true,
+      "skipped": false,
+      "data": {
+        "aoInitCount": 2,
+        "endFileCount": 2,
+        "gapMs": 0,
+        "gaplessAudio": "no",
+        "method": "mpv ao=pcm 渲染实际音频输出 → 纯 Go 分析静音段（-60 dBFS、≥5 ms）；同时用日志里 'AO: [' 行数判断音频设备流是否被重建",
+        "renderedDurationSec": 3,
+        "renderedPeakDBFS": -21.074,
+        "renderedRMSDBFS": -24.084,
+        "renderedWav": "gapless-no.wav",
+        "silencesAtBoundary": [],
+        "startFileCount": 2,
+        "toneSNR_1200": -0,
+        "toneSNR_1k": -280.681,
+        "totalSamplesSec": 3
+      },
+      "note": "对照组渲染时长 3.00 s、AO 重建 2 次：关掉 gapless 后输出流被拆掉重建，这正是可闻间隙的来源"
+    }
+  ],
+  "notes": [
+    "媒体目录 /Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/testdata/media"
+  ]
+}

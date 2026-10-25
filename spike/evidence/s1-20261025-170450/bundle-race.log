@@ -1,0 +1,20 @@
+== 1/4 编译（CGO_ENABLED=0 RACE=-race）
+== 2/4 组装 frameworks
+== 3/4 打包 .app
+== 3.5/4 给独立可执行文件补 rpath
+== 4/4 校验 dyld 依赖
+-- /Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/build/听屿Spike.app/Contents/MacOS/spike-app
+         path @executable_path/../Frameworks (offset 12)
+-- /Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/build/spike-audio
+         path @executable_path/Frameworks (offset 12)
+完成：/Users/halunhaku/.tds/workspaces/01a1721f-0e91-7195-a767-234fc1fb1e66/spike/build
+total 77400
+drwxr-xr-x@  9 halunhaku  staff       288 Oct 25 17:05 .
+drwxr-xr-x@ 14 halunhaku  staff       448 Oct 25 17:05 ..
+lrwxr-xr-x@  1 halunhaku  staff        35 Oct 25 17:05 Frameworks -> 听屿Spike.app/Contents/Frameworks
+-rwxr-xr-x@  1 halunhaku  staff  17647106 Oct 25 17:05 spike-app
+-rwxr-xr-x@  1 halunhaku  staff  12073184 Oct 25 17:05 spike-audio
+-rwxr-xr-x@  1 halunhaku  staff   5403552 Oct 25 17:05 spike-np
+-rwxr-xr-x@  1 halunhaku  staff   4494768 Oct 25 17:05 spike-session
+drwxr-xr-x@  3 halunhaku  staff        96 Oct 25 17:05 听屿Spike.app
+drwxr-xr-x@  3 halunhaku  staff        96 Oct 25 17:05 听屿SpikeSess.app

@@ -1,0 +1,2 @@
+send toggle ×100 at 16:48:34.385 → 接受 100 次
+sent=100 received=101

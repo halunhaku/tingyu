@@ -1,0 +1,1 @@
+physical function key attempts: F8(100)=1 F9(101)=1 F7(98)=1
