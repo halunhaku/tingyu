@@ -1,14 +1,18 @@
 # 调研：真实 MyGo 项目怎么做音频播放与系统媒体会话
 
 日期：2026-10-25
-性质：**只读调研**。没有改任何应用代码、没有写原型、没有合并分支、没有打 tag。本文是本仓库唯一改动。
+性质：**只读调研**。没有改任何应用代码、没有写原型、没有合并分支、没有打 tag。本文是本分支相对 `main` 的唯一改动。
 核查基准：
 
 - MyGo 最新发布 [`v0.6.4`](https://github.com/egoist/mygo/releases/tag/v0.6.4)（2026-10-25T07:38:35Z，commit [`6255ea4`](https://github.com/egoist/mygo/tree/6255ea40139d06e0762a7c4a32626148ba410478)）；上一版 [`v0.6.3`](https://github.com/egoist/mygo/releases/tag/v0.6.3)（commit [`1524290`](https://github.com/egoist/mygo/tree/15242900157b77228d35ca071f43e94a11bc90a0)）。
 - 输入文档 [`docs/research/2026-10-25-mygo-feasibility.md`](./2026-10-25-mygo-feasibility.md)（MyGo 能力边界的那份）。
 - 听屿：本仓库 `app/`（Flutter，播放走 `media_kit`/`media_kit_libs_audio`，见 `app/pubspec.yaml:21-22`；macOS 侧由 pod `media_kit_libs_macos_audio 1.0.4` 携带播放框架，见 `app/macos/Podfile.lock:3`）。
 
-> **前置更正（不影响结论，但影响线索）**：Spec 提到的方案文档 `docs/plan/2026-10-25-macos-mygo-migration-plan.md` 在本仓库任何分支上都不存在（`docs/plan/` 目录本身不存在，全仓库 grep 无命中）。因此本文按 Spec"方案推荐"段落工作：进程内 libmpv + purego 为推荐、libmpv 子进程 + JSON IPC 为退路、纯 Go 解码与 AudioToolbox shim 不作 v1、媒体会话自写 400–500 行 ObjC C-ABI shim dylib。
+> **与 `docs/plan/2026-10-25-macos-mygo-migration-plan.md` 的关系（合并 `main` 后补记）**：起草本文时，方案文档尚未落到本分支，因此本文按 Spec 的"方案推荐"段落工作（进程内 libmpv + purego 为推荐、mpv 子进程 + IPC 为退路、纯 Go 解码与原生 shim 不作 v1，媒体会话按 400–500 行 ObjC shim dylib 估）。本分支合并 `origin/main` 后，方案文档（711 行）已在本仓库，补记三条对照，**本文结论不变**：
+>
+> 1. **路线字母要先对齐再读**：本文沿用 Spec 的 A/B/C/D（A 纯 Go、**B 进程内 libmpv + purego**、**C mpv 子进程 + IPC**、D 原生 shim），而方案文档的 B/C 相反（方案 B = 子进程、方案 C = 进程内）。读方案时把本文的 **B 对到方案的 C**。
+> 2. **方案 §5.2 的"不能从纯 Go 直接调 ObjC"与代码事实冲突**：它把 `purego/objc`（方案里的 P1）列为"次选探针"，但 §4 的 5 个成品里有 4 个正是 P1、1 个用纯 Go 库 `go-macos/objc`，实现量 172–394 行。所以方案 §5.3 的"400–500 行 shim dylib + 单独签名/公证"（P2）不是必需项，可先用 P1 落地；P1 的实现同时就是 shim 的规格说明。
+> 3. **方案 §5.4 的"归属"约束本文没有推翻**：本文只证明 macOS 没有 `AVAudioSession`、`MPNowPlayingInfoCenter` 不占音频设备（§7.2），**不等于**"子进程出声、主进程报元数据"可行。不过 §4.1 的 quaver-astra 恰好就是这个形态的成品（mpv 子进程 + 自写 Now Playing），可作为方案 §7.2（S2）spike 的现成参照：先看它打包后的控制中心表现，再决定 S2 是否按"必须同进程"判。
 
 ---
 
@@ -165,7 +169,7 @@ MyGo 仓库 `examples/` 有 32 个目录，用到音频的是 3 个，全部只�
 | Aurelia | ✅ purego + `purego/objc` | ✅ | ✅ | **212 行**（[`nowplaying_darwin.go`](https://github.com/j4ckxyz/Aurelia/blob/dcc74a4b71d029c76afc27f99ac925acc8aa50e7/nowplaying_darwin.go)） |
 | godrome | 未查到 | ✅ | 未查到 | — |
 
-**结论：媒体会话在 MyGo 里"被做成过"，macOS / Windows / Linux 三端都有人做成，且全都不是上游提供的。** 这直接回答 Spec 的问题"媒体会话在 MyGo 里有没有人做成过，做成的是哪一端"：有，三端都有；macOS 端至少 5 个独立实现。
+**结论：媒体会话在 MyGo 里"被做成过"，macOS / Windows / Linux 三端都有人做成，且全都不是上游提供的。** 这直接回答 Spec 与方案文档 §5 的问题"媒体会话在 MyGo 里有没有人做成过，做成的是哪一端"：有，三端都有；macOS 端至少 5 个独立实现（方案 §5.2 把它们归为"次选"的 P1，正是其中 4 个的实际做法）。
 
 实现量级（重要，用于修正 400–500 行的估算）：**macOS 端 172–394 行，加上共用的 objc 小桥 0–217 行**；若用第三方 `go-macos/objc` 则连桥都不用写（meiro 273 行全包）。**没有一个是 shim dylib**，全是进程内 purego 调 `objc_msgSend`。
 
@@ -341,7 +345,7 @@ MyGo 仓库 `examples/` 有 32 个目录，用到音频的是 3 个，全部只�
 
 | 层 | 推荐 | 依据 |
 |---|---|---|
-| **系统媒体会话** | **自写 Go 包，purego + `purego/objc`，主线程用 `mygo.RunOnMain`；规模按 250–400 行估** | 5 个成品先例；**不需要 cgo、不需要 shim dylib**；Spec 里"400–500 行 ObjC shim"可以砍掉（净省一层构建/签名） |
+| **系统媒体会话** | **自写 Go 包，purego + `purego/objc`，主线程用 `mygo.RunOnMain`；规模按 250–400 行估** | 5 个成品先例；**不需要 cgo、不需要 shim dylib**；Spec 与方案文档 §5.3 的"400–500 行 ObjC shim + 单独签名"可以砍掉（净省一层构建/签名） |
 | **播放内核（macOS 单端）** | **维持 B：进程内 libmpv + purego**，并把 C 作为**同等成熟的退路**保留；A 不在 v1 考虑；D 排除 | B 的库级先例 + 听屿已随包 `Mpv.framework`（零新增分发成本）；C 有 MyGo 应用级成品先例（quaver），若 spike 发现 dlopen 在 `.app` 内不稳，直接切 C |
 | **媒体会话要不要等 #654** | **不等**。自己写；#654 合并后可整块换掉（API 形状与社区实现高度相似） | #654 是 open PR、两天无进展；社区 5 个实现均在它之外独立完成 |
 | **格式/流式/gapless** | 全交给 libmpv，不自研解码器、不自写 `ReadSeeker` | 自写 `ReadSeeker` 虽有多例（yt-player、lark），但 gapless + 全格式仍要另做，属重复投入 |
