@@ -28,15 +28,37 @@ func (a *application) setStatus(status string) {
 	a.updateWindow(func() { a.model.SetStatus(status) })
 }
 
-// onUpdate is what the controller calls for every snapshot. It fans out to the
-// window, the menu bar and the media session — one source of truth, so the
+// onUpdate is called by the controller on whatever goroutine produced the
+// snapshot (the engine loop, or the UI thread for a double click). It only
+// queues, so the caller never waits on the main thread; one worker then fans
+// the update out to the window, the menu bar and the media session, so the
 // three cannot disagree.
 func (a *application) onUpdate(update player.Update) {
 	if a.quitting.Load() {
 		return
 	}
-	a.updateMu.Lock()
-	defer a.updateMu.Unlock()
+	select {
+	case a.updates <- update:
+	default:
+		// The worker is behind; the next snapshot carries the full state.
+	}
+}
+
+func (a *application) updateLoop() {
+	for {
+		select {
+		case <-a.done:
+			return
+		case update := <-a.updates:
+			a.applyUpdate(update)
+		}
+	}
+}
+
+func (a *application) applyUpdate(update player.Update) {
+	if a.quitting.Load() {
+		return
+	}
 	a.lastUpdateMu.Lock()
 	a.lastUpdate = update
 	a.lastUpdateMu.Unlock()
@@ -110,7 +132,9 @@ func (a *application) initSession() {
 	a.lastUpdateMu.Unlock()
 	if update.Track != nil {
 		a.session.force.Store(true)
-		a.publishSession(update)
+		// Go through the worker like every other update: session state is
+		// owned by that one goroutine.
+		a.onUpdate(update)
 	}
 	commands, err := mediasession.CommandStatus()
 	if err == nil {
@@ -185,6 +209,12 @@ func (a *application) publishSession(update player.Update) {
 		} else {
 			a.logf("session: state playing=%v rate=%.2f pos=%.3f dur=%.1f processing=%s",
 				update.Snapshot.Playing, update.Snapshot.Rate, update.Snapshot.Position.Seconds(), duration.Seconds(), update.Snapshot.Processing)
+			if metadataChanged || semanticsChanged {
+				if info, err := mediasession.NowPlayingInfo(); err == nil {
+					a.logf("session: state readback playbackState=%v rate=%v elapsed=%v artworkPresent=%v",
+						info["playbackState"], info["rate"], info["elapsed"], info["artworkPresent"])
+				}
+			}
 		}
 		queue := a.queueSize(update)
 		if err := mediasession.SetEnabledCommands(queue.hasNext, queue.hasPrev); err != nil {
@@ -299,6 +329,7 @@ func (a *application) shutdown() {
 		return
 	}
 	a.logf("app: quitting")
+	close(a.done)
 	a.scanCancel.Store(true)
 	if a.session.ready.Load() {
 		if err := mediasession.Clear(); err != nil {

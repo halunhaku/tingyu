@@ -65,21 +65,35 @@ type application struct {
 	lastUpdateMu sync.Mutex
 	lastUpdate   player.Update
 
-	// updateMu serializes onUpdate. The controller calls its listener from the
-	// engine goroutine and from PlayTracks itself, and the session publisher's
-	// dedup state is not safe for concurrent callers.
-	updateMu sync.Mutex
+	// updates carries controller snapshots to one worker goroutine. The
+	// listener must never do media-session work on the caller's thread: a
+	// double click calls PlayTracks (and therefore the listener) on the UI
+	// thread, and driving MediaPlayer from inside a UI callback deadlocked the
+	// main thread. Publishing from the window, the tray and the session also
+	// all become single-threaded from here, which is what their dedup state
+	// assumes.
+	updates chan player.Update
+	done    chan struct{}
 }
 
 // Main runs the client until the app quits.
 func Main() error {
-	a := &application{startup: newStartup(), scanDone: make(chan struct{}), readyCh: make(chan struct{})}
+	a := &application{
+		startup:  newStartup(),
+		scanDone: make(chan struct{}),
+		readyCh:  make(chan struct{}),
+		updates:  make(chan player.Update, 8),
+		done:     make(chan struct{}),
+	}
 	defer a.startup.Close()
 	if err := a.prepare(); err != nil {
 		// A library that cannot be opened is not fatal: the window opens and
 		// explains why, so the failure is visible.
 		a.startup.printf("startup library: %v", err)
 	}
+	// The worker starts once the model exists; listener calls made while
+	// prepare runs wait in the channel.
+	go a.updateLoop()
 
 	mygo.App.OnWindowAllClosed(func() {
 		// Closing the window keeps the process (and the music) alive; the menu
@@ -602,7 +616,7 @@ func scanStatus(result scan.Result, merge library.MergeResult, stored int64) str
 	if result.Cancelled {
 		reason = "已取消"
 	} else if result.Truncated {
-		reason = fmt.Sprintf("文件数超过上限 %d", scan.MaxFiles)
+		reason = fmt.Sprintf("文件数达到上限 %d（可能未枚举完）", scan.MaxFiles)
 	}
 	return fmt.Sprintf("部分同步（%s；保留未扫描曲目；入库 %d；新增 %d / 更新 %d）",
 		reason, stored, merge.Added, merge.Updated)

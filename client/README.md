@@ -1,18 +1,25 @@
 # client/：听屿 macOS 客户端（MyGo）
 
-这是迁移方案 M0 的骨架（方案 §6）：一个 Go 模块、可重复出包的 `.app`、只读打开线上曲库、`ui.Table` 外壳。**不实现播放、扫描入库、媒体键**（M1），**不碰 `app/`**。
+迁移方案 **M1** 的实现（方案 §6 M1 行）：选目录扫描入库、进程内 libmpv 播放、系统媒体会话（Now Playing / 媒体键）、关窗续播。**不实现远端来源**（WebDAV/夸克，M3）、**不做完整界面重画**（M4）、**不做元数据补全**（M5）；**不碰 `app/`**。
+
+验收记录与逐条证据：[`docs/plan/2026-10-25-macos-mygo-m1-record.md`](../docs/plan/2026-10-25-macos-mygo-m1-record.md)。
 
 ```
 client/
 ├── main.go                      进程入口：只调用 internal/app
 ├── mygo.json                    应用名、bundle id、版本、最低 macOS、出包目录
-├── resources/icon.png           1024×1024 图标位（占位图）
+├── resources/icon.png           1024×1024 图标
 ├── internal/
-│   ├── library/                 数据访问：只读打开 + user_version 校验 + 读曲目
-│   ├── shell/                   UI 外壳：侧栏 + ui.Table（不含窗口与数据库）
-│   └── app/                     应用装配：数据目录、冷启动打点、窗口
+│   ├── library/                 SQLite：schema 补差、查询、扫描合并、播放历史、revision
+│   ├── scan/                    目录遍历 + 9 格式元数据 + 内容寻址封面
+│   ├── mpv/                     purego libmpv 绑定与播放内核
+│   ├── player/                  播放控制器（预取/世代/循环/历史）
+│   ├── mainq/                   主线程投递（libdispatch）
+│   ├── mediasession/            Now Playing / 远程命令 / 封面 / App Nap
+│   ├── shell/                   UI：曲库表格、传输条、扫描面板
+│   └── app/                     装配：窗口、菜单栏、扫描编排、退出
 ├── scripts/
-│   ├── bundle.sh                编译 + 组装 .app + 校验 Info.plist/图标/dylib/签名
+│   ├── bundle.sh                编译 + 拷贝并签名 libmpv/FFmpeg frameworks + 组装 .app
 │   └── measure-coldstart.sh     在库副本上测冷启动（进程启动 → 首帧）
 └── README.md
 ```
@@ -23,26 +30,57 @@ client/
 cd client
 ./scripts/bundle.sh                 # build/darwin-arm64/听屿.app
 PLATFORM=darwin/universal ./scripts/bundle.sh
+FRAMEWORK_SRC=/path/to/Frameworks ./scripts/bundle.sh
 ```
 
-脚本做的事：`CGO_ENABLED=0 go tool mygo build -platform … -skip-dmg`（MyGo CLI 见 `go.mod` 的 `tool` 指令），然后读取 `mygo.json` 校验 `CFBundleIdentifier=com.halunhaku.tingyu`、`LSMinimumSystemVersion=12.0`、`CFBundleName=听屿`、`AppIcon.icns`、`libmygo-sqlite3.dylib`，最后 `codesign --verify`。签名是 ad-hoc（方案 §6.1 的签名/公证在 M6）。
+脚本做的事：
 
-直接跑编译产物（开发）：
+1. `CGO_ENABLED=0 go tool mygo build -platform … -skip-dmg`；
+2. 从 `FRAMEWORK_SRC`（默认 pub 缓存里最新的 `media_kit_libs_macos_audio-*/macos/Frameworks`）复制 `Mpv/Av*/Sw*/Mbed*` 10 个 framework 到 `Contents/Frameworks`，逐个 `codesign -f -s -`；
+3. 给主程序加 `LC_RPATH=@executable_path/../Frameworks`，重新签名；
+4. 校验 Info.plist、图标、SQLite dylib、libmpv、每个 framework 与 app 签名。
+
+> 必须用 `RTLD_LAZY`：audio-only 的 `Mpv.framework` 缺 libass 符号；framework 未签名时 arm64 上 `dlopen` 报 `missing code signature`。`DYLD_FRAMEWORK_PATH` 对已签名二进制无效（spike §6.3/§6.4）。
+
+直接跑编译产物（开发，仍需 rpath 才能加载 framework）：
 
 ```bash
 CGO_ENABLED=0 go build -o /tmp/tingyu .
-TINGYU_DATA_DIR=/tmp/tingyu-m0 /tmp/tingyu
+TINGYU_DATA_DIR=/tmp/tingyu-copy /tmp/tingyu
 ```
 
-## 数据目录与只读保证
+## 数据目录与写库边界
 
-- `library.sqlite` 位置：`TINGYU_DATA_DIR` 指向的目录，否则 `~/Library/Application Support/com.halunhaku.tingyu`（`internal/library.DataDir`）。
-- **开发/验收一律指向副本**（方案 §8.1 第 2 条）：`cp library.sqlite /tmp/tingyu-m0/`，再设 `TINGYU_DATA_DIR=/tmp/tingyu-m0`。
-- 只读的三道保证：
-  1. `internal/library.Open` 用 `sqlite.OpenOptions{ReadOnly: true}`，MyGo 的 SQLite 插件把它翻成 `SQLITE_OPEN_READONLY`（`plugins/sqlite/database.go` 的 flags `0x1`）；
-  2. 整个 `internal/library` 只发 `PRAGMA user_version` 与 `SELECT`，没有任何 `Execute`/`Transaction` 调用，包注释即契约；
-  3. `library_test.go` 在只读连接上执行 `CREATE TABLE`，断言返回 `sqlite.Error` 且 `Code == 8`（`SQLITE_READONLY`）。
-- 缺文件不创建、`user_version != 2` 不迁移，只在窗口里报错。
+- `library.sqlite`：`TINGYU_DATA_DIR` 指向的目录，否则 `~/Library/Application Support/com.halunhaku.tingyu`。
+- **未设置 `TINGYU_DATA_DIR` 时客户端只读**：扫描与播放历史都被拒绝，界面提示。这保证开发构建永远不写生产库（方案 §8.1 第 2 条）。
+- 开发/验收：`cp library.sqlite /tmp/tingyu-copy/`，封面目录 `covers/` 一并复制（可选）。
+- 本阶段只有两处写入：
+  1. 扫描合并（`library.MergeScan`）：`sourceId + filePathOrUrl` 对齐，只覆盖文件事实，只有权威扫描才删旧曲；
+  2. 播放历史/次数（`recordPlay`）与缺失时长回填（`backfillDuration`）。
+- `PRAGMA user_version` 固定 2；迁移只建缺失表/索引、只加可空列。
+- 封面仍是内容寻址（FNV-1a，`.png/.jpg`），二进制不入库。
+
+## 播放与媒体会话
+
+- 进程内 libmpv（`purego` dlopen，无 cgo）：`idle=yes`、`vo=null`、`gapless-audio=yes`、`ao=coreaudio`。
+- 队列：懒解析 + 预取 2 + 世代号 + armed 闸门；换队列 `stop → playlist-clear → append`；`Get` 完成判定用 `end-file(EOF)` + 末项下标。
+- 单曲循环下发给内核（`loop-file=inf`），列表循环由控制器重播已装载队列，顺序播完停在末尾。
+- 失败只进快照（不抛异常），只有重新出声且位置前进才撤下。
+- Now Playing / 远程命令：`purego/objc` 直连 MediaPlayer；`(id,index,duration)` 去重，进度 500 ms 节流；播放时持有 App Nap 抑制，退出清空。
+- 关窗继续播放；`App.OnWindowAllClosed` 保留进程，菜单栏有「显示窗口/上一首/播放暂停/下一首/退出」；`Cmd+Q` 走 `OnBeforeQuit` 清 Now Playing、关 mpv、关库。
+
+## 运行与验收辅助变量
+
+| 变量 | 作用 |
+|---|---|
+| `TINGYU_DATA_DIR` | 库副本目录；**未设置 = 只读** |
+| `TINGYU_STARTUP_LOG` | 启动/运行日志落盘（双击 `.app` 时 stderr 无处可去） |
+| `TINGYU_AUTO_SCAN_DIR` | 首帧后扫描该目录（与「添加目录…」同一路径） |
+| `TINGYU_AUTO_PLAY_TITLE` / `TINGYU_AUTO_PLAY_INDEX` | 扫描后按标题/下标起播（与双击同一 `PlayTracks`） |
+| `TINGYU_STRESS_PLAYS` | 连点 N 首本地曲目（间隔 120 ms） |
+| `TINGYU_REPEAT` | `all` / `one` / `off` |
+| `TINGYU_POPUP_TRAY_MS` | 到时弹出菜单栏菜单 |
+| `TINGYU_AUTO_QUIT_MS` | 到时 `App.Quit()`（与 Cmd+Q 同一路径） |
 
 ## 冷启动
 
@@ -51,31 +89,17 @@ TINGYU_DATA_DIR=/tmp/tingyu-m0 /tmp/tingyu
 RUNS=10 ./scripts/measure-coldstart.sh
 ```
 
-打点：`TINGYU_STARTUP_LOG=<file>` 打开启动日志（双击 `.app` 时 stderr 无处可去）。时间点：
+实测（Apple Silicon / macOS 27.2，库副本 178 首）：10 次独立冷进程 **min 179.5 / median 191.2 / max 201.0 ms**。重新签名后的**首次**启动是系统一次性验证，测到 325 / 789 / 3 340 ms（最后一次 load 2.8，pre-main 3 149 ms）——不计入常规冷启动，但见 M1 记录风险 8。
 
-| 打点 | 含义 |
-|---|---|
-| `data dir` | main 开始（`process start` 由 `proc_pid_rusage(RUSAGE_INFO_V2).ri_proc_start_abstime` 经 `mach_timebase_info` 换算，purego 直调，无 cgo） |
-| `library read` | 只读打开 + 读出全部曲目（M0 是 178 首） |
-| `window created` | `mygo.NewWindow` 返回（最小 900×600） |
-| `ready` | `Window.OnReadyToShow`：首帧已画，作为"可交互" |
-| `focused` | 窗口获得焦点 |
+## 测试
 
-实测（本机 Apple Silicon / macOS 27.2，库副本 178 首）：热启动 10 次 **min 182.2 ms / median 187.5 ms / max 253.6 ms**；重新出包后首启 399–428 ms（3 次）；双击（`open -n`）292.8 ms；最冷的一次（首次生成 bundle 后立刻启动）1424.9 ms。方法、逐次原始值与分解见 `docs/plan/2026-10-25-macos-mygo-m0-record.md`。
+```bash
+CGO_ENABLED=0 go build ./... && CGO_ENABLED=0 go vet ./...
+go test ./... && go test -race ./...
+```
 
-## 与 spike/ 的关系
-
-`spike/`（在分支 `tds/conv-01a1721f-…`，尚未合入 main）验证的是 libmpv/媒体键；M0 不搬运它的代码，只沿用两条已证实的做法：
-
-| 项 | spike | client（本目录） |
-|---|---|---|
-| Go 版本/构建 | go1.27.3，`CGO_ENABLED=0` | 同 |
-| purego | dlopen libmpv、MediaPlayer | 仅 `internal/app/process_darwin.go` 读进程启动时间，生产分层独立 |
-| 打包 | 手写 `scripts/bundle.sh`（frameworks、LC_RPATH、ad-hoc 签名） | `mygo.json` + `mygo build`，SQLite dylib/图标/plist/签名由官方 CLI 落盘，仓库脚本只做校验 |
-| 数据层 | 无 | `internal/library`（只读、`user_version` 校验、无写路径） |
-| UI | `spike` 里没有 `cmd/spike-app` 的源码（README 提到，commit 里缺） | MyGo `ui` 原生外壳：侧栏 + `ui.Table` |
-| 播放/媒体键 | S1/S2 原型 | **不实现**，M1 |
+覆盖：只读拒绝、schema 补差、扫描合并语义、revision、播放历史/时长回填、目录遍历、9 格式解析、`mpv_event` 布局、控制器队列/循环/完成/预取世代、扫描进度与双击播放的界面断言。
 
 ## 本阶段不做
 
-播放、队列、媒体键、Now Playing、扫描入库、封面、搜索、其它页面（侧栏标 `M4`）、签名/公证/DMG（M6）、写库与迁移（M1/M7）。窗口状态持久化（`StateKey`）也留到页面成形后。
+远端来源（WebDAV/夸克）、收藏/歌单/元数据的写路径、完整界面与分页（M4）、搜索/歌词/舞台、签名公证与 DMG（M6）、Intel 实机验证。

@@ -89,7 +89,6 @@ type Model struct {
 
 	seekValue   float64
 	seekPressed bool
-	seeking     bool
 
 	scan    ScanState
 	status  string
@@ -410,7 +409,6 @@ func (m *Model) transport(c *ui.Context) {
 				m.seekPressed = true
 			}
 			if slider.Changed() {
-				m.seeking = true
 				if m.actions != nil {
 					_ = m.actions.Seek(time.Duration(m.seekValue * float64(time.Second)))
 				}
