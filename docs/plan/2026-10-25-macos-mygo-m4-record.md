@@ -3,6 +3,7 @@
 日期：2026-10-25（Asia/Shanghai）
 性质：**M4 实施与验收记录**。本阶段只改 `client/` 与新增的 `docs/screenshots/m4-*.png`、`docs/plan/2026-10-25-macos-mygo-m4-scroll-samples.txt`、本文件；**未改 `app/`、未改内核包（`internal/{library,scan,mpv,player,mainq,mediasession}`）、未合并 main、未打 tag、未写生产库**。
 判据来源：[迁移方案 §6 的 M4 行、§3.1、§2.5、§8.1](./2026-10-25-macos-mygo-migration-plan.md)（阈值未改）。
+合并基线：交付前已把 main 的 **M2 内核生产化**合入本分支（[M2 记录](./2026-10-25-macos-mygo-m2-record.md)）；**M4 自身仍未改内核包**，M2 的内核验收以其记录为准。
 上一阶段：[M1 记录](./2026-10-25-macos-mygo-m1-record.md)。代码与运行说明：[`client/README.md`](../../client/README.md)。
 
 ---
