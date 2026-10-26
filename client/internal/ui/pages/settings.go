@@ -11,7 +11,7 @@ import (
 	"github.com/halunhaku/tingyu/client/internal/ui/tokens"
 )
 
-var settingsSections = []string{"外观", "播放", "音乐库", "来源", "数据", "关于"}
+var settingsSections = []string{"外观", "播放", "音乐库", "元数据", "来源", "数据", "关于"}
 
 // Settings is the settings page: appearance, playback information, library
 // summary, sources, data paths and About. Appearance changes are persisted to
@@ -54,8 +54,10 @@ func Settings(c *ui.Context, d components.Design, s *model.State) {
 					case 2:
 						librarySettings(c, d, s)
 					case 3:
-						sourceSettings(c, d, s)
+						metadataSettings(c, d, s)
 					case 4:
+						sourceSettings(c, d, s)
+					case 5:
 						dataSettings(c, d, s)
 					default:
 						aboutSettings(c, d, s)
@@ -104,7 +106,7 @@ func appearanceSettings(c *ui.Context, d components.Design, s *model.State) {
 	})
 	tint := settings.CoverTint
 	components.SettingRow(c, d, "封面动态取色",
-		"关闭后舞台使用中性渐变；取色算法本身属于 M5 图片管线，当前两侧都使用令牌渐变。", func() {
+		"开启时舞台按当前封面取主/次色（与 Flutter 版同一套 24px / 12 色相桶 / 7:1 对比规则）；关闭、灰封面或取色失败回退中性令牌渐变。", func() {
 			sw := ui.Switch(c, &tint)
 			if sw.Changed() {
 				next := settings
@@ -190,7 +192,7 @@ func librarySettings(c *ui.Context, d components.Design, s *model.State) {
 }
 
 func sourceSettings(c *ui.Context, d components.Design, s *model.State) {
-	components.SectionTitle(c, d, "来源", "本地目录可用；WebDAV 与夸克网盘属于 M3，尚未接入。")
+	components.SectionTitle(c, d, "来源", "本地目录、WebDAV 与夸克网盘；凭据只存系统钥匙串，缺失时重新登录。")
 	if len(s.Sources()) == 0 {
 		d.Text(c, tokens.BodyS, "还没有来源。到来源页添加一个本地音乐目录。").TextColor(d.P.TextSecondary)
 	}
@@ -223,7 +225,7 @@ func aboutSettings(c *ui.Context, d components.Design, s *model.State) {
 	components.StatRow(c, d, "渲染", "MyGo v0.6.4 · ui（原生即时模式）")
 	components.StatRow(c, d, "运行时", runtime.Version()+" · "+runtime.GOOS+"/"+runtime.GOARCH)
 	components.StatRow(c, d, "设计", "「声档」令牌与 Flutter 版同源（app/lib/design/tokens）")
-	d.Text(c, tokens.BodyS, "本阶段只做数据能力（收藏、歌单、来源删除、随机、SQL 分页）：远端来源（M3）、元数据与图片（M5）、签名公证（M6）不在本阶段。").
+	d.Text(c, tokens.BodyS, "本阶段完成 M5 元数据与图片：四源补全 + 可选 AI 兜底、人工匹配、封面缓存与取色、歌词逐行/逐字。分发与质量（M6）不在本阶段。").
 		TextColor(d.P.TextTertiary).Wrap()
 }
 
@@ -458,7 +460,7 @@ func sourceLimits(c *ui.Context, d components.Design) {
 		for _, item := range []struct{ name, detail string }{
 			{"WebDAV", "PROPFIND 扫描、Basic 鉴权播放、坚果云流控文案、列目录失败与重试"},
 			{"夸克网盘", "扫码网页登录流程、Cookie 生命周期、分页目录、直链与过期刷新"},
-			{"尚未包含", "M5 元数据补全、封面抓取；跨设备凭据迁移"},
+			{"尚未包含", "歌词翻译与艺术家头像；动图 WebP 封面（只取静态帧）；跨设备凭据迁移"},
 		} {
 			card := ui.Column(c).Width(300).Gap(tokens.Space6).Padding(tokens.Space16, tokens.Space12).
 				Radius(tokens.RadiusLG).Background(d.P.SurfaceRaised).Border(1, d.P.Border)

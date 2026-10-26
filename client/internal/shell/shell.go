@@ -9,6 +9,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/halunhaku/tingyu/client/internal/library"
+	"github.com/halunhaku/tingyu/client/internal/metadata"
 	"github.com/halunhaku/tingyu/client/internal/player"
 	"github.com/halunhaku/tingyu/client/internal/ui/components"
 	"github.com/halunhaku/tingyu/client/internal/ui/model"
@@ -69,6 +70,35 @@ func (m *Model) SetPlayer(update player.Update) {
 
 // SetQueue records the queue the controller was given.
 func (m *Model) SetQueue(queue []library.Track, index int) { m.state.SetQueue(queue, index) }
+
+// --- M5 metadata state (see internal/ui/model/enrichment.go) ---------
+
+// SetMetadataActions installs the enrichment callbacks.
+func (m *Model) SetMetadataActions(actions model.MetadataActions) {
+	m.state.SetMetadataActions(actions)
+}
+
+// SetEnrichment replaces the metadata panel's snapshot.
+func (m *Model) SetEnrichment(view model.EnrichmentView) { m.state.SetEnrichment(view) }
+
+// SetAISettings installs the AI fallback configuration.
+func (m *Model) SetAISettings(settings metadata.AISettings, errMsg string) {
+	m.state.SetAISettings(settings, errMsg)
+}
+
+// SetLogf installs the model's logger.
+func (m *Model) SetLogf(logf func(format string, args ...any)) { m.state.SetLogf(logf) }
+
+// SetMatchCandidates fills the manual-match dialog.
+func (m *Model) SetMatchCandidates(candidates []model.MatchCandidate, errMsg string) {
+	m.state.SetMatchCandidates(candidates, errMsg)
+}
+
+// MatchApplied closes the dialog after a successful write.
+func (m *Model) MatchApplied(message string) { m.state.MatchApplied(message) }
+
+// MatchFailed reports a write failure in the dialog.
+func (m *Model) MatchFailed(message string) { m.state.MatchFailed(message) }
 
 // --- M3 remote-source state (see internal/ui/model/sourceform.go) -----
 
@@ -141,6 +171,7 @@ func (m *Model) View(c *ui.Context) {
 	if s.Page() == model.PageStage {
 		pages.Stage(c, d, s)
 		components.Palette(c, d, s)
+		components.MatchDialog(c, d, s)
 		return
 	}
 
@@ -153,6 +184,7 @@ func (m *Model) View(c *ui.Context) {
 		})
 	})
 	components.Palette(c, d, s)
+	components.MatchDialog(c, d, s)
 }
 
 func page(c *ui.Context, d components.Design, s *model.State) {

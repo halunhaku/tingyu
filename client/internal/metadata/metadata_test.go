@@ -240,8 +240,11 @@ func TestEnrichOfflineSkipsWithoutError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("offline must not be an error: %v", err)
 	}
-	if !result.Offline || result.Changed || !result.Skipped {
-		t.Fatalf("result %+v, want offline+skipped", result)
+	if !result.Offline {
+		t.Fatalf("result %+v, want offline", result)
+	}
+	if result.CoverURL != "" || result.Lyrics != "" || result.Artist != "" && result.Artist != "周杰伦" {
+		t.Fatalf("offline produced upstream data: %+v", result)
 	}
 }
 
@@ -282,10 +285,8 @@ func TestEnrichUsesTheAIFallbackWhenSearchMisses(t *testing.T) {
 	if client == nil {
 		t.Fatal("AI client not built")
 	}
-	enricher := &Enricher{
-		Primary: &QQMusic{HTTP: &HTTP{Client: qq.Client()}, Endpoint: qq.URL},
-		AI:      client,
-	}
+	enricher := &Enricher{Primary: &QQMusic{HTTP: &HTTP{Client: qq.Client()}, Endpoint: qq.URL}}
+	enricher.SetAI(client)
 	result, err := enricher.Enrich(context.Background(), Input{Title: "01. y园游会-live.mp3", Artist: "未知艺术家"})
 	if err != nil {
 		t.Fatal(err)

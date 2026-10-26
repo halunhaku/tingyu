@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,7 +26,9 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"github.com/halunhaku/tingyu/client/internal/enrich"
 	"github.com/halunhaku/tingyu/client/internal/library"
+	"github.com/halunhaku/tingyu/client/internal/metadata"
 	"github.com/halunhaku/tingyu/client/internal/mpv"
 	"github.com/halunhaku/tingyu/client/internal/player"
 	"github.com/halunhaku/tingyu/client/internal/scan"
@@ -58,6 +61,15 @@ type application struct {
 	sourceMgr *sources.Manager
 	syncer    *sources.Syncer
 	recoverer *sources.Recoverer
+
+	// M5 metadata pipeline: four HTTP sources, the cover fetcher and the two
+	// write paths (see metadata.go).
+	enricher     *metadata.Enricher
+	enrich       *enrich.Service
+	metadataHTTP *http.Client
+	enrichMu     sync.Mutex
+	enrichCancel context.CancelFunc
+	enrichActive atomic.Bool
 
 	sourceLoginMu     sync.Mutex
 	sourceLoginCancel context.CancelFunc
@@ -133,6 +145,12 @@ func Main() error {
 		a.showWindow()
 		a.initSession()
 		a.initTray()
+		go func() {
+			// Only after the first frame: the pass reports progress into the
+			// window, and a pass before it exists would drop every report.
+			<-a.readyCh
+			a.maybeAutoEnrich("startup")
+		}()
 		if dir := strings.TrimSpace(os.Getenv("TINGYU_AUTO_SCAN_DIR")); dir != "" {
 			// Acceptance aid: run the same scan the picker runs, so a bundle
 			// can be verified without driving a native file dialog. It waits
@@ -231,6 +249,7 @@ func (a *application) prepare() error {
 		a.model.SetCoversDir(a.covers)
 	}
 
+	a.initMetadata()
 	a.initSources()
 	a.engine, err = a.newEngine()
 	if err != nil {
@@ -854,6 +873,9 @@ func (a *application) scanFolder(folder string) {
 	a.logf("scan: folder=%q files=%d stored=%d added=%d updated=%d removed=%d authoritative=%v elapsed=%s",
 		folder, result.Files, count, merge.Added, merge.Updated, merge.Removed, result.Authoritative(), time.Since(started).Round(time.Millisecond))
 	a.refresh()
+	// A fresh scan just produced rows that miss tags; enrich them through the
+	// same quota-bound pass the startup trigger uses.
+	a.maybeAutoEnrich("scan")
 }
 
 func (a *application) finishScan(status string, err error, started time.Time) {

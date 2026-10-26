@@ -290,6 +290,29 @@ func (s *State) LyricsFor(track library.Track) Lyrics {
 	return s.lyrics.lrc
 }
 
+// Lyrics rendering modes: the line highlight the M4 view had, and the
+// per-character highlight the spread words enable (plan §6 M5 item 5).
+const (
+	LyricsLines = 0
+	LyricsWords = 1
+)
+
+// LyricsMode is the chosen renderer (0 逐行, 1 逐字). It is session state: the
+// shared settings.json keys are frozen during the dual-track period, so this
+// preference is not persisted (plan §8.1 rule 3).
+func (s *State) LyricsMode() int { return s.lyricsMode }
+
+// SetLyricsMode switches the renderer.
+func (s *State) SetLyricsMode(mode int) {
+	if mode != LyricsWords {
+		mode = LyricsLines
+	}
+	s.lyricsMode = mode
+}
+
+// WordsAvailable reports that a line can be highlighted per character.
+func WordsAvailable(line LyricLine) bool { return len(line.Words) > 0 }
+
 // CurrentLyrics returns the current track and its parsed lyrics.
 func (s *State) CurrentLyrics() (library.Track, Lyrics, bool) {
 	if s.player.Track == nil {

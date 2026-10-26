@@ -27,24 +27,26 @@ func stageState(s *model.State) *stageView {
 	return v
 }
 
-// Stage is the full-window now-playing page: a 160° gradient from the cover
-// tint tokens (palette extraction itself is M5), the large cover, title and
-// artist, transport, and a lyrics/queue side panel when the window is wide
-// enough. The cover shares a Match identity with the transport's cover, which
-// is the accepted Hero approximation (plan §3.1).
+// Stage is the full-window now-playing page: a 160° gradient from the current
+// cover's palette (DESIGN.md §2.5, M5), the large cover, title and artist,
+// transport, and a lyrics/queue side panel when the window is wide enough. The
+// cover shares a Match identity with the transport's cover, which is the
+// accepted Hero approximation (plan §3.1).
 func Stage(c *ui.Context, d components.Design, s *model.State) {
 	width, height := c.Size()
 	v := stageState(s)
 	update := s.Player()
 	track := update.Track
 
-	// Palette extraction from the cover belongs to M5, so the stage uses the
-	// neutral token gradient (DESIGN.md §2.5.8) rather than inventing a color
-	// and calling it the cover's.
-	from, to := d.P.Canvas, d.P.SurfaceSunken
-	if d.P.Dark {
-		to = d.P.Surface
+	// The background is the current cover's palette (DESIGN.md §2.5, plan §6
+	// M5 item 4), through the bounded per-theme cache; without a usable colour
+	// — tinting off, no cover, a gray cover, a decode failure — the same
+	// neutral token gradient M4 used is drawn instead.
+	coverName := ""
+	if track != nil {
+		coverName = track.CoverArtPath
 	}
+	from, to := s.StageColors(coverName, d.P.Dark)
 	surface := ui.Column(c).Fill().Gradient(from, to, 160).Padding(tokens.Space24, tokens.Space20).Gap(tokens.Space12)
 	surface.Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space10).Children(func() {
@@ -74,6 +76,14 @@ func Stage(c *ui.Context, d components.Design, s *model.State) {
 				})
 				if fav.Clicked() {
 					s.ToggleFavorite(*track)
+				}
+				match := ui.Button(c, "").Padding(6).Radius(tokens.RadiusSM).
+					Label("匹配元数据").Tooltip("匹配元数据…")
+				match.Children(func() {
+					ui.Icon(c, components.IconSearch).FontSize(tokens.IconNormal).TextColor(d.P.TextSecondary)
+				})
+				if match.Clicked() {
+					s.OpenMatch(*track)
 				}
 			}
 		})

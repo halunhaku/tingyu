@@ -194,13 +194,16 @@ func TestEnrichTrackSharesOneRequest(t *testing.T) {
 	enricher := &metadata.Enricher{Primary: searcher}
 	lib := newFakeLibrary(library.Track{ID: "t1", Title: "晴天", Artist: "未知艺术家", Album: "未知专辑"})
 	service := newService(t, lib, enricher, 10)
+	// Read the fixture before the goroutines start: the fake library's map is
+	// guarded for its own methods, not for a caller touching a field.
+	target := lib.tracks["t1"]
 
 	var wg sync.WaitGroup
 	for i := 0; i < 5; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			service.EnrichTrack(context.Background(), lib.tracks["t1"])
+			service.EnrichTrack(context.Background(), target)
 		}()
 	}
 	wg.Wait()
@@ -245,8 +248,11 @@ func TestOfflineEnrichIsSilent(t *testing.T) {
 	if result.Err != nil {
 		t.Fatalf("offline must not be an error: %v", result.Err)
 	}
-	if !result.Offline || result.Changed {
-		t.Fatalf("result %+v", result)
+	if !result.Offline {
+		t.Fatalf("result %+v: the unreachable network was not reported", result)
+	}
+	if result.Fields.CoverArtPath != "" || result.Fields.Lyrics != "" {
+		t.Fatalf("offline wrote network-derived fields: %+v", result.Fields)
 	}
 	if stats := service.Stats(); stats.Offline != 1 || stats.Failed != 0 {
 		t.Fatalf("stats %+v", stats)

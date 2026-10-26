@@ -13,6 +13,7 @@ package enrich
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 
 	"github.com/halunhaku/tingyu/client/internal/images"
@@ -124,18 +125,23 @@ func (s *Service) EnrichTrack(ctx context.Context, track library.Track) Result {
 	switch {
 	case result.Err != nil:
 		s.stats.Failed++
-	case result.Offline:
-		s.stats.Offline++
-	case result.Changed:
-		s.stats.Changed++
-		if result.Fields.CoverArtPath != "" {
-			s.stats.Covers++
-		}
-		if result.Fields.Lyrics != "" {
-			s.stats.Lyrics++
-		}
 	default:
-		s.stats.Skipped++
+		if result.Changed {
+			s.stats.Changed++
+			if result.Fields.CoverArtPath != "" {
+				s.stats.Covers++
+			}
+			if result.Fields.Lyrics != "" {
+				s.stats.Lyrics++
+			}
+		}
+		if result.Offline {
+			// Offline and Changed are independent: a file-name cleanup can
+			// land while every request failed.
+			s.stats.Offline++
+		} else if !result.Changed {
+			s.stats.Skipped++
+		}
 	}
 	s.mu.Unlock()
 
@@ -266,18 +272,21 @@ func (s *Service) EnrichTargets(ctx context.Context, limit int, progress func(Pa
 		switch {
 		case result.Err != nil:
 			summary.Failed++
-		case result.Offline:
-			summary.Offline++
-		case result.Changed:
-			summary.Changed++
-			if result.Fields.CoverArtPath != "" {
-				summary.Covers++
-			}
-			if result.Fields.Lyrics != "" {
-				summary.Lyrics++
-			}
 		default:
-			summary.Skipped++
+			if result.Changed {
+				summary.Changed++
+				if result.Fields.CoverArtPath != "" {
+					summary.Covers++
+				}
+				if result.Fields.Lyrics != "" {
+					summary.Lyrics++
+				}
+			}
+			if result.Offline {
+				summary.Offline++
+			} else if !result.Changed {
+				summary.Skipped++
+			}
 		}
 		pass.Done++
 		pass.Current = target.Track.Title
@@ -287,6 +296,61 @@ func (s *Service) EnrichTargets(ctx context.Context, limit int, progress func(Pa
 	pass.Finished = true
 	report()
 	return summary
+}
+
+// ManualMatch writes a user's override: the fields they chose, the cover of the
+// candidate they picked, and — when the track still has no lyrics — a lyric
+// lookup against the chosen metadata. It never touches the session quota:
+// a human action is not the automatic pass.
+func (s *Service) ManualMatch(ctx context.Context, track library.Track, title, artist, album, coverURL string) Result {
+	result := Result{TrackID: track.ID, Title: track.Title}
+	if s == nil || s.Library == nil || s.Enricher == nil {
+		result.Err = errors.New("enrich: service is not configured")
+		return result
+	}
+	fields := library.EnrichmentFields{
+		Title:  strings.TrimSpace(title),
+		Artist: strings.TrimSpace(artist),
+		Album:  strings.TrimSpace(album),
+	}
+	if coverURL != "" {
+		if s.Fetcher == nil {
+			result.Err = errors.New("enrich: no cover fetcher")
+			return result
+		}
+		name, _, err := s.Fetcher.Cover(ctx, coverURL)
+		if err != nil {
+			s.logf("enrich: manual cover %q: %v", coverURL, err)
+		} else if name != "" {
+			fields.CoverArtPath = name
+			fields.CoverArtURL = coverURL
+		}
+	}
+	if strings.TrimSpace(track.Lyrics) == "" {
+		query := metadata.LyricsQuery{Title: fields.Title, Artist: fields.Artist, Album: fields.Album, Duration: track.Duration}
+		if query.Title == "" {
+			query.Title = track.Title
+		}
+		text, err := s.Enricher.FetchLyrics(ctx, query)
+		if err != nil {
+			s.logf("enrich: manual lyrics for %q: %v", track.Title, err)
+		}
+		fields.Lyrics = text
+		result.Sources = []string{"manual"}
+	}
+	changed, err := s.Library.ApplyEnrichment(ctx, track.ID, fields)
+	if err != nil {
+		result.Err = err
+		return result
+	}
+	result.Changed = changed
+	result.Fields = fields
+	result.Skipped = !changed
+	if changed {
+		s.logf("enrich: manual match %q → title=%q artist=%q album=%q cover=%q lyrics=%d",
+			track.Title, fields.Title, fields.Artist, fields.Album, fields.CoverArtPath, len(fields.Lyrics))
+	}
+	return result
 }
 
 // PruneCovers removes cover files no track references any more and returns how

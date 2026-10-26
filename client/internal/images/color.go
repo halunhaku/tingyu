@@ -167,3 +167,8 @@ func blend(source RGB, alpha float64, background RGB) RGB {
 	}
 	return RGB{R: mix(source.R, background.R), G: mix(source.G, background.G), B: mix(source.B, background.B)}
 }
+
+// Contrast is the WCAG contrast ratio between two opaque colors. Palette
+// extraction uses it internally; the M5 acceptance record quotes it to show the
+// stage keeps its text readable.
+func Contrast(a, b RGB) float64 { return contrast(a, b) }

@@ -3,6 +3,7 @@ package metadata
 import (
 	"context"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/halunhaku/tingyu/client/internal/titleparse"
@@ -26,9 +27,18 @@ type Enricher struct {
 	Lyrics         LyricsProvider
 	FallbackLyrics LyricsProvider
 	Cover          CoverLookup
-	AI             *AIClient
 	Log            func(format string, args ...any)
+
+	// ai is set through SetAI because the settings page can change it while a
+	// pass runs: a plain field would be a data race.
+	ai atomic.Pointer[AIClient]
 }
+
+// SetAI installs (or clears) the AI fallback. Safe while passes run.
+func (e *Enricher) SetAI(client *AIClient) { e.ai.Store(client) }
+
+// currentAI returns the installed fallback.
+func (e *Enricher) currentAI() *AIClient { return e.ai.Load() }
 
 // Input is what the library already knows about a track.
 type Input struct {
@@ -169,8 +179,8 @@ func (e *Enricher) Enrich(ctx context.Context, in Input) (Result, error) {
 
 	// AI fallback: primary search found nothing matching, so let the model
 	// repair the file name and retry the search once with its answer.
-	if candidate == nil && e.AI != nil && (looksMessy(in.Title) || IsPlaceholderArtist(in.Artist)) {
-		cleaned, aiErr := e.AI.CleanFilenames(ctx, []AIInput{{ID: "1", Filename: in.Title}})
+	if candidate == nil && e.currentAI() != nil && (looksMessy(in.Title) || IsPlaceholderArtist(in.Artist)) {
+		cleaned, aiErr := e.currentAI().CleanFilenames(ctx, []AIInput{{ID: "1", Filename: in.Title}})
 		if !p.fail(aiErr) {
 			if hit, ok := cleaned["1"]; ok && hit.Title != "" {
 				result.Title = hit.Title
@@ -262,13 +272,52 @@ func (e *Enricher) Enrich(ctx context.Context, in Input) (Result, error) {
 
 	result.Changed = result.Title != "" || result.Artist != "" || result.Album != "" ||
 		result.Lyrics != "" || result.CoverURL != "" || result.Duration > 0
+	// Offline means "the network was unreachable", not "nothing was written":
+	// the file-name cleaning above is local, and a caller can be offline and
+	// still have cleaned a title. Both facts are reported so the UI can say
+	// "offline: only the local file-name cleanup landed" instead of claiming a
+	// full enrichment.
+	result.Offline = p.network > 0 && p.other == 0
 	if !result.Changed {
 		result.Skipped = true
-		// Every attempt failed without reaching the network: the caller says
-		// "offline, skipped" and shows no error.
-		result.Offline = p.network > 0 && p.other == 0
 	}
 	return result, nil
+}
+
+// FetchLyrics runs the lyrics half of the pipeline for explicit search terms.
+// The manual-match dialog needs exactly this: the user picked the metadata, so
+// only the lyric document is still missing.
+func (e *Enricher) FetchLyrics(ctx context.Context, query LyricsQuery) (string, error) {
+	if e == nil {
+		return "", nil
+	}
+	var firstErr error
+	if e.Lyrics != nil {
+		text, err := e.Lyrics.Lyrics(ctx, query, nil)
+		if err != nil {
+			firstErr = err
+		}
+		if text != "" {
+			return text, nil
+		}
+	}
+	if e.FallbackLyrics != nil && e.Fallback != nil {
+		hits, err := e.Fallback.Search(ctx, SearchQuery{Title: query.Title, Artist: query.Artist, Album: query.Album}, 1)
+		if err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+		} else if len(hits) > 0 && hits[0].MatchesTitle(query.Title) {
+			text, err := e.FallbackLyrics.Lyrics(ctx, query, &hits[0])
+			if err != nil && firstErr == nil {
+				firstErr = err
+			}
+			if text != "" {
+				return text, nil
+			}
+		}
+	}
+	return "", firstErr
 }
 
 // Candidates lists search hits for the manual-match dialog: both search
