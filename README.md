@@ -116,7 +116,8 @@
 │  └─ screenshots/
 ├─ tools/legacy-export/                        # 旧版 SwiftUI 曲库的一次性导出工具
 ├─ legacy-swift/                               # 上一版 SwiftUI 实现：Sources/ · Tingyu.xcodeproj/ · project.yml，冻结保留
-└─ .github/workflows/flutter.yml               # analyze + test（含 drift 生成代码校验）+ macOS 构建
+├─ .github/workflows/flutter.yml               # analyze + test（含 drift 生成代码校验）+ macOS 构建
+└─ .github/workflows/macos.yml                 # Go 客户端（client/）：gofmt + vet + test -race + 构建/DMG（有凭据时公证）
 ```
 
 ---
@@ -160,6 +161,11 @@ dart run build_runner build
 | `TINGYU_DEBUG_SOURCES=<a,b,...>` | 启动即载入队列并播放，便于脚本化验证播放链路 |
 
 ### CI
+Go 客户端另有 `.github/workflows/macos.yml`（只跑 macOS）：`gofmt` + `go vet` + `go test -race` +
+构建 + DMG，有 Apple 凭据时签名与公证；构建与发布命令见 [`client/README.md`](client/README.md)，验收记录见
+[`docs/plan/2026-10-26-macos-mygo-m6-record.md`](docs/plan/2026-10-26-macos-mygo-m6-record.md)。Flutter 的
+`flutter.yml` 在 M7 切换前保留。
+
 `.github/workflows/flutter.yml`：推到 `main` 或改动 `app/**` 的 PR 在 Ubuntu 上跑
 `dart run build_runner build` 校验 drift 生成代码无漂移、`flutter analyze` 与 `flutter test`；
 随后在 macOS runner 上构建 `flutter build macos --release` 并上传产物；推 `v*` tag 时额外发 Release。

@@ -26,6 +26,8 @@ type fakeEngine struct {
 	silentIndex bool
 	// silentPlay likewise keeps Play from emitting, for the same reason.
 	silentPlay bool
+	// loopFile is mpv's loop-file: what RepeatOne means to the engine.
+	loopFile bool
 }
 
 func newFakeEngine() *fakeEngine {
@@ -120,6 +122,7 @@ func (f *fakeEngine) SetVolume(volume float64) error {
 func (f *fakeEngine) SetRepeatOne(on bool) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.loopFile = on
 	f.record(fmt.Sprintf("SetRepeatOne(%v)", on))
 	return nil
 }
@@ -426,8 +429,18 @@ func TestCycleRepeatSendsOneToTheEngine(t *testing.T) {
 	if mode := c.CycleRepeat(); mode != RepeatOff {
 		t.Fatalf("mode = %v, want off", mode)
 	}
-	if !engine.hasCall("SetRepeatOne(false)") {
+	if !engine.hasCall("SetRepeatOne(false)") || engine.loopFile {
 		t.Fatal("engine did not clear loop-file")
+	}
+	// The third state closes the cycle: off → all, with loop-file still off.
+	if mode := c.CycleRepeat(); mode != RepeatAll {
+		t.Fatalf("mode = %v, want all", mode)
+	}
+	engine.mu.Lock()
+	loopFile := engine.loopFile
+	engine.mu.Unlock()
+	if loopFile {
+		t.Fatal("列表循环 must not leave loop-file on")
 	}
 }
 

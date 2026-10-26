@@ -262,7 +262,7 @@ func sidebar(c *ui.Context, d components.Design, s *model.State) {
 				for _, source := range s.Sources() {
 					source := source
 					row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space6).
-						Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM)
+						Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM).Focusable()
 					if row.Hovered() {
 						row.Background(d.P.Hover)
 					}
@@ -297,7 +297,7 @@ func sidebar(c *ui.Context, d components.Design, s *model.State) {
 				for _, playlist := range s.Playlists() {
 					playlist := playlist
 					row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space6).
-						Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM)
+						Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM).Focusable()
 					if row.Hovered() {
 						row.Background(d.P.Hover)
 					}
@@ -320,7 +320,7 @@ func sidebar(c *ui.Context, d components.Design, s *model.State) {
 func navItem(c *ui.Context, d components.Design, s *model.State, label, page string) {
 	active := s.Page() == page
 	row := ui.Row(c).FillWidth().Padding(tokens.Space10, tokens.Space6).Radius(tokens.RadiusMD).
-		AlignItems(ui.Center)
+		AlignItems(ui.Center).Focusable()
 	if active {
 		row.Background(d.P.Selected)
 	} else if row.Hovered() {

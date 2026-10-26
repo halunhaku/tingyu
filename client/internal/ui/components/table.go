@@ -123,7 +123,7 @@ func tableCoverCell(c *ui.Context, d Design, state *model.State, track library.T
 }
 
 func sortHeader(c *ui.Context, d Design, list *model.TrackList, field model.SortField, label string, width float32, grow bool) {
-	e := ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space4).PaddingX(tokens.Space4).Cursor(ui.CursorPointer)
+	e := ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space4).PaddingX(tokens.Space4).Cursor(ui.CursorPointer).Focusable()
 	if grow {
 		e.Grow(1)
 	} else {
@@ -291,7 +291,7 @@ func AddToPlaylistButton(c *ui.Context, d Design, state *model.State, tracks []l
 
 // TrackRow is the lighter row of the queue, album/artist details and search
 // results: cover, title, subtitle and duration, chosen with a click.
-func TrackRow(c *ui.Context, d Design, s *model.State, track library.Track, current bool, onClick func()) {
+func TrackRow(c *ui.Context, d Design, s *model.State, track library.Track, current bool, onClick func()) ui.Element {
 	row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space10).
 		Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM)
 	if row.Hovered() {
@@ -315,4 +315,5 @@ func TrackRow(c *ui.Context, d Design, s *model.State, track library.Track, curr
 		}
 		d.Text(c, tokens.NumericS, model.FormatDuration(track.Duration)).TextColor(d.P.TextTertiary)
 	})
+	return row
 }
