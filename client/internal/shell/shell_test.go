@@ -31,6 +31,7 @@ type fakeActions struct {
 	next      int
 	previous  int
 	seek      time.Duration
+	seeks     []time.Duration
 	volume    float64
 	repeat    player.RepeatMode
 	shuffle   bool
@@ -52,10 +53,14 @@ func (f *fakeActions) PlayTracks(tracks []library.Track, start int) error {
 	f.queue = append(append([]library.Track{}, tracks[start:]...), tracks[:start]...)
 	return nil
 }
-func (f *fakeActions) TogglePlayPause() error             { f.toggles++; return nil }
-func (f *fakeActions) Next() error                        { f.next++; return nil }
-func (f *fakeActions) Previous() error                    { f.previous++; return nil }
-func (f *fakeActions) Seek(position time.Duration) error  { f.seek = position; return nil }
+func (f *fakeActions) TogglePlayPause() error { f.toggles++; return nil }
+func (f *fakeActions) Next() error            { f.next++; return nil }
+func (f *fakeActions) Previous() error        { f.previous++; return nil }
+func (f *fakeActions) Seek(position time.Duration) error {
+	f.seek = position
+	f.seeks = append(f.seeks, position)
+	return nil
+}
 func (f *fakeActions) SetVolume(volume float64) error     { f.volume = volume; return nil }
 func (f *fakeActions) CycleRepeat() player.RepeatMode     { f.repeat = player.RepeatOne; return f.repeat }
 func (f *fakeActions) SetShuffle(on bool) bool            { f.shuffle = on; return on }
@@ -364,6 +369,49 @@ func TestLyricsHighlightAndSeek(t *testing.T) {
 	}
 	if actions.seek != 9*time.Second {
 		t.Fatalf("seek = %v, want 9s", actions.seek)
+	}
+}
+
+// TestProgressSliderSeeksOnceOnRelease is the transport contract behind the
+// remote-source fix (research report §3.2): dragging the progress bar only
+// moves the display, and letting go seeks once. Before the fix the view called
+// Seek on every Changed() frame, which a remote source answers with a fresh
+// HTTP Range request each time.
+func TestProgressSliderSeeksOnceOnRelease(t *testing.T) {
+	m := newModel(t)
+	track := trackByTitle(t, m, "西西里")
+	m.SetPlayer(player.Update{
+		Snapshot: mpv.Snapshot{Playing: true, Duration: 229 * time.Second, Position: 10 * time.Second},
+		Track:    &track, Repeat: player.RepeatAll,
+	})
+	actions := &fakeActions{}
+	m.SetActions(actions)
+	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
+	tt.Frame()
+
+	rect, ok := tt.Find("播放进度")
+	if !ok {
+		t.Fatalf("progress slider not found; texts are %q", tt.Texts())
+	}
+	y := rect.Y + rect.H/2
+	startX := rect.X + rect.W*0.1
+	endX := rect.X + rect.W*0.7
+	tt.Press(startX, y)
+	for step := 1; step <= 10; step++ {
+		x := startX + (endX-startX)*float32(step)/10
+		tt.Move(x, y)
+		tt.Frame()
+		if len(actions.seeks) != 0 {
+			t.Fatalf("the drag seeked %d times before release (step %d)", len(actions.seeks), step)
+		}
+	}
+	tt.Release(endX, y)
+	tt.Frame()
+	if len(actions.seeks) != 1 {
+		t.Fatalf("release produced %d seeks, want 1 (targets %v)", len(actions.seeks), actions.seeks)
+	}
+	if got := actions.seeks[0]; got < 120*time.Second || got > 200*time.Second {
+		t.Fatalf("seek target = %v, want about 70%% of 3:49 (120–200s)", got)
 	}
 }
 

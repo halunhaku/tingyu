@@ -14,8 +14,6 @@ client/
 │   ├── scan/                    目录遍历 + 9 格式元数据 + 内容寻址封面
 │   ├── mpv/                     purego libmpv 绑定与播放内核（失败分类、日志信号）
 │   ├── player/                  播放控制器（预取/世代/循环/历史/换队列契约）
-│   ├── mainq/                   主线程投递（libdispatch）
-│   ├── mediasession/            Now Playing / 远程命令 / 封面 / App Nap
 │   ├── ui/
 │   │   ├── tokens/              「声档」令牌：深浅色、字号、间距、圆角、动效
 │   │   ├── model/               视图状态：SQL 分页/排序/过滤、专辑/艺术家/歌单列表、搜索、LRC、设置
@@ -128,6 +126,7 @@ TINGYU_DATA_DIR=/tmp/tingyu-copy /tmp/tingyu
 - 界面为**最小可用**：来源页的 WebDAV 表单、夸克扫码/粘贴 Cookie、进度条与取消、来源卡片重登录入口。网页内嵌登录（WebView）不在本阶段；**来源删除**已由内核数据能力阶段接通（曲目、歌单条目、共享封面与钥匙串凭据的语义见[该阶段记录](../docs/plan/2026-10-26-macos-mygo-kernel-data-record.md) §2.3）。
 
 ```bash
+./scripts/run-scrub-probe.sh               # 拖动 seek 的 Range 请求对比（legacy/view 两种策略）
 ./scripts/run-m3-accept.sh     # 10 个 check：WebDAV 120 首 + 远端播放/seek + 扫码 + 直链刷新 + 取消 + Keychain
 ```
 
@@ -140,7 +139,7 @@ TINGYU_DATA_DIR=/tmp/tingyu-copy /tmp/tingyu
 ```
 
 harness 直接驱动生产的 `internal/mpv` + `internal/player`（与应用同一套装配，只是没有窗口），逐项写出 `report.json` 与服务端请求日志。它会真的出声（coreaudio）；gapless 相位改用 mpv 的 `ao=pcm` 把实际输出渲染成 WAV，再分析静音段与 `AO: [` 设备重建次数。
-- Now Playing / 远程命令：`purego/objc` 直连 MediaPlayer；`(id,index,duration)` 去重，进度 500 ms 节流；播放时持有 App Nap 抑制，退出清空。
+- Now Playing / 远程命令：框架的 `mygo.NowPlaying`（`Set`/`SetPlayback`/`OnCommand`/`Clear`）；`(id,index,duration,封面)` 去重，进度 500 ms 节流；播放时用 `mygo.Power.KeepAwake` 持有 App Nap/防睡眠断言（`pmset` 里是 `PreventUserIdleSystemSleep`），退出清空。
 - 关窗继续播放；`App.OnWindowAllClosed` 保留进程，菜单栏有「显示窗口/上一首/播放暂停/下一首/退出」；`Cmd+Q` 走 `OnBeforeQuit` 清 Now Playing、关 mpv、关库。
 
 ## 运行与验收辅助变量
