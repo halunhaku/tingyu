@@ -32,11 +32,35 @@ func FailureMessage(kind FailureKind, status int, detail string) string {
 			return "无法解码这个文件：" + detail
 		}
 		return "无法解码这个文件"
+	case FailureServer:
+		// The status is the whole diagnosis ("HTTP 400" told us the request
+		// itself was rejected, not the link). Keep it in the sentence.
+		if status >= 500 {
+			return fmt.Sprintf("服务器暂时不可用（HTTP %d）：请稍后重试", status)
+		}
+		if status > 0 {
+			return fmt.Sprintf("服务器拒绝了这次播放请求（HTTP %d）：请稍后重试，仍失败时重新获取链接", status)
+		}
+		return "服务器拒绝了这次播放请求：请稍后重试"
 	}
-	if detail != "" {
-		return "播放失败：" + detail
+	if status > 0 {
+		return fmt.Sprintf("播放失败（HTTP %d）：%s", status, unknownReason(detail))
 	}
-	return "播放失败"
+	return "播放失败：" + unknownReason(detail)
+}
+
+// unknownReason is the short reason shown for a failure nothing else explains.
+// It never carries a URL: the query is a signature and the path tells a person
+// nothing.
+func unknownReason(detail string) string {
+	detail = strings.TrimSpace(redactURIs(detail))
+	if detail == "" {
+		return "无法打开音频流"
+	}
+	if strings.Contains(detail, "://") {
+		return "无法打开音频流"
+	}
+	return detail
 }
 
 // httpStatusPattern matches the one line FFmpeg prints with the response code
@@ -82,6 +106,17 @@ func redactURIs(text string) string {
 	return urlUserinfo.ReplaceAllString(text, `$1`)
 }
 
+// credentialLine matches one credential header and everything after it on the
+// line. At debug level mpv prints the http-header-fields value it sets, and
+// FFmpeg prints request headers; a Cookie or Authorization value in a log file
+// is a stored credential.
+var credentialLine = regexp.MustCompile(`(?i)((?:^|[\s,;(])(?:cookie|authorization|proxy-authorization|http-header-fields)\s*[:=]\s*).*`)
+
+// redactHeaderValues masks credential header values in one engine log line.
+func redactHeaderValues(text string) string {
+	return credentialLine.ReplaceAllString(text, `${1}<redacted>`)
+}
+
 // loadFailure classifies a failed load from what the engine observed: the URI,
 // mpv's error string, the HTTP status FFmpeg logged, and the warning lines of
 // this load attempt. The engine cannot distinguish "401" from "offline" on its
@@ -104,7 +139,10 @@ func loadFailure(uri, detail string, status int, logText string) *Failure {
 		return newFailure(FailureDecode, 0, detail)
 	}
 	switch status {
-	case 401, 403:
+	case 401, 403, 412:
+		// 412 is what the Quark CDN answers when the Cookie no longer
+		// satisfies its anti-leech rule; it means "mint a new link", not "give
+		// up". The recoverer treats this kind as a refresh trigger.
 		return newFailure(FailureUnauthorized, status, detail)
 	case 404, 410:
 		return newFailure(FailureNotFound, status, detail)
@@ -115,11 +153,14 @@ func loadFailure(uri, detail string, status int, logText string) *Failure {
 	if containsAny(lowered, decodeMarkers) {
 		return newFailure(FailureDecode, status, detail)
 	}
+	if status >= 400 {
+		return newFailure(FailureServer, status, detail)
+	}
 	return newFailure(FailureUnknown, status, detail)
 }
 
 func newFailure(kind FailureKind, status int, detail string) *Failure {
-	detail = redactURIs(detail)
+	detail = redactHeaderValues(redactURIs(detail))
 	return &Failure{Kind: kind, Status: status, Detail: detail, Message: FailureMessage(kind, status, detail)}
 }
 

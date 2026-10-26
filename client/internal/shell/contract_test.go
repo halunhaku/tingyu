@@ -206,7 +206,9 @@ func TestDirectLinkFailuresReadAsDifferentSentences(t *testing.T) {
 	}{
 		{"401", mpv.FailureUnauthorized, 401, "Failed to open"},
 		{"403", mpv.FailureUnauthorized, 403, "Failed to open"},
+		{"412", mpv.FailureUnauthorized, 412, "Failed to open"},
 		{"404", mpv.FailureNotFound, 404, "Failed to open"},
+		{"400", mpv.FailureServer, 400, "Failed to open"},
 		{"network", mpv.FailureNetwork, 0, "Connection refused"},
 		{"decode", mpv.FailureDecode, 0, "Failed to recognize file format"},
 	}
