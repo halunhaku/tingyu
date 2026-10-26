@@ -15,9 +15,9 @@ func Palette(c *ui.Context, d Design, s *model.State) {
 		return
 	}
 	open := &p.Open
-	ui.Modal(c, open, func() {
+	d.Overlay(c, open, func() {
 		panel := ui.Column(c).Width(tokens.SearchPaletteWide).MaxHeight(520).
-			Radius(tokens.RadiusXL).Background(d.P.Overlay).Border(1, d.P.Border).
+			Radius(tokens.RadiusXL).Material(d.RegularGlass()).Border(1, d.P.Border).
 			Padding(tokens.Space12).Gap(tokens.Space8)
 		panel.Children(func() {
 			d.SearchBox(c, &p.Input, "命令面板", "搜索歌曲、专辑、艺术家，或输入命令", true,
@@ -39,7 +39,7 @@ func Palette(c *ui.Context, d Design, s *model.State) {
 						return true
 					}
 					return false
-				}).Grow(1)
+				})
 			if p.Pending() {
 				c.After(tokens.SearchDebounceTime)
 			}
@@ -50,10 +50,10 @@ func Palette(c *ui.Context, d Design, s *model.State) {
 						if item.Group != lastGroup {
 							lastGroup = item.Group
 							ui.Row(c).Padding(tokens.Space8, tokens.Space6).Children(func() {
-								d.Text(c, tokens.LabelS, item.Group).TextColor(d.P.TextTertiary)
+								d.Text(c, tokens.Overline, item.Group).TextColor(d.P.TextTertiary)
 								ui.Spacer(c)
 								if item.Group == "快捷入口" {
-									d.Textf(c, tokens.LabelS, "%d 项", len(model.Commands)).TextColor(d.P.TextTertiary)
+									d.Textf(c, tokens.Overline, "%d 项", len(model.Commands)).TextColor(d.P.TextTertiary)
 								}
 							})
 						}
@@ -86,9 +86,9 @@ func Palette(c *ui.Context, d Design, s *model.State) {
 								})
 							}
 							ui.Column(c).Gap(1).Grow(1).Children(func() {
-								d.Text(c, tokens.BodyM, item.Label).TextColor(d.P.TextPrimary).SingleLine()
+								d.Text(c, tokens.Body, item.Label).TextColor(d.P.TextPrimary).SingleLine()
 								if item.Detail != "" {
-									d.Text(c, tokens.BodyS, item.Detail).TextColor(d.P.TextSecondary).SingleLine()
+									d.Text(c, tokens.Small, item.Detail).TextColor(d.P.TextSecondary).SingleLine()
 								}
 							})
 							if item.Shortcut != "" {
@@ -98,15 +98,15 @@ func Palette(c *ui.Context, d Design, s *model.State) {
 					}
 					if len(p.Items) == 0 {
 						ui.Row(c).Padding(tokens.Space16).Children(func() {
-							d.Text(c, tokens.BodyS, "没有匹配的结果").TextColor(d.P.TextSecondary)
+							d.Text(c, tokens.Small, "没有匹配的结果").TextColor(d.P.TextSecondary)
 						})
 					}
 				})
 			})
 			ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space8).Padding(tokens.Space8, 2).Children(func() {
-				d.Text(c, tokens.LabelS, "↑↓ 选择 · Enter 打开 · Esc 关闭").TextColor(d.P.TextTertiary)
+				d.Text(c, tokens.Overline, "↑↓ 选择 · Enter 打开 · Esc 关闭").TextColor(d.P.TextTertiary)
 				ui.Spacer(c)
-				d.Text(c, tokens.LabelS, ItemCount(len(p.Items))).TextColor(d.P.TextTertiary)
+				d.Text(c, tokens.Overline, ItemCount(len(p.Items))).TextColor(d.P.TextTertiary)
 			})
 		})
 	})

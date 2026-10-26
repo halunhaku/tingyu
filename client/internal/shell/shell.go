@@ -175,7 +175,13 @@ func (m *Model) View(c *ui.Context) {
 		return
 	}
 
-	c.Root().Background(d.P.Canvas)
+	// The root paints the current cover's colour field, which only the sidebar's
+	// Clear glass lets through (§10-1: 236 wide, 30% 封面氛围): the page on top
+	// of it paints an opaque canvas, so no second translucent layer stacks.
+	root := c.Root().Background(d.P.Canvas)
+	root.Draw(func(p *ui.Painter, r ui.Rect) {
+		Ambient(c, d, s, p, r)
+	})
 	ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
 		sidebar(c, d, s)
 		ui.Column(c).Grow(1).FillHeight().Background(d.P.Canvas).Children(func() {
@@ -220,111 +226,172 @@ func page(c *ui.Context, d components.Design, s *model.State) {
 	}
 }
 
+// Ambient paints the current cover's colour field under the shell, which only
+// the sidebar's glass lets through (§10-1: 30% 封面氛围). It runs in
+// Element.Draw, before the children, so the page covers it everywhere but the
+// translucent sidebar.
+func Ambient(c *ui.Context, d components.Design, s *model.State, p *ui.Painter, r ui.Rect) {
+	track := s.Player().Track
+	if track == nil {
+		return
+	}
+	bitmap := s.CoverBitmap(track.CoverArtPath)
+	if bitmap == nil {
+		return
+	}
+	p.Image(bitmap, ui.Rect{X: -200, Y: -280, W: 980, H: 980}, ui.Cover)
+	p.Fill(r, d.P.Canvas.Alpha(tokens.SidebarAmbientWash), 0)
+}
+
+// sidebar is the navigation column of §10-1/§10-2: 236 wide on Clear glass with
+// a 1 px right edge, 34 high rows in three groups (资料库/来源/歌单), an 11/600
+// group label with its tabular count, and a 2 px accent bar on the current one.
 func sidebar(c *ui.Context, d components.Design, s *model.State) {
-	ui.Column(c).Width(d.SidebarWidth()).FillHeight().Padding(tokens.Space16, tokens.Space12).
-		Gap(tokens.Space8).Background(d.P.Surface).BorderWidth(0, 1, 0, 0).
-		BorderColor(d.P.Border).Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space8).Children(func() {
-			ui.Box(c).Size(26, 26).Radius(tokens.RadiusSM).Background(d.P.Accent).Center().Children(func() {
-				ui.Icon(c, components.IconMusic).FontSize(15).TextColor(d.P.OnAccent)
-			})
-			ui.Column(c).Gap(1).Children(func() {
-				d.Text(c, tokens.TitleM, "听屿").TextColor(d.P.TextPrimary)
-				d.Text(c, tokens.LabelS, "声档").TextColor(d.P.TextTertiary)
-			})
-		})
+	column := ui.Column(c).Width(d.SidebarWidth()).FillHeight().
+		Padding(tokens.Space16, tokens.Space20).Gap(0).
+		Material(d.ClearGlass(0.35)).
+		BorderWidth(0, 1, 0, 0).BorderColor(d.P.Border)
+	column.Children(func() {
+		brand(c, d)
+		ui.Box(c).Height(tokens.Space16)
 		query := s.SidebarQuery()
 		focus := s.TakeSearchFocus()
-		d.SearchBox(c, &query, "侧栏搜索", "搜索歌曲、专辑、艺术家", focus,
+		d.SearchBox(c, &query, "侧栏搜索", "搜索歌曲、专辑", focus,
 			func() { s.SetSidebarQuery(query) }, nil, nil).
 			Tooltip("搜索（⌘K 命令面板，⌘F 聚焦）")
+		ui.Box(c).Height(tokens.Space16)
 		ui.Scroll(c).Grow(1).Children(func() {
-			ui.Column(c).Gap(2).Children(func() {
-				navItem(c, d, s, "曲库", model.PageLibrary)
-				navItem(c, d, s, "收藏", model.PageFavorites)
-				navItem(c, d, s, "专辑", model.PageAlbums)
-				navItem(c, d, s, "艺术家", model.PageArtists)
-				navItem(c, d, s, "歌单", model.PagePlaylists)
-				navItem(c, d, s, "搜索", model.PageSearch)
-				ui.Box(c).Height(tokens.Space8)
-				ui.Row(c).AlignItems(ui.Center).Children(func() {
-					d.Text(c, tokens.LabelS, "来源").TextColor(d.P.TextTertiary)
-					ui.Spacer(c)
-					if b := d.Button(c, "管理").FontSize(11); b.Clicked() {
-						s.OpenPage(model.PageSources)
+			ui.Column(c).Gap(0).Children(func() {
+				// 资料库: the six destinations. The group's count is the library's
+				// own, on the row that opens it (the stills' reading of §10-1).
+				navItem(c, d, s, components.IconLibrary, "曲库", model.PageLibrary, s.Counts().Tracks)
+				navItem(c, d, s, components.IconHeart, "收藏", model.PageFavorites, s.Favorites().Total())
+				navItem(c, d, s, components.IconAlbum, "专辑", model.PageAlbums, 0)
+				navItem(c, d, s, components.IconArtist, "艺术家", model.PageArtists, 0)
+				navItem(c, d, s, components.IconPlaylist, "歌单", model.PagePlaylists, 0)
+				navItem(c, d, s, components.IconSearch, "搜索", model.PageSearch, 0)
+
+				ui.Box(c).Height(tokens.Space20)
+				groupLabel(c, d, "来源", len(s.Sources()))
+				sourceRow := func(label, detail string, count int64, onClick func()) {
+					row := ui.Row(c).FillWidth().Height(30).PaddingX(tokens.Space10).
+						Gap(tokens.Space8).Radius(tokens.RadiusSM).AlignItems(ui.Center).Focusable()
+					if row.Hovered() {
+						row.Background(tokens.Blend(d.P.Canvas, d.P.Hover))
 					}
-				})
+					if onClick != nil {
+						row.OnClick(onClick)
+					}
+					row.Children(func() {
+						ui.Icon(c, components.IconFolder).FontSize(tokens.IconInline).
+							TextColor(d.P.TextTertiary)
+						d.Text(c, tokens.Small, label).TextColor(d.P.TextSecondary).Grow(1).SingleLine()
+						if count > 0 {
+							tokens.Tabular(d.Textf(c, tokens.NumSm, "%d", count)).TextColor(d.P.TextTertiary)
+						}
+						_ = detail
+					})
+				}
 				if len(s.Sources()) == 0 {
-					ui.Row(c).Padding(tokens.Space8, tokens.Space4).Children(func() {
-						d.Text(c, tokens.BodyS, "尚未添加来源").TextColor(d.P.TextTertiary)
+					ui.Row(c).Height(30).PaddingX(tokens.Space10).AlignItems(ui.Center).Children(func() {
+						d.Text(c, tokens.Small, "尚未添加来源").TextColor(d.P.TextTertiary)
 					})
 				}
 				for _, source := range s.Sources() {
 					source := source
-					row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space6).
-						Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM).Focusable()
-					if row.Hovered() {
-						row.Background(d.P.Hover)
-					}
-					row.OnClick(func() {
+					sourceRow(source.Name, source.Kind, source.TrackCount, func() {
 						s.Library().SetSource(source.ID)
 						s.OpenPage(model.PageLibrary)
 					})
-					row.Children(func() {
-						ui.Icon(c, components.IconFolder).FontSize(tokens.IconCompact).TextColor(d.P.TextTertiary)
-						d.Text(c, tokens.BodyS, source.Name).TextColor(d.P.TextSecondary).Grow(1).SingleLine()
-						d.Textf(c, tokens.LabelS, "%d", source.TrackCount).TextColor(d.P.TextTertiary)
-					})
 				}
-				ui.Box(c).Height(tokens.Space8)
-				ui.Row(c).AlignItems(ui.Center).Children(func() {
-					d.Text(c, tokens.LabelS, "播放列表").TextColor(d.P.TextTertiary)
-					ui.Spacer(c)
-					newPlaylist := d.Button(c, "").Padding(2).Radius(tokens.RadiusXS).Label("新建播放列表")
-					newPlaylist.Children(func() {
-						ui.Icon(c, components.IconPlus).FontSize(tokens.IconCompact).TextColor(d.P.TextTertiary)
-					})
-					if newPlaylist.Clicked() {
-						s.BeginCreatePlaylist()
-						s.OpenPage(model.PagePlaylists)
-					}
-				})
-				if len(s.Playlists()) == 0 {
-					ui.Row(c).Padding(tokens.Space8, tokens.Space4).Children(func() {
-						d.Text(c, tokens.BodyS, "尚未创建播放列表").TextColor(d.P.TextTertiary)
-					})
-				}
+
+				ui.Box(c).Height(tokens.Space20)
+				groupLabel(c, d, "歌单", len(s.Playlists()))
 				for _, playlist := range s.Playlists() {
 					playlist := playlist
-					row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space6).
-						Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM).Focusable()
+					row := ui.Row(c).FillWidth().Height(30).PaddingX(tokens.Space10).
+						Gap(tokens.Space8).Radius(tokens.RadiusSM).AlignItems(ui.Center).Focusable()
 					if row.Hovered() {
-						row.Background(d.P.Hover)
+						row.Background(tokens.Blend(d.P.Canvas, d.P.Hover))
 					}
 					row.OnClick(func() { s.OpenPlaylist(playlist) })
 					row.Children(func() {
-						ui.Icon(c, components.IconQueue).FontSize(tokens.IconCompact).TextColor(d.P.TextTertiary)
-						d.Text(c, tokens.BodyS, playlist.Name).TextColor(d.P.TextSecondary).Grow(1).SingleLine()
-						d.Textf(c, tokens.LabelS, "%d", playlist.TrackCount).TextColor(d.P.TextTertiary)
+						ui.Icon(c, components.IconQueue).FontSize(tokens.IconInline).
+							TextColor(d.P.TextTertiary)
+						d.Text(c, tokens.Small, playlist.Name).TextColor(d.P.TextSecondary).Grow(1).SingleLine()
+						tokens.Tabular(d.Textf(c, tokens.NumSm, "%d", playlist.TrackCount)).
+							TextColor(d.P.TextTertiary)
+					})
+				}
+				if len(s.Playlists()) == 0 {
+					// An empty group is a row with a plus, not a grey sentence
+					// (§10-1): the row itself creates the first playlist.
+					row := ui.Row(c).FillWidth().Height(30).PaddingX(tokens.Space10).
+						Gap(tokens.Space8).Radius(tokens.RadiusSM).AlignItems(ui.Center).Focusable()
+					if row.Hovered() {
+						row.Background(tokens.Blend(d.P.Canvas, d.P.Hover))
+					}
+					if row.Clicked() {
+						s.BeginCreatePlaylist()
+						s.OpenPage(model.PagePlaylists)
+					}
+					row.Children(func() {
+						ui.Icon(c, components.IconQueue).FontSize(tokens.IconInline).
+							TextColor(d.P.TextTertiary)
+						d.Text(c, tokens.Small, "还没有歌单").TextColor(d.P.TextTertiary).Grow(1)
+						ui.Icon(c, components.IconPlus).FontSize(tokens.IconCompact).
+							TextColor(d.P.TextTertiary)
 					})
 				}
 			})
 		})
-		ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space8).Children(func() {
-			navItem(c, d, s, "设置", model.PageSettings)
+		ui.Box(c).Height(1).FillWidth().Background(d.P.Border)
+		ui.Box(c).Height(tokens.Space10)
+		navItem(c, d, s, components.IconSettings, "设置", model.PageSettings, 0)
+		ui.Box(c).Height(tokens.Space6)
+		ui.Row(c).PaddingX(tokens.Space10).Children(func() {
+			tokens.Tabular(d.Text(c, tokens.NumSm, model.Version)).TextColor(d.P.TextTertiary)
 		})
-		d.Text(c, tokens.LabelS, model.Version).TextColor(d.P.TextTertiary)
 	})
 }
 
-func navItem(c *ui.Context, d components.Design, s *model.State, label, page string) {
+// brand is the sidebar's head: the accent tile, the app's name and the design's
+// name under it.
+func brand(c *ui.Context, d components.Design) {
+	ui.Row(c).Height(tokens.SidebarItem).Gap(tokens.Space10).AlignItems(ui.Center).Children(func() {
+		ui.Box(c).Size(30, 30).Radius(tokens.RadiusSM).Background(d.P.Accent).Center().Children(func() {
+			ui.Icon(c, components.IconMusic).FontSize(tokens.IconCompact).TextColor(d.P.OnAccent)
+		})
+		ui.Column(c).Gap(1).Children(func() {
+			d.Text(c, tokens.H3, "听屿").TextColor(d.P.TextPrimary)
+			d.Text(c, tokens.Overline, "声档 1.5").TextColor(d.P.TextTertiary)
+		})
+	})
+}
+
+// groupLabel is a group's 11/600 +0.8 label with its tabular count (§10-1).
+func groupLabel(c *ui.Context, d components.Design, label string, count int) {
+	ui.Row(c).Height(24).PaddingX(tokens.Space10).AlignItems(ui.Center).Gap(tokens.Space6).
+		Children(func() {
+			d.Text(c, tokens.Overline, label).TextColor(d.P.TextTertiary)
+			ui.Spacer(c)
+			if count > 0 {
+				tokens.Tabular(d.Textf(c, tokens.NumSm, "%d", count)).TextColor(d.P.TextTertiary)
+			}
+		})
+}
+
+// navItem is one 34 high destination: its icon, its label, its count, and — when
+// it is the current page — the accent soft face, the accent icon and the 2 px
+// bar on the left (§10-2).
+func navItem(c *ui.Context, d components.Design, s *model.State, icon *ui.SVG, label, page string, count int) {
 	active := s.Page() == page
-	row := ui.Row(c).FillWidth().Padding(tokens.Space10, tokens.Space6).Radius(tokens.RadiusMD).
-		AlignItems(ui.Center).Focusable()
+	row := ui.Row(c).FillWidth().Height(tokens.SidebarItem).PaddingX(tokens.Space10).
+		Gap(tokens.Space10).Radius(tokens.RadiusSM).AlignItems(ui.Center).Focusable()
 	if active {
-		row.Background(d.P.Selected)
+		row.Background(tokens.Blend(d.P.Canvas, d.P.AccentSoft))
 	} else if row.Hovered() {
-		row.Background(d.P.Hover)
+		row.Background(tokens.Blend(d.P.Canvas, d.P.Hover))
 	}
 	row.OnClick(func() { s.OpenPage(page) })
 	row.Children(func() {
@@ -332,7 +399,17 @@ func navItem(c *ui.Context, d components.Design, s *model.State, label, page str
 		if active {
 			color = d.P.Accent
 		}
-		d.Text(c, tokens.BodyM, label).TextColor(color)
+		// The 2 px bar keeps its place in every row, so the labels do not shift
+		// when the current page changes.
+		bar := ui.Box(c).Width(2).Height(16).Radius(1)
+		if active {
+			bar.Background(d.P.Accent)
+		}
+		ui.Icon(c, icon).FontSize(tokens.IconCompact).TextColor(color)
+		d.Text(c, tokens.Body, label).TextColor(color).Grow(1)
+		if count > 0 {
+			tokens.Tabular(d.Textf(c, tokens.NumSm, "%d", count)).TextColor(d.P.TextTertiary)
+		}
 	})
 }
 

@@ -43,7 +43,7 @@ func Search(c *ui.Context, d components.Design, s *model.State) {
 		if search.NeedsResults() || search.Query != strings.TrimSpace(search.Input) {
 			ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space8).Padding(tokens.Space12).Children(func() {
 				ui.Spinner(c)
-				d.Text(c, tokens.BodyS, "正在搜索…").TextColor(d.P.TextSecondary)
+				d.Text(c, tokens.Small, "正在搜索…").TextColor(d.P.TextSecondary)
 			})
 			return
 		}
@@ -83,7 +83,7 @@ func recentSearches(c *ui.Context, d components.Design, s *model.State) {
 	search := s.Search()
 	ui.Column(c).Gap(tokens.Space10).PaddingY(tokens.Space8).Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space8).Children(func() {
-			d.Text(c, tokens.TitleM, "最近搜索").TextColor(d.P.TextPrimary)
+			d.Text(c, tokens.H3, "最近搜索").TextColor(d.P.TextPrimary)
 			ui.Spacer(c)
 			if len(search.Recent()) > 0 {
 				if b := d.Button(c, "清除"); b.Clicked() {
@@ -92,7 +92,7 @@ func recentSearches(c *ui.Context, d components.Design, s *model.State) {
 			}
 		})
 		if len(search.Recent()) == 0 {
-			d.Text(c, tokens.BodyS, "输入关键词搜索歌曲、专辑、艺术家与歌单。").TextColor(d.P.TextSecondary)
+			d.Text(c, tokens.Small, "输入关键词搜索歌曲、专辑、艺术家与歌单。").TextColor(d.P.TextSecondary)
 			return
 		}
 		ui.Row(c).Gap(tokens.Space8).Wrap().Children(func() {
@@ -111,7 +111,7 @@ func songsTable(c *ui.Context, d components.Design, s *model.State) {
 	search := s.Search()
 	list := search.OwnSongs()
 	components.TrackTable(c, d, components.TableOptions{State: s, List: list})
-	components.Pager(c, d, list)
+	components.Pager(c, d, list, "")
 }
 
 func albumsResults(c *ui.Context, d components.Design, s *model.State) {
@@ -133,8 +133,8 @@ func albumsResults(c *ui.Context, d components.Design, s *model.State) {
 				row.Children(func() {
 					components.Cover(c, d, s, album.Cover, 44, tokens.RadiusSM)
 					ui.Column(c).Gap(2).Grow(1).Children(func() {
-						d.Text(c, tokens.BodyM, album.Name).TextColor(d.P.TextPrimary).SingleLine()
-						d.Text(c, tokens.BodyS, album.Artist+" · "+model.FormatCount(album.TrackCount(), "首")).
+						d.Text(c, tokens.Body, album.Name).TextColor(d.P.TextPrimary).SingleLine()
+						d.Text(c, tokens.Small, album.Artist+" · "+model.FormatCount(album.TrackCount(), "首")).
 							TextColor(d.P.TextSecondary).SingleLine()
 					})
 					play := ui.Button(c, "").Padding(5).Radius(tokens.RadiusXS).
@@ -171,8 +171,8 @@ func artistsResults(c *ui.Context, d components.Design, s *model.State) {
 				row.Children(func() {
 					components.Cover(c, d, s, artist.Cover, 44, 22)
 					ui.Column(c).Gap(2).Grow(1).Children(func() {
-						d.Text(c, tokens.BodyM, artist.Name).TextColor(d.P.TextPrimary).SingleLine()
-						d.Textf(c, tokens.BodyS, "%d 首 · %d 张专辑", artist.Count, artist.Albums).
+						d.Text(c, tokens.Body, artist.Name).TextColor(d.P.TextPrimary).SingleLine()
+						d.Textf(c, tokens.Small, "%d 首 · %d 张专辑", artist.Count, artist.Albums).
 							TextColor(d.P.TextSecondary)
 					})
 				})
@@ -200,8 +200,8 @@ func playlistsResults(c *ui.Context, d components.Design, s *model.State) {
 						ui.Icon(c, components.IconQueue).FontSize(tokens.IconCompact).TextColor(d.P.TextSecondary)
 					})
 					ui.Column(c).Gap(2).Grow(1).Children(func() {
-						d.Text(c, tokens.BodyM, playlist.Name).TextColor(d.P.TextPrimary).SingleLine()
-						d.Textf(c, tokens.BodyS, "%d 首", playlist.TrackCount).TextColor(d.P.TextSecondary)
+						d.Text(c, tokens.Body, playlist.Name).TextColor(d.P.TextPrimary).SingleLine()
+						d.Textf(c, tokens.Small, "%d 首", playlist.TrackCount).TextColor(d.P.TextSecondary)
 					})
 				})
 			}
@@ -239,8 +239,8 @@ func allResults(c *ui.Context, d components.Design, s *model.State, results mode
 					card := ui.Column(c).Width(132).Gap(tokens.Space6).Focusable().OnClick(func() { s.OpenAlbum(album) })
 					card.Children(func() {
 						components.CoverFill(c, d, s, album.Cover, tokens.RadiusMD)
-						d.Text(c, tokens.BodyS, album.Name).TextColor(d.P.TextPrimary).SingleLine()
-						d.Text(c, tokens.LabelS, album.Artist).TextColor(d.P.TextSecondary).SingleLine()
+						d.Text(c, tokens.Small, album.Name).TextColor(d.P.TextPrimary).SingleLine()
+						d.Text(c, tokens.Overline, album.Artist).TextColor(d.P.TextSecondary).SingleLine()
 					})
 				}
 			})
@@ -260,8 +260,8 @@ func allResults(c *ui.Context, d components.Design, s *model.State, results mode
 				row.OnClick(func() { s.OpenArtist(artist) })
 				row.Children(func() {
 					components.Cover(c, d, s, artist.Cover, 36, 18)
-					d.Text(c, tokens.BodyM, artist.Name).TextColor(d.P.TextPrimary).Grow(1).SingleLine()
-					d.Textf(c, tokens.BodyS, "%d 首", artist.Count).TextColor(d.P.TextSecondary)
+					d.Text(c, tokens.Body, artist.Name).TextColor(d.P.TextPrimary).Grow(1).SingleLine()
+					d.Textf(c, tokens.Small, "%d 首", artist.Count).TextColor(d.P.TextSecondary)
 				})
 			}
 			groupHeader(c, d, "歌单", results.PlaylistTotal, func() {
@@ -280,8 +280,8 @@ func allResults(c *ui.Context, d components.Design, s *model.State, results mode
 				row.OnClick(func() { s.OpenPlaylist(playlist) })
 				row.Children(func() {
 					ui.Icon(c, components.IconQueue).FontSize(tokens.IconCompact).TextColor(d.P.TextSecondary)
-					d.Text(c, tokens.BodyM, playlist.Name).TextColor(d.P.TextPrimary).Grow(1).SingleLine()
-					d.Textf(c, tokens.BodyS, "%d 首", playlist.TrackCount).TextColor(d.P.TextSecondary)
+					d.Text(c, tokens.Body, playlist.Name).TextColor(d.P.TextPrimary).Grow(1).SingleLine()
+					d.Textf(c, tokens.Small, "%d 首", playlist.TrackCount).TextColor(d.P.TextSecondary)
 				})
 			}
 		})
@@ -289,14 +289,14 @@ func allResults(c *ui.Context, d components.Design, s *model.State, results mode
 }
 
 func emptyGroup(c *ui.Context, d components.Design, text string) {
-	d.Text(c, tokens.BodyS, text).TextColor(d.P.TextTertiary)
+	d.Text(c, tokens.Small, text).TextColor(d.P.TextTertiary)
 }
 
 func groupHeader(c *ui.Context, d components.Design, title string, total int, more func()) {
 	ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space8).Children(func() {
-		d.Text(c, tokens.TitleM, title).TextColor(d.P.TextPrimary)
+		d.Text(c, tokens.H3, title).TextColor(d.P.TextPrimary)
 		if total >= 0 {
-			d.Textf(c, tokens.BodyS, "%d 项", total).TextColor(d.P.TextSecondary)
+			d.Textf(c, tokens.Small, "%d 项", total).TextColor(d.P.TextSecondary)
 		}
 		ui.Spacer(c)
 		if more != nil && total > model.PreviewSize {

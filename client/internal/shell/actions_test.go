@@ -149,6 +149,16 @@ func count(t *testing.T, db *sqlite.DB, sql string, args ...any) int {
 	return int(n)
 }
 
+// openRowMenu opens a row's context menu the way the A table offers it: the
+// ••• column is gone (the fixed 22/44/330/170/210/弹性/56/30 rhythm of §10-4 has
+// no room for it), so the menu is the right-click one the row always had.
+func openRowMenu(t *testing.T, tt *ui.Tester, title string) {
+	t.Helper()
+	if err := tt.RightClick(title); err != nil {
+		t.Fatalf("row menu on %q: %v (menu %v)", title, err, tt.Menu())
+	}
+}
+
 func exec(t *testing.T, db *sqlite.DB, sql string, args ...any) {
 	t.Helper()
 	if _, err := db.Execute(context.Background(), sql, args...); err != nil {
@@ -254,9 +264,7 @@ func TestPlaylistButtonsDriveTheWholeLifecycle(t *testing.T) {
 	m.State().OpenPage(model.PageLibrary)
 	frame(tt)
 	for i := 0; i < 2; i++ {
-		if err := tt.Click("更多操作"); err != nil {
-			t.Fatalf("row menu %d: %v", i, err)
-		}
+		openRowMenu(t, tt, m.State().Library().Items()[i].Title)
 		if err := tt.ChooseMenuItem("添加到播放列表", "通勤"); err != nil {
 			t.Fatalf("add row %d: %v (menu %v)", i, err, tt.Menu())
 		}
@@ -286,9 +294,7 @@ func TestPlaylistButtonsDriveTheWholeLifecycle(t *testing.T) {
 	// 排序: move the first item down one place through the row menu.
 	first := m.State().PlaylistTracks().Items()[0].ID
 	second := m.State().PlaylistTracks().Items()[1].ID
-	if err := tt.Click("更多操作"); err != nil {
-		t.Fatal(err)
-	}
+	openRowMenu(t, tt, m.State().PlaylistTracks().Items()[0].Title)
 	if err := tt.ChooseMenuItem("下移"); err != nil {
 		t.Fatalf("下移: %v (menu %v)", err, tt.Menu())
 	}
@@ -323,9 +329,7 @@ func TestPlaylistButtonsDriveTheWholeLifecycle(t *testing.T) {
 
 	// 删除曲目 through the row menu.
 	before := count(t, db, `SELECT COUNT(*) FROM playlist_items WHERE playlist_id = ?`, playlist.ID)
-	if err := tt.Click("更多操作"); err != nil {
-		t.Fatal(err)
-	}
+	openRowMenu(t, tt, m.State().PlaylistTracks().Items()[0].Title)
 	if err := tt.ChooseMenuItem("移出歌单"); err != nil {
 		t.Fatalf("移出歌单: %v (menu %v)", err, tt.Menu())
 	}

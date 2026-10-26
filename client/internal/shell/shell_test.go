@@ -861,9 +861,7 @@ func TestPlaylistPageOffersReorderAndRemove(t *testing.T) {
 		t.Fatalf("the playlist page did not list its items; texts %q", tt.Texts())
 	}
 	// The first row's menu can only move down and remove.
-	if err := tt.Click("更多操作"); err != nil {
-		t.Fatalf("row menu: %v", err)
-	}
+	openRowMenu(t, tt, m.State().PlaylistTracks().Items()[0].Title)
 	if err := tt.ChooseMenuItem("下移"); err != nil {
 		t.Fatalf("下移: %v (menu %v)", err, tt.Menu())
 	}
@@ -871,9 +869,7 @@ func TestPlaylistPageOffersReorderAndRemove(t *testing.T) {
 	if len(actions.moved) != 1 || actions.moved[0] != [2]int{0, 1} {
 		t.Fatalf("move = %v", actions.moved)
 	}
-	if err := tt.Click("更多操作"); err != nil {
-		t.Fatal(err)
-	}
+	openRowMenu(t, tt, m.State().PlaylistTracks().Items()[0].Title)
 	if err := tt.ChooseMenuItem("移出歌单"); err != nil {
 		t.Fatalf("移出歌单: %v (menu %v)", err, tt.Menu())
 	}
@@ -882,9 +878,7 @@ func TestPlaylistPageOffersReorderAndRemove(t *testing.T) {
 		t.Fatalf("remove = %v", actions.removed)
 	}
 	// 「添加到播放列表」 on a row reaches the app with the playlist it chose.
-	if err := tt.Click("更多操作"); err != nil {
-		t.Fatal(err)
-	}
+	openRowMenu(t, tt, m.State().PlaylistTracks().Items()[0].Title)
 	if err := tt.ChooseMenuItem("添加到播放列表", "通勤"); err != nil {
 		t.Fatalf("添加到播放列表: %v (menu %v)", err, tt.Menu())
 	}

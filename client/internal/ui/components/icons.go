@@ -38,6 +38,12 @@ var (
 	IconCheck    = svg(`<path d="m5 12 4 4L19 6"/>`)
 	IconInfo     = svg(`<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/>`)
 	IconRepeat   = svg(`<path d="m17 2 4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>`)
+	IconVolume   = svg(`<path d="M4 10v4h3l4 4V6L7 10z"/><path d="M16 9a4 4 0 0 1 0 6"/>`)
+	// The A shell's navigation glyphs, in the same 24-unit outline vocabulary.
+	IconLibrary  = svg(`<path d="M4 5h5v14H4z"/><path d="M9 5h5v14H9z"/><path d="m14.5 6 4.2 12"/>`)
+	IconAlbum    = svg(`<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="12" cy="12" r="3.6"/>`)
+	IconArtist   = svg(`<circle cx="12" cy="8" r="4"/><path d="M5 21c0-3.9 3.1-7 7-7s7 3.1 7 7"/>`)
+	IconPlaylist = svg(`<path d="M4 6h10"/><path d="M4 12h10"/><path d="M4 18h6"/><path d="m16 14 5 3-5 3z"/>`)
 	IconShuffle  = svg(`<path d="M2 18h3l4-5 4 5h3"/><path d="m18 14 3 4-3 4"/><path d="M2 6h3l9 12h4"/><path d="m18 2 3 4-3 4"/>`)
 	IconMinimize = svg(`<path d="m6 9 6 6 6-6"/>`)
 )

@@ -160,6 +160,10 @@ func (t *TrackList) reset() {
 	t.selected = -1
 }
 
+// Query is the list's text filter (the library page's field and the search
+// page read it back to draw their inputs).
+func (t *TrackList) Query() string { return t.query }
+
 // SetQuery adds a text filter (the search page reuses the list).
 func (t *TrackList) SetQuery(query string) {
 	key := t.configKey(t.filter, query, t.sourceID, t.playlistID, t.sortBy, t.asc)
@@ -495,6 +499,10 @@ func itoa(v uint64) string {
 
 // Library returns the library page's list.
 func (s *State) Library() *TrackList { return &s.library }
+
+// Recent returns the "最近添加" shelf's list: the whole library, newest
+// added first, asked one page at a time exactly as the table asks for its rows.
+func (s *State) Recent() *TrackList { return &s.recent }
 
 // Favorites returns the favorites page's list.
 func (s *State) Favorites() *TrackList { return &s.favorites }

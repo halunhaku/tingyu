@@ -197,6 +197,7 @@ type State struct {
 
 	library    TrackList
 	favorites  TrackList
+	recent     TrackList
 	albumList  AlbumList
 	favAlbums  AlbumList
 	artistList ArtistList
@@ -270,6 +271,8 @@ func New(backend Backend, live Live, dbPath string, loadErr error) *State {
 	}
 	s.library.Configure(FilterAll, SortTitle, true, "")
 	s.favorites.Configure(FilterFavorites, SortTitle, true, "")
+	// The library page's "最近添加" shelf: the same paged query, newest first.
+	s.recent.Configure(FilterAll, SortAdded, false, "")
 	s.albumList.Configure(library.AlbumQuery{})
 	s.favAlbums.Configure(library.AlbumQuery{Favorite: true})
 	s.artistList.Configure(library.ArtistQuery{})
@@ -280,9 +283,11 @@ func New(backend Backend, live Live, dbPath string, loadErr error) *State {
 	}
 	s.library.bind()
 	s.favorites.bind()
+	s.recent.bind()
 	s.search.songs.bind()
 	s.library.selected = -1
 	s.favorites.selected = -1
+	s.recent.selected = -1
 	s.queueSelected = -1
 	s.detailSelected = -1
 	s.palette.Selected = 0
@@ -291,7 +296,7 @@ func New(backend Backend, live Live, dbPath string, loadErr error) *State {
 
 // lists are every track list the state owns.
 func (s *State) lists() []*TrackList {
-	out := []*TrackList{&s.library, &s.favorites, &s.search.songs}
+	out := []*TrackList{&s.library, &s.favorites, &s.recent, &s.search.songs}
 	if s.playlistDetail != nil {
 		out = append(out, &s.playlistDetail.Tracks)
 	}

@@ -39,7 +39,7 @@ func Settings(c *ui.Context, d components.Design, s *model.State) {
 						if i == s.SettingsSection() {
 							color = d.P.Accent
 						}
-						d.Text(c, tokens.BodyM, label).TextColor(color)
+						d.Text(c, tokens.Body, label).TextColor(color)
 					})
 				}
 			})
@@ -119,7 +119,7 @@ func appearanceSettings(c *ui.Context, d components.Design, s *model.State) {
 		s.ResetSettings()
 	}
 	if !s.Writable() {
-		d.Text(c, tokens.BodyS, "只读模式：本次以 TINGYU_READ_ONLY=1 打开，偏好不落盘。").
+		d.Text(c, tokens.Small, "只读模式：本次以 TINGYU_READ_ONLY=1 打开，偏好不落盘。").
 			TextColor(d.P.TextTertiary).Wrap()
 	}
 }
@@ -187,14 +187,14 @@ func librarySettings(c *ui.Context, d components.Design, s *model.State) {
 			s.OpenPage(model.PageSources)
 		}
 	})
-	d.Text(c, tokens.BodyS, "「同步全部来源」只处理本地目录；WebDAV/夸克属 M3，不会伪造成功。").
+	d.Text(c, tokens.Small, "「同步全部来源」只处理本地目录；WebDAV/夸克属 M3，不会伪造成功。").
 		TextColor(d.P.TextTertiary)
 }
 
 func sourceSettings(c *ui.Context, d components.Design, s *model.State) {
 	components.SectionTitle(c, d, "来源", "本地目录、WebDAV 与夸克网盘；凭据只存系统钥匙串，缺失时重新登录。")
 	if len(s.Sources()) == 0 {
-		d.Text(c, tokens.BodyS, "还没有来源。到来源页添加一个本地音乐目录。").TextColor(d.P.TextSecondary)
+		d.Text(c, tokens.Small, "还没有来源。到来源页添加一个本地音乐目录。").TextColor(d.P.TextSecondary)
 	}
 	for _, source := range s.Sources() {
 		components.SourceRow(c, d, source.Name, source.Kind, source.TrackCount)
@@ -225,7 +225,7 @@ func aboutSettings(c *ui.Context, d components.Design, s *model.State) {
 	components.StatRow(c, d, "渲染", "MyGo v0.6.4 · ui（原生即时模式）")
 	components.StatRow(c, d, "运行时", runtime.Version()+" · "+runtime.GOOS+"/"+runtime.GOARCH)
 	components.StatRow(c, d, "设计", "「声档」令牌与 Flutter 版同源（app/lib/design/tokens）")
-	d.Text(c, tokens.BodyS, "本阶段完成 M5 元数据与图片：四源补全 + 可选 AI 兜底、人工匹配、封面缓存与取色、歌词逐行/逐字。分发与质量（M6）不在本阶段。").
+	d.Text(c, tokens.Small, "本阶段完成 M5 元数据与图片：四源补全 + 可选 AI 兜底、人工匹配、封面缓存与取色、歌词逐行/逐字。分发与质量（M6）不在本阶段。").
 		TextColor(d.P.TextTertiary).Wrap()
 }
 
@@ -299,25 +299,25 @@ func Sources(c *ui.Context, d components.Design, s *model.State) {
 							}
 						})
 						if source.Kind == model.SourceKindWebDAV && source.WebDAVURL != "" {
-							d.Text(c, tokens.BodyS, source.WebDAVURL).TextColor(d.P.TextTertiary).SingleLine()
+							d.Text(c, tokens.Small, source.WebDAVURL).TextColor(d.P.TextTertiary).SingleLine()
 						} else if source.Kind == model.SourceKindQuark {
-							d.Text(c, tokens.BodyS, "夸克网盘（直链播放，登录凭据在系统钥匙串）").
+							d.Text(c, tokens.Small, "夸克网盘（直链播放，登录凭据在系统钥匙串）").
 								TextColor(d.P.TextTertiary).SingleLine()
 						} else {
-							d.Text(c, tokens.BodyS, source.LocalFolderPath).TextColor(d.P.TextTertiary).SingleLine()
+							d.Text(c, tokens.Small, source.LocalFolderPath).TextColor(d.P.TextTertiary).SingleLine()
 						}
 						if message := s.SourceError(source.ID); message != "" {
 							ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space6).Children(func() {
 								ui.Icon(c, components.IconInfo).FontSize(tokens.IconCompact).TextColor(d.P.Danger)
-								d.Text(c, tokens.BodyS, message).TextColor(d.P.Danger).Wrap()
+								d.Text(c, tokens.Small, message).TextColor(d.P.Danger).Wrap()
 							})
 						}
 						if !source.LastSyncedAt.IsZero() {
-							d.Textf(c, tokens.BodyS, "上次同步：%s · %s",
+							d.Textf(c, tokens.Small, "上次同步：%s · %s",
 								source.LastSyncedAt.Format("2006-01-02 15:04"), source.SyncStatus).
 								TextColor(d.P.TextSecondary)
 						} else if source.SyncStatus != "" {
-							d.Text(c, tokens.BodyS, source.SyncStatus).TextColor(d.P.TextSecondary)
+							d.Text(c, tokens.Small, source.SyncStatus).TextColor(d.P.TextSecondary)
 						}
 					})
 				}
@@ -377,7 +377,7 @@ func sourceForm(c *ui.Context, d components.Design, s *model.State) {
 		if form.Editing != "" {
 			title = "重新登录：" + firstNonEmpty(form.Name, "来源")
 		}
-		d.Text(c, tokens.BodyM, title).TextColor(d.P.TextPrimary)
+		d.Text(c, tokens.Body, title).TextColor(d.P.TextPrimary)
 
 		sourceField(c, d, "名称", "可选，例如「家里的群晖」", &form.Name)
 		if form.Kind == model.SourceKindWebDAV {
@@ -399,8 +399,8 @@ func sourceForm(c *ui.Context, d components.Design, s *model.State) {
 				ui.Row(c).Gap(tokens.Space12).AlignItems(ui.Center).Children(func() {
 					ui.Image(c, form.QR).Size(180, 180).Fit(ui.Contain)
 					ui.Column(c).Gap(tokens.Space4).Children(func() {
-						d.Text(c, tokens.BodyS, form.QRPhase).TextColor(d.P.TextSecondary).Wrap()
-						d.Text(c, tokens.LabelS, "用手机夸克 App 扫码确认后会自动完成登录。").
+						d.Text(c, tokens.Small, form.QRPhase).TextColor(d.P.TextSecondary).Wrap()
+						d.Text(c, tokens.Overline, "用手机夸克 App 扫码确认后会自动完成登录。").
 							TextColor(d.P.TextTertiary).Wrap()
 					})
 				})
@@ -424,7 +424,7 @@ func sourceForm(c *ui.Context, d components.Design, s *model.State) {
 					s.CloseSourceForm()
 				}
 			})
-			d.Text(c, tokens.LabelS, "也可以把浏览器里的 Cookie 请求头粘贴到下面（明文仅显示在输入框里，保存进钥匙串）：").
+			d.Text(c, tokens.Overline, "也可以把浏览器里的 Cookie 请求头粘贴到下面（明文仅显示在输入框里，保存进钥匙串）：").
 				TextColor(d.P.TextTertiary).Wrap()
 			sourceField(c, d, "Cookie", "__pus=…; __puus=…", &form.Cookie)
 			if b := d.Button(c, "用 Cookie 登录"); b.Clicked() {
@@ -436,18 +436,18 @@ func sourceForm(c *ui.Context, d components.Design, s *model.State) {
 		if form.Busy {
 			ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space8).Children(func() {
 				ui.Spinner(c)
-				d.Text(c, tokens.BodyS, "正在处理…").TextColor(d.P.TextSecondary)
+				d.Text(c, tokens.Small, "正在处理…").TextColor(d.P.TextSecondary)
 			})
 		}
 		if form.Message != "" {
-			d.Text(c, tokens.BodyS, form.Message).TextColor(d.P.Danger).Wrap()
+			d.Text(c, tokens.Small, form.Message).TextColor(d.P.Danger).Wrap()
 		}
 	})
 }
 
 func sourceField(c *ui.Context, d components.Design, label, hint string, value *string) {
 	ui.Column(c).Gap(4).FillWidth().Children(func() {
-		d.Text(c, tokens.LabelS, label).TextColor(d.P.TextTertiary)
+		d.Text(c, tokens.Overline, label).TextColor(d.P.TextTertiary)
 		ui.TextInput(c, value).Placeholder(hint).Label(label).FillWidth()
 	})
 }
@@ -465,8 +465,8 @@ func sourceLimits(c *ui.Context, d components.Design) {
 			card := ui.Column(c).Width(300).Gap(tokens.Space6).Padding(tokens.Space16, tokens.Space12).
 				Radius(tokens.RadiusLG).Background(d.P.SurfaceRaised).Border(1, d.P.Border)
 			card.Children(func() {
-				d.Text(c, tokens.BodyM, item.name).TextColor(d.P.TextPrimary)
-				d.Text(c, tokens.BodyS, item.detail).TextColor(d.P.TextSecondary).Wrap()
+				d.Text(c, tokens.Body, item.name).TextColor(d.P.TextPrimary)
+				d.Text(c, tokens.Small, item.detail).TextColor(d.P.TextSecondary).Wrap()
 			})
 		}
 	})
