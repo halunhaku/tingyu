@@ -30,6 +30,8 @@ import (
 	"github.com/halunhaku/tingyu/client/internal/player"
 	"github.com/halunhaku/tingyu/client/internal/scan"
 	"github.com/halunhaku/tingyu/client/internal/shell"
+	"github.com/halunhaku/tingyu/client/internal/sources"
+	"github.com/halunhaku/tingyu/client/internal/ui/model"
 )
 
 type application struct {
@@ -50,6 +52,22 @@ type application struct {
 
 	session sessionPublisher
 	awake   atomic.Bool
+
+	// M3 source layer: credentials, adapters, sync and direct-link refresh.
+	creds     *sources.Credentials
+	sourceMgr *sources.Manager
+	syncer    *sources.Syncer
+	recoverer *sources.Recoverer
+
+	sourceLoginMu     sync.Mutex
+	sourceLoginCancel context.CancelFunc
+	sourceLoginSeq    atomic.Uint64
+	sourceLoginActive uint64
+	sourceSyncMu      sync.Mutex
+	sourceSyncCancel  context.CancelFunc
+	sourceSyncID      string
+	sourceSyncSeq     atomic.Uint64
+	sourceSyncActive  uint64
 
 	scanning   atomic.Bool
 	scanCancel atomic.Bool
@@ -213,12 +231,14 @@ func (a *application) prepare() error {
 		a.model.SetCoversDir(a.covers)
 	}
 
+	a.initSources()
 	a.engine, err = a.newEngine()
 	if err != nil {
 		a.logf("playback: %v", err)
 		a.model.SetError("播放内核不可用：" + err.Error())
 	} else if a.lib != nil {
-		a.control = player.New(a.engine, localResolver, a.lib)
+		a.control = player.New(a.engine, a.resolveTrack, a.lib)
+		a.recoverer = sources.NewRecoverer(a.sourceMgr, a.control, a.logf)
 		a.control.SetListener(a.onUpdate)
 		a.model.SetPlayer(a.control.Snapshot())
 		switch strings.ToLower(strings.TrimSpace(os.Getenv("TINGYU_REPEAT"))) {
@@ -248,23 +268,6 @@ func (a *application) newEngine() (*mpv.Player, error) {
 		return nil, err
 	}
 	return mpv.NewPlayer(lib, mpv.Config{AudioClientName: "听屿", Debug: a.logf})
-}
-
-// localResolver is the M1 resolver: a library track is a local file.
-func localResolver(track library.Track) (player.Item, error) {
-	if track.FilePath == "" {
-		return player.Item{}, errors.New("曲目没有文件路径")
-	}
-	return player.Item{
-		ID:       track.ID,
-		TrackID:  track.ID,
-		URI:      track.FilePath,
-		Title:    track.Title,
-		Artist:   track.Artist,
-		Album:    track.Album,
-		Duration: track.Duration,
-		ArtPath:  "",
-	}, nil
 }
 
 // --- window ---------------------------------------------------------
@@ -452,15 +455,43 @@ func (a *application) MovePlaylistItem(playlistID string, from, to int) {
 }
 
 // DeleteSource removes a source with its tracks, its playlist entries and any
-// cover file nothing else references (plan §2.1 #2 and #4).
+// cover file nothing else references (plan §2.1 #2 and #4). A remote source's
+// credential is removed with it: a secret whose source is gone is a leak, and
+// the cached adapter would keep serving a source that no longer exists.
 func (a *application) DeleteSource(source library.Source) {
 	a.write("删除来源", func(ctx context.Context) error {
+		// A sync of this source would race the delete: it merges tracks that
+		// are about to go. Cancel it first; a merge that still lands after
+		// the delete fails its foreign key and is only logged, it cannot
+		// bring the source back.
+		a.sourceSyncMu.Lock()
+		if a.sourceSyncID == source.ID && a.sourceSyncCancel != nil {
+			a.sourceSyncCancel()
+		}
+		a.sourceSyncMu.Unlock()
 		deletion, err := a.lib.DeleteSource(ctx, source.ID)
 		if err != nil {
 			return err
 		}
 		a.logf("source: deleted %q: tracks=%d playlist_items=%d covers=%v",
 			deletion.Source, deletion.Tracks, deletion.PlaylistItems, deletion.Covers)
+		if a.sourceMgr != nil {
+			a.sourceMgr.Invalidate(source.ID)
+		}
+		switch source.Kind {
+		case model.SourceKindWebDAV:
+			if a.creds != nil {
+				if err := a.creds.DeleteWebDAVPassword(source.ID); err != nil {
+					a.logf("source: delete credential of %q: %v", source.ID, err)
+				}
+			}
+		case model.SourceKindQuark:
+			if a.creds != nil {
+				if err := a.creds.DeleteQuarkCookie(source.ID); err != nil {
+					a.logf("source: delete credential of %q: %v", source.ID, err)
+				}
+			}
+		}
 		keep, err := a.lib.ReferencedCovers(ctx)
 		if err != nil {
 			return err
@@ -559,9 +590,13 @@ func (a *application) Queue() []library.Track {
 	return a.control.Queue()
 }
 
-// SyncSource re-scans a source's local folder through the same scan path as
-// "add directory" (the kernel has the scan; only the button was missing).
+// SyncSource syncs one source: a local folder through the scanner, a remote
+// source through the M3 source layer (progress, cancel and re-login included).
 func (a *application) SyncSource(source library.Source) {
+	if source.Kind != "local" {
+		go a.syncRemote(source)
+		return
+	}
 	if strings.TrimSpace(source.LocalFolderPath) == "" {
 		a.setStatus("来源 " + source.Name + " 没有本地目录，无法同步")
 		return
@@ -569,8 +604,7 @@ func (a *application) SyncSource(source library.Source) {
 	go a.scanFolder(source.LocalFolderPath)
 }
 
-// SyncAllSources re-scans every local source in turn. Remote sources need M3,
-// so they are skipped rather than attempted and failed.
+// SyncAllSources syncs every source in turn: local folders, then remote ones.
 func (a *application) SyncAllSources() {
 	if a.lib == nil || !a.lib.Writable() {
 		a.setStatus("只读模式：设置 TINGYU_DATA_DIR 指向曲库副本后才能同步")
@@ -583,10 +617,13 @@ func (a *application) SyncAllSources() {
 			return
 		}
 		for _, source := range sources {
-			if source.Kind != "local" || strings.TrimSpace(source.LocalFolderPath) == "" {
+			if source.Kind == "local" {
+				if strings.TrimSpace(source.LocalFolderPath) != "" {
+					a.scanFolder(source.LocalFolderPath)
+				}
 				continue
 			}
-			a.scanFolder(source.LocalFolderPath)
+			a.syncRemote(source)
 		}
 	}()
 }

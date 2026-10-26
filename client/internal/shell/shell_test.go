@@ -891,3 +891,54 @@ func TestFormatDuration(t *testing.T) {
 		}
 	}
 }
+
+func TestSourcesPageShowsRemoteFormsAndRelogin(t *testing.T) {
+	m := newModel(t)
+	m.State().SetSources([]library.Source{{
+		ID: "src-quark", Name: "我的夸克", Kind: "quark", TrackCount: 4, SyncStatus: "未同步",
+	}})
+	m.State().OpenPage(model.PageSources)
+	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
+	for _, want := range []string{"来源管理", "我的夸克", "同步", "夸克网盘（直链播放"} {
+		if !tt.HasText(want) {
+			t.Errorf("sources page does not show %q; texts are %q", want, tt.Texts())
+		}
+	}
+
+	// A credential failure becomes a re-login entry with the reason.
+	m.State().SetSourceError("src-quark", "夸克网盘登录凭据已失效，请重新登录")
+	tt = ui.NewTester(m.View, DefaultWidth, DefaultHeight)
+	for _, want := range []string{"重新登录", "夸克网盘登录凭据已失效，请重新登录"} {
+		if !tt.HasText(want) {
+			t.Errorf("re-login entry missing %q; texts are %q", want, tt.Texts())
+		}
+	}
+
+	// Progress of a remote sync is visible and cancellable.
+	m.State().SetScan(model.ScanState{Running: true, Done: 5, SourceID: "src-quark", SourceName: "我的夸克", Path: "我的夸克 · 晴天"})
+	tt = ui.NewTester(m.View, DefaultWidth, DefaultHeight)
+	for _, want := range []string{"正在同步「我的夸克」", "取消同步"} {
+		if !tt.HasText(want) {
+			t.Errorf("sync progress missing %q; texts are %q", want, tt.Texts())
+		}
+	}
+	m.State().SetScan(model.ScanState{})
+
+	// The quark form offers the QR flow and the Cookie escape hatch.
+	m.State().OpenSourceForm(model.SourceKindQuark, "")
+	tt = ui.NewTester(m.View, DefaultWidth, DefaultHeight)
+	for _, want := range []string{"登录夸克网盘", "扫码登录", "用 Cookie 登录", "Cookie"} {
+		if !tt.HasText(want) {
+			t.Errorf("quark form missing %q; texts are %q", want, tt.Texts())
+		}
+	}
+
+	// The WebDAV form asks for the four fields and writes nothing yet.
+	m.State().OpenSourceForm(model.SourceKindWebDAV, "")
+	tt = ui.NewTester(m.View, DefaultWidth, DefaultHeight)
+	for _, want := range []string{"添加 WebDAV 来源", "地址", "账号", "密码 / 应用专用密码", "添加并同步", "取消"} {
+		if !tt.HasText(want) {
+			t.Errorf("webdav form missing %q; texts are %q", want, tt.Texts())
+		}
+	}
+}

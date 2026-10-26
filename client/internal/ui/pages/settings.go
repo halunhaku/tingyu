@@ -227,9 +227,11 @@ func aboutSettings(c *ui.Context, d components.Design, s *model.State) {
 		TextColor(d.P.TextTertiary).Wrap()
 }
 
-// Sources is the source management page. Local directories are fully usable
-// (add, re-scan); WebDAV and Quark show as out-of-scope M3 entries instead of
-// forms that would fail.
+// Sources is the source management page. M3 adds the two remote kinds: a
+// WebDAV credential form, a Quark login (QR or pasted Cookie), progress with a
+// cancel button, and a "重新登录" entry when a credential failed. It is the
+// smallest usable surface — the plan allows exactly that — and reuses the
+// existing tokens and components rather than introducing a new design.
 func Sources(c *ui.Context, d components.Design, s *model.State) {
 	actions := func() {
 		ui.MenuButton(c, "添加来源", func(m *ui.Menu) {
@@ -238,19 +240,22 @@ func Sources(c *ui.Context, d components.Design, s *model.State) {
 					a.ChooseDirectory()
 				}
 			}
-			webdav := m.Item("WebDAV…（M3）")
-			webdav.Disabled(true)
-			quark := m.Item("夸克网盘…（M3）")
-			quark.Disabled(true)
+			if m.Item("WebDAV…").Chosen() {
+				s.OpenSourceForm(model.SourceKindWebDAV, "")
+			}
+			if m.Item("夸克网盘…").Chosen() {
+				s.OpenSourceForm(model.SourceKindQuark, "")
+			}
 		}).Radius(tokens.RadiusSM).FontSize(13)
 	}
 	view := sourcesView(s)
 	Page(c, d, s, "来源管理", sourceSummary(s), s.Back, actions, func() {
 		sourceDeleteDialog(c, s, view)
 		ScanPanel(c, d, s.Scan())
+		sourceForm(c, d, s)
 		if len(s.Sources()) == 0 {
 			components.Empty(c, d, components.IconFolder, "还没有音乐来源",
-				"添加一个本地音乐目录开始扫描。WebDAV 与夸克网盘属于 M3，尚未接入。", func() {
+				"添加一个本地目录、一个 WebDAV 目录或登录夸克网盘。", func() {
 					AddDirectoryButton(c, d, s)
 				})
 			return
@@ -263,15 +268,24 @@ func Sources(c *ui.Context, d components.Design, s *model.State) {
 						Radius(tokens.RadiusLG).Background(d.P.SurfaceRaised).Border(1, d.P.Border)
 					card.Children(func() {
 						components.SourceRow(c, d, source.Name, source.Kind, source.TrackCount)
-						ui.Row(c).Gap(tokens.Space8).Children(func() {
-							if source.Kind == "local" {
-								if b := d.Button(c, "同步"); b.Clicked() {
-									if a := s.Actions(); a != nil {
-										a.SyncSource(source)
+						ui.Row(c).Gap(tokens.Space8).Wrap().Children(func() {
+							scan := s.Scan()
+							syncing := scan.Running && scan.SourceID == source.ID
+							if syncing {
+								if b := d.Button(c, "取消同步"); b.Clicked() {
+									if a := s.SourceActionsOf(); a != nil {
+										a.CancelSourceSync()
 									}
 								}
-							} else {
-								d.Tag(c, "远端来源 · M3 未接入")
+							} else if b := d.Button(c, "同步"); b.Clicked() {
+								if a := s.Actions(); a != nil {
+									a.SyncSource(source)
+								}
+							}
+							if message := s.SourceError(source.ID); message != "" {
+								if b := d.Button(c, "重新登录"); b.Clicked() {
+									s.OpenSourceForm(source.Kind, source.ID)
+								}
 							}
 							if b := d.Button(c, "查看曲目"); b.Clicked() {
 								s.Library().SetSource(source.ID)
@@ -282,15 +296,30 @@ func Sources(c *ui.Context, d components.Design, s *model.State) {
 								view.confirmOpen = true
 							}
 						})
-						d.Text(c, tokens.BodyS, source.LocalFolderPath).TextColor(d.P.TextTertiary).SingleLine()
+						if source.Kind == model.SourceKindWebDAV && source.WebDAVURL != "" {
+							d.Text(c, tokens.BodyS, source.WebDAVURL).TextColor(d.P.TextTertiary).SingleLine()
+						} else if source.Kind == model.SourceKindQuark {
+							d.Text(c, tokens.BodyS, "夸克网盘（直链播放，登录凭据在系统钥匙串）").
+								TextColor(d.P.TextTertiary).SingleLine()
+						} else {
+							d.Text(c, tokens.BodyS, source.LocalFolderPath).TextColor(d.P.TextTertiary).SingleLine()
+						}
+						if message := s.SourceError(source.ID); message != "" {
+							ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space6).Children(func() {
+								ui.Icon(c, components.IconInfo).FontSize(tokens.IconCompact).TextColor(d.P.Danger)
+								d.Text(c, tokens.BodyS, message).TextColor(d.P.Danger).Wrap()
+							})
+						}
 						if !source.LastSyncedAt.IsZero() {
 							d.Textf(c, tokens.BodyS, "上次同步：%s · %s",
 								source.LastSyncedAt.Format("2006-01-02 15:04"), source.SyncStatus).
 								TextColor(d.P.TextSecondary)
+						} else if source.SyncStatus != "" {
+							d.Text(c, tokens.BodyS, source.SyncStatus).TextColor(d.P.TextSecondary)
 						}
 					})
 				}
-				outOfScopeSources(c, d)
+				sourceLimits(c, d)
 			})
 		})
 	})
@@ -330,24 +359,124 @@ func sourceDeleteDialog(c *ui.Context, s *model.State, v *sourcesPage) {
 	}
 }
 
-func outOfScopeSources(c *ui.Context, d components.Design) {
-	components.SectionTitle(c, d, "尚未接入（M3）", "远端来源需要 M2 的远端播放能力；本阶段不建设。")
+// sourceForm renders the add/re-login panel of one kind.
+func sourceForm(c *ui.Context, d components.Design, s *model.State) {
+	form := s.SourceForm()
+	if !form.Open {
+		return
+	}
+	card := ui.Column(c).Gap(tokens.Space10).Padding(tokens.Space16, tokens.Space12).
+		Radius(tokens.RadiusLG).Background(d.P.SurfaceRaised).Border(1, d.P.Border)
+	card.Children(func() {
+		title := "添加 WebDAV 来源"
+		if form.Kind == model.SourceKindQuark {
+			title = "登录夸克网盘"
+		}
+		if form.Editing != "" {
+			title = "重新登录：" + firstNonEmpty(form.Name, "来源")
+		}
+		d.Text(c, tokens.BodyM, title).TextColor(d.P.TextPrimary)
+
+		sourceField(c, d, "名称", "可选，例如「家里的群晖」", &form.Name)
+		if form.Kind == model.SourceKindWebDAV {
+			sourceField(c, d, "地址", "https://dav.jianguoyun.com/dav/", &form.URL)
+			sourceField(c, d, "账号", "登录名", &form.Username)
+			sourceField(c, d, "密码 / 应用专用密码", "只写入系统钥匙串，不落明文", &form.Password)
+			ui.Row(c).Gap(tokens.Space8).Children(func() {
+				if b := d.Button(c, "添加并同步"); b.Clicked() {
+					if a := s.SourceActionsOf(); a != nil {
+						a.AddWebDAVSource(form.Values())
+					}
+				}
+				if b := d.Button(c, "取消"); b.Clicked() {
+					s.CloseSourceForm()
+				}
+			})
+		} else {
+			if form.QR != nil {
+				ui.Row(c).Gap(tokens.Space12).AlignItems(ui.Center).Children(func() {
+					ui.Image(c, form.QR).Size(180, 180).Fit(ui.Contain)
+					ui.Column(c).Gap(tokens.Space4).Children(func() {
+						d.Text(c, tokens.BodyS, form.QRPhase).TextColor(d.P.TextSecondary).Wrap()
+						d.Text(c, tokens.LabelS, "用手机夸克 App 扫码确认后会自动完成登录。").
+							TextColor(d.P.TextTertiary).Wrap()
+					})
+				})
+			}
+			ui.Row(c).Gap(tokens.Space8).Children(func() {
+				label := "扫码登录"
+				if form.QR != nil {
+					label = "刷新二维码"
+				}
+				if b := d.Button(c, label); b.Clicked() {
+					if a := s.SourceActionsOf(); a != nil {
+						a.LoginQuark(form.Values())
+					}
+				}
+				if b := d.Button(c, "停止扫码"); b.Clicked() {
+					if a := s.SourceActionsOf(); a != nil {
+						a.CancelSourceLogin()
+					}
+				}
+				if b := d.Button(c, "取消"); b.Clicked() {
+					s.CloseSourceForm()
+				}
+			})
+			d.Text(c, tokens.LabelS, "也可以把浏览器里的 Cookie 请求头粘贴到下面（明文仅显示在输入框里，保存进钥匙串）：").
+				TextColor(d.P.TextTertiary).Wrap()
+			sourceField(c, d, "Cookie", "__pus=…; __puus=…", &form.Cookie)
+			if b := d.Button(c, "用 Cookie 登录"); b.Clicked() {
+				if a := s.SourceActionsOf(); a != nil {
+					a.AddQuarkSource(form.Values())
+				}
+			}
+		}
+		if form.Busy {
+			ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space8).Children(func() {
+				ui.Spinner(c)
+				d.Text(c, tokens.BodyS, "正在处理…").TextColor(d.P.TextSecondary)
+			})
+		}
+		if form.Message != "" {
+			d.Text(c, tokens.BodyS, form.Message).TextColor(d.P.Danger).Wrap()
+		}
+	})
+}
+
+func sourceField(c *ui.Context, d components.Design, label, hint string, value *string) {
+	ui.Column(c).Gap(4).FillWidth().Children(func() {
+		d.Text(c, tokens.LabelS, label).TextColor(d.P.TextTertiary)
+		ui.TextInput(c, value).Placeholder(hint).Label(label).FillWidth()
+	})
+}
+
+// sourceLimits is the honesty block: what M3 covers and what it does not.
+func sourceLimits(c *ui.Context, d components.Design) {
+	components.SectionTitle(c, d, "远端来源说明",
+		"凭据只存系统钥匙串；同步可取消，取消或截断时保留未扫描曲目；夸克直链过期会自动刷新一次。")
 	ui.Row(c).Gap(tokens.Space12).Wrap().Children(func() {
 		for _, item := range []struct{ name, detail string }{
-			{"WebDAV", "PROPFIND 同步、Basic 鉴权、坚果云流控文案"},
-			{"夸克网盘", "扫码/网页登录、直链鉴权、Cookie 生命周期"},
+			{"WebDAV", "PROPFIND 扫描、Basic 鉴权播放、坚果云流控文案、列目录失败与重试"},
+			{"夸克网盘", "扫码网页登录流程、Cookie 生命周期、分页目录、直链与过期刷新"},
+			{"尚未包含", "M5 元数据补全、封面抓取；跨设备凭据迁移"},
 		} {
-			card := ui.Column(c).Width(320).Gap(tokens.Space6).Padding(tokens.Space16, tokens.Space12).
+			card := ui.Column(c).Width(300).Gap(tokens.Space6).Padding(tokens.Space16, tokens.Space12).
 				Radius(tokens.RadiusLG).Background(d.P.SurfaceRaised).Border(1, d.P.Border)
 			card.Children(func() {
-				ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space8).Children(func() {
-					d.Text(c, tokens.BodyM, item.name).TextColor(d.P.TextPrimary)
-					d.Tag(c, "M3 未接入")
-				})
+				d.Text(c, tokens.BodyM, item.name).TextColor(d.P.TextPrimary)
 				d.Text(c, tokens.BodyS, item.detail).TextColor(d.P.TextSecondary).Wrap()
 			})
 		}
 	})
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func sourceSummary(s *model.State) string {

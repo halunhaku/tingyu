@@ -109,14 +109,18 @@ func (s Settings) Dark(systemDark bool) bool {
 // Compact reports whether the compact density is chosen.
 func (s Settings) Compact() bool { return s.Density == "compact" }
 
-// ScanState is what the shell shows about a scan.
+// ScanState is what the shell shows about a scan. SourceID/SourceName are set
+// for remote syncs so the source card can show its own progress and a cancel
+// button (M3).
 type ScanState struct {
-	Running bool
-	Done    int
-	Total   int
-	Path    string
-	Status  string
-	Error   string
+	Running    bool
+	Done       int
+	Total      int
+	Path       string
+	Status     string
+	Error      string
+	SourceID   string
+	SourceName string
 }
 
 // Actions are the side effects the view asks the app to perform. Every method
@@ -174,6 +178,9 @@ type State struct {
 	scan    ScanState
 	status  string
 	failure string
+
+	sourceForm   SourceForm
+	sourceErrors map[string]string
 
 	player   player.Update
 	volume   float64

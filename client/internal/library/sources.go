@@ -9,8 +9,9 @@ package library
 // album's artwork).
 //
 // Credentials are not part of this: a local source has none, and the WebDAV /
-// Quark secrets belong to the secure store the remote-source work introduces.
-// When that lands, deleting such a source must also drop its secret entry.
+// Quark secrets live in the system Keychain under the source layer, so the
+// caller (internal/app) drops them together with the source; keeping that out
+// of the library keeps it free of keychain access.
 
 import (
 	"context"

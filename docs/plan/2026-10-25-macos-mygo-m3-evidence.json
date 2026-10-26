@@ -1,0 +1,239 @@
+{
+  "started_at": "2026-10-26T08:57:04.637899+08:00",
+  "finished_at": "2026-10-26T08:57:08.096695+08:00",
+  "host": {
+    "go": "go1.27.3 darwin/arm64",
+    "os": "macOS 27.2",
+    "libmpv_path": "<app bundle>/Contents/Frameworks/Mpv.framework/Versions/A/Mpv",
+    "mpv_client_api": "2.1"
+  },
+  "checks": [
+    {
+      "name": "webdav-add",
+      "goal": "添加 WebDAV 来源（地址/账号/密码 → Depth:0 探测通过）",
+      "ok": true,
+      "detail": "连接探测通过，用时 16ms；密码写入 Keychain 服务 com.halunhaku.tingyu.sources.acceptance",
+      "evidence": {
+        "probe_ms": 16,
+        "root": "http://127.0.0.1:51798/dav/"
+      }
+    },
+    {
+      "name": "webdav-scan",
+      "goal": "加 WebDAV 来源 → 120 首入库",
+      "ok": true,
+      "detail": "已同步（新增 120 / 更新 0 / 移除 0）；入库 120 首，用时 15ms",
+      "evidence": {
+        "elapsed_ms": 14,
+        "merge": {
+          "added": 120,
+          "removed": 0,
+          "updated": 0
+        },
+        "status": "已同步（新增 120 / 更新 0 / 移除 0）",
+        "stored": 120,
+        "tracks_found": 120
+      }
+    },
+    {
+      "name": "webdav-play",
+      "goal": "远端曲目可播可 seek，服务端可见 Range + 按曲目鉴权头",
+      "ok": true,
+      "detail": "\"歌名000\"：起播 0.57s，seek 到 10s 落点 10.02s，之后推进到 10.70s；服务端 GET 1 次（带 Range 1、带 Basic 1、206 1）",
+      "evidence": {
+        "elapsed_ms": 1457,
+        "final_position": 10.700049333,
+        "gets": 1,
+        "gets_with_basic": 1,
+        "gets_with_range": 1,
+        "partial_206": 1,
+        "played_position": 0.572818999,
+        "position_advanced": 10.700049333,
+        "position_after_seek": 10.024579333,
+        "requests": [
+          {
+            "auth": true,
+            "bytes": 2880044,
+            "method": "GET",
+            "path": "/dav/专辑00/000 歌名000.wav",
+            "range": "bytes=0-",
+            "status": 206
+          }
+        ],
+        "seek_target": 10,
+        "sound_after_ms": 132,
+        "track": "歌名000",
+        "uri_host": "127.0.0.1:51798"
+      }
+    },
+    {
+      "name": "webdav-relogin",
+      "goal": "凭据失效 → 出现重新登录入口；重填后恢复",
+      "ok": true,
+      "detail": "失效时 needLogin=true 文案=\"WebDAV 认证失败，请检查账号和应用专用密码\" 来源状态=\"WebDAV 认证失败，请检查账号和应用专用密码\"；重填后 已同步（新增 0 / 更新 0 / 移除 0）",
+      "evidence": {
+        "message": "WebDAV 认证失败，请检查账号和应用专用密码",
+        "need_login": true,
+        "recovered_err": "",
+        "recovered_status": "已同步（新增 0 / 更新 0 / 移除 0）",
+        "stored_status": "WebDAV 认证失败，请检查账号和应用专用密码"
+      }
+    },
+    {
+      "name": "sync-cancel",
+      "goal": "取消同步后曲目数不变（含数据库计数）",
+      "ok": true,
+      "detail": "取消前 120 首 → 取消后 120 首；merge.removed=0；库内总行数 120；状态 \"已取消（保留未扫描曲目；新增 0 / 更新 0）\"",
+      "evidence": {
+        "after": 120,
+        "before": 120,
+        "cancelled": true,
+        "error": "",
+        "library_rows": 120,
+        "query": "SELECT COUNT(*) FROM tracks",
+        "removed": 0,
+        "status": "已取消（保留未扫描曲目；新增 0 / 更新 0）"
+      }
+    },
+    {
+      "name": "quark-qr-login",
+      "goal": "夸克扫码登录 → 拿到 Cookie 并写入 Keychain",
+      "ok": true,
+      "detail": "扫码前 waiting，确认后 scanned；Cookie 51 字节 / 3 项；cookie 写入=true",
+      "evidence": {
+        "cookie_bytes": 51,
+        "cookie_names": [
+          "__cas",
+          "__puus",
+          "__pus"
+        ],
+        "elapsed_ms": 9,
+        "error": "",
+        "first_phase": "waiting",
+        "phase": "scanned",
+        "qr_content_has": true,
+        "qr_content_len": 174
+      }
+    },
+    {
+      "name": "quark-scan",
+      "goal": "夸克列目录 → 入库",
+      "ok": true,
+      "detail": "已同步（新增 4 / 更新 0 / 移除 0）；入库 4 首，用时 7ms",
+      "evidence": {
+        "elapsed_ms": 6,
+        "merge": {
+          "added": 4,
+          "removed": 0,
+          "updated": 0
+        },
+        "status": "已同步（新增 4 / 更新 0 / 移除 0）",
+        "stored": 4,
+        "tracks_found": 4,
+        "want": 4
+      }
+    },
+    {
+      "name": "quark-play-refresh",
+      "goal": "夸克直链可播；直链过期后自动刷新并继续播放（日志为证）",
+      "ok": true,
+      "detail": "首播 \"以父之名\" 0.57s；过期后切到 \"园游会\" 首次加载被拒 1 次（HTTP 403：直链已失效或没有访问权限（HTTP 403）：请重新获取链接或重新登录），自动刷新=true，新直链 link-5 返回 206，出声位置 0.83s",
+      "evidence": {
+        "elapsed_ms": 1622,
+        "failure_message": "直链已失效或没有访问权限（HTTP 403）：请重新获取链接或重新登录",
+        "failure_status": 403,
+        "final_position": 0.828875999,
+        "first_played_position": 0.572868999,
+        "first_track": "以父之名",
+        "fresh_link_token": "link-5",
+        "http_403": 1,
+        "link_issuances_after": 5,
+        "link_issuances_before": 3,
+        "next_track": "园游会",
+        "playing_after_recovery": true,
+        "refresh_started": true,
+        "requests": [
+          {
+            "bytes": 11520044,
+            "cookie": true,
+            "path": "/cdn/download/file-3",
+            "range": "bytes=0-",
+            "status": 206,
+            "token": "link-5",
+            "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 1…"
+          },
+          {
+            "bytes": 0,
+            "cookie": true,
+            "path": "/cdn/download/file-3",
+            "range": "bytes=0-",
+            "status": 403,
+            "token": "link-2",
+            "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 1…"
+          },
+          {
+            "bytes": 11520044,
+            "cookie": true,
+            "path": "/cdn/download/file-1",
+            "range": "bytes=0-",
+            "status": 206,
+            "token": "link-1",
+            "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 1…"
+          }
+        ],
+        "stale_link_token": "link-2"
+      }
+    },
+    {
+      "name": "quark-relogin",
+      "goal": "Cookie 失效 → 出现重新登录入口，登录后恢复",
+      "ok": true,
+      "detail": "失效：needLogin=true 文案=\"夸克网盘登录凭据已失效，请重新登录\" 来源状态=\"夸克网盘登录凭据已失效，请重新登录\"，曲目 4→4；重新扫码（Cookie 56 字节）后 已同步（新增 0 / 更新 0 / 移除 0），曲目 4",
+      "evidence": {
+        "cookie_bytes": 56,
+        "errors": [
+          "夸克网盘登录凭据已失效，请重新登录",
+          "",
+          ""
+        ],
+        "message": "夸克网盘登录凭据已失效，请重新登录",
+        "need_login": true,
+        "recovered_status": "已同步（新增 0 / 更新 0 / 移除 0）",
+        "source_status": "夸克网盘登录凭据已失效，请重新登录",
+        "tracks_after": 4,
+        "tracks_after_failure": 4,
+        "tracks_before": 4
+      }
+    },
+    {
+      "name": "credentials-keychain",
+      "goal": "凭据只存系统钥匙串、不落明文",
+      "ok": true,
+      "detail": "Keychain：WebDAV 密码与夸克 Cookie 均可读回（密码 15 字节，Cookie 56 字节）；security 查询命中=true/true；数据目录明文命中 0 个文件",
+      "evidence": {
+        "accounts": [
+          "webdav_password_src-webdav",
+          "quark_cookie_src-quark"
+        ],
+        "cookie_bytes": 56,
+        "data_dir": "build/m3-evidence/final/data",
+        "errors": [
+          "",
+          ""
+        ],
+        "password_bytes": 15,
+        "plaintext_files": 0,
+        "security_found": {
+          "quark_cookie_src-quark": true,
+          "webdav_password_src-webdav": true
+        },
+        "service": "com.halunhaku.tingyu.sources.acceptance"
+      }
+    }
+  ],
+  "library_path": "build/m3-evidence/<timestamp>/data/library.sqlite",
+  "production_sha256_before": "310526fdbac4e7dd9615c4d124bb28049146f87f4bce00629ed8f10b4581fb73",
+  "production_sha256_after": "310526fdbac4e7dd9615c4d124bb28049146f87f4bce00629ed8f10b4581fb73",
+  "production_path": "/Users/halunhaku/Library/Application Support/com.halunhaku.tingyu/library.sqlite",
+  "keychain_service": "com.halunhaku.tingyu.sources.acceptance"
+}

@@ -85,9 +85,16 @@ type Source struct {
 	Name            string
 	Kind            string
 	LocalFolderPath string
-	SyncStatus      string
-	LastSyncedAt    time.Time
-	TrackCount      int64
+	// Remote source fields. M3 writes them; UpsertLocalSource keeps writing
+	// only the local columns, so its behaviour is unchanged.
+	WebDAVURL        string
+	WebDAVUsername   string
+	WebDAVRootPath   string
+	QuarkFolderFID   string
+	QuarkAccountName string
+	SyncStatus       string
+	LastSyncedAt     time.Time
+	TrackCount       int64
 }
 
 // DataDir returns the directory holding library.sqlite: TINGYU_DATA_DIR
@@ -329,8 +336,13 @@ func trackFromRow(value []any) (Track, error) {
 
 // Sources returns every music source, by name.
 func (l *Library) Sources(ctx context.Context) ([]Source, error) {
+	// The remote columns are selected so M3 can build an adapter from a row
+	// without a second query. Their values are ignored by everything else.
 	const query = `
-SELECT id, name, kind, local_folder_path, sync_status, last_synced_at, track_count
+SELECT id, name, kind, local_folder_path,
+       webdav_url, webdav_username, webdav_root_path,
+       quark_folder_fid, quark_account_name,
+       sync_status, last_synced_at, track_count
 FROM music_sources ORDER BY name COLLATE NOCASE, id`
 	rows, err := l.db.Query(ctx, query)
 	if err != nil {
@@ -338,21 +350,80 @@ FROM music_sources ORDER BY name COLLATE NOCASE, id`
 	}
 	out := make([]Source, 0, len(rows.Values))
 	for _, value := range rows.Values {
-		if len(value) != 7 {
-			return nil, fmt.Errorf("library: source row has %d columns, want 7", len(value))
+		if len(value) != 12 {
+			return nil, fmt.Errorf("library: source row has %d columns, want 12", len(value))
 		}
 		source := Source{
-			ID:              stringValue(value[0]),
-			Name:            stringValue(value[1]),
-			Kind:            stringValue(value[2]),
-			LocalFolderPath: stringValue(value[3]),
-			SyncStatus:      stringValue(value[4]),
-			TrackCount:      int64Value(value[6]),
+			ID:               stringValue(value[0]),
+			Name:             stringValue(value[1]),
+			Kind:             stringValue(value[2]),
+			LocalFolderPath:  stringValue(value[3]),
+			WebDAVURL:        stringValue(value[4]),
+			WebDAVUsername:   stringValue(value[5]),
+			WebDAVRootPath:   stringValue(value[6]),
+			QuarkFolderFID:   stringValue(value[7]),
+			QuarkAccountName: stringValue(value[8]),
+			SyncStatus:       stringValue(value[9]),
+			TrackCount:       int64Value(value[11]),
 		}
-		source.LastSyncedAt, _ = timeValue(value[5])
+		source.LastSyncedAt, _ = timeValue(value[10])
 		out = append(out, source)
 	}
 	return out, nil
+}
+
+// UpsertSource inserts or updates a source row of any kind, including the
+// remote columns WebDAV and Quark need. It is additive: UpsertLocalSource keeps
+// its local-only behaviour and its SQL untouched, so the existing local path is
+// unaffected. M3 needs this single write entry point because a remote source
+// cannot be created without storing its URL / account / folder id; see the M3
+// record's "需数据层支持" list — if the data layer takes sources over, it should
+// keep this function's semantics.
+func (l *Library) UpsertSource(ctx context.Context, source Source) error {
+	if !l.writes {
+		return errors.New("library: connection is read-only")
+	}
+	if strings.TrimSpace(source.ID) == "" {
+		return errors.New("library: source needs an id")
+	}
+	if strings.TrimSpace(source.Name) == "" {
+		source.Name = source.ID
+	}
+	if strings.TrimSpace(source.Kind) == "" {
+		return errors.New("library: source needs a kind")
+	}
+	if source.SyncStatus == "" {
+		source.SyncStatus = "未同步"
+	}
+	_, err := l.db.Execute(ctx,
+		`INSERT INTO music_sources
+		   (id, name, kind, local_folder_path,
+		    webdav_url, webdav_username, webdav_root_path,
+		    quark_folder_fid, quark_account_name,
+		    sync_status, last_synced_at, track_count)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(id) DO UPDATE SET
+		   name = excluded.name,
+		   kind = excluded.kind,
+		   local_folder_path = excluded.local_folder_path,
+		   webdav_url = excluded.webdav_url,
+		   webdav_username = excluded.webdav_username,
+		   webdav_root_path = excluded.webdav_root_path,
+		   quark_folder_fid = excluded.quark_folder_fid,
+		   quark_account_name = excluded.quark_account_name,
+		   sync_status = excluded.sync_status,
+		   last_synced_at = COALESCE(excluded.last_synced_at, music_sources.last_synced_at),
+		   track_count = excluded.track_count`,
+		source.ID, source.Name, source.Kind, nullableString(source.LocalFolderPath),
+		nullableString(source.WebDAVURL), nullableString(source.WebDAVUsername),
+		nullableString(source.WebDAVRootPath), nullableString(source.QuarkFolderFID),
+		nullableString(source.QuarkAccountName), source.SyncStatus,
+		nullableTime(source.LastSyncedAt), source.TrackCount)
+	if err != nil {
+		return fmt.Errorf("library: upsert source %s: %w", source.ID, err)
+	}
+	l.bump()
+	return nil
 }
 
 // SourceByFolder finds the local source that already owns folder, so picking

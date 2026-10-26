@@ -370,11 +370,11 @@ func (p *Player) onLogMessage(event *cEvent) {
 		return
 	}
 	if severity == "error" || severity == "fatal" {
-		p.cfg.Debug("mpv: %s: %s", level, text)
+		p.cfg.Debug("mpv: %s: %s", level, redactURIs(text))
 		return
 	}
 	if p.logLevel() != "warn" {
-		p.cfg.Debug("mpv: %s: %s%s", level, prefix, text)
+		p.cfg.Debug("mpv: %s: %s%s", level, prefix, redactURIs(text))
 	}
 }
 
@@ -437,7 +437,14 @@ func (p *Player) applyHeader() {
 		return
 	}
 	if p.cfg.Debug != nil {
-		p.cfg.Debug("mpv: http-header-fields=%q for %s", header, path)
+		if header == "" {
+			p.cfg.Debug("mpv: cleared per-track headers for %s", redactURIs(path))
+			return
+		}
+		// Header *names* only: an Authorization or Cookie value in a log file
+		// would be a stored credential (M3 §3.4). The values themselves are the
+		// engine's business, not the log's.
+		p.cfg.Debug("mpv: per-track headers [%s] for %s", headerFieldNames(header), redactURIs(path))
 	}
 }
 
@@ -607,7 +614,7 @@ func (p *Player) publish(force bool) {
 	if p.cfg.Debug != nil && force {
 		p.cfg.Debug("mpv: state %s playing=%v pos=%.2f dur=%.2f index=%d path=%s",
 			snapshot.Processing, snapshot.Playing, snapshot.Position.Seconds(),
-			snapshot.Duration.Seconds(), snapshot.Index, snapshot.Path)
+			snapshot.Duration.Seconds(), snapshot.Index, redactURIs(snapshot.Path))
 	}
 }
 
@@ -795,6 +802,22 @@ func (p *Player) Append(item Item) error {
 		return err
 	}
 	return nil
+}
+
+// headerFieldNames lists the names of an http-header-fields value ("A: 1,B:
+// 2"), so a debug line can say what was applied without printing a credential.
+func headerFieldNames(header string) string {
+	parts := strings.Split(header, ",")
+	names := make([]string, 0, len(parts))
+	for _, part := range parts {
+		name, _, found := strings.Cut(part, ":")
+		name = strings.TrimSpace(name)
+		if !found || name == "" {
+			continue
+		}
+		names = append(names, name)
+	}
+	return strings.Join(names, ",")
 }
 
 func headerValue(headers map[string]string) string {

@@ -70,6 +70,36 @@ func (m *Model) SetPlayer(update player.Update) {
 // SetQueue records the queue the controller was given.
 func (m *Model) SetQueue(queue []library.Track, index int) { m.state.SetQueue(queue, index) }
 
+// --- M3 remote-source state (see internal/ui/model/sourceform.go) -----
+
+// OpenSourceForm opens the add/re-login panel.
+func (m *Model) OpenSourceForm(kind, editing string) { m.state.OpenSourceForm(kind, editing) }
+
+// CloseSourceForm hides it.
+func (m *Model) CloseSourceForm() { m.state.CloseSourceForm() }
+
+// SetSourceFormBusy marks the form busy and shows a message.
+func (m *Model) SetSourceFormBusy(busy bool, message string) {
+	m.state.SetSourceFormBusy(busy, message)
+}
+
+// SetSourceFormMessage replaces the form's message line.
+func (m *Model) SetSourceFormMessage(message string) { m.state.SetSourceFormMessage(message) }
+
+// SetSourceQR shows the QR image and phase sentence.
+func (m *Model) SetSourceQR(bitmap *ui.Bitmap, phase string) { m.state.SetSourceQR(bitmap, phase) }
+
+// SourceForm exposes the form state.
+func (m *Model) SourceForm() *model.SourceForm { return m.state.SourceForm() }
+
+// SetSourceError records that a source needs a re-login.
+func (m *Model) SetSourceError(sourceID, message string) {
+	m.state.SetSourceError(sourceID, message)
+}
+
+// ClearSourceError drops a source's error.
+func (m *Model) ClearSourceError(sourceID string) { m.state.ClearSourceError(sourceID) }
+
 // SetScan updates the scan panel.
 func (m *Model) SetScan(state ScanState) { m.state.SetScan(state) }
 

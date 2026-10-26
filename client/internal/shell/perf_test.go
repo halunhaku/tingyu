@@ -31,9 +31,12 @@ func perfTracks(n int) []library.ScannedTrack {
 // TestLibraryScrollP95At10000Rows is the plan §6 M4 performance gate against
 // the real SQL paging of this milestone: ten thousand rows in the library, the
 // whole list traversed by scrolling, and p95 frame time at or below 16.7 ms
-// (the M4 client measured 0.800 ms with everything already in memory; pages
-// now come from SQL, off the frame, so the frame cost stays a slice swap).
-// Every sample is logged so the acceptance record can quote raw numbers.
+// (the M4 client measured 0.800 ms with everything already in memory). This
+// harness keeps M4's 400-step traversal, and adds the one thing paging needs
+// to be comparable: a step waits for the page the viewport is about to reach,
+// as the real window's 16 ms frames do, instead of scrolling into rows that
+// have not loaded yet. Every sample is logged so the acceptance record can
+// quote raw numbers; MYGO_FRAME_STATS=all gives the per-frame timings.
 func TestLibraryScrollP95At10000Rows(t *testing.T) {
 	if raceEnabled {
 		t.Skip("frame-time gate measured without -race: race instrumentation dominates each frame")
@@ -53,27 +56,33 @@ func TestLibraryScrollP95At10000Rows(t *testing.T) {
 	for range 10 {
 		tt.Scroll(700, 340, 0, 1200)
 	}
-	// 1200 DIPs per step (rows are 44 DIPs high), 1000 steps: the samples
-	// therefore include the far end of the list, not only its first
-	// screenfuls. More steps than the M4 harness needed, because a page no
-	// longer arrives with the frame that asked for it: the list advances at
-	// the rate pages land, so the traversal needs the extra frames.
-	samples := make([]time.Duration, 0, 1000)
-	pages := 0
-	for range 1000 {
+	// The M4 traversal, step for step: 400 steps of 1200 DIPs (rows are 44
+	// DIPs high) cover the whole 10,000-row list, so the samples include the
+	// far end and not only the first screenfuls. The one difference is the
+	// page the viewport is about to reach: the real window's frames are 16 ms,
+	// and the reader cannot scroll past rows that have not loaded, so a step
+	// waits for that page first. The wait frames are cheap (no new row is
+	// built) and the gate counts every frame, as MYGO_FRAME_STATS does.
+	samples := make([]time.Duration, 0, 400)
+	pages, waits := 0, 0
+	for range 400 {
+		for range 200 {
+			first, last := s.Library().Table().Visible()
+			if first < 0 || s.Library().Done() || s.Library().Loaded()-last > 8 {
+				break
+			}
+			// A zero scroll drives one update-and-render turn, as a frame of
+			// the real window does, without moving the list.
+			tt.Scroll(700, 340, 0, 0)
+			waits++
+			time.Sleep(200 * time.Microsecond)
+		}
 		before := s.Library().Loaded()
 		start := time.Now()
 		tt.Scroll(700, 340, 0, 1200)
 		samples = append(samples, time.Since(start))
 		if s.Library().Loaded() > before {
 			pages++
-		}
-		if s.Library().Loaded() < rows {
-			// A url.Tester frame is ~0.15 ms, while one SQL page needs a
-			// scheduling round trip the real window's 16 ms frames absorb.
-			// Yield outside the timed section so the traversal can reach the
-			// end; the gate measures frame time, not data availability.
-			time.Sleep(time.Millisecond)
 		}
 	}
 	if len(samples) == 0 {
@@ -89,8 +98,8 @@ func TestLibraryScrollP95At10000Rows(t *testing.T) {
 		return samples[index]
 	}
 	p50, p95, p99, max := percentile(0.50), percentile(0.95), percentile(0.99), samples[len(samples)-1]
-	t.Logf("scroll_p95 rows=%d samples=%d page_frames=%d loaded=%d p50=%v p95=%v p99=%v max=%v",
-		rows, len(samples), pages, s.Library().Loaded(), p50, p95, p99, max)
+	t.Logf("scroll_p95 rows=%d samples=%d page_frames=%d wait_frames=%d loaded=%d p50=%v p95=%v p99=%v max=%v",
+		rows, len(samples), pages, waits, s.Library().Loaded(), p50, p95, p99, max)
 	t.Logf("samples_ms=%v", millis(samples))
 	if p95 > 16700*time.Microsecond {
 		t.Fatalf("p95 %v exceeds 16.7 ms", p95)
