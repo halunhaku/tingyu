@@ -1,0 +1,146 @@
+# Go client CI: macOS only, because 听屿 is a macOS app (README first screen).
+# Flutter keeps its own workflow until M7 removes it (plan §8.1 rule 1) — this
+# file never touches app/ and never replaces flutter.yml.
+#
+# What runs on every client change:
+#   gofmt -l (no output allowed) → go vet → go test -race → bundle.sh (ad-hoc
+#   .app + DMG) → verify-bundle.sh. The build step is the same script a person
+#   runs locally, so CI cannot pass on a path nobody can reproduce.
+#
+# Signing and notarization happen only when the repository has the Apple
+# credentials, and then a failure is fatal: a green build that claims to be
+# notarized must actually be notarized (no silent downgrade).
+#
+# Repository secrets (Settings → Secrets and variables → Actions):
+#   MACOS_CERTIFICATE          base64 of a Developer ID Application .p12
+#   MACOS_CERTIFICATE_PASSWORD password of that .p12
+#   MACOS_SIGNING_IDENTITY     "Developer ID Application: … (TEAMID)"
+#   NOTARY_APPLE_ID            Apple ID of the developer account
+#   NOTARY_TEAM_ID             Apple Developer Team ID
+#   NOTARY_PASSWORD            app-specific password for notarytool
+# They are used only inside the ephemeral keychain below and never written to
+# a log or the repository.
+name: Go client (macOS)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'client/**'
+      - '.github/workflows/macos.yml'
+  pull_request:
+    paths:
+      - 'client/**'
+      - '.github/workflows/macos.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: go-client-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: client
+
+env:
+  # The LGPL mpv/FFmpeg frameworks bundle.sh copies in come from
+  # scripts/fetch-frameworks.sh, which is pinned by version and checksum — CI
+  # has no Flutter pub cache to borrow them from and no reason to install
+  # Flutter for the Go client.
+  HAS_SIGNING: ${{ secrets.MACOS_CERTIFICATE != '' && secrets.MACOS_SIGNING_IDENTITY != '' }}
+  HAS_NOTARY: ${{ secrets.NOTARY_APPLE_ID != '' && secrets.NOTARY_TEAM_ID != '' && secrets.NOTARY_PASSWORD != '' }}
+
+jobs:
+  build:
+    name: format, vet, test, build
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: client/go.mod
+          cache: true
+          cache-dependency-path: client/go.sum
+
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "gofmt wants to change these files:" >&2
+            echo "$unformatted" >&2
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test -race
+        run: go test -race -count=1 ./...
+
+      - name: Fetch the mpv/FFmpeg frameworks
+        run: |
+          # Writes FRAMEWORK_SRC to the job environment for the build step.
+          echo "FRAMEWORK_SRC=$(./scripts/fetch-frameworks.sh)" >> "$GITHUB_ENV"
+
+      # A Developer ID certificate goes into a throwaway keychain: importing it
+      # into the login keychain would leave it on the runner's disk. The
+      # partition list is what lets codesign use the private key unattended.
+      - name: Import the Developer ID certificate
+        if: env.HAS_SIGNING == 'true'
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          password="$(uuidgen)"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$keychain" \
+            -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/certificate.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$keychain" >/dev/null
+          security list-keychains -d user -s "$keychain" login.keychain-db
+          security default-keychain -d user -s "$keychain"
+          # The profile bundle.sh passes as NOTARY_PROFILE.
+          if [ "$HAS_NOTARY" = "true" ]; then
+            xcrun notarytool store-credentials notary --keychain "$keychain" \
+              --apple-id "${{ secrets.NOTARY_APPLE_ID }}" \
+              --team-id "${{ secrets.NOTARY_TEAM_ID }}" \
+              --password "${{ secrets.NOTARY_PASSWORD }}"
+          fi
+
+      - name: Build and sign
+        env:
+          FRAMEWORK_SRC: ${{ runner.temp }}/frameworks/macos/Frameworks
+          SIGN_IDENTITY: ${{ env.HAS_SIGNING == 'true' && secrets.MACOS_SIGNING_IDENTITY || '-' }}
+          NOTARY_PROFILE: ${{ env.HAS_SIGNING == 'true' && env.HAS_NOTARY == 'true' && 'notary' || '' }}
+        run: |
+          PLATFORM=darwin/universal DMG=1 ./scripts/bundle.sh
+
+      - name: Verify the build
+        env:
+          # Without credentials the build is ad-hoc: verify what can be verified
+          # and say so, rather than demanding a notarization that never ran.
+          REQUIRE_NOTARIZED: ${{ env.HAS_SIGNING == 'true' && env.HAS_NOTARY == 'true' && '--require-notarized' || '' }}
+        run: |
+          set -euo pipefail
+          app=$(find build -maxdepth 2 -name '*.app' -type d | head -1)
+          dmg=$(find build -maxdepth 2 -name '*.dmg' -type f | head -1)
+          ./scripts/verify-bundle.sh "$app" ${REQUIRE_NOTARIZED:-}
+          ./scripts/verify-bundle.sh "$dmg" ${REQUIRE_NOTARIZED:-}
+
+      - name: Clean up the signing keychain
+        if: always() && env.HAS_SIGNING == 'true'
+        run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
+
+      - name: Upload the disk image
+        uses: actions/upload-artifact@v7
+        with:
+          name: tingyu-macos-go
+          path: client/build/*/*.dmg
+          if-no-files-found: error
+          retention-days: 7

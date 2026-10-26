@@ -30,13 +30,14 @@ func Queue(c *ui.Context, d components.Design, s *model.State) {
 			components.SectionTitle(c, d, "当前播放", "")
 			components.TrackRow(c, d, s, queue[index], true, func() {
 				PlayFrom(s, queue, index)
-			})
+			}).Focusable()
 		}
 		next := index + 1
 		if next < len(queue) {
 			components.SectionTitle(c, d, "接下来 "+model.FormatCount(len(queue)-next, "首"), "")
 		}
-		ui.List(c, s.QueueList(), max(0, len(queue)-next), func(row int) {
+		list := s.QueueList()
+		table := ui.List(c, list, max(0, len(queue)-next), func(row int) {
 			i := next + row
 			if i < 0 || i >= len(queue) {
 				return
@@ -46,5 +47,10 @@ func Queue(c *ui.Context, d components.Design, s *model.State) {
 				PlayFrom(s, queue, i)
 			})
 		}).Grow(1)
+		if table.Submitted() {
+			if i := next + *list.Selected; *list.Selected >= 0 && i < len(queue) {
+				PlayFrom(s, queue, i)
+			}
+		}
 	})
 }

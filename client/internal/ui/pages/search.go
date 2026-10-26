@@ -125,7 +125,7 @@ func albumsResults(c *ui.Context, d components.Design, s *model.State) {
 					list.RequestMore()
 				}
 				row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space12).
-					Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM)
+					Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM).Focusable()
 				if row.Hovered() {
 					row.Background(d.P.Hover)
 				}
@@ -163,7 +163,7 @@ func artistsResults(c *ui.Context, d components.Design, s *model.State) {
 					list.RequestMore()
 				}
 				row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space12).
-					Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM)
+					Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM).Focusable()
 				if row.Hovered() {
 					row.Background(d.P.Hover)
 				}
@@ -190,7 +190,7 @@ func playlistsResults(c *ui.Context, d components.Design, s *model.State) {
 			for _, playlist := range rows {
 				playlist := playlist
 				row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space12).
-					Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM)
+					Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM).Focusable()
 				if row.Hovered() {
 					row.Background(d.P.Hover)
 				}
@@ -222,7 +222,7 @@ func allResults(c *ui.Context, d components.Design, s *model.State, results mode
 				i, track := i, track
 				components.TrackRow(c, d, s, track, s.Player().Track != nil && s.Player().Track.ID == track.ID, func() {
 					PlayFrom(s, songs, i)
-				})
+				}).Focusable()
 			}
 			if len(songs) == 0 {
 				emptyGroup(c, d, "没有匹配的歌曲")
@@ -236,7 +236,7 @@ func allResults(c *ui.Context, d components.Design, s *model.State, results mode
 			ui.ScrollHorizontal(c).Height(178).Children(func() {
 				for _, album := range results.Albums {
 					album := album
-					card := ui.Column(c).Width(132).Gap(tokens.Space6).OnClick(func() { s.OpenAlbum(album) })
+					card := ui.Column(c).Width(132).Gap(tokens.Space6).Focusable().OnClick(func() { s.OpenAlbum(album) })
 					card.Children(func() {
 						components.CoverFill(c, d, s, album.Cover, tokens.RadiusMD)
 						d.Text(c, tokens.BodyS, album.Name).TextColor(d.P.TextPrimary).SingleLine()
@@ -253,7 +253,7 @@ func allResults(c *ui.Context, d components.Design, s *model.State, results mode
 			for _, artist := range results.Artists {
 				artist := artist
 				row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space10).
-					Padding(tokens.Space6, tokens.Space4).Radius(tokens.RadiusSM)
+					Padding(tokens.Space6, tokens.Space4).Radius(tokens.RadiusSM).Focusable()
 				if row.Hovered() {
 					row.Background(d.P.Hover)
 				}
@@ -273,7 +273,7 @@ func allResults(c *ui.Context, d components.Design, s *model.State, results mode
 			for _, playlist := range results.Playlists {
 				playlist := playlist
 				row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space10).
-					Padding(tokens.Space6, tokens.Space4).Radius(tokens.RadiusSM)
+					Padding(tokens.Space6, tokens.Space4).Radius(tokens.RadiusSM).Focusable()
 				if row.Hovered() {
 					row.Background(d.P.Hover)
 				}

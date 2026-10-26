@@ -56,7 +56,7 @@ func Artists(c *ui.Context, d components.Design, s *model.State) {
 				s.Artists().RequestMore()
 			}
 			row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space12).
-				Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM)
+				Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM).Focusable()
 			if row.Hovered() {
 				row.Background(d.P.Hover)
 			}
@@ -130,7 +130,7 @@ func ArtistDetail(c *ui.Context, d components.Design, s *model.State) {
 				for _, album := range albums {
 					album := album
 					ui.Column(c).Width(128).Gap(tokens.Space6).Children(func() {
-						card := ui.Column(c).Gap(tokens.Space4).OnClick(func() { s.OpenAlbum(album) })
+						card := ui.Column(c).Gap(tokens.Space4).Focusable().OnClick(func() { s.OpenAlbum(album) })
 						card.Children(func() {
 							components.CoverFill(c, d, s, album.Cover, tokens.RadiusMD)
 							d.Text(c, tokens.BodyS, album.Name).TextColor(d.P.TextPrimary).SingleLine()
@@ -142,13 +142,17 @@ func ArtistDetail(c *ui.Context, d components.Design, s *model.State) {
 		components.SectionTitle(c, d, "全部曲目", "")
 		tracks := detail.Tracks
 		list := s.DetailList()
-		list.Selected = nil
-		ui.List(c, list, len(tracks), func(row int) {
+		table := ui.List(c, list, len(tracks), func(row int) {
 			track := tracks[row]
 			components.TrackRow(c, d, s, track, s.Player().Track != nil && s.Player().Track.ID == track.ID, func() {
 				PlayFrom(s, s.ArtistTracks(artist), row)
 			})
 		}).Grow(1)
+		if table.Submitted() {
+			if row := *list.Selected; row >= 0 && row < len(tracks) {
+				PlayFrom(s, s.ArtistTracks(artist), row)
+			}
+		}
 	})
 }
 

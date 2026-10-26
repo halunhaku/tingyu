@@ -232,6 +232,11 @@ type State struct {
 	queueList   ui.ListState
 	lyricsList  ui.ListState
 	detailList  ui.ListState
+	// queueSelected and detailSelected are the keyboard's chosen row in the
+	// queue and in album/artist details (same pattern as TrackList.selected):
+	// the lists only take the focus when they bind a selection.
+	queueSelected  int
+	detailSelected int
 
 	lyrics    lyricsCache
 	covers    CoverCache
@@ -266,6 +271,8 @@ func New(backend Backend, live Live, dbPath string, loadErr error) *State {
 	s.search.songs.bind()
 	s.library.selected = -1
 	s.favorites.selected = -1
+	s.queueSelected = -1
+	s.detailSelected = -1
 	s.palette.Selected = 0
 	return s
 }
@@ -679,6 +686,7 @@ func (s *State) OpenAlbum(album Album) {
 		s.failure = "无法读取专辑曲目：" + err.Error()
 	}
 	s.albumDetail = detail
+	s.detailSelected = -1
 	s.OpenPage(PageAlbumDetail)
 }
 
@@ -700,6 +708,7 @@ func (s *State) OpenArtist(artist Artist) {
 	detail.Albums.Configure(library.AlbumQuery{Artist: artist.Name})
 	s.artistDetail = detail
 	s.artistExpanded = false
+	s.detailSelected = -1
 	s.loadArtistDetail(artist.Name, false)
 	s.OpenPage(PageArtistDetail)
 }
@@ -822,14 +831,20 @@ func (s *State) AlbumsList() *ui.GridState { return &s.albumsList }
 // ArtistsList returns the artists list state.
 func (s *State) ArtistsList() *ui.ListState { return &s.artistsList }
 
-// QueueList returns the queue's list state.
-func (s *State) QueueList() *ui.ListState { return &s.queueList }
+// QueueList returns the queue's list state, chosen row bound.
+func (s *State) QueueList() *ui.ListState {
+	s.queueList.Selected = &s.queueSelected
+	return &s.queueList
+}
 
 // LyricsList returns the lyrics list state.
 func (s *State) LyricsList() *ui.ListState { return &s.lyricsList }
 
-// DetailList returns the detail page's table state.
-func (s *State) DetailList() *ui.ListState { return &s.detailList }
+// DetailList returns the detail page's table state, chosen row bound.
+func (s *State) DetailList() *ui.ListState {
+	s.detailList.Selected = &s.detailSelected
+	return &s.detailList
+}
 
 // AllOf returns every row of a list's query, beyond the pages loaded so far:
 // 「播放全部」must play the whole query, not only what the user scrolled past.
