@@ -38,6 +38,9 @@ const (
 	FailureNotFound
 	// FailureDecode means the bytes arrived but could not be decoded.
 	FailureDecode
+	// FailureServer means the server answered with a status this client has
+	// no specific advice for (400, 5xx, …); the status is still worth showing.
+	FailureServer
 )
 
 func (k FailureKind) String() string {
@@ -50,6 +53,8 @@ func (k FailureKind) String() string {
 		return "not-found"
 	case FailureDecode:
 		return "decode"
+	case FailureServer:
+		return "server"
 	}
 	return "unknown"
 }
@@ -370,11 +375,11 @@ func (p *Player) onLogMessage(event *cEvent) {
 		return
 	}
 	if severity == "error" || severity == "fatal" {
-		p.cfg.Debug("mpv: %s: %s", level, redactURIs(text))
+		p.cfg.Debug("mpv: %s: %s", level, redactHeaderValues(redactURIs(text)))
 		return
 	}
 	if p.logLevel() != "warn" {
-		p.cfg.Debug("mpv: %s: %s%s", level, prefix, redactURIs(text))
+		p.cfg.Debug("mpv: %s: %s%s", level, prefix, redactHeaderValues(redactURIs(text)))
 	}
 }
 
@@ -806,8 +811,9 @@ func (p *Player) Append(item Item) error {
 
 // headerFieldNames lists the names of an http-header-fields value ("A: 1,B:
 // 2"), so a debug line can say what was applied without printing a credential.
+// Commas inside a field are escaped, so the split must honour that.
 func headerFieldNames(header string) string {
-	parts := strings.Split(header, ",")
+	parts := splitHeaderFields(header)
 	names := make([]string, 0, len(parts))
 	for _, part := range parts {
 		name, _, found := strings.Cut(part, ":")
@@ -820,15 +826,64 @@ func headerFieldNames(header string) string {
 	return strings.Join(names, ",")
 }
 
+// headerValue renders per-URI headers as mpv's http-header-fields option: a
+// comma-separated list of "Name: value" fields.
+//
+// A comma inside a value would end that field: mpv would pass the rest as
+// another line, FFmpeg would send an obsolete header continuation, and some
+// CDN edges answer that with 400 Bad Request ("your browser sent a request
+// that this server could not understand") while others tolerate it. That is
+// why Quark playback failed only for some tracks: the desktop UA carries
+// "KHTML, like Gecko".
+//
+// The Flutter client did not have this bug because media_kit sets the property
+// as an MPV_FORMAT_NODE array, one string per header, where a comma is just a
+// character. This binding sets the string form, so the values must be escaped:
+// mpv's string-list option unescapes a "\," and a "\\" back again.
 func headerValue(headers map[string]string) string {
 	if len(headers) == 0 {
 		return ""
 	}
 	parts := make([]string, 0, len(headers))
 	for _, key := range sortedMapKeys(headers) {
-		parts = append(parts, key+": "+headers[key])
+		parts = append(parts, key+": "+escapeHeaderField(headers[key]))
 	}
 	return strings.Join(parts, ",")
+}
+
+// headerFieldEscape escapes a comma and the escape character itself: mpv's
+// string-list option parses these fields, and only an unescaped backslash
+// protects the following character.
+var headerFieldEscape = strings.NewReplacer(`\`, `\\`, `,`, `\,`)
+
+func escapeHeaderField(value string) string {
+	return headerFieldEscape.Replace(value)
+}
+
+// splitHeaderFields splits an http-header-fields value on unescaped commas.
+func splitHeaderFields(header string) []string {
+	parts := make([]string, 0, 4)
+	var current strings.Builder
+	escaped := false
+	for _, r := range header {
+		switch {
+		case escaped:
+			current.WriteRune(r)
+			escaped = false
+		case r == '\\':
+			// Keep the escape in place: mpv unescapes the field, so this split
+			// only decides where one field ends and the next begins.
+			current.WriteRune(r)
+			escaped = true
+		case r == ',':
+			parts = append(parts, current.String())
+			current.Reset()
+		default:
+			current.WriteRune(r)
+		}
+	}
+	parts = append(parts, current.String())
+	return parts
 }
 
 func sortedMapKeys(m map[string]string) []string {

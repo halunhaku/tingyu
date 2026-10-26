@@ -20,6 +20,9 @@ func TestFailureMessagesAreActionable(t *testing.T) {
 		{FailureNotFound, 404, "", []string{"404"}},
 		{FailureDecode, 0, "decoder failed", []string{"解码", "decoder failed"}},
 		{FailureUnknown, 0, "loading failed", []string{"播放失败", "loading failed"}},
+		{FailureServer, 400, "Failed to open https://cdn.example.com/a.flac?token=x", []string{"400", "服务器"}},
+		{FailureServer, 503, "", []string{"503", "稍后"}},
+		{FailureUnknown, 418, "", []string{"418"}},
 	}
 	seen := map[string]FailureKind{}
 	for _, tc := range cases {
@@ -77,7 +80,10 @@ func TestLoadFailureReadsFFmpegsHTTPStatus(t *testing.T) {
 	}{
 		{"401 from the log", 0, "ffmpeg: HTTP error 401 Unauthorized", FailureUnauthorized, 401},
 		{"403 from the log", 0, "ffmpeg: HTTP error 403 Forbidden", FailureUnauthorized, 403},
+		{"412 from the log", 0, "ffmpeg: HTTP error 412 Precondition Failed", FailureUnauthorized, 412},
 		{"404", 404, "", FailureNotFound, 404},
+		{"400 is the request, not the link", 0, "ffmpeg: HTTP error 400 Bad Request", FailureServer, 400},
+		{"503", 503, "", FailureServer, 503},
 		{"refused", 0, "tcp: Connection to tcp://127.0.0.1:1 failed: Connection refused", FailureNetwork, 0},
 		{"dns", 0, "Failed to resolve host name", FailureNetwork, 0},
 		{"decode", 0, "Failed to recognize file format.", FailureDecode, 0},
@@ -110,5 +116,28 @@ func TestFailureDetailRedactsDirectLinkSecrets(t *testing.T) {
 	}
 	if failure.Status != 403 || failure.Kind != FailureUnauthorized {
 		t.Fatalf("kind=%v status=%d", failure.Kind, failure.Status)
+	}
+}
+
+func TestServerRejectionShowsStatusAndNoURL(t *testing.T) {
+	link := "https://dl-pc-sz.drive.quark.cn/x/1/2?sign=SECRETVALUE&expires=1"
+	detail := "loading failed: Failed to open " + link
+	failure := loadFailure(link, detail, 0, "ffmpeg: https: HTTP error 400 Bad Request")
+	if failure.Kind != FailureServer || failure.Status != 400 {
+		t.Fatalf("kind=%v status=%d, want server/400", failure.Kind, failure.Status)
+	}
+	if !strings.Contains(failure.Message, "HTTP 400") {
+		t.Fatalf("message %q does not name the status", failure.Message)
+	}
+	for _, leak := range []string{"SECRETVALUE", "://", "sign="} {
+		if strings.Contains(failure.Message, leak) {
+			t.Fatalf("message %q leaks %q", failure.Message, leak)
+		}
+	}
+	if !strings.Contains(failure.Detail, "dl-pc-sz.drive.quark.cn") {
+		t.Fatalf("detail lost the host: %q", failure.Detail)
+	}
+	if strings.Contains(failure.Detail, "SECRETVALUE") {
+		t.Fatalf("detail leaked the signature: %q", failure.Detail)
 	}
 }
