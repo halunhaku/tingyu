@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<title>方向 A · 第二批：舞台 / 来源 / 设置（含第一批三处收尾）</title>
+<style>
+ :root { color-scheme: light dark; }
+ body { margin: 0; padding: 32px; font: 14px/1.6 -apple-system, "PingFang SC", system-ui, sans-serif;
+        background: #F4F4F1; color: #17171A; }
+ @media (prefers-color-scheme: dark) { body { background: #0E0E10; color: #F3F3F5; } }
+ h1 { font-size: 24px; letter-spacing: -0.4px; margin: 0 0 4px; }
+ p.note { color: #6A6A71; margin: 0 0 28px; }
+ section { margin: 0 0 40px; }
+ h2 { font-size: 16px; letter-spacing: -0.2px; margin: 0 0 12px; }
+ .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+ figure { margin: 0; }
+ figure img { width: 100%; height: auto; border-radius: 12px; border: 1px solid #E1E1DA; display: block; }
+ figcaption { font-size: 12px; color: #6A6A71; margin-top: 6px; }
+ code { font-size: 12px; }
+</style></head><body>
+<h1>方向 A · 第二批：舞台 / 来源 / 设置（含第一批三处收尾）</h1>
+<p class="note">左为设计定稿图（docs/screenshots/design/a/，由 tools/designpreview 画出），右为本次改动后由 go run ./tools/uipreview 用真实 shell.View 离屏渲染的同一页（1200×760 DIP @2×）。本批做方向 A 的剩余三页（舞台 / 来源 / 设置）与第一批的三处收尾；曲库页的图用于核对收尾（侧栏版本行、页脚口径、资料库眉题），后面的七个设置分区与 900×600 图核对设置项可达与最小窗口。</p>
+<section><h2>曲库</h2>
+<div class="pair">
+  <figure><img src="target-library-light.png" alt="设计图"><figcaption>目标：曲库 · 浅色</figcaption></figure>
+  <figure><img src="library-light.png" alt="实现渲染"><figcaption>实现：library · 浅色</figcaption></figure>
+</div>
+<div class="pair">
+  <figure><img src="target-library-dark.png" alt="设计图"><figcaption>目标：曲库 · 深色</figcaption></figure>
+  <figure><img src="library-dark.png" alt="实现渲染"><figcaption>实现：library · 深色</figcaption></figure>
+</div>
+</section>
+<section><h2>舞台</h2>
+<div class="pair">
+  <figure><img src="target-stage-light.png" alt="设计图"><figcaption>目标：舞台 · 浅色</figcaption></figure>
+  <figure><img src="stage-light.png" alt="实现渲染"><figcaption>实现：stage · 浅色</figcaption></figure>
+</div>
+<div class="pair">
+  <figure><img src="target-stage-dark.png" alt="设计图"><figcaption>目标：舞台 · 深色</figcaption></figure>
+  <figure><img src="stage-dark.png" alt="实现渲染"><figcaption>实现：stage · 深色</figcaption></figure>
+</div>
+</section>
+<section><h2>来源</h2>
+<div class="pair">
+  <figure><img src="target-sources-light.png" alt="设计图"><figcaption>目标：来源 · 浅色</figcaption></figure>
+  <figure><img src="sources-light.png" alt="实现渲染"><figcaption>实现：sources · 浅色</figcaption></figure>
+</div>
+<div class="pair">
+  <figure><img src="target-sources-dark.png" alt="设计图"><figcaption>目标：来源 · 深色</figcaption></figure>
+  <figure><img src="sources-dark.png" alt="实现渲染"><figcaption>实现：sources · 深色</figcaption></figure>
+</div>
+</section>
+<section><h2>设置</h2>
+<div class="pair">
+  <figure><img src="target-settings-light.png" alt="设计图"><figcaption>目标：设置 · 浅色</figcaption></figure>
+  <figure><img src="settings-light.png" alt="实现渲染"><figcaption>实现：settings · 浅色</figcaption></figure>
+</div>
+<div class="pair">
+  <figure><img src="target-settings-dark.png" alt="设计图"><figcaption>目标：设置 · 深色</figcaption></figure>
+  <figure><img src="settings-dark.png" alt="实现渲染"><figcaption>实现：settings · 深色</figcaption></figure>
+</div>
+</section>
+<section><h2>设置的七个分区</h2>
+<div class="pair">
+  <figure><img src="settings-section-0-light.png" alt="设置分区"><figcaption>外观</figcaption></figure>
+  <figure><img src="settings-section-1-light.png" alt="设置分区"><figcaption>播放</figcaption></figure>
+  <figure><img src="settings-section-2-light.png" alt="设置分区"><figcaption>音乐库</figcaption></figure>
+  <figure><img src="settings-section-3-light.png" alt="设置分区"><figcaption>元数据</figcaption></figure>
+  <figure><img src="settings-section-4-light.png" alt="设置分区"><figcaption>来源</figcaption></figure>
+  <figure><img src="settings-section-5-light.png" alt="设置分区"><figcaption>数据</figcaption></figure>
+  <figure><img src="settings-section-6-light.png" alt="设置分区"><figcaption>关于</figcaption></figure>
+</div>
+</section>
+<section><h2>材质与通用状态</h2>
+<div class="pair">
+  <figure><img src="palette-light.png" alt="命令面板"><figcaption>⌘K 命令面板：Regular 玻璃 + 遮罩</figcaption></figure>
+  <figure><img src="empty-light.png" alt="空态"><figcaption>空态：56 图标砖 + 20/600 + 13 + 主操作</figcaption></figure>
+</div>
+<div class="pair">
+  <figure><img src="error-light.png" alt="错误卡"><figcaption>错误卡：440 宽 + 两个动作</figcaption></figure>
+</div>
+</section>
+<section><h2>最小窗口与键盘焦点</h2>
+<div class="pair">
+  <figure><img src="library-min-light.png" alt="900×600"><figcaption>最小窗口 900×600：固定列宽整列让位（先「专辑」，再「艺术家」），不裁切行</figcaption></figure>
+  <figure><img src="library-focus-light.png" alt="键盘焦点"><figcaption>Tab 进入表格、↓ 选中一行：2 px 朱红焦点环</figcaption></figure>
+</div>
+</section>
+<section><h2>最小窗口（900×600）</h2>
+<div class="pair">
+  <figure><img src="stage-min-light.png" alt="900×600"><figcaption>舞台 · 900×600</figcaption></figure>
+  <figure><img src="sources-min-light.png" alt="900×600"><figcaption>来源 · 900×600</figcaption></figure>
+  <figure><img src="settings-min-light.png" alt="900×600"><figcaption>设置 · 900×600</figcaption></figure>
+</div>
+</section>
+</body></html>

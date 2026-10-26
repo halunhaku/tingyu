@@ -379,8 +379,10 @@ func (s *State) Invalidate() { s.stale = true }
 // Revision is the library revision the lists are keyed by.
 func (s *State) Revision() uint64 { return s.revision }
 
-// Version is the About page's version line.
-const Version = "内核数据 · 0.5.0-dev"
+// Version is the version the About card shows, in the user's terms: it is
+// mygo.json's version (the bundle carries the same number), not a development
+// milestone. Keep the two in step when the release number changes.
+const Version = "0.1.0"
 
 // Sources returns the sources.
 func (s *State) Sources() []library.Source { return s.sources }

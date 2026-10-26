@@ -1,9 +1,18 @@
-// Command uipreview renders the real window of direction A's first batch to PNG
+// Command uipreview renders the real window of a direction A batch to PNG
 // without a window, through the same view the app shows (ui.Tester at 2×), and
 // builds the side-by-side page an acceptance reads: each page next to the design
 // still it implements (docs/screenshots/design/a).
 //
-//	go run ./tools/uipreview -data /tmp/tingyu-copy -out ../docs/screenshots/ui-a1
+//	# the first batch: tokens, shell, table and library
+//	go run ./tools/uipreview -data /tmp/tingyu-copy -out ../docs/screenshots/ui-a1 \
+//	  -title "方向 A · 第一批：真实窗口渲染对比"
+//	# the second batch: the remaining pages
+//	go run ./tools/uipreview -data /tmp/tingyu-copy -out ../docs/screenshots/ui-a2 \
+//	  -pages stage,sources,settings -title "方向 A · 第二批：舞台 / 来源 / 设置"
+//
+// The library batch also renders the minimum window, the keyboard focus ring,
+// the command palette and the empty/error states; a run that does not include
+// the library page skips those shots.
 //
 // It never writes the library and never starts playback: the library copy is
 // opened read-only, settings go to a scratch directory, and the "playing" track
@@ -15,11 +24,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"html"
 	"image"
 	"image/png"
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -34,14 +45,20 @@ import (
 	"github.com/halunhaku/tingyu/client/internal/ui/tokens"
 )
 
-// pages are the four pages the design stills cover, in the stills' names.
-var pages = []string{"library", "stage", "sources", "settings"}
+// allPages are the four pages the design stills cover, in the stills' names.
+var allPages = []string{"library", "stage", "sources", "settings"}
 
 func main() {
 	dataDir := flag.String("data", os.Getenv("TINGYU_DATA_DIR"), "library copy directory (default: TINGYU_DATA_DIR)")
 	outDir := flag.String("out", "../docs/screenshots/ui-a1", "output directory")
 	targetDir := flag.String("target", "../docs/screenshots/design/a", "the design stills to compare against (empty to skip)")
+	pageList := flag.String("pages", strings.Join(allPages, ","), "pages to render, comma separated (library,stage,sources,settings)")
+	settingsShots := flag.Bool("settings-sections", false, "also render each of the settings page's seven sections (light)")
+	minimumShots := flag.Bool("minimum", false, "also render every page at the 900×600 floor (light)")
+	title := flag.String("title", "方向 A · 第一批：真实窗口渲染对比", "heading of the comparison page")
+	note := flag.String("note", "", "note under the heading (empty uses the first batch's)")
 	flag.Parse()
+	pages := parsePages(*pageList, *title)
 	if *dataDir == "" {
 		log.Fatal("set -data or TINGYU_DATA_DIR to a library copy")
 	}
@@ -117,6 +134,43 @@ func main() {
 		}
 	}
 
+	if *minimumShots {
+		// The 900×600 floor: every page a batch touched has to keep its
+		// content reachable there, not just the library's table.
+		for _, page := range pages {
+			if page == "library" {
+				continue // the library block above already writes library-min
+			}
+			open(page, st)
+			setTheme(st, "light")
+			write(*outDir, page+"-min", "light",
+				run(app, page, shell.MinimumWidth, shell.MinimumHeight, "light"))
+		}
+	}
+
+	if *settingsShots && containsPage(pages, "settings") {
+		// One frame per settings section: the tabs are the only navigation the
+		// page has, so every section needs a picture that it renders.
+		for section := range 7 {
+			open("settings", st)
+			// open() resets the page to its first section; choose after it.
+			st.SetSettingsSection(section)
+			setTheme(st, "light")
+			write(*outDir, "settings-section-"+strconv.Itoa(section), "light",
+				run(app, "settings", shell.DefaultWidth, shell.DefaultHeight, "light"))
+		}
+		st.SetSettingsSection(0)
+	}
+
+	if !containsPage(pages, "library") {
+		if *targetDir != "" {
+			copyTargets(*targetDir, *outDir, pages)
+		}
+		writeIndex(*outDir, pages, *title, *note)
+		fmt.Printf("renders written to %s\n", *outDir)
+		return
+	}
+
 	// The minimum window (900×600): the fixed column rhythm drops 专辑 first,
 	// so the page keeps a readable row there instead of clipping.
 	open("library", st)
@@ -152,9 +206,9 @@ func main() {
 	// The comparison page, with the design stills copied next to the renders so
 	// the page reads on its own.
 	if *targetDir != "" {
-		copyTargets(*targetDir, *outDir)
+		copyTargets(*targetDir, *outDir, pages)
 	}
-	writeIndex(*outDir)
+	writeIndex(*outDir, pages, *title, *note)
 	fmt.Printf("renders written to %s\n", *outDir)
 }
 
@@ -238,7 +292,7 @@ func write(outDir, page, theme string, tt *ui.Tester) {
 // page needs no path outside its own directory. They are halved to 1200 wide:
 // the originals stay the reference in docs/screenshots/design/a, and the page
 // only has to show them beside the render.
-func copyTargets(targetDir, outDir string) {
+func copyTargets(targetDir, outDir string, pages []string) {
 	for _, page := range pages {
 		for _, theme := range []string{"light", "dark"} {
 			name := page + "-" + theme + ".png"
@@ -270,11 +324,11 @@ func copyTargets(targetDir, outDir string) {
 
 // writeIndex writes the three-column comparison: the design still, the real
 // window after this batch, and the same page in the other theme.
-func writeIndex(outDir string) {
+func writeIndex(outDir string, pages []string, title, note string) {
 	var b strings.Builder
 	b.WriteString(`<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8">
-<title>方向 A 第一批 · 渲染对比</title>
+<title>` + html.EscapeString(title) + `</title>
 <style>
  :root { color-scheme: light dark; }
  body { margin: 0; padding: 32px; font: 14px/1.6 -apple-system, "PingFang SC", system-ui, sans-serif;
@@ -290,10 +344,8 @@ func writeIndex(outDir string) {
  figcaption { font-size: 12px; color: #6A6A71; margin-top: 6px; }
  code { font-size: 12px; }
 </style></head><body>
-<h1>方向 A · 第一批：真实窗口渲染对比</h1>
-<p class="note">左为设计定稿图（<code>docs/screenshots/design/a/</code>，由 <code>tools/designpreview</code> 画出），
-右为本次改动后由 <code>go run ./tools/uipreview</code> 用真实 <code>shell.View</code> 离屏渲染的同一页（1200×760 DIP @2×）。
-舞台 / 来源 / 设置页的 A 化属于下一批，这里只有令牌与外壳的连带效果。</p>
+<h1>` + html.EscapeString(title) + `</h1>
+<p class="note">` + html.EscapeString(noteOr(note)) + `</p>
 `)
 	for _, page := range pages {
 		fmt.Fprintf(&b, "<section><h2>%s</h2>\n", pageTitle(page))
@@ -305,6 +357,30 @@ func writeIndex(outDir string) {
 `, page, theme, pageTitle(page), themeName(theme), page, theme, page, themeName(theme))
 		}
 		b.WriteString("</section>\n")
+	}
+	// The settings sections, when the run rendered them: the page's seven tabs
+	// are its only navigation, so each one has a picture.
+	if containsPage(pages, "settings") {
+		var figures strings.Builder
+		for section := range 7 {
+			name := "settings-section-" + strconv.Itoa(section) + "-light.png"
+			if _, err := os.Stat(filepath.Join(outDir, name)); err != nil {
+				continue
+			}
+			fmt.Fprintf(&figures, `  <figure><img src="%s" alt="设置分区"><figcaption>%s</figcaption></figure>
+`, name, settingsSections()[section])
+		}
+		if figures.Len() > 0 {
+			b.WriteString("<section><h2>设置的七个分区</h2>\n<div class=\"pair\">\n")
+			b.WriteString(figures.String())
+			b.WriteString("</div>\n</section>\n")
+		}
+	}
+
+	if !containsPage(pages, "library") {
+		b.WriteString("</body></html>\n")
+		writeIndexFile(outDir, b.String())
+		return
 	}
 	b.WriteString(`<section><h2>材质与通用状态</h2>
 <div class="pair">
@@ -321,13 +397,81 @@ func writeIndex(outDir string) {
   <figure><img src="library-focus-light.png" alt="键盘焦点"><figcaption>Tab 进入表格、↓ 选中一行：2 px 朱红焦点环</figcaption></figure>
 </div>
 </section>
-</body></html>
 `)
+	// The 900×600 floor for the pages a batch touched, when it rendered them.
+	var minimum strings.Builder
+	for _, page := range pages {
+		if page == "library" {
+			continue
+		}
+		name := page + "-min-light.png"
+		if _, err := os.Stat(filepath.Join(outDir, name)); err != nil {
+			continue
+		}
+		fmt.Fprintf(&minimum, `  <figure><img src="%s" alt="900×600"><figcaption>%s · 900×600</figcaption></figure>
+`, name, pageTitle(page))
+	}
+	if minimum.Len() > 0 {
+		b.WriteString("<section><h2>最小窗口（900×600）</h2>\n<div class=\"pair\">\n")
+		b.WriteString(minimum.String())
+		b.WriteString("</div>\n</section>\n")
+	}
+	b.WriteString("</body></html>\n")
+	writeIndexFile(outDir, b.String())
+}
+
+func writeIndexFile(outDir, body string) {
 	name := filepath.Join(outDir, "index.html")
-	if err := os.WriteFile(name, []byte(b.String()), 0o644); err != nil {
+	if err := os.WriteFile(name, []byte(body), 0o644); err != nil {
 		log.Fatalf("write %s: %v", name, err)
 	}
 	log.Printf("wrote %s", name)
+}
+
+// noteOr is the comparison page's default note.
+func noteOr(note string) string {
+	if note != "" {
+		return note
+	}
+	return "左为设计定稿图（docs/screenshots/design/a/，由 tools/designpreview 画出），" +
+		"右为本次改动后由 go run ./tools/uipreview 用真实 shell.View 离屏渲染的同一页（1200×760 DIP @2×）。"
+}
+
+// parsePages validates the -pages list; an unknown name stops the run instead
+// of writing a page named after a typo.
+func parsePages(list, title string) []string {
+	var out []string
+	for _, raw := range strings.Split(list, ",") {
+		name := strings.TrimSpace(raw)
+		if name == "" {
+			continue
+		}
+		if !containsPage(allPages, name) {
+			log.Fatalf("-pages: unknown page %q (have %s); title %q", name, strings.Join(allPages, ", "), title)
+		}
+		if !containsPage(out, name) {
+			out = append(out, name)
+		}
+	}
+	if len(out) == 0 {
+		log.Fatal("-pages: no page to render")
+	}
+	return out
+}
+
+func containsPage(pages []string, want string) bool {
+	for _, page := range pages {
+		if page == want {
+			return true
+		}
+	}
+	return false
+}
+
+// settingsSections mirrors the settings page's tab labels for the index's
+// captions (the page owns the list; this is only a caption).
+func settingsSections() []string {
+	return []string{"外观", "播放", "音乐库", "元数据", "来源", "数据", "关于"}
 }
 
 func pageTitle(page string) string {

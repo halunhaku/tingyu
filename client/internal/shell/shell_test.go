@@ -620,7 +620,7 @@ func TestPagesFitTheMinimumWindow(t *testing.T) {
 		want    string
 	}{
 		{model.PageLibrary, nil, "播放全部"},
-		{model.PageFavorites, nil, "已显示 1 / 共 1 首"},
+		{model.PageFavorites, nil, "已全部加载 · 共 1 首"},
 		{model.PageAlbums, nil, "太阳之子"},
 		{model.PageArtists, nil, "周杰伦"},
 		{model.PagePlaylists, nil, "通勤"},
@@ -898,8 +898,11 @@ func TestSourceDeleteNeedsConfirmation(t *testing.T) {
 	if !tt.HasText("本地目录") {
 		t.Fatalf("source missing; texts %q", tt.Texts())
 	}
-	if err := tt.Click("删除来源"); err != nil {
+	if err := tt.Click("来源操作"); err != nil {
 		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem("删除来源…"); err != nil {
+		t.Fatalf("删除来源…: %v (menu %v)", err, tt.Menu())
 	}
 	tt.Frame()
 	if !tt.HasText("删除来源「本地目录」？") {
@@ -941,7 +944,7 @@ func TestSourcesPageShowsRemoteFormsAndRelogin(t *testing.T) {
 	}})
 	m.State().OpenPage(model.PageSources)
 	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
-	for _, want := range []string{"来源管理", "我的夸克", "同步", "夸克网盘（直链播放"} {
+	for _, want := range []string{"添加来源", "远程来源", "我的夸克", "立即同步", "夸克网盘（直链播放"} {
 		if !tt.HasText(want) {
 			t.Errorf("sources page does not show %q; texts are %q", want, tt.Texts())
 		}
