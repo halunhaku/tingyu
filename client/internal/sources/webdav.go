@@ -12,6 +12,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/halunhaku/tingyu/client/internal/titleparse"
 	"io"
 	"net/http"
 	"net/url"
@@ -251,7 +252,7 @@ func (w *WebDAV) Scan(ctx context.Context, progress Progress) (ScanResult, error
 			if name == "" {
 				name = fileNameStem(segment)
 			}
-			parsed := ParseFilename(name)
+			parsed := titleparse.ParseFilename(name)
 			album := parsed.Album
 			if album == UnknownAlbum {
 				album = WebDAVAlbum

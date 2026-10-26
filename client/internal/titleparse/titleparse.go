@@ -1,8 +1,12 @@
-package sources
+package titleparse
 
-// SmartTitleParser, ported from app/lib/sources/scraper/smart_title_parser.dart.
-// A remote source only has file names, so this is the input the metadata
-// milestone will enrich. The "second part is the artist" special case is this
+// Package titleparse is SmartTitleParser, ported from
+// app/lib/sources/scraper/smart_title_parser.dart. It lives on its own so both
+// the remote sources (which see file names) and the metadata enricher (which
+// cleans them) can use it without depending on each other.
+//
+// A remote source only has file names, so this is the input metadata
+// enrichment works on. The "second part is the artist" special case is this
 // library's naming habit (`歌手 - 歌名 - 专辑` and `歌名 - 周杰伦` mixed), not a
 // general rule: the Dart implementation says so and the port keeps it.
 
