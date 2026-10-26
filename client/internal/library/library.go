@@ -5,10 +5,10 @@
 // M7. Migration is "补差" (create what is missing, add nullable columns) and
 // never bumps the version (plan §8.1 rule 3).
 //
-// M1 opens the library read-write for exactly two writes (plan §6 M1, last
-// item): the scan merge and the play history/play count. Everything else —
-// favourites, playlists, metadata enrichment — stays out until a later
-// milestone, and no code here writes it.
+// Writes: the scan merge, the play history and duration backfill (M1/M2), and
+// — since the kernel-data milestone — favourites, playlists and source
+// deletion, which M4 had to show as unavailable. Metadata enrichment and
+// lyric fetching still write nothing (M5).
 //
 // The production library is never the one opened during development: the
 // caller points TINGYU_DATA_DIR at a copy (plan §8.1 rule 2).
@@ -237,8 +237,9 @@ func (l *Library) bump(ids ...string) {
 	}
 }
 
-// Tracks returns every track, ordered for display. Paging is M4's job; M1
-// still shows the whole library (178 rows on the real one).
+// Tracks returns every track, ordered for display. The pages never call it:
+// they page through TracksPage. It stays for the acceptance aids and for a
+// caller that genuinely needs the whole library in hand.
 func (l *Library) Tracks(ctx context.Context) ([]Track, error) {
 	const query = `
 SELECT id, source_id, title, artist, album, duration,

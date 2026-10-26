@@ -19,7 +19,7 @@ func Library(c *ui.Context, d components.Design, s *model.State) {
 			SourceMenu(c, d, s, list)
 		}
 		if b := d.Button(c, "播放全部"); b.Clicked() {
-			PlayAll(s, list.All())
+			PlayAll(s, s.AllOf(list))
 		}
 		AddDirectoryButton(c, d, s)
 	}
@@ -29,7 +29,7 @@ func Library(c *ui.Context, d components.Design, s *model.State) {
 			components.ErrorState(c, d, "无法打开曲库", s.LoadErr().Error(), s.DBPath())
 			return
 		}
-		if len(s.Library().All()) == 0 {
+		if list.Total() == 0 {
 			if s.SourceFilter() != "" {
 				components.Empty(c, d, components.IconSearch, "这个来源没有曲目",
 					"换一个来源，或在来源页同步这个目录。", func() {
@@ -51,7 +51,7 @@ func Library(c *ui.Context, d components.Design, s *model.State) {
 		components.Pager(c, d, list)
 		ui.Row(c).Gap(tokens.Space8).Children(func() {
 			d.Text(c, tokens.LabelS, s.DBPath()).TextColor(d.P.TextTertiary).SingleLine()
-			d.Text(c, tokens.LabelS, "· 只读打开时扫描与历史不写库").TextColor(d.P.TextTertiary)
+			d.Text(c, tokens.LabelS, "· 分页与聚合来自 SQL（LIMIT/OFFSET）").TextColor(d.P.TextTertiary)
 		})
 	})
 }
@@ -79,7 +79,7 @@ func Favorites(c *ui.Context, d components.Design, s *model.State) {
 		}
 		if view == 0 {
 			if b := d.Button(c, "播放全部"); b.Clicked() {
-				PlayAll(s, list.All())
+				PlayAll(s, s.AllOf(list))
 			}
 		}
 	}
@@ -90,7 +90,7 @@ func Favorites(c *ui.Context, d components.Design, s *model.State) {
 		}
 		if view == 1 {
 			albums := s.FavoriteAlbums()
-			if len(albums) == 0 {
+			if albums.Total() == 0 {
 				components.Empty(c, d, components.IconHeart, "还没有收藏的专辑",
 					"收藏的单曲会自动归入它所在的专辑。", nil)
 				return
@@ -100,7 +100,7 @@ func Favorites(c *ui.Context, d components.Design, s *model.State) {
 		}
 		if list.Total() == 0 {
 			components.Empty(c, d, components.IconHeart, "还没有收藏的歌曲",
-				"点击曲目右侧的 ♥ 可以收藏；收藏写入需要内核支持，本里程碑尚未接入。", func() {
+				"点击曲目右侧的 ♥ 即可收藏，写入 tracks.is_favorite 并立即生效。", func() {
 					d.Button(c, "去曲库").OnClick(func() { s.OpenPage(model.PageLibrary) })
 				})
 			return
@@ -111,5 +111,5 @@ func Favorites(c *ui.Context, d components.Design, s *model.State) {
 }
 
 func favoritesSummary(s *model.State) string {
-	return model.FormatCount(len(s.FavoriteAlbums()), "张专辑")
+	return model.FormatCount(s.FavoriteAlbums().Total(), "张专辑")
 }

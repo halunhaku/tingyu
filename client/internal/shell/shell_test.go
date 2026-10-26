@@ -1,11 +1,21 @@
 package shell
 
+// The window's tests run against a real library: a temporary SQLite file with
+// the production schema, filled through the same write path the app uses
+// (OpenWritable + MergeScan + the playlist and favourite writes). Nothing here
+// fakes the data layer, so a page that renders rows proves the SQL it asked
+// for actually answers.
+
 import (
+	"context"
 	"errors"
+	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/egoist/mygo/plugins/sqlite"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/halunhaku/tingyu/client/internal/library"
@@ -15,18 +25,25 @@ import (
 )
 
 type fakeActions struct {
-	played   []library.Track
-	start    int
-	toggles  int
-	next     int
-	previous int
-	seek     time.Duration
-	volume   float64
-	repeat   player.RepeatMode
-	chosen   int
-	revealed int
-	synced   int
-	queue    []library.Track
+	played    []library.Track
+	start     int
+	toggles   int
+	next      int
+	previous  int
+	seek      time.Duration
+	volume    float64
+	repeat    player.RepeatMode
+	shuffle   bool
+	chosen    int
+	revealed  int
+	synced    int
+	favorites []string
+	playlists []string
+	added     []string
+	removed   []int
+	moved     [][2]int
+	deleted   []string
+	queue     []library.Track
 }
 
 func (f *fakeActions) PlayTracks(tracks []library.Track, start int) error {
@@ -35,35 +52,144 @@ func (f *fakeActions) PlayTracks(tracks []library.Track, start int) error {
 	f.queue = append(append([]library.Track{}, tracks[start:]...), tracks[:start]...)
 	return nil
 }
-func (f *fakeActions) TogglePlayPause() error            { f.toggles++; return nil }
-func (f *fakeActions) Next() error                       { f.next++; return nil }
-func (f *fakeActions) Previous() error                   { f.previous++; return nil }
-func (f *fakeActions) Seek(position time.Duration) error { f.seek = position; return nil }
-func (f *fakeActions) SetVolume(volume float64) error    { f.volume = volume; return nil }
-func (f *fakeActions) CycleRepeat() player.RepeatMode    { f.repeat = player.RepeatOne; return f.repeat }
-func (f *fakeActions) ChooseDirectory()                  { f.chosen++ }
-func (f *fakeActions) SyncSource(source library.Source)  { f.synced++ }
-func (f *fakeActions) SyncAllSources()                   { f.synced++ }
-func (f *fakeActions) RevealInFinder(track library.Track) {
-	f.revealed++
+func (f *fakeActions) TogglePlayPause() error             { f.toggles++; return nil }
+func (f *fakeActions) Next() error                        { f.next++; return nil }
+func (f *fakeActions) Previous() error                    { f.previous++; return nil }
+func (f *fakeActions) Seek(position time.Duration) error  { f.seek = position; return nil }
+func (f *fakeActions) SetVolume(volume float64) error     { f.volume = volume; return nil }
+func (f *fakeActions) CycleRepeat() player.RepeatMode     { f.repeat = player.RepeatOne; return f.repeat }
+func (f *fakeActions) SetShuffle(on bool) bool            { f.shuffle = on; return on }
+func (f *fakeActions) ChooseDirectory()                   { f.chosen++ }
+func (f *fakeActions) SyncSource(source library.Source)   { f.synced++ }
+func (f *fakeActions) SyncAllSources()                    { f.synced++ }
+func (f *fakeActions) DeleteSource(source library.Source) { f.deleted = append(f.deleted, source.ID) }
+func (f *fakeActions) RevealInFinder(track library.Track) { f.revealed++ }
+func (f *fakeActions) CreatePlaylist(name string)         { f.playlists = append(f.playlists, "create:"+name) }
+func (f *fakeActions) RenamePlaylist(id, name string) {
+	f.playlists = append(f.playlists, "rename:"+id+":"+name)
+}
+func (f *fakeActions) DeletePlaylist(id string)                { f.playlists = append(f.playlists, "delete:"+id) }
+func (f *fakeActions) RemoveFromPlaylist(id string, index int) { f.removed = append(f.removed, index) }
+func (f *fakeActions) MovePlaylistItem(id string, from, to int) {
+	f.moved = append(f.moved, [2]int{from, to})
 }
 func (f *fakeActions) Queue() []library.Track { return f.queue }
+func (f *fakeActions) SetFavorite(track library.Track, favorite bool) {
+	if favorite {
+		f.favorites = append(f.favorites, "+"+track.ID)
+		return
+	}
+	f.favorites = append(f.favorites, "-"+track.ID)
+}
+func (f *fakeActions) AddToPlaylist(id string, ids []string) {
+	f.added = append(f.added, id+"="+strings.Join(ids, ","))
+}
 
-func sampleTracks() []library.Track {
-	return []library.Track{
-		{ID: "a", Title: "西西里", Artist: "周杰伦", Album: "太阳之子", Duration: 229 * time.Second, PlayCount: 3, IsFavorite: true, Lyrics: "[00:01.00]第一句\n[00:05.00]第二句\n[00:09.00]第三句"},
-		{ID: "b", Title: "湘女多情", Artist: "周杰伦", Album: "太阳之子", Duration: 238 * time.Second},
+// sampleTracks is the two-row fixture the fixed expectations use.
+func sampleTracks() []library.ScannedTrack {
+	return []library.ScannedTrack{
+		{
+			FilePathOrURL: "/music/西西里.flac", Title: "西西里", Artist: "周杰伦", Album: "太阳之子",
+			Duration: 229 * time.Second, FileFormat: "flac", TrackNumber: 1, DiscNumber: 1, Year: 2016,
+			Lyrics: "[00:01.00]第一句\n[00:05.00]第二句\n[00:09.00]第三句",
+		},
+		{
+			FilePathOrURL: "/music/湘女多情.flac", Title: "湘女多情", Artist: "周杰伦", Album: "太阳之子",
+			Duration: 238 * time.Second, FileFormat: "flac", TrackNumber: 2, DiscNumber: 1, Year: 2016,
+		},
 	}
 }
 
-func newModel(tracks []library.Track) *Model {
-	m := New(tracks, "/tmp/tingyu-m0/library.sqlite", nil)
+// newLibrary creates a temporary library and returns it with a window over it.
+func newLibrary(t *testing.T, tracks []library.ScannedTrack) (*library.Library, *Model) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "library.sqlite")
+	ctx := context.Background()
+	// A file with the frozen version and no tables: OpenWritable's 补差 pass
+	// creates the production schema, which is exactly what it does for a
+	// legacy library.
+	db, err := sqlite.Open(ctx, path, sqlite.OpenOptions{})
+	if err != nil {
+		t.Fatalf("create library: %v", err)
+	}
+	if _, err := db.Execute(ctx, "PRAGMA user_version = 2"); err != nil {
+		t.Fatalf("set user_version: %v", err)
+	}
+	db.Close()
+
+	lib, err := library.OpenWritable(ctx, path)
+	if err != nil {
+		t.Fatalf("open library: %v", err)
+	}
+	t.Cleanup(func() { lib.Close() })
+	source := library.Source{ID: "src-local", Name: "本地目录", Kind: "local", LocalFolderPath: "/music", SyncStatus: "已同步"}
+	if err := lib.UpsertLocalSource(ctx, source); err != nil {
+		t.Fatalf("source: %v", err)
+	}
+	if len(tracks) > 0 {
+		merge, err := lib.MergeScan(ctx, source.ID, tracks, true)
+		if err != nil {
+			t.Fatalf("merge: %v", err)
+		}
+		if merge.Added != len(tracks) {
+			t.Fatalf("merge added %d of %d tracks", merge.Added, len(tracks))
+		}
+	}
+
+	m := New(lib.Queries(), lib, path, nil)
 	m.State().FinishOnboarding()
+	sources, err := lib.Sources(ctx)
+	if err != nil {
+		t.Fatalf("sources: %v", err)
+	}
+	m.SetSources(sources)
+	m.SetCoversDir(library.CoversDir(filepath.Dir(path)))
+	warmModel(m)
+	return lib, m
+}
+
+// warmModel runs the model's frame loop until its lists have their first page.
+// The pages are read from SQL on a worker goroutine, so a window that drew one
+// frame would photograph the loading state.
+func warmModel(m *Model) {
+	st := m.State()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		st.Tick(time.Now())
+		if st.Settled() {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
+// trackByTitle finds a loaded row, so a test can play the one with lyrics.
+func trackByTitle(t *testing.T, m *Model, title string) library.Track {
+	t.Helper()
+	for _, track := range m.State().Library().Items() {
+		if track.Title == title {
+			return track
+		}
+	}
+	t.Fatalf("%q is not in the library", title)
+	return library.Track{}
+}
+
+func newModel(t *testing.T) *Model {
+	t.Helper()
+	_, m := newLibrary(t, sampleTracks())
 	return m
 }
 
+// frame draws one frame after letting the model tick (the window's own View
+// ticks once; a page whose rows arrived meanwhile shows on this frame).
+func frame(tt *ui.Tester) {
+	tt.Frame()
+	tt.Frame()
+}
+
 func TestViewShowsSidebarAndLibrary(t *testing.T) {
-	m := newModel(sampleTracks())
+	m := newModel(t)
 	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
 	for _, want := range []string{
 		"听屿", "曲库", "收藏", "专辑", "艺术家", "歌单", "搜索", "设置",
@@ -78,7 +204,7 @@ func TestViewShowsSidebarAndLibrary(t *testing.T) {
 }
 
 func TestViewExplainsALibraryItCannotRead(t *testing.T) {
-	m := New(nil, "/tmp/tingyu-m0/library.sqlite", errors.New("user_version 3, want 2"))
+	m := New(nil, nil, "/tmp/tingyu-m0/library.sqlite", errors.New("user_version 3, want 2"))
 	m.State().FinishOnboarding()
 	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
 	for _, want := range []string{"无法打开曲库", "user_version 3, want 2", "/tmp/tingyu-m0/library.sqlite"} {
@@ -89,7 +215,7 @@ func TestViewExplainsALibraryItCannotRead(t *testing.T) {
 }
 
 func TestScanProgressIsVisible(t *testing.T) {
-	m := newModel(nil)
+	m := newModel(t)
 	m.SetScan(ScanState{Running: true, Done: 12, Total: 50, Path: "/音乐/正在解析.flac"})
 	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
 	for _, want := range []string{"正在扫描 12/50", "/音乐/正在解析.flac"} {
@@ -105,7 +231,7 @@ func TestScanProgressIsVisible(t *testing.T) {
 }
 
 func TestRowClickPlaysFromThatRow(t *testing.T) {
-	m := newModel(sampleTracks())
+	m := newModel(t)
 	actions := &fakeActions{}
 	m.SetActions(actions)
 	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
@@ -126,10 +252,10 @@ func TestRowClickPlaysFromThatRow(t *testing.T) {
 }
 
 func TestTransportButtonsCallActions(t *testing.T) {
-	m := newModel(sampleTracks())
+	m := newModel(t)
 	actions := &fakeActions{}
 	m.SetActions(actions)
-	track := m.Tracks()[0]
+	track := m.State().Library().Items()[0]
 	m.SetPlayer(player.Update{
 		Snapshot: mpv.Snapshot{Playing: true, Duration: 229 * time.Second, Position: 10 * time.Second, Volume: 0.5},
 		Track:    &track,
@@ -137,13 +263,16 @@ func TestTransportButtonsCallActions(t *testing.T) {
 	})
 	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
 	tt.Frame()
-	for _, label := range []string{"上一首", "暂停", "下一首"} {
+	for _, label := range []string{"上一首", "暂停", "下一首", "随机播放：关"} {
 		if err := tt.Click(label); err != nil {
 			t.Fatalf("click %q: %v (texts %q)", label, err, tt.Texts())
 		}
 	}
 	if actions.previous != 1 || actions.toggles != 1 || actions.next != 1 {
 		t.Fatalf("actions = %+v", actions)
+	}
+	if !actions.shuffle || !m.State().Shuffle() {
+		t.Fatalf("shuffle = %v / %v", actions.shuffle, m.State().Shuffle())
 	}
 	if err := tt.Click("循环：列表循环"); err != nil {
 		t.Fatalf("click repeat: %v", err)
@@ -154,7 +283,7 @@ func TestTransportButtonsCallActions(t *testing.T) {
 }
 
 func TestAddDirectoryButton(t *testing.T) {
-	m := newModel(nil)
+	m := newModel(t)
 	actions := &fakeActions{}
 	m.SetActions(actions)
 	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
@@ -167,8 +296,8 @@ func TestAddDirectoryButton(t *testing.T) {
 }
 
 func TestPlayerFailureIsShownInTransportAndStage(t *testing.T) {
-	m := newModel(sampleTracks())
-	track := m.Tracks()[0]
+	m := newModel(t)
+	track := m.State().Library().Items()[0]
 	m.SetPlayer(player.Update{
 		Snapshot: mpv.Snapshot{Processing: mpv.Ready},
 		Track:    &track,
@@ -186,8 +315,8 @@ func TestPlayerFailureIsShownInTransportAndStage(t *testing.T) {
 }
 
 func TestStageExpandsAndCollapses(t *testing.T) {
-	m := newModel(sampleTracks())
-	track := m.Tracks()[0]
+	m := newModel(t)
+	track := trackByTitle(t, m, "西西里")
 	m.SetPlayer(player.Update{
 		Snapshot: mpv.Snapshot{Playing: true, Duration: 229 * time.Second, Position: 6 * time.Second},
 		Track:    &track, Repeat: player.RepeatAll,
@@ -216,8 +345,8 @@ func TestStageExpandsAndCollapses(t *testing.T) {
 }
 
 func TestLyricsHighlightAndSeek(t *testing.T) {
-	m := newModel(sampleTracks())
-	track := m.Tracks()[0]
+	m := newModel(t)
+	track := trackByTitle(t, m, "西西里")
 	m.SetPlayer(player.Update{
 		Snapshot: mpv.Snapshot{Playing: true, Duration: 229 * time.Second, Position: 6 * time.Second},
 		Track:    &track, Repeat: player.RepeatAll,
@@ -239,7 +368,7 @@ func TestLyricsHighlightAndSeek(t *testing.T) {
 }
 
 func TestSearchDebounceAndResults(t *testing.T) {
-	m := newModel(sampleTracks())
+	m := newModel(t)
 	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
 	tt.Frame()
 	tt.Key(ui.Cmd, ui.KeyF)
@@ -254,14 +383,22 @@ func TestSearchDebounceAndResults(t *testing.T) {
 		t.Fatalf("debounce state missing; texts are %q", tt.Texts())
 	}
 	tt.Advance(model.SearchDebounceTime + 10*time.Millisecond)
-	tt.Frame()
+	frame(tt)
 	if !tt.HasText("西西里") || !tt.HasText("1 项") {
 		t.Fatalf("results missing; texts are %q", tt.Texts())
+	}
+	// The songs scope pages through the same SQL query.
+	if err := tt.Click("歌曲"); err != nil {
+		t.Fatalf("歌曲 scope: %v", err)
+	}
+	frame(tt)
+	if !tt.HasText("已全部加载 · 共 1 首") {
+		t.Fatalf("song scope did not list the hit; texts are %q", tt.Texts())
 	}
 }
 
 func TestSettingsThemePersistsOnlyWhenWritable(t *testing.T) {
-	m := newModel(sampleTracks())
+	m := newModel(t)
 	m.State().SetSettings(model.Settings{ThemeMode: "dark", Density: "compact", CoverTint: false})
 	if m.State().Settings().ThemeMode != "dark" {
 		t.Fatalf("settings = %+v", m.State().Settings())
@@ -280,7 +417,7 @@ func TestSettingsThemePersistsOnlyWhenWritable(t *testing.T) {
 }
 
 func TestOnboardingShowsWhenLibraryAndSourcesAreEmpty(t *testing.T) {
-	m := New(nil, "/tmp/library.sqlite", nil)
+	m := New(nil, nil, "/tmp/library.sqlite", nil)
 	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
 	for _, want := range []string{"听屿", "本地文件夹", "WebDAV", "夸克网盘", "添加音乐来源", "跳过"} {
 		if !tt.HasText(want) {
@@ -296,37 +433,192 @@ func TestOnboardingShowsWhenLibraryAndSourcesAreEmpty(t *testing.T) {
 	}
 }
 
-func TestKernelNoticeInsteadOfFakeFavorite(t *testing.T) {
-	m := newModel(sampleTracks())
-	m.State().AskKernel("收藏写入（tracks.is_favorite）")
+func TestFavoriteClickWritesThroughTheApp(t *testing.T) {
+	m := newModel(t)
+	actions := &fakeActions{}
+	m.SetActions(actions)
 	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
-	if !tt.HasText("需内核支持：收藏写入（tracks.is_favorite）。本里程碑只做界面，未改内核；该操作尚未接入数据层。") {
-		t.Errorf("kernel notice missing; texts are %q", tt.Texts())
+	tt.Frame()
+	// The first row is not a favourite in this fixture.
+	if err := tt.Click("收藏此曲"); err != nil {
+		t.Fatal(err)
 	}
-	if strings.Contains(strings.Join(tt.Texts(), "|"), "收藏成功") {
-		t.Fatal("a write was faked")
+	tt.Frame()
+	if len(actions.favorites) != 1 || !strings.HasPrefix(actions.favorites[0], "+") {
+		t.Fatalf("favourite did not reach the write path: %v (texts %q)", actions.favorites, tt.Texts())
+	}
+	if strings.Contains(strings.Join(tt.Texts(), "|"), "需内核支持") {
+		t.Fatal("the window still reports a missing kernel for favourites")
 	}
 }
 
-func TestFormatDuration(t *testing.T) {
-	for _, test := range []struct {
-		in   time.Duration
-		want string
+func TestFavoriteSurvivesTheRowMenuAndTheStage(t *testing.T) {
+	lib, m := newLibrary(t, sampleTracks())
+	actions := &fakeActions{}
+	m.SetActions(actions)
+	ctx := context.Background()
+	tracks, err := lib.TracksPage(ctx, library.TrackQuery{Sort: library.SortTitle})
+	if err != nil || len(tracks) == 0 {
+		t.Fatalf("tracks: %v", err)
+	}
+	// The write path itself (the app calls the same method).
+	if err := lib.SetFavorite(ctx, tracks[0].ID, true); err != nil {
+		t.Fatal(err)
+	}
+	m.Invalidate()
+	warmModel(m)
+	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
+	frame(tt)
+	if !tt.HasText("取消收藏此曲") {
+		t.Fatalf("the row does not show the favourite it has; texts %q", tt.Texts())
+	}
+	// Read the row again: the value read before the write still says "not a
+	// favourite", and the stage draws what it is given.
+	refreshed, _, err := lib.Track(ctx, tracks[0].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.SetPlayer(player.Update{Snapshot: mpv.Snapshot{Playing: true}, Track: &refreshed, Repeat: player.RepeatAll})
+	m.State().OpenStage()
+	frame(tt)
+	if !tt.HasText("取消收藏") {
+		t.Fatalf("the stage does not show the favourite; texts %q", tt.Texts())
+	}
+}
+
+func TestPaginationFooterLoadsOnePagePerClick(t *testing.T) {
+	rows := make([]library.ScannedTrack, 0, 100)
+	for i := range 100 {
+		rows = append(rows, library.ScannedTrack{
+			FilePathOrURL: fmt.Sprintf("/music/%03d.flac", i),
+			Title:         fmt.Sprintf("曲目 %03d", i),
+			Artist:        fmt.Sprintf("艺术家 %02d", i%7),
+			Album:         fmt.Sprintf("专辑 %02d", i%5),
+			Duration:      time.Duration(120+i%60) * time.Second,
+			FileFormat:    "flac",
+		})
+	}
+	_, m := newLibrary(t, rows)
+	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
+	tt.Frame()
+	if !tt.HasText("已显示 40 / 共 100 首") {
+		t.Fatalf("first page footer missing; texts %q", tt.Texts())
+	}
+	if err := tt.Click("加载更多"); err != nil {
+		t.Fatal(err)
+	}
+	frame(tt)
+	if m.State().Library().Loaded() != 80 || !tt.HasText("已显示 80 / 共 100 首") {
+		t.Fatalf("one click loaded %d, texts %q", m.State().Library().Loaded(), tt.Texts())
+	}
+	if err := tt.Click("加载更多"); err != nil {
+		t.Fatal(err)
+	}
+	frame(tt)
+	if m.State().Library().Loaded() != 100 || !tt.HasText("已全部加载 · 共 100 首") {
+		t.Fatalf("end footer missing; loaded=%d texts=%q", m.State().Library().Loaded(), tt.Texts())
+	}
+}
+
+func TestSettingsPersistWhenWritable(t *testing.T) {
+	dir := t.TempDir()
+	m := newModel(t)
+	m.State().ConfigureDataDir(dir, true)
+	m.State().SetSettings(model.Settings{ThemeMode: "dark", Density: "compact", CoverTint: false})
+	settings, corrupt, err := model.LoadSettings(dir)
+	if err != nil || corrupt {
+		t.Fatalf("load: %v corrupt=%v", err, corrupt)
+	}
+	if settings.ThemeMode != "dark" || settings.Density != "compact" || settings.CoverTint {
+		t.Fatalf("persisted settings = %+v", settings)
+	}
+}
+
+func TestPagesFitTheMinimumWindow(t *testing.T) {
+	lib, m := newLibrary(t, sampleTracks())
+	ctx := context.Background()
+	playlist, err := lib.CreatePlaylist(ctx, "通勤")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tracks, err := lib.TracksPage(ctx, library.TrackQuery{Sort: library.SortTitle})
+	if err != nil || len(tracks) == 0 {
+		t.Fatalf("tracks: %v", err)
+	}
+	if _, err := lib.AddTracksToPlaylist(ctx, playlist.ID, []string{tracks[0].ID}); err != nil {
+		t.Fatal(err)
+	}
+	m.Invalidate()
+	warmModel(m)
+	m.SetPlayer(player.Update{
+		Snapshot: mpv.Snapshot{Playing: true, Duration: 229 * time.Second, Position: 6 * time.Second},
+		Track:    &tracks[0], Repeat: player.RepeatAll,
+	})
+	if err := lib.SetFavorite(ctx, tracks[0].ID, true); err != nil {
+		t.Fatal(err)
+	}
+	m.Invalidate()
+	warmModel(m)
+	m.State().SetQueue(tracks, 0)
+	trackWithLyrics := trackByTitle(t, m, "西西里")
+	m.SetPlayer(player.Update{
+		Snapshot: mpv.Snapshot{Playing: true, Duration: 229 * time.Second, Position: 6 * time.Second},
+		Track:    &trackWithLyrics, Repeat: player.RepeatAll,
+	})
+	tt := ui.NewTester(m.View, MinimumWidth, MinimumHeight)
+	shots := []struct {
+		page    string
+		prepare func()
+		want    string
 	}{
-		{229 * time.Second, "3:49"},
-		{59 * time.Second, "0:59"},
-		{3600 * time.Second, "1:00:00"},
-		{3723 * time.Second, "1:02:03"},
-		{-5 * time.Second, "0:00"},
-	} {
-		if got := formatDuration(test.in); got != test.want {
-			t.Errorf("formatDuration(%v) = %q, want %q", test.in, got, test.want)
+		{model.PageLibrary, nil, "播放全部"},
+		{model.PageFavorites, nil, "已显示 1 / 共 1 首"},
+		{model.PageAlbums, nil, "太阳之子"},
+		{model.PageArtists, nil, "周杰伦"},
+		{model.PagePlaylists, nil, "通勤"},
+		{model.PagePlaylistDetail, func() { m.State().OpenPlaylist(playlist) }, "随机播放"},
+		{model.PageSearch, nil, "最近搜索"},
+		{model.PageSettings, nil, "主题模式"},
+		{model.PageSources, nil, "本地目录"},
+		{model.PageQueue, nil, "当前播放"},
+		{model.PageLyrics, nil, "随播放高亮"},
+	}
+	for _, shot := range shots {
+		if shot.prepare != nil {
+			shot.prepare()
+		} else {
+			m.State().OpenPage(shot.page)
 		}
+		tt.SetSize(MinimumWidth, MinimumHeight)
+		frame(tt)
+		if !tt.HasText(shot.want) {
+			t.Errorf("%s at %dx%d does not show %q; texts %q", shot.page, MinimumWidth, MinimumHeight, shot.want, tt.Texts())
+		}
+	}
+	m.State().OpenStage()
+	tt.Frame()
+	if !tt.HasText("关闭舞台") {
+		t.Errorf("stage at %dx%d missing; texts %q", MinimumWidth, MinimumHeight, tt.Texts())
+	}
+}
+
+func TestPaletteFocusesItsFieldOnOpen(t *testing.T) {
+	m := newModel(t)
+	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
+	tt.Frame()
+	tt.Key(ui.Cmd, ui.KeyK)
+	tt.Frame()
+	tt.Type("西西里")
+	tt.Frame()
+	tt.Advance(model.SearchDebounceTime + 10*time.Millisecond)
+	tt.Frame()
+	if m.State().Palette().Query != "西西里" {
+		t.Fatalf("palette field was not focused (query %q, texts %q)", m.State().Palette().Query, tt.Texts())
 	}
 }
 
 func TestPaletteOpensFiltersAndPlays(t *testing.T) {
-	m := newModel(sampleTracks())
+	m := newModel(t)
 	actions := &fakeActions{}
 	m.SetActions(actions)
 	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
@@ -365,46 +657,52 @@ func TestPaletteOpensFiltersAndPlays(t *testing.T) {
 }
 
 func TestAlbumAndArtistNavigation(t *testing.T) {
-	m := newModel(sampleTracks())
+	m := newModel(t)
 	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
 	tt.Frame()
 	if err := tt.Click("专辑"); err != nil {
 		t.Fatal(err)
 	}
-	tt.Frame()
+	frame(tt)
 	if !tt.HasText("太阳之子") {
 		t.Fatalf("albums page missing the album; texts %q", tt.Texts())
 	}
 	if err := tt.Click("太阳之子"); err != nil {
 		t.Fatal(err)
 	}
-	tt.Frame()
+	frame(tt)
 	if m.State().Page() != model.PageAlbumDetail || !tt.HasText("在艺人中查看") {
 		t.Fatalf("album detail not shown; page=%s texts=%q", m.State().Page(), tt.Texts())
 	}
+	if !tt.HasText("西西里") || !tt.HasText("湘女多情") {
+		t.Fatalf("album detail did not read its tracks from SQL; texts %q", tt.Texts())
+	}
 	m.State().Back()
-	tt.Frame()
+	frame(tt)
 	if err := tt.Click("艺术家"); err != nil {
 		t.Fatal(err)
 	}
-	tt.Frame()
+	frame(tt)
 	if err := tt.Click("周杰伦"); err != nil {
 		t.Fatal(err)
 	}
-	tt.Frame()
+	frame(tt)
 	if m.State().Page() != model.PageArtistDetail || !tt.HasText("全部曲目") {
 		t.Fatalf("artist detail not shown; page=%s texts=%q", m.State().Page(), tt.Texts())
+	}
+	if !tt.HasText("2 首 · 1 张专辑 · 7 分钟") && !tt.HasText("1 张专辑 · 2 首") {
+		t.Fatalf("artist summary missing; texts %q", tt.Texts())
 	}
 }
 
 func TestQueuePageListsCurrentAndNext(t *testing.T) {
-	m := newModel(sampleTracks())
-	track := m.Tracks()[0]
+	m := newModel(t)
+	tracks := m.State().Library().Items()
 	m.SetPlayer(player.Update{
 		Snapshot: mpv.Snapshot{Playing: true, Duration: 229 * time.Second, Position: 5 * time.Second},
-		Track:    &track, Repeat: player.RepeatAll,
+		Track:    &tracks[0], Repeat: player.RepeatAll,
 	})
-	m.State().SetQueue(m.Tracks(), 0)
+	m.State().SetQueue(tracks, 0)
 	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
 	tt.Frame()
 	if err := tt.Click("播放队列"); err != nil {
@@ -418,116 +716,184 @@ func TestQueuePageListsCurrentAndNext(t *testing.T) {
 	}
 }
 
-func TestFavoriteClickReportsKernelNotFakeSuccess(t *testing.T) {
-	m := newModel(sampleTracks())
+func TestPlaylistCreateRenameAndDeleteThroughTheWindow(t *testing.T) {
+	lib, m := newLibrary(t, sampleTracks())
+	ctx := context.Background()
+	actions := &fakeActions{}
+	m.SetActions(actions)
+	m.State().OpenPage(model.PagePlaylists)
 	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
+	frame(tt)
+	if !tt.HasText("还没有歌单") {
+		t.Fatalf("empty playlist page missing; texts %q", tt.Texts())
+	}
+	if err := tt.Click("新建歌单"); err != nil {
+		t.Fatalf("新建歌单: %v", err)
+	}
 	tt.Frame()
-	if err := tt.Click("收藏此曲"); err != nil {
+	// The inline field takes the name; Enter commits it.
+	tt.Type("通勤")
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if len(actions.playlists) != 1 || actions.playlists[0] != "create:通勤" {
+		t.Fatalf("create = %v (texts %q)", actions.playlists, tt.Texts())
+	}
+
+	// A real playlist, so the page has a row to rename and delete.
+	playlist, err := lib.CreatePlaylist(ctx, "通勤")
+	if err != nil {
 		t.Fatal(err)
 	}
-	tt.Frame()
-	if !tt.HasText("需内核支持：收藏写入（tracks.is_favorite）") {
-		t.Fatalf("favorite did not report the missing kernel write; texts %q", tt.Texts())
+	m.Invalidate()
+	frame(tt)
+	if !tt.HasText("通勤") {
+		t.Fatalf("the created playlist is not listed; texts %q", tt.Texts())
 	}
-	if m.Tracks()[1].IsFavorite {
-		t.Fatal("favorite state changed without a kernel write")
+
+	// Rename: the row menu opens the inline field.
+	if err := tt.Click("歌单操作"); err != nil {
+		t.Fatalf("歌单操作: %v", err)
+	}
+	if err := tt.ChooseMenuItem("重命名…"); err != nil {
+		t.Fatalf("重命名…: %v (menu %v)", err, tt.Menu())
+	}
+	frame(tt)
+	tt.Type("·夜跑")
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if got := actions.playlists[len(actions.playlists)-1]; got != "rename:"+playlist.ID+":通勤·夜跑" {
+		t.Fatalf("rename = %q", got)
+	}
+
+	// Delete asks first, and only the dialog's confirm writes.
+	if err := tt.Click("歌单操作"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem("删除歌单…"); err != nil {
+		t.Fatalf("删除歌单…: %v (menu %v)", err, tt.Menu())
+	}
+	frame(tt)
+	if !tt.HasText("删除歌单「通勤」？") {
+		t.Fatalf("no confirmation; texts %q", tt.Texts())
+	}
+	if len(actions.playlists) != 2 {
+		t.Fatalf("the delete wrote before the confirmation: %v", actions.playlists)
+	}
+	if err := tt.Click("确认删除"); err != nil {
+		t.Fatalf("确认删除: %v", err)
+	}
+	tt.Frame()
+	if got := actions.playlists[len(actions.playlists)-1]; got != "delete:"+playlist.ID {
+		t.Fatalf("delete = %q", got)
 	}
 }
 
-func TestPaginationFooterLoadsOnePagePerClick(t *testing.T) {
-	tracks := perfTracks(100)
-	m := newModel(tracks)
+func TestPlaylistPageOffersReorderAndRemove(t *testing.T) {
+	lib, m := newLibrary(t, sampleTracks())
+	ctx := context.Background()
+	playlist, err := lib.CreatePlaylist(ctx, "通勤")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tracks, err := lib.TracksPage(ctx, library.TrackQuery{Sort: library.SortTitle})
+	if err != nil || len(tracks) != 2 {
+		t.Fatalf("tracks: %v", err)
+	}
+	if _, err := lib.AddTracksToPlaylist(ctx, playlist.ID, []string{tracks[0].ID, tracks[1].ID}); err != nil {
+		t.Fatal(err)
+	}
+	actions := &fakeActions{}
+	m.SetActions(actions)
+	m.Invalidate()
+	warmModel(m)
+	m.State().OpenPlaylist(playlist)
 	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
-	tt.Frame()
-	if !tt.HasText("已显示 40 / 共 100 首") {
-		t.Fatalf("first page footer missing; texts %q", tt.Texts())
+	frame(tt)
+	if !tt.HasText("西西里") || !tt.HasText("湘女多情") {
+		t.Fatalf("the playlist page did not list its items; texts %q", tt.Texts())
 	}
-	if err := tt.Click("加载更多"); err != nil {
+	// The first row's menu can only move down and remove.
+	if err := tt.Click("更多操作"); err != nil {
+		t.Fatalf("row menu: %v", err)
+	}
+	if err := tt.ChooseMenuItem("下移"); err != nil {
+		t.Fatalf("下移: %v (menu %v)", err, tt.Menu())
+	}
+	frame(tt)
+	if len(actions.moved) != 1 || actions.moved[0] != [2]int{0, 1} {
+		t.Fatalf("move = %v", actions.moved)
+	}
+	if err := tt.Click("更多操作"); err != nil {
 		t.Fatal(err)
 	}
-	tt.Frame()
-	if m.State().Library().Loaded() != 80 || !tt.HasText("已显示 80 / 共 100 首") {
-		t.Fatalf("one click loaded %d, texts %q", m.State().Library().Loaded(), tt.Texts())
+	if err := tt.ChooseMenuItem("移出歌单"); err != nil {
+		t.Fatalf("移出歌单: %v (menu %v)", err, tt.Menu())
 	}
-	if err := tt.Click("加载更多"); err != nil {
+	frame(tt)
+	if len(actions.removed) != 1 || actions.removed[0] != 0 {
+		t.Fatalf("remove = %v", actions.removed)
+	}
+	// 「添加到播放列表」 on a row reaches the app with the playlist it chose.
+	if err := tt.Click("更多操作"); err != nil {
 		t.Fatal(err)
 	}
-	tt.Frame()
-	if m.State().Library().Loaded() != 100 || !tt.HasText("已全部加载 · 共 100 首") {
-		t.Fatalf("end footer missing; loaded=%d texts=%q", m.State().Library().Loaded(), tt.Texts())
+	if err := tt.ChooseMenuItem("添加到播放列表", "通勤"); err != nil {
+		t.Fatalf("添加到播放列表: %v (menu %v)", err, tt.Menu())
+	}
+	frame(tt)
+	if len(actions.added) != 1 || !strings.HasPrefix(actions.added[0], playlist.ID+"=") {
+		t.Fatalf("add = %v", actions.added)
 	}
 }
 
-func TestSettingsPersistWhenWritable(t *testing.T) {
-	dir := t.TempDir()
-	m := newModel(sampleTracks())
-	m.State().ConfigureDataDir(dir, true)
-	m.State().SetSettings(model.Settings{ThemeMode: "dark", Density: "compact", CoverTint: false})
-	settings, corrupt, err := model.LoadSettings(dir)
-	if err != nil || corrupt {
-		t.Fatalf("load: %v corrupt=%v", err, corrupt)
+func TestSourceDeleteNeedsConfirmation(t *testing.T) {
+	_, m := newLibrary(t, sampleTracks())
+	actions := &fakeActions{}
+	m.SetActions(actions)
+	m.State().OpenPage(model.PageSources)
+	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
+	frame(tt)
+	if !tt.HasText("本地目录") {
+		t.Fatalf("source missing; texts %q", tt.Texts())
 	}
-	if settings.ThemeMode != "dark" || settings.Density != "compact" || settings.CoverTint {
-		t.Fatalf("persisted settings = %+v", settings)
+	if err := tt.Click("删除来源"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !tt.HasText("删除来源「本地目录」？") {
+		t.Fatalf("no confirmation; texts %q", tt.Texts())
+	}
+	if len(actions.deleted) != 0 {
+		t.Fatalf("the delete wrote before the confirmation: %v", actions.deleted)
+	}
+	if err := tt.Click("确认删除"); err != nil {
+		t.Fatalf("确认删除: %v", err)
+	}
+	tt.Frame()
+	if len(actions.deleted) != 1 || actions.deleted[0] != "src-local" {
+		t.Fatalf("deleted = %v", actions.deleted)
 	}
 }
 
-func TestPagesFitTheMinimumWindow(t *testing.T) {
-	m := newModel(sampleTracks())
-	track := m.Tracks()[0]
-	m.SetPlayer(player.Update{
-		Snapshot: mpv.Snapshot{Playing: true, Duration: 229 * time.Second, Position: 6 * time.Second},
-		Track:    &track, Repeat: player.RepeatAll,
-	})
-	m.State().SetQueue(m.Tracks(), 0)
-	tt := ui.NewTester(m.View, MinimumWidth, MinimumHeight)
-	shots := []struct {
-		page string
+func TestFormatDuration(t *testing.T) {
+	for _, test := range []struct {
+		in   time.Duration
 		want string
 	}{
-		{model.PageLibrary, "播放全部"},
-		{model.PageFavorites, "已显示 1 / 共 1 首"},
-		{model.PageAlbums, "太阳之子"},
-		{model.PageArtists, "周杰伦"},
-		{model.PagePlaylists, "歌单尚未接入数据层"},
-		{model.PageSearch, "最近搜索"},
-		{model.PageSettings, "主题模式"},
-		{model.PageSources, "还没有音乐来源"},
-		{model.PageQueue, "当前播放"},
-		{model.PageLyrics, "随播放高亮"},
-	}
-	for _, shot := range shots {
-		m.State().OpenPage(shot.page)
-		tt.SetSize(MinimumWidth, MinimumHeight)
-		tt.Frame()
-		if !tt.HasText(shot.want) {
-			t.Errorf("%s at %dx%d does not show %q; texts %q", shot.page, MinimumWidth, MinimumHeight, shot.want, tt.Texts())
+		{229 * time.Second, "3:49"},
+		{59 * time.Second, "0:59"},
+		{3600 * time.Second, "1:00:00"},
+		{3723 * time.Second, "1:02:03"},
+		{-5 * time.Second, "0:00"},
+	} {
+		if got := formatDuration(test.in); got != test.want {
+			t.Errorf("formatDuration(%v) = %q, want %q", test.in, got, test.want)
 		}
-	}
-	m.State().OpenStage()
-	tt.Frame()
-	if !tt.HasText("关闭舞台") {
-		t.Errorf("stage at %dx%d missing; texts %q", MinimumWidth, MinimumHeight, tt.Texts())
-	}
-}
-
-func TestPaletteFocusesItsFieldOnOpen(t *testing.T) {
-	m := newModel(sampleTracks())
-	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
-	tt.Frame()
-	tt.Key(ui.Cmd, ui.KeyK)
-	tt.Frame()
-	tt.Type("西西里")
-	tt.Frame()
-	tt.Advance(model.SearchDebounceTime + 10*time.Millisecond)
-	tt.Frame()
-	if m.State().Palette().Query != "西西里" {
-		t.Fatalf("palette field was not focused (query %q, texts %q)", m.State().Palette().Query, tt.Texts())
 	}
 }
 
 func TestSourcesPageShowsRemoteFormsAndRelogin(t *testing.T) {
-	m := newModel(nil)
+	m := newModel(t)
 	m.State().SetSources([]library.Source{{
 		ID: "src-quark", Name: "我的夸克", Kind: "quark", TrackCount: 4, SyncStatus: "未同步",
 	}})

@@ -10,8 +10,8 @@ import (
 	"github.com/halunhaku/tingyu/client/internal/ui/tokens"
 )
 
-// Search is the search page: 250 ms debounce, four groups, per-group
-// previews with 「查看全部」, and 40-per-page lists for a single scope.
+// Search is the search page: 250 ms debounce, four groups of SQL matches with
+// previews and 「查看全部」, and a 40-per-page list for a single scope.
 func Search(c *ui.Context, d components.Design, s *model.State) {
 	search := s.Search()
 	results := search.Results()
@@ -24,9 +24,9 @@ func Search(c *ui.Context, d components.Design, s *model.State) {
 		}
 	}
 	Page(c, d, s, "搜索", searchHeadline(search), nil, actions, func() {
-		field := d.SearchBox(c, &search.Input, "曲库搜索", "搜索歌曲、专辑、艺术家", true,
+		field := d.SearchBox(c, &search.Input, "曲库搜索", "搜索歌曲、专辑、艺术家、歌单", true,
 			func() { search.OnInput(s.Now()) },
-			func() { submitSearch(s) }, nil).FillWidth()
+			func() { s.PlaySearchHit() }, nil).FillWidth()
 		_ = field
 		if search.Pending() {
 			c.After(model.SearchDebounceTime)
@@ -47,7 +47,7 @@ func Search(c *ui.Context, d components.Design, s *model.State) {
 			})
 			return
 		}
-		if results.SongTotal+results.AlbumTotal+results.ArtistTotal == 0 {
+		if results.SongTotal+results.AlbumTotal+results.ArtistTotal+results.PlaylistTotal == 0 {
 			components.Empty(c, d, components.IconSearch, "没有找到匹配的结果",
 				"换一个关键词，或清除搜索。", func() {
 					if b := d.Button(c, "清除搜索"); b.Clicked() {
@@ -61,12 +61,11 @@ func Search(c *ui.Context, d components.Design, s *model.State) {
 		case model.ScopeSongs:
 			songsTable(c, d, s)
 		case model.ScopeAlbums:
-			albumsResults(c, d, s, results)
+			albumsResults(c, d, s)
 		case model.ScopeArtists:
-			artistsResults(c, d, s, results)
+			artistsResults(c, d, s)
 		case model.ScopePlaylists:
-			components.Empty(c, d, components.IconQueue, "歌单搜索尚未接入",
-				"歌单的读取需要内核提供 playlist 查询；当前只搜索曲目、专辑与艺术家。", nil)
+			playlistsResults(c, d, s)
 		default:
 			allResults(c, d, s, results)
 		}
@@ -78,21 +77,6 @@ func searchHeadline(search *model.SearchState) string {
 		return ""
 	}
 	return "“" + search.Query + "”"
-}
-
-func submitSearch(s *model.State) {
-	search := s.Search()
-	query := strings.TrimSpace(search.Input)
-	if query == "" {
-		return
-	}
-	search.Query = query
-	search.Remember(query)
-	search.Recompute(s.Albums(), s.Artists(), s.AllTracks())
-	results := search.Results()
-	if len(results.Songs) > 0 {
-		PlayFrom(s, results.Songs, 0)
-	}
 }
 
 func recentSearches(c *ui.Context, d components.Design, s *model.State) {
@@ -108,7 +92,7 @@ func recentSearches(c *ui.Context, d components.Design, s *model.State) {
 			}
 		})
 		if len(search.Recent()) == 0 {
-			d.Text(c, tokens.BodyS, "输入关键词搜索歌曲、专辑与艺术家；歌单搜索待内核提供查询。").TextColor(d.P.TextSecondary)
+			d.Text(c, tokens.BodyS, "输入关键词搜索歌曲、专辑、艺术家与歌单。").TextColor(d.P.TextSecondary)
 			return
 		}
 		ui.Row(c).Gap(tokens.Space8).Wrap().Children(func() {
@@ -126,19 +110,20 @@ func recentSearches(c *ui.Context, d components.Design, s *model.State) {
 func songsTable(c *ui.Context, d components.Design, s *model.State) {
 	search := s.Search()
 	list := search.OwnSongs()
-	list.Ensure(s.AllTracks(), s.LibraryRevision(), s.RowRevisions())
 	components.TrackTable(c, d, components.TableOptions{State: s, List: list})
 	components.Pager(c, d, list)
 }
 
-func albumsResults(c *ui.Context, d components.Design, s *model.State, results model.SearchResults) {
-	search := s.Search()
-	pages := max(1, search.Pages(model.ScopeAlbums))
-	limit := min(len(results.Albums), pages*model.PageSize)
+func albumsResults(c *ui.Context, d components.Design, s *model.State) {
+	list := s.Search().OwnAlbums()
+	albums := list.Items()
 	ui.Scroll(c).Grow(1).Children(func() {
 		ui.Column(c).Gap(tokens.Space4).Children(func() {
-			for _, album := range results.Albums[:limit] {
+			for i, album := range albums {
 				album := album
+				if i >= len(albums)-4 {
+					list.RequestMore()
+				}
 				row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space12).
 					Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM)
 				if row.Hovered() {
@@ -158,27 +143,25 @@ func albumsResults(c *ui.Context, d components.Design, s *model.State, results m
 						ui.Icon(c, components.IconPlay).FontSize(tokens.IconCompact).TextColor(d.P.TextSecondary)
 					})
 					if play.Clicked() {
-						PlayAll(s, album.Tracks)
+						PlayAll(s, s.AlbumTracks(album))
 					}
 				})
 			}
-			if search.HasMore(model.ScopeAlbums, len(results.Albums)) {
-				if b := d.Button(c, "加载更多"); b.Clicked() {
-					search.RequestMore(model.ScopeAlbums, len(results.Albums))
-				}
-			}
+			components.LoadMore(c, d, len(albums), list.Total(), list.Done(), list.Loading(), list.RequestMore)
 		})
 	})
 }
 
-func artistsResults(c *ui.Context, d components.Design, s *model.State, results model.SearchResults) {
-	search := s.Search()
-	pages := max(1, search.Pages(model.ScopeArtists))
-	limit := min(len(results.Artists), pages*model.PageSize)
+func artistsResults(c *ui.Context, d components.Design, s *model.State) {
+	list := s.Search().OwnArtists()
+	artists := list.Items()
 	ui.Scroll(c).Grow(1).Children(func() {
 		ui.Column(c).Gap(tokens.Space4).Children(func() {
-			for _, artist := range results.Artists[:limit] {
+			for i, artist := range artists {
 				artist := artist
+				if i >= len(artists)-4 {
+					list.RequestMore()
+				}
 				row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space12).
 					Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM)
 				if row.Hovered() {
@@ -189,16 +172,41 @@ func artistsResults(c *ui.Context, d components.Design, s *model.State, results 
 					components.Cover(c, d, s, artist.Cover, 44, 22)
 					ui.Column(c).Gap(2).Grow(1).Children(func() {
 						d.Text(c, tokens.BodyM, artist.Name).TextColor(d.P.TextPrimary).SingleLine()
-						d.Textf(c, tokens.BodyS, "%d 首 · %d 张专辑", len(artist.Tracks), len(artist.Albums)).
+						d.Textf(c, tokens.BodyS, "%d 首 · %d 张专辑", artist.Count, artist.Albums).
 							TextColor(d.P.TextSecondary)
 					})
 				})
 			}
-			if search.HasMore(model.ScopeArtists, len(results.Artists)) {
-				if b := d.Button(c, "加载更多"); b.Clicked() {
-					search.RequestMore(model.ScopeArtists, len(results.Artists))
+			components.LoadMore(c, d, len(artists), list.Total(), list.Done(), list.Loading(), list.RequestMore)
+		})
+	})
+}
+
+func playlistsResults(c *ui.Context, d components.Design, s *model.State) {
+	search := s.Search()
+	rows := search.PlaylistRows()
+	ui.Scroll(c).Grow(1).Children(func() {
+		ui.Column(c).Gap(tokens.Space4).Children(func() {
+			for _, playlist := range rows {
+				playlist := playlist
+				row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space12).
+					Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM)
+				if row.Hovered() {
+					row.Background(d.P.Hover)
 				}
+				row.OnClick(func() { s.OpenPlaylist(playlist) })
+				row.Children(func() {
+					ui.Box(c).Size(44, 44).Radius(tokens.RadiusSM).Background(d.P.SurfaceSunken).Center().Children(func() {
+						ui.Icon(c, components.IconQueue).FontSize(tokens.IconCompact).TextColor(d.P.TextSecondary)
+					})
+					ui.Column(c).Gap(2).Grow(1).Children(func() {
+						d.Text(c, tokens.BodyM, playlist.Name).TextColor(d.P.TextPrimary).SingleLine()
+						d.Textf(c, tokens.BodyS, "%d 首", playlist.TrackCount).TextColor(d.P.TextSecondary)
+					})
+				})
 			}
+			components.LoadMore(c, d, len(rows), len(search.Results().Playlists),
+				!search.HasMorePlaylists(), false, search.RequestMorePlaylists)
 		})
 	})
 }
@@ -209,18 +217,24 @@ func allResults(c *ui.Context, d components.Design, s *model.State, results mode
 			groupHeader(c, d, "歌曲", results.SongTotal, func() {
 				s.Search().ShowScope(model.ScopeSongs)
 			})
-			songs := model.Preview(results.Songs, model.PreviewSize)
+			songs := results.Songs
 			for i, track := range songs {
 				i, track := i, track
 				components.TrackRow(c, d, s, track, s.Player().Track != nil && s.Player().Track.ID == track.ID, func() {
-					PlayFrom(s, results.Songs, i)
+					PlayFrom(s, songs, i)
 				})
+			}
+			if len(songs) == 0 {
+				emptyGroup(c, d, "没有匹配的歌曲")
 			}
 			groupHeader(c, d, "专辑", results.AlbumTotal, func() {
 				s.Search().ShowScope(model.ScopeAlbums)
 			})
+			if len(results.Albums) == 0 {
+				emptyGroup(c, d, "没有匹配的专辑")
+			}
 			ui.ScrollHorizontal(c).Height(178).Children(func() {
-				for _, album := range model.Preview(results.Albums, model.PreviewSize) {
+				for _, album := range results.Albums {
 					album := album
 					card := ui.Column(c).Width(132).Gap(tokens.Space6).OnClick(func() { s.OpenAlbum(album) })
 					card.Children(func() {
@@ -233,7 +247,10 @@ func allResults(c *ui.Context, d components.Design, s *model.State, results mode
 			groupHeader(c, d, "艺术家", results.ArtistTotal, func() {
 				s.Search().ShowScope(model.ScopeArtists)
 			})
-			for _, artist := range model.Preview(results.Artists, model.PreviewSize) {
+			if len(results.Artists) == 0 {
+				emptyGroup(c, d, "没有匹配的艺术家")
+			}
+			for _, artist := range results.Artists {
 				artist := artist
 				row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space10).
 					Padding(tokens.Space6, tokens.Space4).Radius(tokens.RadiusSM)
@@ -244,13 +261,35 @@ func allResults(c *ui.Context, d components.Design, s *model.State, results mode
 				row.Children(func() {
 					components.Cover(c, d, s, artist.Cover, 36, 18)
 					d.Text(c, tokens.BodyM, artist.Name).TextColor(d.P.TextPrimary).Grow(1).SingleLine()
-					d.Textf(c, tokens.BodyS, "%d 首", len(artist.Tracks)).TextColor(d.P.TextSecondary)
+					d.Textf(c, tokens.BodyS, "%d 首", artist.Count).TextColor(d.P.TextSecondary)
 				})
 			}
-			groupHeader(c, d, "歌单", 0, nil)
-			d.Text(c, tokens.BodyS, "歌单搜索待内核提供查询。").TextColor(d.P.TextTertiary)
+			groupHeader(c, d, "歌单", results.PlaylistTotal, func() {
+				s.Search().ShowScope(model.ScopePlaylists)
+			})
+			if len(results.Playlists) == 0 {
+				emptyGroup(c, d, "没有匹配的歌单")
+			}
+			for _, playlist := range results.Playlists {
+				playlist := playlist
+				row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space10).
+					Padding(tokens.Space6, tokens.Space4).Radius(tokens.RadiusSM)
+				if row.Hovered() {
+					row.Background(d.P.Hover)
+				}
+				row.OnClick(func() { s.OpenPlaylist(playlist) })
+				row.Children(func() {
+					ui.Icon(c, components.IconQueue).FontSize(tokens.IconCompact).TextColor(d.P.TextSecondary)
+					d.Text(c, tokens.BodyM, playlist.Name).TextColor(d.P.TextPrimary).Grow(1).SingleLine()
+					d.Textf(c, tokens.BodyS, "%d 首", playlist.TrackCount).TextColor(d.P.TextSecondary)
+				})
+			}
 		})
 	})
+}
+
+func emptyGroup(c *ui.Context, d components.Design, text string) {
+	d.Text(c, tokens.BodyS, text).TextColor(d.P.TextTertiary)
 }
 
 func groupHeader(c *ui.Context, d components.Design, title string, total int, more func()) {

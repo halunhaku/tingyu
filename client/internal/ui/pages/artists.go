@@ -10,25 +10,40 @@ import (
 	"github.com/halunhaku/tingyu/client/internal/ui/tokens"
 )
 
-// Artists is the artist browser, a virtualised list of rows.
+// Artists is the artist browser, a virtualised list of rows fed by the SQL
+// aggregate (one page at a time, near the end of the loaded rows).
 func Artists(c *ui.Context, d components.Design, s *model.State) {
-	artists := s.Artists()
-	list := s.ArtistsList()
+	artists := s.Artists().Items()
 	selected, _ := s.Transient("artistListSelected").(*int)
 	if selected == nil {
 		n := -1
 		selected = &n
 		s.SetTransient("artistListSelected", selected)
 	}
+	list := s.ArtistsList()
 	list.Selected = selected
-	list.Key = func(i int) any { return artists[i].Key }
-	list.Label = func(i int) string { return artists[i].Name }
-	Page(c, d, s, "艺术家", model.FormatCount(len(artists), "位"), nil, nil, func() {
+	list.Key = func(i int) any {
+		if i < 0 || i >= len(artists) {
+			return i
+		}
+		return artists[i].Key
+	}
+	list.Label = func(i int) string {
+		if i < 0 || i >= len(artists) {
+			return ""
+		}
+		return artists[i].Name
+	}
+	summary := ""
+	if s.Artists().Total() > 0 {
+		summary = model.FormatCount(s.Artists().Total(), "位")
+	}
+	Page(c, d, s, "艺术家", summary, nil, nil, func() {
 		if s.LoadErr() != nil {
 			components.ErrorState(c, d, "无法打开曲库", s.LoadErr().Error(), s.DBPath())
 			return
 		}
-		if len(artists) == 0 {
+		if s.Artists().Total() == 0 {
 			components.Empty(c, d, components.IconMusic, "还没有艺术家",
 				"扫描一个音乐目录后，曲目会按艺术家归并。", func() {
 					AddDirectoryButton(c, d, s)
@@ -37,6 +52,9 @@ func Artists(c *ui.Context, d components.Design, s *model.State) {
 		}
 		listElement := ui.List(c, list, len(artists), func(i int) {
 			artist := artists[i]
+			if i >= len(artists)-4 {
+				s.Artists().RequestMore()
+			}
 			row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space12).
 				Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM)
 			if row.Hovered() {
@@ -48,7 +66,7 @@ func Artists(c *ui.Context, d components.Design, s *model.State) {
 				ui.Column(c).Gap(2).Grow(1).Children(func() {
 					d.Text(c, tokens.BodyM, artist.Name).TextColor(d.P.TextPrimary).SingleLine()
 					d.Textf(c, tokens.BodyS, "%d 首 · %d 张专辑 · %s",
-						len(artist.Tracks), len(artist.Albums), model.FormatTotal(artist.Duration)).
+						artist.Count, artist.Albums, model.FormatTotal(artist.Duration)).
 						TextColor(d.P.TextSecondary).SingleLine()
 				})
 				play := ui.Button(c, "").Padding(5).Radius(tokens.RadiusXS).
@@ -57,7 +75,7 @@ func Artists(c *ui.Context, d components.Design, s *model.State) {
 					ui.Icon(c, components.IconPlay).FontSize(tokens.IconCompact).TextColor(d.P.TextSecondary)
 				})
 				if play.Clicked() {
-					PlayAll(s, artist.Tracks)
+					PlayAll(s, s.ArtistTracks(artist))
 				}
 			})
 		})
@@ -73,19 +91,20 @@ func Artists(c *ui.Context, d components.Design, s *model.State) {
 // ArtistDetail is one artist: play all, an album rail and the tracks, which
 // collapse to 20 rows until 「全部展开」.
 func ArtistDetail(c *ui.Context, d components.Design, s *model.State) {
-	artist := s.ArtistDetail()
+	detail := s.ArtistDetail()
 	back := s.Back
-	if artist == nil {
+	if detail == nil {
 		Page(c, d, s, "艺术家", "", back, nil, func() {
 			components.Empty(c, d, components.IconMusic, "没有可显示的艺术家", "回到艺术家列表重新选择。", nil)
 		})
 		return
 	}
+	artist := detail.Artist
 	actions := func() {
 		if b := d.Button(c, "播放全部"); b.Clicked() {
-			PlayAll(s, artist.Tracks)
+			PlayAll(s, s.ArtistTracks(artist))
 		}
-		if len(artist.Tracks) > 20 {
+		if artist.Count > 20 {
 			label := "全部展开"
 			if s.ArtistExpanded() {
 				label = "收起"
@@ -95,19 +114,20 @@ func ArtistDetail(c *ui.Context, d components.Design, s *model.State) {
 			}
 		}
 	}
-	Page(c, d, s, artist.Name, model.FormatCount(len(artist.Tracks), "首"), back, actions, func() {
+	Page(c, d, s, artist.Name, model.FormatCount(artist.Count, "首"), back, actions, func() {
 		ui.Row(c).Gap(tokens.Space16).AlignItems(ui.Center).Children(func() {
 			components.Cover(c, d, s, artist.Cover, 88, 44)
 			ui.Column(c).Gap(tokens.Space4).Children(func() {
-				d.Textf(c, tokens.BodyM, "%d 张专辑 · %d 首", len(artist.Albums), len(artist.Tracks)).
+				d.Textf(c, tokens.BodyM, "%d 张专辑 · %d 首", artist.Albums, artist.Count).
 					TextColor(d.P.TextPrimary)
 				d.Text(c, tokens.BodyS, model.FormatTotal(artist.Duration)).TextColor(d.P.TextSecondary)
 			})
 		})
-		if len(artist.Albums) > 0 {
+		albums := detail.Albums.Items()
+		if len(albums) > 0 {
 			components.SectionTitle(c, d, "专辑", "")
 			ui.ScrollHorizontal(c).Height(176).Children(func() {
-				for _, album := range artist.Albums {
+				for _, album := range albums {
 					album := album
 					ui.Column(c).Width(128).Gap(tokens.Space6).Children(func() {
 						card := ui.Column(c).Gap(tokens.Space4).OnClick(func() { s.OpenAlbum(album) })
@@ -120,16 +140,13 @@ func ArtistDetail(c *ui.Context, d components.Design, s *model.State) {
 			})
 		}
 		components.SectionTitle(c, d, "全部曲目", "")
-		tracks := artist.Tracks
-		if !s.ArtistExpanded() && len(tracks) > 20 {
-			tracks = tracks[:20]
-		}
+		tracks := detail.Tracks
 		list := s.DetailList()
 		list.Selected = nil
 		ui.List(c, list, len(tracks), func(row int) {
 			track := tracks[row]
 			components.TrackRow(c, d, s, track, s.Player().Track != nil && s.Player().Track.ID == track.ID, func() {
-				PlayFrom(s, artist.Tracks, row)
+				PlayFrom(s, s.ArtistTracks(artist), row)
 			})
 		}).Grow(1)
 	})

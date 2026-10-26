@@ -15,6 +15,7 @@ package player
 import (
 	"context"
 	"errors"
+	"math/rand/v2"
 	"sync"
 	"time"
 
@@ -90,6 +91,7 @@ type Update struct {
 	Index     int
 	Track     *library.Track
 	Repeat    RepeatMode
+	Shuffle   bool
 	Failure   *mpv.Failure
 	PlayCount int64
 }
@@ -101,7 +103,10 @@ type Controller struct {
 	history History
 
 	mu           sync.Mutex
-	queue        []library.Track // rotated so queue[0] is what the user picked
+	queue        []library.Track // play order: queue[0] is what the user picked
+	original     []library.Track // the list PlayTracks was given, in its own order
+	shuffle      bool            // the play order is randomised
+	rnd          *rand.Rand      // the shuffle's source, seeded in New
 	resolved     []resolvedItem  // appended to the engine, in order
 	resolvedNext int             // next queue index to resolve
 	generation   uint64
@@ -149,12 +154,13 @@ func New(engine Engine, resolve Resolver, history History) *Controller {
 		resolve:      resolve,
 		history:      history,
 		repeat:       RepeatAll, // the Flutter client's default
+		rnd:          rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano()>>32))),
 		currentIndex: 0,
 		resolveGate:  make(chan struct{}, 1),
 		done:         make(chan struct{}),
 	}
 	c.resolveGate <- struct{}{}
-	c.update = Update{Snapshot: engine.Snapshot(), Repeat: c.repeat}
+	c.update = Update{Snapshot: engine.Snapshot(), Repeat: c.repeat, Shuffle: c.shuffle}
 	events, unsubscribe := engine.Subscribe()
 	c.unsubscribe = unsubscribe
 	c.wg.Add(1)
@@ -214,9 +220,12 @@ func (c *Controller) SetRate(rate float64) error {
 	return c.engine.SetRate(rate)
 }
 
-// PlayTracks starts playTracks at start. The queue is rotated so the chosen
-// track plays first and the rest of the list follows, then the beginning:
-// exactly the Flutter controller's sequential order.
+// PlayTracks starts playTracks at start. In sequential mode the queue is
+// rotated so the chosen track plays first and the rest of the list follows,
+// then the beginning; in shuffle mode the chosen track plays first and the
+// rest follows in random order. Both are the Flutter controller's orders
+// (playback_controller.dart playTracks), so toggling shuffle off and playing
+// the same list gives the sequential order back.
 func (c *Controller) PlayTracks(tracks []library.Track, start int) error {
 	if len(tracks) == 0 {
 		return nil
@@ -224,15 +233,13 @@ func (c *Controller) PlayTracks(tracks []library.Track, start int) error {
 	if start < 0 || start >= len(tracks) {
 		start = 0
 	}
-	rotated := make([]library.Track, 0, len(tracks))
-	rotated = append(rotated, tracks[start:]...)
-	rotated = append(rotated, tracks[:start]...)
-
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
 		return errors.New("播放器正在关闭")
 	}
+	rotated := c.orderLocked(tracks, start)
+	c.original = append([]library.Track(nil), tracks...)
 	// Reserve the prefetch goroutine's slot under the same lock that Close
 	// uses to set closed: otherwise it could be added after Close's Wait had
 	// already returned, which is undefined for sync.WaitGroup.
@@ -284,7 +291,7 @@ func (c *Controller) PlayTracks(tracks []library.Track, start int) error {
 	// The engine queue is in place; only now may prefetch append to it.
 	c.armed = true
 	snapshot := c.engine.Snapshot()
-	c.update = Update{Snapshot: snapshot, Index: 0, Track: &c.queue[0], Repeat: c.repeat}
+	c.update = Update{Snapshot: snapshot, Index: 0, Track: &c.queue[0], Repeat: c.repeat, Shuffle: c.shuffle}
 	one := c.repeat == RepeatOne
 	c.mu.Unlock()
 	_ = c.engine.SetRepeatOne(one)
@@ -300,6 +307,86 @@ func (c *Controller) PlayTracks(tracks []library.Track, start int) error {
 		c.ensureAhead(prefetchCount, generation)
 	}()
 	return nil
+}
+
+// orderLocked builds the play order for tracks starting at start. The caller
+// holds c.mu (the shuffle's random source is not goroutine-safe).
+func (c *Controller) orderLocked(tracks []library.Track, start int) []library.Track {
+	out := make([]library.Track, 0, len(tracks))
+	out = append(out, tracks[start])
+	if !c.shuffle {
+		out = append(out, tracks[start+1:]...)
+		out = append(out, tracks[:start]...)
+		return out
+	}
+	// Shuffle everything but the chosen track; excluding it by index (not by
+	// id) keeps a playlist that holds the same track twice intact.
+	rest := make([]library.Track, 0, len(tracks)-1)
+	rest = append(rest, tracks[:start]...)
+	rest = append(rest, tracks[start+1:]...)
+	c.rnd.Shuffle(len(rest), func(i, j int) { rest[i], rest[j] = rest[j], rest[i] })
+	return append(out, rest...)
+}
+
+// SetShuffle turns random play on or off and returns the state it settled in.
+//
+// Toggling it mid-queue reorders only what has not been handed to the engine
+// yet: the prefix [0, resolvedNext) — the current track and everything already
+// resolved — stays exactly where it is, so playback is not interrupted and no
+// index in the engine queue moves. Turning shuffle off restores the tail from
+// the original list, counting duplicates rather than filtering by id (a
+// playlist may hold the same track twice; a set would lose one).
+func (c *Controller) SetShuffle(on bool) bool {
+	c.mu.Lock()
+	if c.shuffle == on {
+		c.mu.Unlock()
+		return on
+	}
+	c.shuffle = on
+	c.update.Shuffle = on
+	if len(c.queue) > 0 {
+		from := min(c.resolvedNext, len(c.queue))
+		tail := append([]library.Track(nil), c.queue[from:]...)
+		if on {
+			c.rnd.Shuffle(len(tail), func(i, j int) { tail[i], tail[j] = tail[j], tail[i] })
+		} else {
+			tail = c.sequentialTailLocked(tail)
+		}
+		queue := make([]library.Track, 0, len(c.queue))
+		queue = append(queue, c.queue[:from]...)
+		c.queue = append(queue, tail...)
+	}
+	c.mu.Unlock()
+	c.notify()
+	return on
+}
+
+// sequentialTailLocked restores the order of the original list for exactly the
+// tracks the shuffled tail still owes. The caller holds c.mu.
+func (c *Controller) sequentialTailLocked(tail []library.Track) []library.Track {
+	if len(tail) == 0 {
+		return nil
+	}
+	owed := make(map[string]int, len(tail))
+	for _, track := range tail {
+		owed[track.ID]++
+	}
+	restored := make([]library.Track, 0, len(tail))
+	for _, track := range c.original {
+		if owed[track.ID] <= 0 {
+			continue
+		}
+		restored = append(restored, track)
+		owed[track.ID]--
+	}
+	return restored
+}
+
+// Shuffle reports whether new queues are shuffled.
+func (c *Controller) Shuffle() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.shuffle
 }
 
 const prefetchCount = 2
@@ -454,6 +541,7 @@ func (c *Controller) onSnapshot(snapshot mpv.Snapshot) {
 		Index:    c.currentIndex,
 		Track:    c.currentTrack,
 		Repeat:   c.repeat,
+		Shuffle:  c.shuffle,
 		Failure:  c.failure,
 	}
 	// The engine classifies its own failures (status, transport, decode) from
@@ -679,13 +767,14 @@ func (c *Controller) CycleRepeat() RepeatMode {
 func (c *Controller) SetRepeat(mode RepeatMode) {
 	c.mu.Lock()
 	c.repeat = mode
+	c.update.Repeat = mode
 	c.mu.Unlock()
 	_ = c.engine.SetRepeatOne(mode == RepeatOne)
 	c.notify()
 }
 
-// Queue returns the rotated queue (the original order is not kept; M1 has no
-// shuffle).
+// Queue returns the play order: the chosen track first, then the rest of the
+// list in sequential or shuffled order.
 func (c *Controller) Queue() []library.Track {
 	c.mu.Lock()
 	defer c.mu.Unlock()

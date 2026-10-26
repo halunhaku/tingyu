@@ -7,7 +7,7 @@ import (
 )
 
 func TestSourceFormPrefillsForRelogin(t *testing.T) {
-	state := New(nil, "/tmp/library.sqlite", nil)
+	state := New(nil, nil, "/tmp/library.sqlite", nil)
 	state.SetSources([]library.Source{{
 		ID: "src-1", Name: "家里的群晖", Kind: SourceKindWebDAV,
 		WebDAVURL: "https://dav.example.com/dav/", WebDAVUsername: "me",
@@ -33,7 +33,7 @@ func TestSourceFormPrefillsForRelogin(t *testing.T) {
 }
 
 func TestSourceErrorsDriveTheReloginEntry(t *testing.T) {
-	state := New(nil, "/tmp/library.sqlite", nil)
+	state := New(nil, nil, "/tmp/library.sqlite", nil)
 	if state.SourceError("src-1") != "" {
 		t.Fatal("a fresh state has a source error")
 	}

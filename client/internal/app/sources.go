@@ -350,12 +350,14 @@ func (a *application) syncRemote(source library.Source) {
 	seq := a.sourceSyncSeq.Add(1)
 	a.sourceSyncMu.Lock()
 	a.sourceSyncCancel = cancel
+	a.sourceSyncID = source.ID
 	a.sourceSyncActive = seq
 	a.sourceSyncMu.Unlock()
 	defer func() {
 		a.sourceSyncMu.Lock()
 		if a.sourceSyncActive == seq {
 			a.sourceSyncCancel = nil
+			a.sourceSyncID = ""
 			a.sourceSyncActive = 0
 		}
 		a.sourceSyncMu.Unlock()
@@ -400,8 +402,10 @@ func (a *application) syncRemote(source library.Source) {
 		a.model.SetError("")
 	})
 	a.logf("sources: sync %q done: %s", name, outcome.Status)
-	a.reloadTracks()
-	a.reloadSources()
+	// The scan wrote through the library, which bumped its revision: the SQL
+	// lists refresh off that counter, so the window needs an invalidation
+	// rather than a copy of the whole tracks table.
+	a.refresh()
 }
 
 func (a *application) setFormMessage(message string) {
