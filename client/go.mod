@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/ebitengine/purego v0.11.1
-	github.com/egoist/mygo v0.6.4
+	github.com/egoist/mygo v0.6.5-0.20261025230045-be164835449b
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 )
 
