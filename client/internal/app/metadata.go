@@ -3,9 +3,9 @@
 // M5's wiring: the metadata pipeline, the cover fetcher and the two write
 // paths (the automatic pass and the manual match) as application actions.
 //
-// The pipeline is built only when the library copy is writable. A read-only
-// build — TINGYU_DATA_DIR unset — still shows what is in the library, but the
-// panel says so instead of pretending a write landed (plan §8.1 rule 2).
+// The pipeline is built only when the library is writable. A read-only run
+// (TINGYU_READ_ONLY=1) still shows what is in the library, but the panel says
+// so instead of pretending a write landed (plan §8.1 rule 2).
 
 package app
 
@@ -157,7 +157,7 @@ func (a *application) EnrichAll() {
 		return
 	}
 	if !a.lib.Writable() {
-		a.setStatus("只读模式：设置 TINGYU_DATA_DIR 指向曲库副本后才能补全（生产库绝不被写）")
+		a.setStatus("只读模式：本次以 TINGYU_READ_ONLY=1 打开，不能补全；去掉该变量后重试")
 		return
 	}
 	if !a.enrichActive.CompareAndSwap(false, true) {
@@ -232,7 +232,7 @@ func (a *application) EnrichTrack(track library.Track) {
 		return
 	}
 	if a.lib != nil && !a.lib.Writable() {
-		a.setStatus("只读模式：设置 TINGYU_DATA_DIR 指向曲库副本后才能补全（生产库绝不被写）")
+		a.setStatus("只读模式：本次以 TINGYU_READ_ONLY=1 打开，不能补全；去掉该变量后重试")
 		return
 	}
 	go func() {
@@ -310,7 +310,7 @@ func (a *application) ApplyManualMatch(track library.Track, title, artist, album
 	}
 	if a.lib != nil && !a.lib.Writable() {
 		a.updateWindow(func() {
-			a.model.MatchFailed("只读模式：设置 TINGYU_DATA_DIR 指向曲库副本后才能写回（生产库绝不被写）")
+			a.model.MatchFailed("只读模式：本次以 TINGYU_READ_ONLY=1 打开，不能写回；去掉该变量后重试")
 		})
 		return
 	}
@@ -367,7 +367,7 @@ func (a *application) PruneCovers() {
 		return
 	}
 	if !a.lib.Writable() {
-		a.setStatus("只读模式：清理封面只对 TINGYU_DATA_DIR 指向的副本生效")
+		a.setStatus("只读模式：本次以 TINGYU_READ_ONLY=1 打开，不能清理封面；去掉该变量后重试")
 		return
 	}
 	go func() {

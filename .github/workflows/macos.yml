@@ -1,6 +1,5 @@
-# Go client CI: macOS only, because 听屿 is a macOS app (README first screen).
-# Flutter keeps its own workflow until M7 removes it (plan §8.1 rule 1) — this
-# file never touches app/ and never replaces flutter.yml.
+# Go client CI: the repository's only workflow since M7 removed the other
+# client (plan §6 M7, docs/plan/2026-10-26-macos-mygo-m7-record.md).
 #
 # What runs on every client change:
 #   gofmt -l (no output allowed) → go vet → go test -race → bundle.sh (ad-hoc
@@ -45,9 +44,8 @@ defaults:
 
 env:
   # The LGPL mpv/FFmpeg frameworks bundle.sh copies in come from
-  # scripts/fetch-frameworks.sh, which is pinned by version and checksum — CI
-  # has no Flutter pub cache to borrow them from and no reason to install
-  # Flutter for the Go client.
+  # scripts/fetch-frameworks.sh, which is pinned by version and checksum, so the
+  # runner needs no other toolchain.
   HAS_SIGNING: ${{ secrets.MACOS_CERTIFICATE != '' && secrets.MACOS_SIGNING_IDENTITY != '' }}
   HAS_NOTARY: ${{ secrets.NOTARY_APPLE_ID != '' && secrets.NOTARY_TEAM_ID != '' && secrets.NOTARY_PASSWORD != '' }}
 

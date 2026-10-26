@@ -44,7 +44,7 @@ func Onboarding(c *ui.Context, d components.Design, s *model.State) {
 					s.OpenPage(model.PageLibrary)
 				}
 			})
-			d.Text(c, tokens.LabelS, "提示：开发/验收构建在未设置 TINGYU_DATA_DIR 时只读，扫描与历史不会写生产库。").
+			d.Text(c, tokens.LabelS, "提示：正式版直接读写真实曲库；开发/验收可用 TINGYU_DATA_DIR 指向副本，TINGYU_READ_ONLY=1 只读打开。").
 				TextColor(d.P.TextTertiary)
 		})
 	})

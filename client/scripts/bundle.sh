@@ -27,9 +27,10 @@
 #                      spctl. Needs a real SIGN_IDENTITY: this script never
 #                      pretends a build was notarized.
 #
-# The frameworks are the same LGPL build of mpv 0.36 + FFmpeg that
-# media_kit_libs_macos_audio ships to the Flutter client (spike record §1.2).
-# Unsigned copies cannot be dlopen'd on arm64, so each one is signed here.
+# The frameworks are the pinned LGPL mpv 0.36 + FFmpeg build that
+# scripts/fetch-frameworks.sh downloads (version and sha256 are pinned there;
+# the provenance is in the spike record §1.2). Unsigned copies cannot be
+# dlopen'd on arm64, so each one is signed here.
 #
 # Signing order is inside out (research §5.5): each framework's Mach-O binary,
 # then the framework bundle, then the executable, then the app. Never --deep
@@ -74,17 +75,15 @@ if [ "$NOTARY_PROFILE" != "" ] && [ "$adHoc" = 1 ]; then
 	exit 1
 fi
 
-# libmpv and its FFmpeg frameworks. Prefer an explicit source, then the pub
-# cache the Flutter client already resolves (newest version if several).
+# libmpv and its FFmpeg frameworks. Prefer an explicit source, then the copy
+# scripts/fetch-frameworks.sh already downloaded into build/frameworks. The
+# build is self-contained since M7: nothing is borrowed from a pub cache.
 framework_src=${FRAMEWORK_SRC:-}
-if [ -z "$framework_src" ]; then
-	for candidate in "$HOME"/.pub-cache/hosted/pub.dev/media_kit_libs_macos_audio-*/macos/Frameworks; do
-		[ -d "$candidate" ] || continue
-		framework_src=$candidate
-	done
+if [ -z "$framework_src" ] && [ -d "build/frameworks/Mpv.xcframework" ]; then
+	framework_src=build/frameworks
 fi
 [ -n "$framework_src" ] && [ -d "$framework_src" ] || {
-	echo "bundle: libmpv frameworks not found; set FRAMEWORK_SRC (or run scripts/fetch-frameworks.sh), or install the Flutter client's pub cache" >&2
+	echo "bundle: libmpv frameworks not found; set FRAMEWORK_SRC (or run scripts/fetch-frameworks.sh first)" >&2
 	exit 1
 }
 

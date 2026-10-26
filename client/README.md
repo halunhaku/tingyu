@@ -1,8 +1,10 @@
 # client/：听屿 macOS 客户端（MyGo）
 
-迁移方案 **M1 + M2 + M3 + M4 + 内核数据能力 + M5 + M6** 的实现：M1 是选目录扫描入库、进程内 libmpv 播放、系统媒体会话（Now Playing / 媒体键）、关窗续播；M2 是内核生产化（9 格式矩阵、远端 Range/鉴权、gapless、循环三态、失败快照、倍速/音量、200 首队列）；M3 是远端来源（WebDAV 全链路、夸克扫码登录/目录/直链与过期刷新、同步进度与取消、Keychain 凭据）；M4 是「声档」设计令牌、全部页面、舞台/队列/歌词与命令面板；内核数据能力补上 M4 留下的五个缺口——**收藏写入、歌单读写、来源删除、随机播放、SQL 分页与聚合**；M5 是**元数据与图片**——四源补全（QQ 音乐 / 网易云 / iTunes / LRCLIB）+ 可选 AI 兜底、人工匹配、封面内容寻址缓存与孤儿回收、封面取色接到舞台、歌词逐行/逐字两种渲染；M6 是分发与质量——**内到外签名、DMG、公证流水线、只跑 macOS 的 Go CI、四类契约测试与键盘可达性**。不改 `app/`。
+迁移方案 **M1 + M2 + M3 + M4 + 内核数据能力 + M5 + M6** 的实现：M1 是选目录扫描入库、进程内 libmpv 播放、系统媒体会话（Now Playing / 媒体键）、关窗续播；M2 是内核生产化（9 格式矩阵、远端 Range/鉴权、gapless、循环三态、失败快照、倍速/音量、200 首队列）；M3 是远端来源（WebDAV 全链路、夸克扫码登录/目录/直链与过期刷新、同步进度与取消、Keychain 凭据）；M4 是「声档」设计令牌、全部页面、舞台/队列/歌词与命令面板；内核数据能力补上 M4 留下的五个缺口——**收藏写入、歌单读写、来源删除、随机播放、SQL 分页与聚合**；M5 是**元数据与图片**——四源补全（QQ 音乐 / 网易云 / iTunes / LRCLIB）+ 可选 AI 兜底、人工匹配、封面内容寻址缓存与孤儿回收、封面取色接到舞台、歌词逐行/逐字两种渲染；M6 是分发与质量——**内到外签名、DMG、公证流水线、只跑 macOS 的 Go CI、四类契约测试与键盘可达性**；M7 是切换与收尾——**真实曲库切换（默认读写真实目录）、真实数据备份、删除 Flutter 客户端与残留 Windows 工具链、文档收口**，仓库自此只有这一个客户端。
 
-验收记录与逐条证据：[M1 记录](../docs/plan/2026-10-25-macos-mygo-m1-record.md)、[M2 记录](../docs/plan/2026-10-25-macos-mygo-m2-record.md)、[M3 记录](../docs/plan/2026-10-25-macos-mygo-m3-record.md)、[M4 记录](../docs/plan/2026-10-25-macos-mygo-m4-record.md)、[内核数据能力记录](../docs/plan/2026-10-26-macos-mygo-kernel-data-record.md)、[M5 记录](../docs/plan/2026-10-26-macos-mygo-m5-record.md)、[M6 记录](../docs/plan/2026-10-26-macos-mygo-m6-record.md)。
+验收记录与逐条证据：[M1 记录](../docs/plan/2026-10-25-macos-mygo-m1-record.md)、[M2 记录](../docs/plan/2026-10-25-macos-mygo-m2-record.md)、[M3 记录](../docs/plan/2026-10-25-macos-mygo-m3-record.md)、[M4 记录](../docs/plan/2026-10-25-macos-mygo-m4-record.md)、[内核数据能力记录](../docs/plan/2026-10-26-macos-mygo-kernel-data-record.md)、[M5 记录](../docs/plan/2026-10-26-macos-mygo-m5-record.md)、[M6 记录](../docs/plan/2026-10-26-macos-mygo-m6-record.md)、[M7 记录](../docs/plan/2026-10-26-macos-mygo-m7-record.md)。
+
+> Flutter 客户端（`app/`）已在 M7 删除，需要回退时从 tag `archive/flutter-macos` 完整找回；下文出现的「与 Flutter 版一致 / 同源 / 逐字一致」都是移植来源的历史说明，不再是活的约束。
 
 ```
 client/
@@ -55,7 +57,7 @@ cd client
 ./scripts/bundle.sh                 # build/darwin-arm64/听屿.app
 PLATFORM=darwin/universal ./scripts/bundle.sh
 FRAMEWORK_SRC=/path/to/Frameworks ./scripts/bundle.sh
-FRAMEWORK_SRC=$(./scripts/fetch-frameworks.sh) ./scripts/bundle.sh   # 干净机器/CI：没有 Flutter pub 缓存时
+FRAMEWORK_SRC=$(./scripts/fetch-frameworks.sh) ./scripts/bundle.sh   # 干净机器/CI：先按钉住版本下载 frameworks
 ```
 
 脚本做的事：
@@ -95,11 +97,12 @@ CGO_ENABLED=0 go build -o /tmp/tingyu .
 TINGYU_DATA_DIR=/tmp/tingyu-copy /tmp/tingyu
 ```
 
-## 数据目录与写库边界
+## 数据目录、备份与写库边界
 
-- `library.sqlite`：`TINGYU_DATA_DIR` 指向的目录，否则 `~/Library/Application Support/com.halunhaku.tingyu`。
-- **未设置 `TINGYU_DATA_DIR` 时客户端只读**：扫描与播放历史都被拒绝，界面提示。这保证开发构建永远不写生产库（方案 §8.1 第 2 条）。
-- 开发/验收：`cp library.sqlite /tmp/tingyu-copy/`，封面目录 `covers/` 一并复制（可选）。
+- `library.sqlite`：`TINGYU_DATA_DIR` 指向的目录，否则 `~/Library/Application Support/com.halunhaku.tingyu`（**M7 起这就是真实曲库，客户端默认读写它**）。
+- 只读现在是显式选择：`TINGYU_READ_ONLY=1` 打开库但不写它（扫描、收藏、歌单、补全写回、封面清理全部被拒绝并提示）。开发/验收要看真实库又不想动它时用它。
+- 开发/验收要**写**时：`TINGYU_DATA_DIR=/tmp/tingyu-copy`，库里 `cp library.sqlite /tmp/tingyu-copy/`，`covers/` 一并复制。
+- 备份与退回：M7 切换前把 `library.sqlite`、`covers/`、`settings.json`（存在才复制）备份到 `~/Library/Application Support/com.halunhaku.tingyu/backups/<timestamp>/`，校验和与切换前后对比见 [M7 记录](../docs/plan/2026-10-26-macos-mygo-m7-record.md)。恢复：退出 App，`cp -p backups/<timestamp>/library.sqlite "$HOME/Library/Application Support/com.halunhaku.tingyu/library.sqlite"`，封面目录同理。
 - 写入面（全部经 `internal/app` 的 `write()`，只读连接一律拒绝并提示）：
   1. 扫描合并（`library.MergeScan`）：`sourceId + filePathOrUrl` 对齐，只覆盖文件事实，只有权威扫描才删旧曲；
   2. 播放历史/次数（`recordPlay`）与缺失时长回填（`backfillDuration`）；
@@ -153,7 +156,8 @@ harness 直接驱动生产的 `internal/mpv` + `internal/player`（与应用同�
 
 | 变量 | 作用 |
 |---|---|
-| `TINGYU_DATA_DIR` | 库副本目录；**未设置 = 只读** |
+| `TINGYU_DATA_DIR` | 覆盖数据目录（指向库副本）；未设置 = 真实目录 |
+| `TINGYU_READ_ONLY` | `1`/`true`/`yes`/`on`：本次运行只读，不写选中的库 |
 | `TINGYU_STARTUP_LOG` | 启动/运行日志落盘（双击 `.app` 时 stderr 无处可去） |
 | `TINGYU_AUTO_SCAN_DIR` | 首帧后扫描该目录（与「添加目录…」同一路径） |
 | `TINGYU_AUTO_PLAY_TITLE` / `TINGYU_AUTO_PLAY_INDEX` | 扫描后按标题/下标起播（与双击同一 `PlayTracks`） |
@@ -164,7 +168,7 @@ harness 直接驱动生产的 `internal/mpv` + `internal/player`（与应用同�
 
 ## CI
 
-`.github/workflows/macos.yml`（只跑 macOS）：`gofmt -l` → `go vet` → `go test -race` → `fetch-frameworks.sh`（固定版本 + sha256） → `bundle.sh`（universal + DMG）→ `verify-bundle.sh`。有 Apple 凭据（`MACOS_CERTIFICATE` 等 6 个仓库 Secrets）时导入临时钥匙串并签名 + 公证，缺凭据时如实降级为 ad-hoc 并在校验步骤说明，不假装公证过。Flutter 的 `flutter.yml` 保留到 M7。
+`.github/workflows/macos.yml`（只跑 macOS）：`gofmt -l` → `go vet` → `go test -race` → `fetch-frameworks.sh`（固定版本 + sha256） → `bundle.sh`（universal + DMG）→ `verify-bundle.sh`。有 Apple 凭据（`MACOS_CERTIFICATE` 等 6 个仓库 Secrets）时导入临时钥匙串并签名 + 公证，缺凭据时如实降级为 ad-hoc 并在校验步骤说明，不假装公证过。M7 起仓库只有这一个 workflow（`flutter.yml` 已删除）。
 
 ## 键盘
 
@@ -215,7 +219,7 @@ M5 新增：四个抓取源的响应解析与占位词过滤、LRCLIB/网易云�
 
 ### 只读与写入边界
 
-未设置 `TINGYU_DATA_DIR` 时客户端只读：扫描、收藏、歌单、来源删除、补全写回、人工匹配、封面清理全部被拒绝并给出提示，既不写生产库也不伪造成功。M4 记录里「需内核支持」的五项（收藏写入、歌单读写、来源删除、随机播放、SQL 分页）在内核数据能力阶段全部接通；M5 的元数据匹配与歌词抓取在本阶段接通。
+`TINGYU_READ_ONLY=1` 时客户端只读：扫描、收藏、歌单、来源删除、补全写回、人工匹配、封面清理全部被拒绝并给出提示，既不写选中的库也不伪造成功；不加这个变量时真实曲库可写（M7 切换后的常态）。M4 记录里「需内核支持」的五项（收藏写入、歌单读写、来源删除、随机播放、SQL 分页）在内核数据能力阶段全部接通；M5 的元数据匹配与歌词抓取在本阶段接通。
 
 ### 性能与截图
 

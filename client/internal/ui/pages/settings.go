@@ -119,7 +119,7 @@ func appearanceSettings(c *ui.Context, d components.Design, s *model.State) {
 		s.ResetSettings()
 	}
 	if !s.Writable() {
-		d.Text(c, tokens.BodyS, "只读模式：未设置 TINGYU_DATA_DIR 时偏好不落盘，生产目录不会被写。").
+		d.Text(c, tokens.BodyS, "只读模式：本次以 TINGYU_READ_ONLY=1 打开，偏好不落盘。").
 			TextColor(d.P.TextTertiary).Wrap()
 	}
 }
@@ -207,13 +207,13 @@ func sourceSettings(c *ui.Context, d components.Design, s *model.State) {
 }
 
 func dataSettings(c *ui.Context, d components.Design, s *model.State) {
-	components.SectionTitle(c, d, "数据", "开发/验收请把 TINGYU_DATA_DIR 指向库副本；生产库不会被写。")
+	components.SectionTitle(c, d, "数据", "M7 起真实曲库默认读写；开发/验收可用 TINGYU_DATA_DIR 指向副本，TINGYU_READ_ONLY=1 只读打开。")
 	components.PathRow(c, d, s, "数据目录", s.DataDir())
 	components.PathRow(c, d, s, "曲库文件", s.DBPath())
 	components.PathRow(c, d, s, "封面缓存", s.CoversDir())
-	mode := "只读（未设置 TINGYU_DATA_DIR）"
+	mode := "只读（TINGYU_READ_ONLY=1）"
 	if s.Writable() {
-		mode = "读写（TINGYU_DATA_DIR 指向副本）"
+		mode = "读写（曲库与设置可写）"
 	}
 	components.StatRow(c, d, "打开方式", mode)
 	components.StatRow(c, d, "schema", "user_version = 2（冻结，不提升）")

@@ -1,17 +1,22 @@
 // Package library reads and writes Tingyu's SQLite library.
 //
-// The schema, the indexes and PRAGMA user_version=2 are shared with the
-// Flutter client (app/lib/data/db/schema.dart), which must keep working until
-// M7. Migration is "补差" (create what is missing, add nullable columns) and
-// never bumps the version (plan §8.1 rule 3).
+// The schema, the indexes and PRAGMA user_version=2 were shared with the
+// Flutter client (app/lib/data/db/schema.dart, removed at M7). The version
+// stays frozen for 30 days after the switch so the pre-switch backup still
+// opens in the archived Flutter build: migration is "补差" (create what is
+// missing, add nullable columns) and never bumps the version (plan §8.1
+// rule 3). The table and column names keep the Flutter-era shape for the
+// same reason.
 //
 // Writes: the scan merge, the play history and duration backfill (M1/M2), and
 // — since the kernel-data milestone — favourites, playlists and source
 // deletion, which M4 had to show as unavailable. Metadata enrichment and
 // lyric fetching still write nothing (M5).
 //
-// The production library is never the one opened during development: the
-// caller points TINGYU_DATA_DIR at a copy (plan §8.1 rule 2).
+// Since M7 the real library in ~/Library/Application Support/com.halunhaku.tingyu
+// is the one the client opens read-write. Development and acceptance runs
+// point TINGYU_DATA_DIR at a copy, and TINGYU_READ_ONLY=1 opens the selected
+// library without writing it (plan §8.1 rule 2, now an explicit opt-in).
 package library
 
 import (
@@ -99,8 +104,9 @@ type Source struct {
 
 // DataDir returns the directory holding library.sqlite: TINGYU_DATA_DIR
 // when set, otherwise ~/Library/Application Support/com.halunhaku.tingyu.
-// Development and acceptance runs must point TINGYU_DATA_DIR at a copy of
-// the production library (plan §8.1 rule 2).
+// The default is the real library the client owns since M7; TINGYU_DATA_DIR
+// is the override development and acceptance runs use to work on a copy
+// (plan §8.1 rule 2).
 func DataDir() (string, error) {
 	if dir := strings.TrimSpace(os.Getenv("TINGYU_DATA_DIR")); dir != "" {
 		return expandHome(dir)
@@ -115,6 +121,18 @@ func DataDir() (string, error) {
 // Path returns the library file inside dataDir.
 func Path(dataDir string) string {
 	return filepath.Join(dataDir, "library.sqlite")
+}
+
+// ReadOnly reports whether this process opens the library without writing it.
+// TINGYU_READ_ONLY=1 is the explicit opt-in for inspecting a library (the
+// real one included) without touching it; every other run is read-write on
+// the selected data directory since the M7 switch (plan §6 M7).
+func ReadOnly() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("TINGYU_READ_ONLY"))) {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
 }
 
 // CoversDir returns the cover cache directory inside dataDir.
