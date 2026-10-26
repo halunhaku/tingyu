@@ -46,11 +46,19 @@ type application struct {
 	winMu sync.Mutex
 	win   *mygo.Window
 
+	// tray and trayPlay are written by the main thread (initTray) and read by
+	// the update worker (updateTray); trayMu serializes them.
+	trayMu   sync.Mutex
 	tray     *mygo.Tray
 	trayPlay *mygo.MenuItem
 
 	session sessionPublisher
-	awake   atomic.Bool
+	// awake is the App Nap / idle-sleep guard of the media session;
+	// awakeRelease releases it and awakeMu serializes the two sides (the
+	// update worker and shutdown on the main thread).
+	awake        atomic.Bool
+	awakeMu      sync.Mutex
+	awakeRelease func()
 
 	// M3 source layer: credentials, adapters, sync and direct-link refresh.
 	creds     *sources.Credentials
@@ -159,9 +167,12 @@ func Main() error {
 		if ms := strings.TrimSpace(os.Getenv("TINGYU_POPUP_TRAY_MS")); ms != "" {
 			if n, err := strconv.Atoi(ms); err == nil && n > 0 {
 				time.AfterFunc(time.Duration(n)*time.Millisecond, func() {
-					if a.tray != nil {
+					a.trayMu.Lock()
+					tray := a.tray
+					a.trayMu.Unlock()
+					if tray != nil {
 						a.logf("tray: pop up menu")
-						a.tray.PopUpMenu()
+						tray.PopUpMenu()
 					}
 				})
 			}

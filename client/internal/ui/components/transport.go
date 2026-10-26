@@ -1,8 +1,6 @@
 package components
 
 import (
-	"time"
-
 	"github.com/egoist/mygo/ui"
 
 	"github.com/halunhaku/tingyu/client/internal/ui/model"
@@ -12,6 +10,7 @@ import (
 type transportView struct {
 	seek    float64
 	pressed bool
+	scrub   model.Scrubber
 	volume  float64
 }
 
@@ -103,13 +102,16 @@ func Transport(c *ui.Context, d Design, s *model.State) {
 						v.seek = position.Seconds()
 					}
 					d.Text(c, tokens.NumericS, model.FormatDuration(position)).TextColor(d.P.TextTertiary)
-					slider := ui.Slider(c, &v.seek, 0, end).Grow(1)
+					slider := ui.Slider(c, &v.seek, 0, end).Grow(1).Label("播放进度")
 					if slider.Pressed() {
 						v.pressed = true
 					}
-					if slider.Changed() {
+					// The drag only moves the display; the release seeks once, so a
+					// remote source sees one Range request instead of one per frame
+					// (research report §3.2).
+					if target, ok := v.scrub.Seek(v.seek, end, slider.Pressed(), slider.Changed()); ok {
 						if a := s.Actions(); a != nil {
-							_ = a.Seek(time.Duration(v.seek * float64(time.Second)))
+							_ = a.Seek(target)
 						}
 					}
 					if v.pressed && !slider.Pressed() {
