@@ -5,6 +5,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/halunhaku/tingyu/client/internal/library"
 	"github.com/halunhaku/tingyu/client/internal/ui/components"
 	"github.com/halunhaku/tingyu/client/internal/ui/model"
 	"github.com/halunhaku/tingyu/client/internal/ui/tokens"
@@ -145,7 +146,22 @@ func playbackSettings(c *ui.Context, d components.Design, s *model.State) {
 	components.StatRow(c, d, "系统媒体会话", "Now Playing / 媒体键（M1 已接入）")
 	components.StatRow(c, d, "关窗行为", "继续播放，菜单栏可控制；Cmd+Q 干净退出")
 	components.StatRow(c, d, "循环模式", model.RepeatLabel(s.Repeat()))
-	components.StatRow(c, d, "随机播放", "内核控制器尚未提供 shuffle（需内核支持）")
+	shuffle := s.Shuffle()
+	components.SettingRow(c, d, "随机播放",
+		"开启后新队列从选中曲目起随机排列；关闭后同一列表回到顺序。当前："+shuffleLabel(shuffle),
+		func() {
+			sw := ui.Switch(c, &shuffle)
+			if sw.Changed() {
+				s.ToggleShuffle()
+			}
+		})
+}
+
+func shuffleLabel(on bool) string {
+	if on {
+		return "开"
+	}
+	return "关"
 }
 
 func librarySettings(c *ui.Context, d components.Design, s *model.State) {
@@ -207,7 +223,7 @@ func aboutSettings(c *ui.Context, d components.Design, s *model.State) {
 	components.StatRow(c, d, "渲染", "MyGo v0.6.4 · ui（原生即时模式）")
 	components.StatRow(c, d, "运行时", runtime.Version()+" · "+runtime.GOOS+"/"+runtime.GOARCH)
 	components.StatRow(c, d, "设计", "「声档」令牌与 Flutter 版同源（app/lib/design/tokens）")
-	d.Text(c, tokens.BodyS, "M4 只做界面与装配：远端来源（M3）、元数据与图片（M5）、签名公证（M6）不在本阶段。").
+	d.Text(c, tokens.BodyS, "本阶段只做数据能力（收藏、歌单、来源删除、随机、SQL 分页）：远端来源（M3）、元数据与图片（M5）、签名公证（M6）不在本阶段。").
 		TextColor(d.P.TextTertiary).Wrap()
 }
 
@@ -228,7 +244,9 @@ func Sources(c *ui.Context, d components.Design, s *model.State) {
 			quark.Disabled(true)
 		}).Radius(tokens.RadiusSM).FontSize(13)
 	}
+	view := sourcesView(s)
 	Page(c, d, s, "来源管理", sourceSummary(s), s.Back, actions, func() {
+		sourceDeleteDialog(c, s, view)
 		ScanPanel(c, d, s.Scan())
 		if len(s.Sources()) == 0 {
 			components.Empty(c, d, components.IconFolder, "还没有音乐来源",
@@ -259,9 +277,9 @@ func Sources(c *ui.Context, d components.Design, s *model.State) {
 								s.Library().SetSource(source.ID)
 								s.OpenPage(model.PageLibrary)
 							}
-							del := d.Button(c, "删除来源")
-							if del.Clicked() {
-								s.AskKernel("删除来源（music_sources + tracks 写入）")
+							if del := d.Button(c, "删除来源"); del.Clicked() {
+								view.deleting = source
+								view.confirmOpen = true
 							}
 						})
 						d.Text(c, tokens.BodyS, source.LocalFolderPath).TextColor(d.P.TextTertiary).SingleLine()
@@ -276,6 +294,40 @@ func Sources(c *ui.Context, d components.Design, s *model.State) {
 			})
 		})
 	})
+}
+
+// sourcesPage is the source page's view state: the delete confirmation.
+type sourcesPage struct {
+	confirmOpen bool
+	deleting    library.Source
+}
+
+func sourcesView(s *model.State) *sourcesPage {
+	if v, ok := s.Transient("sources").(*sourcesPage); ok {
+		return v
+	}
+	v := &sourcesPage{}
+	s.SetTransient("sources", v)
+	return v
+}
+
+// sourceDeleteDialog confirms deleting a source. Its tracks go too — that is
+// the point of deleting a source — so the message says how many and that the
+// files on disk are not touched.
+func sourceDeleteDialog(c *ui.Context, s *model.State, v *sourcesPage) {
+	if !v.confirmOpen {
+		return
+	}
+	title := "删除来源「" + v.deleting.Name + "」？"
+	message := "曲库里属于它的 " + model.FormatCount(int(v.deleting.TrackCount), "首") +
+		"会一并移除（含歌单条目与不再被引用的封面）；磁盘上的文件不会被删除。"
+	switch ui.AlertDialog(c, &v.confirmOpen, title, message, "取消", "确认删除") {
+	case 1:
+		if a := s.Actions(); a != nil {
+			a.DeleteSource(v.deleting)
+		}
+		s.DismissSource(v.deleting.ID)
+	}
 }
 
 func outOfScopeSources(c *ui.Context, d components.Design) {
@@ -302,5 +354,5 @@ func sourceSummary(s *model.State) string {
 	if len(s.Sources()) == 0 {
 		return ""
 	}
-	return model.FormatCount(len(s.Sources()), "个来源") + " · " + model.FormatCount(len(s.AllTracks()), "首")
+	return model.FormatCount(len(s.Sources()), "个来源") + " · " + model.FormatCount(s.Counts().Tracks, "首")
 }

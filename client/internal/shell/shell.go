@@ -37,10 +37,11 @@ type Model struct {
 	state *model.State
 }
 
-// New builds a model. loadErr means the library could not be opened at all;
-// the window explains it instead of showing a blank table.
-func New(tracks []library.Track, dbPath string, loadErr error) *Model {
-	return &Model{state: model.New(tracks, dbPath, loadErr)}
+// New builds a model over the library's read side. loadErr means the library
+// could not be opened at all; the window explains it instead of showing a
+// blank table.
+func New(backend model.Backend, live model.Live, dbPath string, loadErr error) *Model {
+	return &Model{state: model.New(backend, live, dbPath, loadErr)}
 }
 
 // State exposes the view state for the assembly (menus, acceptance hooks).
@@ -49,10 +50,10 @@ func (m *Model) State() *model.State { return m.state }
 // SetActions installs the callbacks.
 func (m *Model) SetActions(actions Actions) { m.state.SetActions(actions) }
 
-// SetTracks replaces the visible library with its revision and row revisions.
-func (m *Model) SetTracks(tracks []library.Track, revision uint64, rowRevs map[string]uint64) {
-	m.state.SetTracks(tracks, revision, rowRevs)
-}
+// Invalidate asks the next frame to re-read the library (the app calls it
+// after a write it performed itself; writes made elsewhere are seen through
+// the revision).
+func (m *Model) Invalidate() { m.state.Invalidate() }
 
 // SetSources replaces the source list.
 func (m *Model) SetSources(sources []library.Source) { m.state.SetSources(sources) }
@@ -89,14 +90,11 @@ func (m *Model) ConfigureDataDir(dataDir string, writable bool) {
 // Scan returns the scan state (the app uses it for logging).
 func (m *Model) Scan() ScanState { return m.state.Scan() }
 
-// Tracks returns the tracks the view shows.
-func (m *Model) Tracks() []library.Track { return m.state.AllTracks() }
-
 // Volume returns the volume the view shows.
 func (m *Model) Volume() float64 { return m.state.Volume() }
 
 // Revision returns the library revision the view last showed.
-func (m *Model) Revision() uint64 { return m.state.LibraryRevision() }
+func (m *Model) Revision() uint64 { return m.state.Revision() }
 
 // View builds the window.
 func (m *Model) View(c *ui.Context) {
@@ -139,6 +137,8 @@ func page(c *ui.Context, d components.Design, s *model.State) {
 		pages.Artists(c, d, s)
 	case model.PagePlaylists:
 		pages.Playlists(c, d, s)
+	case model.PagePlaylistDetail:
+		pages.PlaylistDetail(c, d, s)
 	case model.PageSearch:
 		pages.Search(c, d, s)
 	case model.PageSettings:
@@ -223,12 +223,29 @@ func sidebar(c *ui.Context, d components.Design, s *model.State) {
 						ui.Icon(c, components.IconPlus).FontSize(tokens.IconCompact).TextColor(d.P.TextTertiary)
 					})
 					if newPlaylist.Clicked() {
-						s.AskKernel("歌单创建（playlists 表写入）")
+						s.BeginCreatePlaylist()
+						s.OpenPage(model.PagePlaylists)
 					}
 				})
-				ui.Row(c).Padding(tokens.Space8, tokens.Space4).Children(func() {
-					d.Text(c, tokens.BodyS, "尚未创建播放列表").TextColor(d.P.TextTertiary)
-				})
+				if len(s.Playlists()) == 0 {
+					ui.Row(c).Padding(tokens.Space8, tokens.Space4).Children(func() {
+						d.Text(c, tokens.BodyS, "尚未创建播放列表").TextColor(d.P.TextTertiary)
+					})
+				}
+				for _, playlist := range s.Playlists() {
+					playlist := playlist
+					row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space6).
+						Padding(tokens.Space8, tokens.Space6).Radius(tokens.RadiusSM)
+					if row.Hovered() {
+						row.Background(d.P.Hover)
+					}
+					row.OnClick(func() { s.OpenPlaylist(playlist) })
+					row.Children(func() {
+						ui.Icon(c, components.IconQueue).FontSize(tokens.IconCompact).TextColor(d.P.TextTertiary)
+						d.Text(c, tokens.BodyS, playlist.Name).TextColor(d.P.TextSecondary).Grow(1).SingleLine()
+						d.Textf(c, tokens.LabelS, "%d", playlist.TrackCount).TextColor(d.P.TextTertiary)
+					})
+				}
 			})
 		})
 		ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space8).Children(func() {

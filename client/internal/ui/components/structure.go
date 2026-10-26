@@ -96,6 +96,30 @@ func Pager(c *ui.Context, d Design, list *model.TrackList) {
 	})
 }
 
+// LoadMore is the footer of a list that is not a TrackList (albums, artists,
+// playlists): the loaded and true counts, and one page per click. The scroll
+// gates live with the lists themselves.
+func LoadMore(c *ui.Context, d Design, loaded, total int, done, loading bool, more func()) {
+	if total == 0 {
+		return
+	}
+	ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space10).PaddingY(tokens.Space8).Children(func() {
+		d.Textf(c, tokens.NumericS, "已显示 %d / 共 %d 项", loaded, total).TextColor(d.P.TextSecondary)
+		if done || loaded >= total {
+			d.Textf(c, tokens.BodyS, "已全部加载 · 共 %d 项", total).TextColor(d.P.TextTertiary)
+			return
+		}
+		if loading {
+			ui.Spinner(c)
+			d.Text(c, tokens.BodyS, "正在加载…").TextColor(d.P.TextSecondary)
+			return
+		}
+		if more != nil {
+			d.Button(c, "加载更多").OnClick(more)
+		}
+	})
+}
+
 // Stat is a label + value pair for settings and summaries.
 func Stat(c *ui.Context, d Design, label string, value any) {
 	ui.Column(c).Gap(2).Children(func() {

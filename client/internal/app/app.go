@@ -150,11 +150,6 @@ func Main() error {
 				})
 			}
 		}
-		if rows := strings.TrimSpace(os.Getenv("TINGYU_BENCH_ROWS")); rows != "" {
-			if n, err := strconv.Atoi(rows); err == nil && n > 0 {
-				go a.runScrollBench(n)
-			}
-		}
 		if ms := strings.TrimSpace(os.Getenv("TINGYU_AUTO_QUIT_MS")); ms != "" {
 			if n, err := strconv.Atoi(ms); err == nil && n > 0 {
 				time.AfterFunc(time.Duration(n)*time.Millisecond, func() {
@@ -167,90 +162,12 @@ func Main() error {
 	return mygo.App.Run()
 }
 
-// runScrollBench is the real-window half of the M4 frame-time harness: it
-// replaces the visible library with n synthetic rows (same data, new titles)
-// and scrolls the table one step every 16 ms, so MYGO_FRAME_STATS=all logs
-// real window frames. It writes no database: the rows live only in the view
-// model. It needs a visible, unoccluded window (a held window draws no frames,
-// which is why the committed measurement uses ui.Tester; see the M4 record).
-func (a *application) runScrollBench(rows int) {
-	<-a.readyCh
-	time.Sleep(400 * time.Millisecond)
-	// The benchmark needs its frames drawn: bring the window forward and keep
-	// it above other windows while it scrolls.
-	mygo.App.Focus()
-	a.showWindow()
-	a.winMu.Lock()
-	if a.win != nil {
-		a.win.SetAlwaysOnTop(true)
-	}
-	a.winMu.Unlock()
-	time.Sleep(200 * time.Millisecond)
-	if a.lib == nil {
-		a.logf("bench: library unavailable")
-		return
-	}
-	tracks, err := a.lib.Tracks(context.Background())
-	if err != nil || len(tracks) == 0 {
-		a.logf("bench: no source tracks: %v", err)
-		return
-	}
-	base := tracks[0]
-	for _, track := range tracks {
-		if strings.HasPrefix(track.FilePath, "/") {
-			base = track
-			break
-		}
-	}
-	synthetic := make([]library.Track, 0, rows)
-	revs := make(map[string]uint64, rows)
-	for i := 0; i < rows; i++ {
-		track := base
-		track.ID = fmt.Sprintf("bench-%05d", i)
-		track.Title = fmt.Sprintf("基准曲目 %05d", i)
-		track.Artist = fmt.Sprintf("艺术家 %02d", i%37)
-		track.Album = fmt.Sprintf("基准专辑 %03d", i%211)
-		track.PlayCount = 0
-		synthetic = append(synthetic, track)
-		revs[track.ID] = 1
-	}
-	revision := a.model.Revision() + 1
-	a.updateWindow(func() {
-		a.model.SetTracks(synthetic, revision, revs)
-		a.model.State().Library().LoadAll()
-		a.model.State().OpenPage("library")
-	})
-	a.logf("bench: start rows=%d frame=%s", rows, time.Now().Format(time.RFC3339Nano))
-	ticker := time.NewTicker(16 * time.Millisecond)
-	defer ticker.Stop()
-	row := 0
-	for range ticker.C {
-		row += 8
-		if row >= rows-1 {
-			row = rows - 1
-			a.updateWindow(func() { a.model.State().Library().Table().ScrollTo(row, ui.Start) })
-			break
-		}
-		current := row
-		a.updateWindow(func() { a.model.State().Library().Table().ScrollTo(current, ui.Start) })
-	}
-	time.Sleep(400 * time.Millisecond)
-	a.winMu.Lock()
-	if a.win != nil {
-		a.win.SetAlwaysOnTop(false)
-	}
-	a.winMu.Unlock()
-	a.logf("bench: done rows=%d frame=%s", rows, time.Now().Format(time.RFC3339Nano))
-	mygo.App.Quit()
-}
-
 // prepare opens the library and starts the playback kernel. It returns the
 // library error (if any) after the model exists, so the window can show it.
 func (a *application) prepare() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	var tracks []library.Track
 	var loadErr error
 	dataDir, err := library.DataDir()
 	if err != nil {
@@ -272,17 +189,22 @@ func (a *application) prepare() error {
 			loadErr = openErr
 		} else {
 			a.lib = lib
-			tracks, err = lib.Tracks(ctx)
-			if err != nil {
-				loadErr = fmt.Errorf("%s: %w", a.path, err)
+			counts, countErr := lib.Counts(ctx)
+			if countErr != nil {
+				loadErr = fmt.Errorf("%s: %w", a.path, countErr)
 			} else {
-				a.logf("library: %d tracks from %s (%s, user_version %d)", len(tracks), a.path, mode, library.SchemaVersion)
+				a.logf("library: %d tracks / %d albums / %d artists / %d playlists from %s (%s, user_version %d)",
+					counts.Tracks, counts.Albums, counts.Artists, counts.Playlists, a.path, mode, library.SchemaVersion)
 				a.startup.mark("library read")
 			}
 		}
 	}
 
-	a.model = shell.New(tracks, a.path, loadErr)
+	if a.lib != nil {
+		a.model = shell.New(a.lib.Queries(), a.lib, a.path, loadErr)
+	} else {
+		a.model = shell.New(nil, nil, a.path, loadErr)
+	}
 	a.model.SetActions(a)
 	if a.dataDir != "" {
 		a.model.ConfigureDataDir(a.dataDir, a.lib != nil && a.lib.Writable())
@@ -311,7 +233,6 @@ func (a *application) prepare() error {
 		a.logf("playback: libmpv %s client API %d.%d", filepath.Base(mpv.LibraryPath()), major, minor)
 	}
 	if a.lib != nil {
-		a.reloadTracks()
 		a.reloadSources()
 	}
 	return loadErr
@@ -408,21 +329,163 @@ func (a *application) reloadSources() {
 	a.updateWindow(func() { a.model.SetSources(sources) })
 }
 
-func (a *application) reloadTracks() {
+// refresh tells the window that the library changed. The lists read SQL
+// through their revision keys, so this is a counter bump, not a data copy:
+// nothing loads the whole tracks table into the window any more.
+func (a *application) refresh() {
 	if a.lib == nil {
 		return
 	}
-	tracks, err := a.lib.Tracks(context.Background())
-	if err != nil {
-		a.logf("library: reload: %v", err)
-		return
-	}
-	revisions := make(map[string]uint64, len(tracks))
-	for _, track := range tracks {
-		revisions[track.ID] = a.lib.RowRevision(track.ID)
-	}
+	a.reloadSources()
 	revision := a.lib.Revision()
-	a.updateWindow(func() { a.model.SetTracks(tracks, revision, revisions) })
+	a.updateWindow(func() { a.model.Invalidate() })
+	a.logf("library: revision %d", revision)
+}
+
+// write runs one library write on a worker thread and refreshes the window,
+// or reports why it could not. Every write goes through here: a read-only
+// build says so instead of pretending the change stuck.
+func (a *application) write(what string, fn func(ctx context.Context) error) bool {
+	if a.lib == nil {
+		a.setStatus(what + "失败：曲库未打开")
+		return false
+	}
+	if !a.lib.Writable() {
+		a.setStatus("只读模式：设置 TINGYU_DATA_DIR 指向曲库副本后才能" + what + "（生产库绝不被写）")
+		return false
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := fn(ctx); err != nil {
+			a.logf("%s: failed: %v", what, err)
+			a.updateWindow(func() {
+				a.model.SetError(what + "失败：" + err.Error())
+			})
+			return
+		}
+		a.logf("%s: ok", what)
+		a.refresh()
+	}()
+	return true
+}
+
+// --- library writes (shell.Actions) ----------------------------------
+
+// SetFavorite writes tracks.is_favorite, the store the row heart, the row menu
+// and the stage all use.
+func (a *application) SetFavorite(track library.Track, favorite bool) {
+	a.write("收藏写入", func(ctx context.Context) error {
+		if err := a.lib.SetFavorite(ctx, track.ID, favorite); err != nil {
+			return err
+		}
+		// The status follows the write, not the click: a refused write (a
+		// read-only copy) must not look like a success.
+		status := "已取消收藏「" + track.Title + "」"
+		if favorite {
+			status = "已收藏「" + track.Title + "」"
+		}
+		a.updateWindow(func() { a.model.SetStatus(status); a.model.SetError("") })
+		return nil
+	})
+}
+
+// CreatePlaylist creates an empty playlist; the name comes from the page's
+// inline field (trimmed and refused when empty by the kernel).
+func (a *application) CreatePlaylist(name string) {
+	a.write("新建歌单", func(ctx context.Context) error {
+		playlist, err := a.lib.CreatePlaylist(ctx, name)
+		if err != nil {
+			return err
+		}
+		a.logf("playlist: created %s %q", playlist.ID, playlist.Name)
+		return nil
+	})
+}
+
+// RenamePlaylist renames one playlist.
+func (a *application) RenamePlaylist(id, name string) {
+	a.write("重命名歌单", func(ctx context.Context) error {
+		return a.lib.RenamePlaylist(ctx, id, name)
+	})
+}
+
+// DeletePlaylist removes a playlist; its items go with it, its tracks do not.
+func (a *application) DeletePlaylist(id string) {
+	a.write("删除歌单", func(ctx context.Context) error {
+		deletion, err := a.lib.DeletePlaylist(ctx, id)
+		if err != nil {
+			return err
+		}
+		a.logf("playlist: deleted %q, %d items removed with it", deletion.Name, deletion.Items)
+		return nil
+	})
+}
+
+// AddToPlaylist appends tracks to a playlist in the order given.
+func (a *application) AddToPlaylist(playlistID string, trackIDs []string) {
+	a.write("加入歌单", func(ctx context.Context) error {
+		added, err := a.lib.AddTracksToPlaylist(ctx, playlistID, trackIDs)
+		if err != nil {
+			return err
+		}
+		a.logf("playlist: %s appended %d tracks", playlistID, added)
+		a.updateWindow(func() {
+			a.model.SetStatus(fmt.Sprintf("已加入歌单：%d 首", added))
+		})
+		return nil
+	})
+}
+
+// RemoveFromPlaylist removes the item at a row of the playlist's saved order.
+func (a *application) RemoveFromPlaylist(playlistID string, index int) {
+	a.write("移出歌单", func(ctx context.Context) error {
+		return a.lib.RemovePlaylistItem(ctx, playlistID, index)
+	})
+}
+
+// MovePlaylistItem reorders one item of a playlist.
+func (a *application) MovePlaylistItem(playlistID string, from, to int) {
+	a.write("调整歌单顺序", func(ctx context.Context) error {
+		return a.lib.MovePlaylistItem(ctx, playlistID, from, to)
+	})
+}
+
+// DeleteSource removes a source with its tracks, its playlist entries and any
+// cover file nothing else references (plan §2.1 #2 and #4).
+func (a *application) DeleteSource(source library.Source) {
+	a.write("删除来源", func(ctx context.Context) error {
+		deletion, err := a.lib.DeleteSource(ctx, source.ID)
+		if err != nil {
+			return err
+		}
+		a.logf("source: deleted %q: tracks=%d playlist_items=%d covers=%v",
+			deletion.Source, deletion.Tracks, deletion.PlaylistItems, deletion.Covers)
+		keep, err := a.lib.ReferencedCovers(ctx)
+		if err != nil {
+			return err
+		}
+		removed, err := scan.CollectOrphanCovers(a.covers, keep)
+		if err != nil {
+			return err
+		}
+		a.logf("source: %d orphan covers removed, %d still referenced", removed, len(keep))
+		a.updateWindow(func() {
+			a.model.SetStatus(fmt.Sprintf("已删除来源「%s」：%d 首曲目、%d 条歌单条目、%d 个孤儿封面",
+				deletion.Source, deletion.Tracks, deletion.PlaylistItems, removed))
+		})
+		return nil
+	})
+}
+
+// SetShuffle turns shuffle on or off and returns the mode the controller is in.
+func (a *application) SetShuffle(on bool) bool {
+	if a.control == nil {
+		return on
+	}
+	mode := a.control.SetShuffle(on)
+	a.logf("play: shuffle %v", mode)
+	return mode
 }
 
 // --- playback actions (shell.Actions) --------------------------------
@@ -564,12 +627,20 @@ func (a *application) acceptancePlay(index int) {
 		a.logf("accept: cannot play: library or engine unavailable")
 		return
 	}
-	tracks, err := a.lib.Tracks(context.Background())
-	if err != nil || index < 0 || index >= len(tracks) {
+	if index < 0 {
+		a.logf("accept: track index %d is negative", index)
+		return
+	}
+	// Start at the index and queue everything after it: one paged read, no
+	// full-table copy.
+	tracks, err := a.lib.TracksPage(context.Background(), library.TrackQuery{
+		Sort: library.SortTitle, Offset: index,
+	})
+	if err != nil || len(tracks) == 0 {
 		a.logf("accept: track index %d unavailable: %v", index, err)
 		return
 	}
-	_ = a.PlayTracks(tracks, index)
+	_ = a.PlayTracks(tracks, 0)
 }
 
 // acceptancePlayTitle starts the first local track whose title contains title.
@@ -579,15 +650,17 @@ func (a *application) acceptancePlayTitle(title string) {
 		a.logf("accept: cannot play: library or engine unavailable")
 		return
 	}
-	tracks, err := a.lib.Tracks(context.Background())
+	matches, err := a.lib.TracksPage(context.Background(), library.TrackQuery{
+		Search: title, Sort: library.SortTitle,
+	})
 	if err != nil {
-		a.logf("accept: cannot read tracks: %v", err)
+		a.logf("accept: cannot search tracks: %v", err)
 		return
 	}
-	for i, track := range tracks {
-		if strings.Contains(track.Title, title) && filepath.IsAbs(track.FilePath) {
-			a.logf("accept: title %q matched %q at %d", title, track.Title, i)
-			_ = a.PlayTracks(tracks, i)
+	for _, track := range matches {
+		if filepath.IsAbs(track.FilePath) {
+			a.logf("accept: title %q matched %q", title, track.Title)
+			_ = a.PlayTracks(matches, 0)
 			return
 		}
 	}
@@ -606,7 +679,7 @@ func (a *application) acceptanceStress(count int) {
 		a.logf("stress: library or engine unavailable")
 		return
 	}
-	tracks, err := a.lib.Tracks(context.Background())
+	tracks, err := a.lib.TracksPage(context.Background(), library.TrackQuery{Sort: library.SortTitle})
 	if err != nil || len(tracks) == 0 {
 		a.logf("stress: no tracks: %v", err)
 		return
@@ -743,8 +816,7 @@ func (a *application) scanFolder(folder string) {
 	a.finishScan(status, nil, started)
 	a.logf("scan: folder=%q files=%d stored=%d added=%d updated=%d removed=%d authoritative=%v elapsed=%s",
 		folder, result.Files, count, merge.Added, merge.Updated, merge.Removed, result.Authoritative(), time.Since(started).Round(time.Millisecond))
-	a.reloadTracks()
-	a.reloadSources()
+	a.refresh()
 }
 
 func (a *application) finishScan(status string, err error, started time.Time) {

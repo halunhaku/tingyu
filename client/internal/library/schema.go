@@ -96,6 +96,27 @@ var indexDefs = []indexDef{
 	{"idx_tracks_favorite", "tracks", []string{"is_favorite"}, `CREATE INDEX IF NOT EXISTS idx_tracks_favorite ON tracks (is_favorite)`},
 	{"idx_sources_kind", "music_sources", []string{"kind"}, `CREATE INDEX IF NOT EXISTS idx_sources_kind ON music_sources (kind)`},
 	{"idx_playlist_items_track", "playlist_items", []string{"track_id"}, `CREATE INDEX IF NOT EXISTS idx_playlist_items_track ON playlist_items (track_id)`},
+
+	// Sort indexes, added by this client for SQL paging (plan §2.5). The
+	// production set above indexes the filters; a page also needs its ORDER BY
+	// served, or every page request sorts the whole table (10,000 rows measured
+	// at ~10 ms for the last page, close to a frame). Each index below is
+	// exactly one sort's ORDER BY, collation and direction included, so
+	// "LIMIT 40 OFFSET n" walks the index instead of scanning and sorting.
+	//
+	// Indexes are additive: PRAGMA user_version stays 2 and the Flutter client
+	// (which creates its own six) never reads a schema it does not know. Only
+	// columns are frozen (plan §8.1 rule 3), and no column changes here.
+	{"idx_tracks_sort_title", "tracks", []string{"title"},
+		`CREATE INDEX IF NOT EXISTS idx_tracks_sort_title ON tracks (title COLLATE NOCASE, artist COLLATE NOCASE, id)`},
+	{"idx_tracks_sort_artist", "tracks", []string{"artist", "album"},
+		`CREATE INDEX IF NOT EXISTS idx_tracks_sort_artist ON tracks (artist COLLATE NOCASE, album COLLATE NOCASE, disc_number, track_number, title COLLATE NOCASE, id)`},
+	{"idx_tracks_sort_album", "tracks", []string{"album", "artist"},
+		`CREATE INDEX IF NOT EXISTS idx_tracks_sort_album ON tracks (album COLLATE NOCASE, artist COLLATE NOCASE, disc_number, track_number, title COLLATE NOCASE, id)`},
+	{"idx_tracks_sort_duration", "tracks", []string{"duration"},
+		`CREATE INDEX IF NOT EXISTS idx_tracks_sort_duration ON tracks (duration, id)`},
+	{"idx_tracks_sort_added", "tracks", []string{"date_added"},
+		`CREATE INDEX IF NOT EXISTS idx_tracks_sort_added ON tracks (date_added, id)`},
 }
 
 // nullableColumns are the columns a legacy library may miss. Only nullable
@@ -124,6 +145,17 @@ var nullableColumns = []struct{ table, column, kind string }{
 	{"music_sources", "last_synced_at", "TEXT"},
 }
 
+// placeholderUpdates replace the empty string with the placeholder the UI
+// shows and the Flutter client writes. An album or artist aggregate groups by
+// the raw columns (a CASE in GROUP BY cannot use idx_tracks_artist_album), so a
+// legacy row storing ” would otherwise form a second group with the same
+// displayed name. It only touches rows that have no text at all, and running it
+// again changes nothing.
+var placeholderUpdates = []struct{ table, column, value string }{
+	{"tracks", "artist", UnknownArtist},
+	{"tracks", "album", UnknownAlbum},
+}
+
 // ensureSchema creates missing tables and indexes and adds nullable columns.
 // It runs inside one transaction so a half-applied schema never survives a
 // failure, and it never writes PRAGMA user_version.
@@ -147,6 +179,22 @@ func ensureSchema(ctx context.Context, db *sqlite.DB) error {
 		sql := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s NULL", quoteIdent(add.table), quoteIdent(add.column), add.kind)
 		if _, err := db.Execute(ctx, sql); err != nil {
 			return fmt.Errorf("library: add %s.%s: %w", add.table, add.column, err)
+		}
+	}
+	// Legacy empty metadata takes the placeholder, so the aggregates group it
+	// with the rows that already store the placeholder.
+	for _, update := range placeholderUpdates {
+		has, err := hasColumn(ctx, db, update.table, update.column)
+		if err != nil {
+			return err
+		}
+		if !has {
+			continue
+		}
+		sql := fmt.Sprintf("UPDATE %s SET %s = ? WHERE TRIM(%s) = ''",
+			quoteIdent(update.table), quoteIdent(update.column), quoteIdent(update.column))
+		if _, err := db.Execute(ctx, sql, update.value); err != nil {
+			return fmt.Errorf("library: normalise %s.%s: %w", update.table, update.column, err)
 		}
 	}
 	// Indexes last, and only over columns that exist: a legacy table without

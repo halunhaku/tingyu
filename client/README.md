@@ -1,8 +1,8 @@
 # client/：听屿 macOS 客户端（MyGo）
 
-迁移方案 **M1 + M2 + M4** 的实现：M1 是选目录扫描入库、进程内 libmpv 播放、系统媒体会话（Now Playing / 媒体键）、关窗续播；M2 是内核生产化（9 格式矩阵、远端 Range/鉴权、gapless、循环三态、失败快照、倍速/音量、200 首队列）；M4 是「声档」设计令牌、全部页面、舞台/队列/歌词与命令面板。**不实现远端来源**（WebDAV/夸克，M3）、**不做元数据补全与封面取色**（M5）；M4 只在界面与装配层，**不碰 `app/`、不碰内核包**。
+迁移方案 **M1 + M2 + M4 + 内核数据能力** 的实现：M1 是选目录扫描入库、进程内 libmpv 播放、系统媒体会话（Now Playing / 媒体键）、关窗续播；M2 是内核生产化（9 格式矩阵、远端 Range/鉴权、gapless、循环三态、失败快照、倍速/音量、200 首队列）；M4 是「声档」设计令牌、全部页面、舞台/队列/歌词与命令面板；内核数据能力补上 M4 留下的五个缺口——**收藏写入、歌单读写、来源删除、随机播放、SQL 分页与聚合**。**不实现远端来源**（WebDAV/夸克，M3）、**不做元数据补全与封面取色**（M5）；不改 `app/`。
 
-验收记录与逐条证据：[M1 记录](../docs/plan/2026-10-25-macos-mygo-m1-record.md)、[M2 记录](../docs/plan/2026-10-25-macos-mygo-m2-record.md)。
+验收记录与逐条证据：[M1 记录](../docs/plan/2026-10-25-macos-mygo-m1-record.md)、[M2 记录](../docs/plan/2026-10-25-macos-mygo-m2-record.md)、[M4 记录](../docs/plan/2026-10-25-macos-mygo-m4-record.md)、[内核数据能力记录](../docs/plan/2026-10-26-macos-mygo-kernel-data-record.md)。
 
 ```
 client/
@@ -10,7 +10,7 @@ client/
 ├── mygo.json                    应用名、bundle id、版本、最低 macOS、出包目录
 ├── resources/icon.png           1024×1024 图标
 ├── internal/
-│   ├── library/                 SQLite：schema 补差、查询、扫描合并、播放历史、revision
+│   ├── library/                 SQLite：schema 补差、分页查询与聚合、收藏/歌单/来源删除、扫描合并、播放历史、revision
 │   ├── scan/                    目录遍历 + 9 格式元数据 + 内容寻址封面
 │   ├── mpv/                     purego libmpv 绑定与播放内核（失败分类、日志信号）
 │   ├── player/                  播放控制器（预取/世代/循环/历史/换队列契约）
@@ -18,7 +18,7 @@ client/
 │   ├── mediasession/            Now Playing / 远程命令 / 封面 / App Nap
 │   ├── ui/
 │   │   ├── tokens/              「声档」令牌：深浅色、字号、间距、圆角、动效
-│   │   ├── model/               视图状态：分页/排序/过滤、专辑/艺术家分组、搜索、LRC、设置
+│   │   ├── model/               视图状态：SQL 分页/排序/过滤、专辑/艺术家/歌单列表、搜索、LRC、设置
 │   │   ├── components/          封面、曲目列表、传输条、舞台/歌词/队列、命令面板
 │   │   └── pages/               曲库、收藏、专辑、艺术家、歌单、搜索、舞台、队列、歌词、设置、来源、引导
 │   ├── shell/                   外壳：侧栏、页面调度、快捷键、装配 Model
@@ -66,10 +66,13 @@ TINGYU_DATA_DIR=/tmp/tingyu-copy /tmp/tingyu
 - `library.sqlite`：`TINGYU_DATA_DIR` 指向的目录，否则 `~/Library/Application Support/com.halunhaku.tingyu`。
 - **未设置 `TINGYU_DATA_DIR` 时客户端只读**：扫描与播放历史都被拒绝，界面提示。这保证开发构建永远不写生产库（方案 §8.1 第 2 条）。
 - 开发/验收：`cp library.sqlite /tmp/tingyu-copy/`，封面目录 `covers/` 一并复制（可选）。
-- 本阶段只有两处写入：
+- 写入面（全部经 `internal/app` 的 `write()`，只读连接一律拒绝并提示）：
   1. 扫描合并（`library.MergeScan`）：`sourceId + filePathOrUrl` 对齐，只覆盖文件事实，只有权威扫描才删旧曲；
-  2. 播放历史/次数（`recordPlay`）与缺失时长回填（`backfillDuration`）。
-- `PRAGMA user_version` 固定 2；迁移只建缺失表/索引、只加可空列。
+  2. 播放历史/次数（`recordPlay`）与缺失时长回填（`backfillDuration`）；
+  3. 收藏（`SetFavorite` / `SetFavorites`）：`tracks.is_favorite`，单条或一批在一个事务里；
+  4. 歌单（`CreatePlaylist` / `RenamePlaylist` / `DeletePlaylist` / `AddTracksToPlaylist` / `RemovePlaylistItem` / `MovePlaylistItem`）：位置始终压紧成 `0..n-1`，删除歌单靠外键级联清条目、不动曲目；
+  5. 删除来源（`DeleteSource`）：曲目 + 歌单条目（级联）+ `music_sources` 行，随后 `scan.CollectOrphanCovers` 只删除**已无任何曲目引用**的内容寻址封面。
+- `PRAGMA user_version` 固定 2；迁移只建缺失表/索引、只加可空列。本阶段新增 5 个**排序索引**（`idx_tracks_sort_*`，只影响顺序，不改列、不动版本号），理由见记录 §3。
 - 封面仍是内容寻址（FNV-1a，`.png/.jpg`），二进制不入库。
 
 ## 播放与媒体会话
@@ -126,18 +129,21 @@ go test ./... && go test -race ./...
 
 覆盖：只读拒绝、schema 补差、扫描合并语义、revision、播放历史/时长回填、目录遍历、9 格式解析、`mpv_event` 布局、控制器队列/循环/完成/预取世代/并发追加顺序/关闭时等待预取、扫描进度与双击播放的界面断言；M2 新增失败分类（HTTP 状态、断网、解码、本地缺失）、未知时长 ≠ loading、buffered 钳制、Range/鉴权测试服务的 401/403/chunked/断网语义；M4 新增分页闸门、刷新保页、搜索防抖、LRC、专辑/艺术家分组、命令面板、舞台展开/收起、歌词高亮/seek、设置落盘与逐页交互。
 
+内核数据能力新增：SQL 过滤/排序/分页与 10,000 行页查询耗时、专辑/艺术家聚合、`EXPLAIN QUERY PLAN` 的索引断言、歌单全链路（建/加/改名/排序/移出/级联删除）与位置压紧、收藏写入与重开连接后的持久化、删除来源的计数与封面孤儿回收、随机播放的顺序/还原/与循环共存；`internal/shell` 的端到端用例直接点击按钮、用**独立的 SQLite 连接**读回数据作为证据（收藏与取消、歌单全链路、来源删除、随机播放）。
+
 ## M4 界面
 
 - **令牌**：`internal/ui/tokens` 与 `app/lib/design/tokens` 同源（颜色、13 档字号、4pt 间距、圆角、动效时长）；深/浅两套由 `settings.json` 的 `themeMode` 决定，密度（舒适/紧凑）影响行高、页边距与侧栏宽度。
 - **页面**：曲库、收藏（歌曲/专辑两段）、专辑、艺术家、歌单、搜索、舞台、队列、歌词、设置、来源管理、引导。
-- **分页**：每页 40；滚动近底或「加载更多」触发，`loading/done` 闸门保证一次一页；行键带行级 revision，元数据写回只重建该行。
+- **分页**：每页 40，来自 SQL 的 `LIMIT/OFFSET`（曲库/收藏/歌单/搜索用 `TracksPage`，专辑/艺术家用一次 `GROUP BY` 聚合），不再把整表读进内存；滚动近底时按「读到的行 + 2 页」请求一次窗口，翻页只追加新行（`OFFSET=已加载`），所以长列表滚动不是二次方；页面查询在后台 goroutine 上执行、每帧轮询一次，帧里只做切片替换（扫描持写锁时也不会卡住界面）。行键带行级 revision，元数据写回只重建该行；歌单可能收录同一首两次，其行键额外带行号。
+- **随机播放**：控制器状态（`SetShuffle`），与循环三态独立；新队列把选中曲目放首位、其余随机；播放中切换只重排「尚未交给引擎」的那一段（前缀不动、不打断当前曲），关闭时按原始列表顺序还原（按重数还原，重复曲目不丢）。
 - **舞台**：路由级展开/收起（Esc/返回），封面与传输条封面用 MyGo 的 `Match` 共享元素近似 Hero；歌词随播放高亮并可点行 seek，队列侧栏只读可跳播。
 - **命令面板**：⌘K；独立查询与 250 ms 防抖；歌曲/专辑/艺术家 + 快捷入口；↑↓/Enter/Esc。
 - **快捷键**：⌘K、⌘F、⌘,、⌘1–4、⌘⇧P、⌘L、⌘U、Space、⌘←/→、⌘⇧←/→（±10 s）、⌘↑/↓（音量）；应用菜单含「听屿/播放/前往」。
 
-### 只读与需内核支持
+### 只读与写入边界
 
-未设置 `TINGYU_DATA_DIR` 时客户端仍只读；M4 的外观偏好只在可写副本下落盘。收藏写入、歌单读写、来源删除、元数据/歌词抓取属于内核或后续里程碑，界面会显示「需内核支持」而不是伪造成功；歌单页因此在数据层就绪前不显示假数据。
+未设置 `TINGYU_DATA_DIR` 时客户端只读：扫描、收藏、歌单、来源删除全部被拒绝并给出提示，既不写生产库也不伪造成功。M4 记录里「需内核支持」的五项（收藏写入、歌单读写、来源删除、随机播放、SQL 分页）在本阶段全部接通；仍显示「需内核支持」的只剩 M5 的元数据匹配与歌词抓取。
 
 ### 性能与截图
 
@@ -150,4 +156,4 @@ CGO_ENABLED=0 go run ./tools/screenshots -data /tmp/tingyu-copy -out ../docs/scr
 
 ## 本阶段不做
 
-远端来源（WebDAV/夸克，M3）、收藏/歌单/元数据的写路径（需内核）、封面取色与元数据补全（M5）、签名公证与 DMG（M6）、Intel 实机验证、读屏无障碍专项（M6 后）。
+远端来源（WebDAV/夸克，M3）、元数据匹配与歌词抓取的写回、封面取色（M5）、签名公证与 DMG（M6）、Intel 实机验证、读屏无障碍专项（M6 后）。写操作只有确认后的破坏性动作（删除歌单、删除来源）走二次确认弹窗，其余即时生效。

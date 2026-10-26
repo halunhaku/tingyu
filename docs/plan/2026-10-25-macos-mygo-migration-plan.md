@@ -546,7 +546,7 @@ spike ─► M0 ─► M1 ─► M2 ─┬─► M3 ─┬─► M5 ─► M6 �
 
 1. **`app/`（Flutter，macOS 目标）在 M7 验收前不删**，CI 的 macOS job 保留，随时可出包。
 2. **开发期不写生产库**：`client/` 支持 `TINGYU_DATA_DIR` 覆盖；开发/验收一律指向库副本（`cp library.sqlite` + `covers/`）。M7 才切到真实目录，且切换前自动备份 `library.sqlite`、`covers/`、`settings.json` 到 `.../backups/<timestamp>/`。
-3. **`PRAGMA user_version` 冻结为 2**：M7 切换后 30 天内不改；只允许 nullable 加列（drift 的 `_ensureColumns` 能补差）。要加不可空列或改语义 → 排到 30 天之后，并同时下线 Flutter 版。
+3. **`PRAGMA user_version` 冻结为 2**：M7 切换后 30 天内不改；只允许 nullable 加列（drift 的 `_ensureColumns` 能补差）。要加不可空列或改语义 → 排到 30 天之后，并同时下线 Flutter 版。只加**索引**不受此限（不改列、不改语义、drift 不校验未知索引）；内核数据能力阶段为此新增了 5 条排序索引，见[该阶段记录 §3.3](./2026-10-26-macos-mygo-kernel-data-record.md)。
 4. **凭据不迁移、只重填**（§3.4），发布说明必须写。
 5. 两端不同时写同一目录：开发期靠 2；切换后靠 3（版本冻结 + 只加可空列）。
 
