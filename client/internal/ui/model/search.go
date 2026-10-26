@@ -1,5 +1,14 @@
 package model
 
+// Search. The 250 ms debounce, the five scopes and the previews are the
+// Flutter page's; the matching itself is SQL now: each group is one query with
+// LIMIT (the previews) or a paged list (a single scope), and the totals are
+// COUNT queries, so search never loads the library to filter it (plan §2.5).
+//
+// A substring search cannot use a b-tree index, so the scan is the plan's cost
+// and LIMIT is what bounds it: only the first preview rows and the first page
+// of the chosen scope are read. The M4 record carries the EXPLAIN evidence.
+
 import (
 	"sort"
 	"strings"
@@ -23,17 +32,18 @@ var ScopeLabels = []string{"全部", "歌曲", "专辑", "艺术家", "歌单"}
 // SearchDebounceTime is the app-wide debounce (providers.dart:141).
 const SearchDebounceTime = 250 * time.Millisecond
 
-// SearchResults is one query's four groups. Playlists stay empty until the
-// kernel exposes them.
+// SearchResults is one query's four groups, previews only.
 type SearchResults struct {
-	Query       string
-	Songs       []library.Track
-	Albums      []Album
-	Artists     []Artist
-	Playlists   []Playlist
-	SongTotal   int
-	AlbumTotal  int
-	ArtistTotal int
+	Query         string
+	Revision      uint64
+	Songs         []library.Track
+	Albums        []Album
+	Artists       []Artist
+	Playlists     []library.Playlist
+	SongTotal     int
+	AlbumTotal    int
+	ArtistTotal   int
+	PlaylistTotal int
 }
 
 // SearchState is the search page and its 250 ms debounce.
@@ -44,15 +54,16 @@ type SearchState struct {
 	Focus   bool
 	pending time.Time
 	results SearchResults
-	pages   [5]int
-	recent  []string
 
-	// songs is the single-scope song list, paginated 40 at a time.
-	songs TrackList
+	// songs, albums and artists are the full lists of a single scope,
+	// paged 40 at a time like every other list.
+	songs   TrackList
+	albums  AlbumList
+	artists ArtistList
+
+	playlistPages int
+	recent        []string
 }
-
-// OwnSongs returns the paginated song list of the search page.
-func (s *SearchState) OwnSongs() *TrackList { return &s.songs }
 
 // OnInput marks the text changed and starts the debounce clock.
 func (s *SearchState) OnInput(now time.Time) {
@@ -60,101 +71,185 @@ func (s *SearchState) OnInput(now time.Time) {
 	if strings.TrimSpace(s.Input) == "" {
 		s.Query = ""
 		s.results = SearchResults{}
-		s.pages = [5]int{}
+		s.playlistPages = 0
 	}
 }
 
 // Pending reports a debounce clock still running.
 func (s *SearchState) Pending() bool { return !s.pending.IsZero() }
 
-// Tick applies a debounced query and recomputes results.
-func (s *SearchState) Tick(now time.Time, tracks []library.Track) {
-	if s.pending.IsZero() || now.Sub(s.pending) < SearchDebounceTime {
+// Tick applies a debounced query and recomputes the previews. The scope lists
+// are ticked by State.Tick (they are paged lists like any other).
+func (s *SearchState) Tick(now time.Time, load Backend, revision uint64) {
+	if !s.pending.IsZero() && now.Sub(s.pending) >= SearchDebounceTime {
+		s.pending = time.Time{}
+		query := strings.TrimSpace(s.Input)
+		if query != s.Query {
+			s.Query = query
+			s.applyQuery()
+		}
+	}
+	if s.Query == "" {
+		s.results = SearchResults{}
 		return
 	}
-	s.pending = time.Time{}
-	query := strings.TrimSpace(s.Input)
-	if query == s.Query {
-		return
+	if s.results.Query != s.Query || s.results.Revision != revision {
+		s.recompute(load, revision)
 	}
-	s.Query = query
-	s.pages = [5]int{}
-	s.songs.Configure(FilterAll, SortTitle, true, "")
-	s.songs.SetQuery(query)
-	s.results = SearchResults{}
 }
 
-// SetQuery applies a query at once (a recent search, 「查看全部」, a deep link).
+// applyQuery points the scope lists at a new query.
+func (s *SearchState) applyQuery() {
+	s.playlistPages = 0
+	s.results = SearchResults{}
+	s.songs.Configure(FilterAll, SortTitle, true, "")
+	s.songs.SetQuery(s.Query)
+	s.albums.Configure(library.AlbumQuery{Search: s.Query})
+	s.artists.Configure(library.ArtistQuery{Search: s.Query})
+}
+
+// SetQuery applies a query at once (a recent search, a deep link).
 func (s *SearchState) SetQuery(query string) {
 	s.Input = query
 	s.Query = strings.TrimSpace(query)
 	s.pending = time.Time{}
-	s.pages = [5]int{}
-	s.results = SearchResults{}
-	s.songs.Configure(FilterAll, SortTitle, true, "")
-	s.songs.SetQuery(s.Query)
+	s.applyQuery()
 }
 
 // NeedsResults reports whether the debounced query has no results yet.
 func (s *SearchState) NeedsResults() bool {
-	return s.Query != "" && s.results.Query != strings.ToLower(s.Query)
+	return s.Query != "" && s.results.Query != s.Query
 }
 
-// Recompute fills the results from the current library snapshot.
-func (s *SearchState) Recompute(albums []Album, artists []Artist, tracks []library.Track) {
-	q := strings.ToLower(s.Query)
-	if q == "" {
-		s.results = SearchResults{}
+// recompute fills the previews and totals from the kernel.
+func (s *SearchState) recompute(load Backend, revision uint64) {
+	results := SearchResults{Query: s.Query, Revision: revision}
+	if load == nil || s.Query == "" {
+		s.results = results
 		return
 	}
-	s.results = searchAllWith(tracks, albums, artists, q)
-	s.songs.Ensure(tracks, 0, nil)
+	trackQuery := library.TrackQuery{Search: s.Query, Sort: library.SortTitle}
+	albumQuery := library.AlbumQuery{Search: s.Query}
+	artistQuery := library.ArtistQuery{Search: s.Query}
+
+	preview := trackQuery
+	preview.Limit = PreviewSize
+	if songs, err := load.TracksPage(preview); err == nil {
+		results.Songs = songs
+	}
+	if total, err := load.CountTracks(trackQuery); err == nil {
+		results.SongTotal = total
+	}
+
+	albumPreview := albumQuery
+	albumPreview.Limit = PreviewSize
+	if albums, err := load.AlbumsPage(albumPreview); err == nil {
+		results.Albums = make([]Album, 0, len(albums))
+		for _, summary := range albums {
+			results.Albums = append(results.Albums, albumFromSummary(summary))
+		}
+	}
+	if total, err := load.CountAlbums(albumQuery); err == nil {
+		results.AlbumTotal = total
+	}
+
+	artistPreview := artistQuery
+	artistPreview.Limit = PreviewSize
+	if artists, err := load.ArtistsPage(artistPreview); err == nil {
+		results.Artists = make([]Artist, 0, len(artists))
+		for _, summary := range artists {
+			results.Artists = append(results.Artists, artistFromSummary(summary))
+		}
+	}
+	if total, err := load.CountArtists(artistQuery); err == nil {
+		results.ArtistTotal = total
+	}
+
+	results.Playlists = matchPlaylists(s.playlists(load), s.Query)
+	results.PlaylistTotal = len(results.Playlists)
+	s.results = results
 }
 
-// ApplyResults stores computed results (used by the shell once per frame).
-func (s *SearchState) ApplyResults(r SearchResults) { s.results = r }
+// playlists is the playlist table, read once per search (it is small: the
+// playlists a user created, not the library).
+func (s *SearchState) playlists(load Backend) []library.Playlist {
+	if load == nil {
+		return nil
+	}
+	playlists, err := load.Playlists()
+	if err != nil {
+		return nil
+	}
+	return playlists
+}
 
-// Results returns the current groups.
+func matchPlaylists(playlists []library.Playlist, query string) []library.Playlist {
+	needle := fold(strings.TrimSpace(query))
+	if needle == "" {
+		return nil
+	}
+	out := make([]library.Playlist, 0, 8)
+	for _, playlist := range playlists {
+		if strings.Contains(fold(playlist.Name), needle) {
+			out = append(out, playlist)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		return fold(out[i].Name) < fold(out[j].Name)
+	})
+	return out
+}
+
+// Results returns the current previews.
 func (s *SearchState) Results() SearchResults { return s.results }
 
-// Pages returns the pages loaded for a scope.
-func (s *SearchState) Pages(scope int) int {
-	if scope < 0 || scope >= len(s.pages) {
+// OwnSongs is the paginated song list of the songs scope.
+func (s *SearchState) OwnSongs() *TrackList { return &s.songs }
+
+// OwnAlbums is the paginated album list of the albums scope.
+func (s *SearchState) OwnAlbums() *AlbumList { return &s.albums }
+
+// OwnArtists is the paginated artist list of the artists scope.
+func (s *SearchState) OwnArtists() *ArtistList { return &s.artists }
+
+// PlaylistPages is how many playlist pages the playlists scope shows.
+func (s *SearchState) PlaylistPages() int {
+	if s.playlistPages < 1 {
 		return 1
 	}
-	return s.pages[scope]
+	return s.playlistPages
 }
 
-// RequestMore loads one more page of a scope.
-func (s *SearchState) RequestMore(scope int, total int) {
-	if scope < 0 || scope >= len(s.pages) {
+// PlaylistRows are the playlists the scope shows right now.
+func (s *SearchState) PlaylistRows() []library.Playlist {
+	rows := s.results.Playlists
+	limit := s.PlaylistPages() * PageSize
+	if limit >= len(rows) {
+		return rows
+	}
+	return rows[:limit]
+}
+
+// RequestMorePlaylists loads the next page of the playlists scope.
+func (s *SearchState) RequestMorePlaylists() {
+	if s.playlistPages*PageSize >= len(s.results.Playlists) {
 		return
 	}
-	if s.pages[scope] == 0 {
-		s.pages[scope] = 1
-	}
-	if s.pages[scope]*PageSize >= total {
-		return
-	}
-	s.pages[scope]++
+	s.playlistPages++
 }
 
-// HasMore reports whether a scope has rows beyond the loaded pages.
-func (s *SearchState) HasMore(scope, total int) bool {
-	pages := s.Pages(scope)
-	if pages == 0 {
-		pages = 1
-	}
-	return pages*PageSize < total
+// HasMorePlaylists reports whether the playlists scope has more rows.
+func (s *SearchState) HasMorePlaylists() bool {
+	return s.playlistPages*PageSize < len(s.results.Playlists)
 }
 
-// ShowScope switches the segmented control and resets pages.
+// ShowScope switches the segmented control and resets the playlist pages.
 func (s *SearchState) ShowScope(scope int) {
 	if scope < 0 || scope > ScopePlaylists {
 		return
 	}
 	s.Scope = scope
-	s.pages = [5]int{}
+	s.playlistPages = 0
 }
 
 // Recent returns the in-memory recent searches (≤10).
@@ -181,51 +276,36 @@ func (s *SearchState) ForgetRecent() { s.recent = nil }
 // Search returns the search state.
 func (s *State) Search() *SearchState { return &s.search }
 
-// SearchResultsOf computes results for the current library.
-func (s *State) SearchResultsOf(query string) SearchResults {
-	return searchAllWith(s.tracks, s.Albums(), s.Artists(), strings.ToLower(query))
+// PlaySearchHit plays the best match for the search field's text (Enter in the
+// field: the Flutter page plays the hit list from its first row).
+func (s *State) PlaySearchHit() {
+	query := strings.TrimSpace(s.search.Input)
+	if query == "" || s.backend == nil {
+		return
+	}
+	s.search.Query = query
+	s.search.Remember(query)
+	tracks, err := s.backend.TracksPage(library.TrackQuery{Search: query, Sort: library.SortTitle})
+	if err != nil || len(tracks) == 0 {
+		return
+	}
+	s.Play(tracks, 0)
 }
 
-func searchAllWith(tracks []library.Track, albums []Album, artists []Artist, query string) SearchResults {
-	query = strings.ToLower(strings.TrimSpace(query))
-	out := SearchResults{Query: query}
-	if query == "" {
-		return out
+// Play starts a list at a row and records the queue the panel shows.
+func (s *State) Play(tracks []library.Track, start int) {
+	if len(tracks) == 0 {
+		return
 	}
-	out.Songs = searchTracks(tracks, query)
-	out.SongTotal = len(out.Songs)
-	for _, album := range albums {
-		if strings.Contains(fold(album.Name), query) || strings.Contains(fold(album.Artist), query) {
-			out.Albums = append(out.Albums, album)
+	if start < 0 || start >= len(tracks) {
+		start = 0
+	}
+	rotated := append(append([]library.Track{}, tracks[start:]...), tracks[:start]...)
+	if a := s.actions; a != nil {
+		if err := a.PlayTracks(tracks, start); err != nil {
+			s.failure = err.Error()
+			return
 		}
 	}
-	out.AlbumTotal = len(out.Albums)
-	for _, artist := range artists {
-		if strings.Contains(fold(artist.Name), query) {
-			out.Artists = append(out.Artists, artist)
-		}
-	}
-	out.ArtistTotal = len(out.Artists)
-	return out
-}
-
-func searchTracks(tracks []library.Track, query string) []library.Track {
-	out := make([]library.Track, 0, 16)
-	for _, track := range tracks {
-		if trackMatches(track, query) {
-			out = append(out, track)
-		}
-	}
-	sort.SliceStable(out, func(i, j int) bool {
-		return strings.Compare(fold(out[i].Title)+out[i].ID, fold(out[j].Title)+out[j].ID) < 0
-	})
-	return out
-}
-
-// Preview returns at most n rows of a group.
-func Preview[T any](rows []T, n int) []T {
-	if len(rows) <= n {
-		return rows
-	}
-	return rows[:n]
+	s.SetQueue(rotated, 0)
 }

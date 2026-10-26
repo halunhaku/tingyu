@@ -1,14 +1,15 @@
-// Package model is the M4 view state: what the pages show and the rules that
-// turn the kernel's read-only data into lists, groups, search results and
-// paginated pages. It owns no window, no database handle and no engine, so
-// every rule here is a pure function of the data the app feeds it.
+// Package model is the view state: what the pages show and the rules that
+// turn the library's SQL reads into lists, search results and pages.
 //
-// Write operations the kernel does not provide yet (favourite toggles,
-// playlists, metadata, lyrics fetching) are not faked: AskKernel names the
-// missing capability, and the UI shows that notice.
+// Every list comes from SQL through Backend: a page of tracks is
+// LIMIT/OFFSET, an album or artist list is one GROUP BY, and nothing here
+// holds the whole tracks table (plan §2.5). The model still owns no database
+// handle: the app hands it the library's read side and its write counter, so
+// every rule below is a function of what the kernel reports.
 package model
 
 import (
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -19,27 +20,65 @@ import (
 
 // Page constants for the session state machine.
 const (
-	PageLibrary      = "library"
-	PageFavorites    = "favorites"
-	PageAlbums       = "albums"
-	PageArtists      = "artists"
-	PagePlaylists    = "playlists"
-	PageSearch       = "search"
-	PageSettings     = "settings"
-	PageSources      = "sources"
-	PageStage        = "stage"
-	PageQueue        = "queue"
-	PageLyrics       = "lyrics"
-	PageAlbumDetail  = "album"
-	PageArtistDetail = "artist"
-	PageOnboarding   = "onboarding"
+	PageLibrary        = "library"
+	PageFavorites      = "favorites"
+	PageAlbums         = "albums"
+	PageArtists        = "artists"
+	PagePlaylists      = "playlists"
+	PagePlaylistDetail = "playlist"
+	PageSearch         = "search"
+	PageSettings       = "settings"
+	PageSources        = "sources"
+	PageStage          = "stage"
+	PageQueue          = "queue"
+	PageLyrics         = "lyrics"
+	PageAlbumDetail    = "album"
+	PageArtistDetail   = "artist"
+	PageOnboarding     = "onboarding"
 )
 
 // PageSize is the library page size (plan §2.5 / providers.dart:498).
 const PageSize = 40
 
+// AlbumPageSize is how many albums one grid page holds.
+const AlbumPageSize = 60
+
+// ArtistPageSize is how many artists one list page holds.
+const ArtistPageSize = 40
+
 // PreviewSize is how many rows each search group previews (providers.dart:501).
 const PreviewSize = 5
+
+// Backend is the library's read side. Paged lists are asynchronous: a page
+// request is a SQL round trip and must not run inside a frame, so the kernel
+// answers it on its own goroutine and the model polls once per frame.
+type Backend interface {
+	// Paged lists, answered off the UI thread.
+	LoadTracks(q library.TrackQuery) <-chan library.TrackPage
+	LoadAlbums(q library.AlbumQuery) <-chan library.AlbumPage
+	LoadArtists(q library.ArtistQuery) <-chan library.ArtistPage
+
+	// Requests that are small or explicit: 播放全部, an album's tracks, the
+	// search previews, the counts.
+	TracksPage(q library.TrackQuery) ([]library.Track, error)
+	AlbumsPage(q library.AlbumQuery) ([]library.AlbumSummary, error)
+	ArtistsPage(q library.ArtistQuery) ([]library.ArtistSummary, error)
+	CountTracks(q library.TrackQuery) (int, error)
+	CountAlbums(q library.AlbumQuery) (int, error)
+	CountArtists(q library.ArtistQuery) (int, error)
+	Playlists() ([]library.Playlist, error)
+	Sources() ([]library.Source, error)
+	Counts() (library.Counts, error)
+	RecentlyPlayed(limit int) ([]library.Track, error)
+}
+
+// Live is the library's write counter, read once per frame. Any write — a
+// scan, a favourite, a playlist edit, a play count — bumps it, and every list
+// whose key includes the revision refreshes (plan §2.5's refresh contract).
+type Live interface {
+	Revision() uint64
+	RowRevision(id string) uint64
+}
 
 // Settings are the three appearance preferences of settings.json. The keys and
 // values are exactly the Flutter client's (data/settings_store.dart), so the
@@ -85,7 +124,8 @@ type ScanState struct {
 }
 
 // Actions are the side effects the view asks the app to perform. Every method
-// maps to a capability the M1+ kernel already has.
+// is a capability the kernel now has: the writes land in library.sqlite and
+// come back through the revision, never as a local-only change.
 type Actions interface {
 	PlayTracks(tracks []library.Track, start int) error
 	TogglePlayPause() error
@@ -94,18 +134,26 @@ type Actions interface {
 	Seek(position time.Duration) error
 	SetVolume(volume float64) error
 	CycleRepeat() player.RepeatMode
+	SetShuffle(on bool) bool
 	ChooseDirectory()
 	SyncSource(source library.Source)
 	SyncAllSources()
+	DeleteSource(source library.Source)
 	RevealInFinder(track library.Track)
+	SetFavorite(track library.Track, favorite bool)
+	CreatePlaylist(name string)
+	RenamePlaylist(id, name string)
+	DeletePlaylist(id string)
+	AddToPlaylist(playlistID string, trackIDs []string)
+	RemoveFromPlaylist(playlistID string, index int)
+	MovePlaylistItem(playlistID string, from, to int)
 	Queue() []library.Track
 }
 
 // StageState is the full-window now-playing page and its side panel.
 type StageState struct {
-	Open   bool
-	Panel  int // 0 lyrics, 1 queue
-	Lyrics bool
+	Open  bool
+	Panel int // 0 lyrics, 1 queue
 }
 
 // State is everything a frame reads. The app mutates it on the UI thread (via
@@ -113,9 +161,12 @@ type StageState struct {
 type State struct {
 	actions Actions
 
-	tracks   []library.Track
-	rowRevs  map[string]uint64
+	backend Backend
+	live    Live
+
 	revision uint64
+	epoch    uint64 // bumped by Invalidate, so lists refresh with it
+	stale    bool
 	sources  []library.Source
 
 	dbPath    string
@@ -134,6 +185,7 @@ type State struct {
 	player   player.Update
 	volume   float64
 	repeat   player.RepeatMode
+	shuffle  bool
 	queue    []library.Track
 	queueIdx int
 
@@ -141,12 +193,20 @@ type State struct {
 	settingsPath string
 	settingsErr  string
 
-	library        TrackList
-	favorites      TrackList
+	library    TrackList
+	favorites  TrackList
+	albumList  AlbumList
+	favAlbums  AlbumList
+	artistList ArtistList
+
 	favoriteView   int // 0 songs, 1 albums
-	albumDetail    *Album
-	artistDetail   *Artist
+	albumDetail    *AlbumDetail
+	artistDetail   *ArtistDetail
 	artistExpanded bool
+
+	playlists      []library.Playlist
+	playlistDetail *PlaylistDetail
+	playlistEdit   *playlistEdit
 
 	search       SearchState
 	palette      PaletteState
@@ -156,18 +216,17 @@ type State struct {
 	page            string
 	back            []string
 	stage           StageState
-	queueOpen       bool
 	settingsSection int
 	onboardingDone  bool
-	onboardingShown bool
 
 	notice   string
 	noticeAt time.Time
 	now      time.Time
 
-	albums      albumIndex
-	favAlbums   albumIndex
-	artists     artistIndex
+	counts      library.Counts
+	countsAt    time.Time
+	playlistsAt time.Time
+
 	albumsList  ui.GridState
 	artistsList ui.ListState
 	queueList   ui.ListState
@@ -179,25 +238,45 @@ type State struct {
 	transient map[string]any
 }
 
-// New builds the state from the read-only library snapshot.
-func New(tracks []library.Track, dbPath string, loadErr error) *State {
+// New builds the state from the library's read side.
+func New(backend Backend, live Live, dbPath string, loadErr error) *State {
 	s := &State{
-		tracks:   tracks,
+		backend:  backend,
+		live:     live,
 		dbPath:   dbPath,
 		loadErr:  loadErr,
 		volume:   1,
 		repeat:   player.RepeatAll,
 		settings: DefaultSettings(),
 		page:     PageLibrary,
-		rowRevs:  map[string]uint64{},
 		now:      time.Now(),
 	}
 	s.library.Configure(FilterAll, SortTitle, true, "")
 	s.favorites.Configure(FilterFavorites, SortTitle, true, "")
+	s.albumList.Configure(library.AlbumQuery{})
+	s.favAlbums.Configure(library.AlbumQuery{Favorite: true})
+	s.artistList.Configure(library.ArtistQuery{})
+	if live != nil {
+		for _, list := range s.lists() {
+			list.SetRowRevision(live.RowRevision)
+		}
+	}
+	s.library.bind()
+	s.favorites.bind()
+	s.search.songs.bind()
 	s.library.selected = -1
 	s.favorites.selected = -1
 	s.palette.Selected = 0
 	return s
+}
+
+// lists are every track list the state owns.
+func (s *State) lists() []*TrackList {
+	out := []*TrackList{&s.library, &s.favorites, &s.search.songs}
+	if s.playlistDetail != nil {
+		out = append(out, &s.playlistDetail.Tracks)
+	}
+	return out
 }
 
 // SetActions installs the callbacks.
@@ -233,34 +312,46 @@ func (s *State) SetCoversDir(dir string) {
 	s.covers.SetDir(dir)
 }
 
-// SetTracks replaces the library snapshot. revision is the library's write
-// counter and rowRevs the per-row counters: a metadata-only change rebuilds
-// that row (and only that row) through the table's row keys.
-func (s *State) SetTracks(tracks []library.Track, revision uint64, rowRevs map[string]uint64) {
-	s.tracks = tracks
-	s.revision = revision
-	if rowRevs == nil {
-		rowRevs = map[string]uint64{}
-	}
-	s.rowRevs = rowRevs
-	s.library.Ensure(tracks, revision, rowRevs)
-	s.favorites.Ensure(tracks, revision, rowRevs)
-}
-
 // SetSources replaces the source list.
 func (s *State) SetSources(sources []library.Source) { s.sources = sources }
 
-// AllTracks returns the raw library snapshot.
-func (s *State) AllTracks() []library.Track { return s.tracks }
+// Settled reports that every list holds the rows its current query asks for and
+// no page is in flight. The window's acceptance harness waits on it; the UI
+// itself never needs it (an unsettled list just shows its loading state).
+func (s *State) Settled() bool {
+	if s.backend == nil {
+		return true
+	}
+	for _, list := range s.lists() {
+		if !list.settled(s.revision, s.epoch) {
+			return false
+		}
+	}
+	if !s.albumList.settled(s.revision, s.epoch) || !s.favAlbums.settled(s.revision, s.epoch) {
+		return false
+	}
+	if !s.artistList.settled(s.revision, s.epoch) {
+		return false
+	}
+	if !s.search.albums.settled(s.revision, s.epoch) || !s.search.artists.settled(s.revision, s.epoch) {
+		return false
+	}
+	if s.artistDetail != nil && !s.artistDetail.Albums.settled(s.revision, s.epoch) {
+		return false
+	}
+	return true
+}
 
-// LibraryRevision returns the library's write counter.
-func (s *State) LibraryRevision() uint64 { return s.revision }
+// Invalidate forces the next frame to re-read the library even if the
+// revision looks unchanged (the app uses it after a write it performed
+// itself).
+func (s *State) Invalidate() { s.stale = true }
 
-// RowRevisions returns the per-row revisions.
-func (s *State) RowRevisions() map[string]uint64 { return s.rowRevs }
+// Revision is the library revision the lists are keyed by.
+func (s *State) Revision() uint64 { return s.revision }
 
 // Version is the About page's version line.
-const Version = "M4 · 0.4.0-dev"
+const Version = "内核数据 · 0.5.0-dev"
 
 // Sources returns the sources.
 func (s *State) Sources() []library.Source { return s.sources }
@@ -268,20 +359,13 @@ func (s *State) Sources() []library.Source { return s.sources }
 // SetPlayer applies a playback update.
 func (s *State) SetPlayer(update player.Update) {
 	s.player = update
-	if update.Track != nil && update.PlayCount > 0 {
-		for i := range s.tracks {
-			if s.tracks[i].ID == update.Track.ID {
-				s.tracks[i].PlayCount = update.PlayCount
-				break
-			}
-		}
-	}
 	if update.Failure != nil {
 		s.failure = update.Failure.Message
 	} else if update.Snapshot.Playing {
 		s.failure = ""
 	}
 	s.repeat = update.Repeat
+	s.shuffle = update.Shuffle
 	if update.Snapshot.Volume > 0 {
 		s.volume = update.Snapshot.Volume
 	}
@@ -306,6 +390,22 @@ func (s *State) SetScan(scan ScanState) { s.scan = scan }
 
 // Scan returns the scan state.
 func (s *State) Scan() ScanState { return s.scan }
+
+// pageError is the first failed page request among the lists.
+func (s *State) pageError() string {
+	for _, list := range s.lists() {
+		if message := list.Err(); message != "" {
+			return "无法读取曲目：" + message
+		}
+	}
+	if message := s.albumList.Err(); message != "" {
+		return "无法读取专辑：" + message
+	}
+	if message := s.artistList.Err(); message != "" {
+		return "无法读取艺术家：" + message
+	}
+	return ""
+}
 
 // SetStatus sets the line beside a page title.
 func (s *State) SetStatus(status string) { s.status = status }
@@ -349,6 +449,18 @@ func (s *State) Repeat() player.RepeatMode { return s.repeat }
 // SetRepeat records a repeat mode.
 func (s *State) SetRepeat(mode player.RepeatMode) { s.repeat = mode }
 
+// Shuffle reports whether the play queue is shuffled.
+func (s *State) Shuffle() bool { return s.shuffle }
+
+// ToggleShuffle asks the controller to flip shuffle and records the result.
+func (s *State) ToggleShuffle() {
+	if a := s.actions; a != nil {
+		s.shuffle = a.SetShuffle(!s.shuffle)
+		return
+	}
+	s.shuffle = !s.shuffle
+}
+
 // Settings returns the appearance preferences.
 func (s *State) Settings() Settings { return s.settings }
 
@@ -379,19 +491,109 @@ func (s *State) ResetSettings() { s.SetSettings(DefaultSettings()) }
 // Now returns the frame's clock.
 func (s *State) Now() time.Time { return s.now }
 
-// Tick runs the per-frame state machine: debounced search, paging steps and
-// notices. The shell calls it once at the top of every frame.
+// refreshInterval is how often the small summaries (counts, playlists) are
+// re-read. A play count bumps the revision on every track start and the
+// summaries do not change then; a second of staleness is invisible, a
+// GROUP BY over the whole table on every track start is not.
+const refreshInterval = time.Second
+
+// Tick runs the per-frame state machine: the library revision, the paged
+// lists, the debounced search and the palette. The shell calls it once at the
+// top of every frame.
 func (s *State) Tick(now time.Time) {
 	s.now = now
-	s.library.Step()
-	s.favorites.Step()
-	s.library.Ensure(s.tracks, s.revision, s.rowRevs)
-	s.favorites.Ensure(s.tracks, s.revision, s.rowRevs)
-	s.search.Tick(now, s.tracks)
-	if s.search.NeedsResults() {
-		s.search.Recompute(s.Albums(), s.Artists(), s.tracks)
+	s.refresh()
+	for _, list := range s.lists() {
+		list.Tick(s.backend, s.revision, s.epoch)
 	}
+
+	s.albumList.Tick(s.backend, s.revision, s.epoch)
+	// The search page's scope lists are paged lists too, ticked here rather
+	// than inside the debounce so their pages arrive while the user reads.
+	s.search.albums.Tick(s.backend, s.revision, s.epoch)
+	s.search.artists.Tick(s.backend, s.revision, s.epoch)
+	s.favAlbums.Tick(s.backend, s.revision, s.epoch)
+	s.artistList.Tick(s.backend, s.revision, s.epoch)
+	if s.artistDetail != nil {
+		s.artistDetail.Albums.Tick(s.backend, s.revision, s.epoch)
+	}
+	s.search.Tick(now, s.backend, s.revision)
 	s.palette.Tick(now, s)
+	if message := s.pageError(); message != "" && s.failure == "" {
+		// A page request that failed is not an empty list: say so.
+		s.failure = message
+	}
+}
+
+// refresh polls the library's write counter and re-reads what changed. The
+// paged lists key themselves on the revision; the summaries are throttled,
+// because a play count bumps the revision on every track start while the
+// counts and the playlists do not change with it.
+func (s *State) refresh() {
+	if s.live == nil {
+		return
+	}
+	revision := s.live.Revision()
+	forced := s.stale
+	s.stale = false
+	if revision == s.revision && !forced && !s.countsAt.IsZero() {
+		return
+	}
+	if revision != s.revision {
+		s.revision = revision
+	}
+	if forced {
+		s.epoch++
+	}
+	if !forced && !s.countsAt.IsZero() && s.now.Sub(s.countsAt) < refreshInterval {
+		// A play count or a scan bumped the revision but the summaries were
+		// read a moment ago: the lists still refresh (their key carries the
+		// revision), the counts and playlists wait for the next second. An
+		// explicit Invalidate (a write the app made itself) is not throttled.
+		return
+	}
+	s.countsAt = s.now
+	s.reloadSummaries()
+}
+
+// reloadSummaries re-reads the playlists and the counts, and refreshes the
+// open detail pages.
+func (s *State) reloadSummaries() {
+	if s.backend == nil {
+		return
+	}
+	if playlists, err := s.backend.Playlists(); err == nil {
+		s.playlists = playlists
+		if s.playlistDetail != nil {
+			for _, playlist := range playlists {
+				if playlist.ID == s.playlistDetail.Playlist.ID {
+					s.playlistDetail.Playlist = playlist
+				}
+			}
+		}
+	} else {
+		s.failure = "无法读取歌单：" + err.Error()
+	}
+	if counts, err := s.backend.Counts(); err == nil {
+		s.counts = counts
+	}
+	if sources, err := s.backend.Sources(); err == nil {
+		s.sources = sources
+	}
+	s.reloadDetails()
+}
+
+// reloadDetails re-reads the open album or artist detail.
+func (s *State) reloadDetails() {
+	if s.albumDetail != nil {
+		tracks, err := s.albumTracks(s.albumDetail.Album)
+		if err == nil {
+			s.albumDetail.Tracks = tracks
+		}
+	}
+	if s.artistDetail != nil {
+		s.loadArtistDetail(s.artistDetail.Artist.Name, s.artistExpanded)
+	}
 }
 
 // --- navigation ------------------------------------------------------
@@ -433,6 +635,7 @@ func (s *State) OpenPage(page string) {
 	if page != PageStage {
 		s.stage.Open = false
 	}
+	s.playlistEdit = nil
 	switch page {
 	case PageSearch:
 		s.search.Focus = true
@@ -455,6 +658,9 @@ func (s *State) Back() {
 	if s.page == PageArtistDetail {
 		s.artistDetail = nil
 	}
+	if s.page == PagePlaylistDetail {
+		s.playlistDetail = nil
+	}
 	if s.page == PageStage {
 		s.stage.Open = false
 	}
@@ -464,29 +670,74 @@ func (s *State) Back() {
 // CanBack reports whether Back goes anywhere but the library.
 func (s *State) CanBack() bool { return len(s.back) > 0 }
 
-// OpenAlbum opens an album detail page.
+// OpenAlbum opens an album detail page, taking its tracks from SQL once.
 func (s *State) OpenAlbum(album Album) {
-	s.albumDetail = &album
+	detail := &AlbumDetail{Album: album}
+	if tracks, err := s.albumTracks(album); err == nil {
+		detail.Tracks = tracks
+	} else {
+		s.failure = "无法读取专辑曲目：" + err.Error()
+	}
+	s.albumDetail = detail
 	s.OpenPage(PageAlbumDetail)
+}
+
+// albumTracks is one album's tracks in disc/track order.
+func (s *State) albumTracks(album Album) ([]library.Track, error) {
+	if s.backend == nil {
+		return nil, nil
+	}
+	return s.backend.TracksPage(library.TrackQuery{
+		Artist: album.Artist,
+		Album:  album.Name,
+		Sort:   library.SortAlbum,
+	})
 }
 
 // OpenArtist opens an artist detail page.
 func (s *State) OpenArtist(artist Artist) {
-	s.artistDetail = &artist
+	detail := &ArtistDetail{Artist: artist}
+	detail.Albums.Configure(library.AlbumQuery{Artist: artist.Name})
+	s.artistDetail = detail
+	s.artistExpanded = false
+	s.loadArtistDetail(artist.Name, false)
 	s.OpenPage(PageArtistDetail)
+}
+
+// loadArtistDetail reads the artist's tracks (20 until expanded) and albums.
+func (s *State) loadArtistDetail(name string, expanded bool) {
+	detail := s.artistDetail
+	if detail == nil || s.backend == nil {
+		return
+	}
+	limit := 20
+	if expanded {
+		limit = 0
+	}
+	tracks, err := s.backend.TracksPage(library.TrackQuery{Artist: name, Sort: library.SortAlbum, Limit: limit})
+	if err != nil {
+		s.failure = "无法读取艺术家曲目：" + err.Error()
+		return
+	}
+	detail.Tracks = tracks
 }
 
 // ArtistExpanded reports whether the artist page shows every track.
 func (s *State) ArtistExpanded() bool { return s.artistExpanded }
 
 // ToggleArtistExpanded expands or collapses the artist's track list.
-func (s *State) ToggleArtistExpanded() { s.artistExpanded = !s.artistExpanded }
+func (s *State) ToggleArtistExpanded() {
+	s.artistExpanded = !s.artistExpanded
+	if s.artistDetail != nil {
+		s.loadArtistDetail(s.artistDetail.Artist.Name, s.artistExpanded)
+	}
+}
 
 // AlbumDetail returns the album detail shown, if any.
-func (s *State) AlbumDetail() *Album { return s.albumDetail }
+func (s *State) AlbumDetail() *AlbumDetail { return s.albumDetail }
 
 // ArtistDetail returns the artist detail shown, if any.
-func (s *State) ArtistDetail() *Artist { return s.artistDetail }
+func (s *State) ArtistDetail() *ArtistDetail { return s.artistDetail }
 
 // OpenStage shows the now-playing page.
 func (s *State) OpenStage() {
@@ -518,12 +769,6 @@ func (s *State) Stage() StageState { return s.stage }
 // SetStagePanel selects the stage side panel (0 lyrics, 1 queue).
 func (s *State) SetStagePanel(panel int) { s.stage.Panel = panel }
 
-// ToggleQueue opens or closes the queue panel.
-func (s *State) ToggleQueue() { s.queueOpen = !s.queueOpen }
-
-// QueueOpen reports whether the queue panel shows.
-func (s *State) QueueOpen() bool { return s.queueOpen }
-
 // SettingsSection is the selected settings group.
 func (s *State) SettingsSection() int { return s.settingsSection }
 
@@ -538,27 +783,25 @@ func (s *State) FinishOnboarding() { s.onboardingDone = true }
 
 // ShouldOnboard is the Flutter trigger: sources and tracks are both empty.
 func (s *State) ShouldOnboard() bool {
-	return !s.onboardingDone && s.loadErr == nil && len(s.tracks) == 0 && len(s.sources) == 0
+	return !s.onboardingDone && s.loadErr == nil && s.counts.Tracks == 0 && len(s.sources) == 0
 }
 
-// Notice returns the current notice and whether it still shows.
+// Notice returns the current notice.
 func (s *State) Notice() string { return s.notice }
 
 // DismissNotice clears the notice.
 func (s *State) DismissNotice() { s.notice = "" }
 
-// AskKernel reports a missing kernel capability instead of pretending the
-// operation worked. The string names the feature, e.g. "收藏写入".
+// AskKernel reports a capability this milestone still does not have (metadata
+// matching and lyrics fetching belong to M5). Nothing the M4 record listed —
+// favourites, playlists, source deletion, shuffle, paging — uses it any more;
+// the placeholder stays for the two M5 features that are still out of scope.
 func (s *State) AskKernel(feature string) {
-	s.notice = "需内核支持：" + feature + "。本里程碑只做界面，未改内核；该操作尚未接入数据层。"
-	s.noticeAt = s.now
+	s.notice = "需内核支持：" + feature + "，属于后续里程碑（M5）。"
 }
 
 // SetNotice shows an informational notice.
-func (s *State) SetNotice(message string) {
-	s.notice = message
-	s.noticeAt = s.now
-}
+func (s *State) SetNotice(message string) { s.notice = message }
 
 // Transient returns a place for view-only state that must survive frames
 // (element handles, scroll positions) without becoming app state.
@@ -571,24 +814,6 @@ func (s *State) SetTransient(key string, value any) any {
 	}
 	s.transient[key] = value
 	return value
-}
-
-// TableState returns the list state of a page's table.
-func (s *State) TableState(page string) *ui.ListState {
-	switch page {
-	case PageFavorites:
-		return &s.favorites.table
-	case PageArtists:
-		return &s.artistsList
-	case PageQueue:
-		return &s.queueList
-	case PageLyrics:
-		return &s.lyricsList
-	case PageAlbumDetail, PageArtistDetail:
-		return &s.detailList
-	default:
-		return &s.library.table
-	}
 }
 
 // AlbumsList returns the albums grid state.
@@ -605,3 +830,170 @@ func (s *State) LyricsList() *ui.ListState { return &s.lyricsList }
 
 // DetailList returns the detail page's table state.
 func (s *State) DetailList() *ui.ListState { return &s.detailList }
+
+// AllOf returns every row of a list's query, beyond the pages loaded so far:
+// 「播放全部」must play the whole query, not only what the user scrolled past.
+func (s *State) AllOf(list *TrackList) []library.Track {
+	if s.backend == nil {
+		return nil
+	}
+	q := list.kernelQuery()
+	q.Limit = 0
+	q.Offset = 0
+	tracks, err := s.backend.TracksPage(q)
+	if err != nil {
+		s.failure = "无法读取曲目：" + err.Error()
+		return nil
+	}
+	return tracks
+}
+
+// AddToPlaylist adds tracks to a playlist through the app, which appends them
+// in the order given (duplicates included, as the Flutter client does).
+func (s *State) AddToPlaylist(playlistID string, tracks []library.Track) {
+	if len(tracks) == 0 {
+		return
+	}
+	ids := make([]string, 0, len(tracks))
+	for _, track := range tracks {
+		ids = append(ids, track.ID)
+	}
+	if a := s.actions; a != nil {
+		a.AddToPlaylist(playlistID, ids)
+	}
+}
+
+// ToggleFavorite flips a track's favourite flag through the app, which writes
+// tracks.is_favorite and bumps the revision the lists refresh on.
+func (s *State) ToggleFavorite(track library.Track) {
+	if a := s.actions; a != nil {
+		a.SetFavorite(track, !track.IsFavorite)
+	}
+}
+
+// DismissSource forgets a deleted source from the filter if it was chosen.
+func (s *State) DismissSource(id string) {
+	if s.library.SourceFilter() == id {
+		s.library.SetSource("")
+		s.favorites.SetSource("")
+	}
+}
+
+// PlaylistList returns the playlists (name + track count), by name.
+func (s *State) Playlists() []library.Playlist { return s.playlists }
+
+// PlaylistDetail returns the open playlist page, if any.
+func (s *State) PlaylistDetail() *PlaylistDetail { return s.playlistDetail }
+
+// OpenPlaylist opens a playlist's tracks.
+func (s *State) OpenPlaylist(playlist library.Playlist) {
+	detail := &PlaylistDetail{Playlist: playlist}
+	detail.Tracks.Configure(FilterAll, SortTitle, true, "")
+	detail.Tracks.SetPlaylist(playlist.ID)
+	if s.live != nil {
+		detail.Tracks.SetRowRevision(s.live.RowRevision)
+	}
+	s.playlistDetail = detail
+	s.OpenPage(PagePlaylistDetail)
+}
+
+// PlaylistEdit is the inline name field of the playlists page.
+type playlistEdit struct {
+	PlaylistID string // "" while creating
+	Title      string
+	Value      string
+}
+
+// PlaylistEdit returns the open name field, if any.
+func (s *State) PlaylistEditID() (string, bool) {
+	if s.playlistEdit == nil {
+		return "", false
+	}
+	return s.playlistEdit.PlaylistID, true
+}
+
+// BeginCreatePlaylist opens the name field for a new playlist.
+func (s *State) BeginCreatePlaylist() {
+	s.playlistEdit = &playlistEdit{Title: "新建歌单", Value: ""}
+}
+
+// BeginRenamePlaylist opens the name field with the current name.
+func (s *State) BeginRenamePlaylist(playlist library.Playlist) {
+	s.playlistEdit = &playlistEdit{PlaylistID: playlist.ID, Title: "重命名歌单", Value: playlist.Name}
+}
+
+// PlaylistEditTitle is the heading of the name field.
+func (s *State) PlaylistEditTitle() string {
+	if s.playlistEdit == nil {
+		return ""
+	}
+	return s.playlistEdit.Title
+}
+
+// PlaylistEditValue is the text the field edits.
+func (s *State) PlaylistEditValue() *string {
+	if s.playlistEdit == nil {
+		return nil
+	}
+	return &s.playlistEdit.Value
+}
+
+// CommitPlaylistEdit writes the playlist (create or rename) through the app.
+func (s *State) CommitPlaylistEdit() {
+	edit := s.playlistEdit
+	if edit == nil {
+		return
+	}
+	s.playlistEdit = nil
+	name := strings.TrimSpace(edit.Value)
+	if name == "" {
+		return
+	}
+	if a := s.actions; a != nil {
+		if edit.PlaylistID == "" {
+			a.CreatePlaylist(name)
+			return
+		}
+		a.RenamePlaylist(edit.PlaylistID, name)
+	}
+}
+
+// CancelPlaylistEdit closes the name field without writing.
+func (s *State) CancelPlaylistEdit() { s.playlistEdit = nil }
+
+// DeletePlaylist removes a playlist (its items go with it, never its tracks).
+func (s *State) DeletePlaylist(playlist library.Playlist) {
+	if a := s.actions; a != nil {
+		a.DeletePlaylist(playlist.ID)
+	}
+	if s.playlistDetail != nil && s.playlistDetail.Playlist.ID == playlist.ID {
+		s.playlistDetail = nil
+		if s.page == PagePlaylistDetail {
+			// The page that showed it is gone with it: show the list of
+			// playlists, not whatever page happened to precede it.
+			s.OpenPage(PagePlaylists)
+		}
+	}
+}
+
+// RemoveFromPlaylist removes one row of the open playlist.
+func (s *State) RemoveFromPlaylist(index int) {
+	if s.playlistDetail == nil || s.actions == nil {
+		return
+	}
+	s.actions.RemoveFromPlaylist(s.playlistDetail.Playlist.ID, index)
+}
+
+// MovePlaylistItem moves one row of the open playlist up or down.
+func (s *State) MovePlaylistItem(from, to int) {
+	if s.playlistDetail == nil || s.actions == nil {
+		return
+	}
+	if to < 0 || to >= s.playlistDetail.Tracks.Total() {
+		return
+	}
+	s.actions.MovePlaylistItem(s.playlistDetail.Playlist.ID, from, to)
+}
+
+// Counts is the settings page's summary.
+func (s *State) Counts() library.Counts { return s.counts }

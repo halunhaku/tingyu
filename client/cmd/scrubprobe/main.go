@@ -52,11 +52,65 @@ type result struct {
 	Seeks             int     `json:"seeks"`
 }
 
-// probeActions is the shell's Actions wired to the real controller.
+// probeActions is the shell's Actions wired to the real controller. The
+// library-facing calls are no-ops: the probe only renders the transport bar.
 type probeActions struct {
 	control *player.Controller
 	seeks   int
 }
+
+func (p *probeActions) SetShuffle(on bool) bool                            { return on }
+func (p *probeActions) DeleteSource(source library.Source)                 {}
+func (p *probeActions) SetFavorite(track library.Track, favorite bool)     {}
+func (p *probeActions) CreatePlaylist(name string)                         {}
+func (p *probeActions) RenamePlaylist(id, name string)                     {}
+func (p *probeActions) DeletePlaylist(id string)                           {}
+func (p *probeActions) AddToPlaylist(playlistID string, trackIDs []string) {}
+func (p *probeActions) RemoveFromPlaylist(playlistID string, index int)    {}
+func (p *probeActions) MovePlaylistItem(playlistID string, from, to int)   {}
+
+// probeBackend serves one track to the view model, so the transport bar has a
+// queue to show; the probe never opens a database.
+type probeBackend struct{ track library.Track }
+
+func one[T any](value T) <-chan T {
+	ch := make(chan T, 1)
+	ch <- value
+	close(ch)
+	return ch
+}
+
+func (b probeBackend) LoadTracks(library.TrackQuery) <-chan library.TrackPage {
+	return one(library.TrackPage{Rows: []library.Track{b.track}, Total: 1})
+}
+func (b probeBackend) LoadAlbums(library.AlbumQuery) <-chan library.AlbumPage {
+	return one(library.AlbumPage{})
+}
+func (b probeBackend) LoadArtists(library.ArtistQuery) <-chan library.ArtistPage {
+	return one(library.ArtistPage{})
+}
+func (b probeBackend) TracksPage(library.TrackQuery) ([]library.Track, error) {
+	return []library.Track{b.track}, nil
+}
+func (b probeBackend) AlbumsPage(library.AlbumQuery) ([]library.AlbumSummary, error) {
+	return nil, nil
+}
+func (b probeBackend) ArtistsPage(library.ArtistQuery) ([]library.ArtistSummary, error) {
+	return nil, nil
+}
+func (b probeBackend) CountTracks(library.TrackQuery) (int, error)       { return 1, nil }
+func (b probeBackend) CountAlbums(library.AlbumQuery) (int, error)       { return 0, nil }
+func (b probeBackend) CountArtists(library.ArtistQuery) (int, error)     { return 0, nil }
+func (b probeBackend) Playlists() ([]library.Playlist, error)            { return nil, nil }
+func (b probeBackend) Sources() ([]library.Source, error)                { return nil, nil }
+func (b probeBackend) Counts() (library.Counts, error)                   { return library.Counts{Tracks: 1}, nil }
+func (b probeBackend) RecentlyPlayed(limit int) ([]library.Track, error) { return nil, nil }
+
+// probeLive is the library's write counter; nothing writes in the probe.
+type probeLive struct{}
+
+func (probeLive) Revision() uint64             { return 1 }
+func (probeLive) RowRevision(id string) uint64 { return 1 }
 
 func (p *probeActions) PlayTracks(tracks []library.Track, start int) error {
 	return p.control.PlayTracks(tracks, start)
@@ -160,7 +214,7 @@ func main() {
 
 	track := library.Track{ID: "probe", Title: "探针 测试曲", FilePath: uri, Artist: "测试歌手", Album: "测试专辑"}
 	actions := &probeActions{control: control}
-	model := shell.New([]library.Track{track}, "", nil)
+	model := shell.New(probeBackend{track: library.Track{ID: "probe", Title: "探针 测试曲", Artist: "测试歌手", Album: "测试专辑", FilePath: uri}}, probeLive{}, "", nil)
 	model.SetActions(actions)
 	model.State().FinishOnboarding()
 	apply := func() {

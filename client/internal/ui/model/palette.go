@@ -107,28 +107,43 @@ func (p *PaletteState) Move(delta int) {
 func (s *State) buildPalette() {
 	p := &s.palette
 	p.Items = p.Items[:0]
-	query := strings.ToLower(p.Query)
-	results := searchAllWith(s.tracks, s.Albums(), s.Artists(), query)
+	query := strings.ToLower(strings.TrimSpace(p.Query))
 	if query == "" {
-		for _, track := range s.RecentlyPlayed(5) {
+		for _, track := range s.RecentlyPlayed(PreviewSize) {
 			p.Items = append(p.Items, songItem("最近播放", track))
 		}
-	} else {
-		for _, track := range Preview(results.Songs, PreviewSize) {
-			p.Items = append(p.Items, songItem("歌曲", track))
+	} else if s.backend != nil {
+		// Each group is one LIMIT query; the palette never filters the
+		// library in memory (plan §2.5).
+		if songs, err := s.backend.TracksPage(library.TrackQuery{
+			Search: query, Sort: library.SortTitle, Limit: PreviewSize,
+		}); err == nil {
+			for _, track := range songs {
+				p.Items = append(p.Items, songItem("歌曲", track))
+			}
 		}
-		for _, album := range Preview(results.Albums, PreviewSize) {
-			p.Items = append(p.Items, PaletteItem{
-				Group: "专辑", Label: album.Name, Detail: album.Artist,
-				Kind: PaletteAlbum, Album: album,
-			})
+		if albums, err := s.backend.AlbumsPage(library.AlbumQuery{
+			Search: query, Limit: PreviewSize,
+		}); err == nil {
+			for _, summary := range albums {
+				album := albumFromSummary(summary)
+				p.Items = append(p.Items, PaletteItem{
+					Group: "专辑", Label: album.Name, Detail: album.Artist,
+					Kind: PaletteAlbum, Album: album,
+				})
+			}
 		}
-		for _, artist := range Preview(results.Artists, PreviewSize) {
-			p.Items = append(p.Items, PaletteItem{
-				Group: "艺术家", Label: artist.Name,
-				Detail: trackCountLabel(len(artist.Tracks)),
-				Kind:   PaletteArtist, Artist: artist,
-			})
+		if artists, err := s.backend.ArtistsPage(library.ArtistQuery{
+			Search: query, Limit: PreviewSize,
+		}); err == nil {
+			for _, summary := range artists {
+				artist := artistFromSummary(summary)
+				p.Items = append(p.Items, PaletteItem{
+					Group: "艺术家", Label: artist.Name,
+					Detail: trackCountLabel(artist.Count),
+					Kind:   PaletteArtist, Artist: artist,
+				})
+			}
 		}
 	}
 	for _, command := range Commands {
@@ -205,7 +220,8 @@ func (s *State) RunCommand(id string) {
 	case "go.lyrics":
 		s.OpenPage(PageLyrics)
 	case "action.newPlaylist":
-		s.AskKernel("歌单创建")
+		s.BeginCreatePlaylist()
+		s.OpenPage(PagePlaylists)
 	}
 }
 

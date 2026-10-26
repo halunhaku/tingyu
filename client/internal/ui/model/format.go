@@ -79,6 +79,14 @@ func RepeatNext(mode player.RepeatMode) string {
 	}
 }
 
+// ShuffleLabel is the shuffle button's state label.
+func ShuffleLabel(on bool) string {
+	if on {
+		return "开"
+	}
+	return "关"
+}
+
 // TrackSubtitle is "artist · album", skipping empty parts.
 func TrackSubtitle(track library.Track) string {
 	parts := make([]string, 0, 2)

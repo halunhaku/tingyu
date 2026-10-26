@@ -72,7 +72,7 @@ func Stage(c *ui.Context, d components.Design, s *model.State) {
 					ui.Icon(c, icon).FontSize(tokens.IconNormal).TextColor(color)
 				})
 				if fav.Clicked() {
-					s.AskKernel("收藏写入（tracks.is_favorite）")
+					s.ToggleFavorite(*track)
 				}
 			}
 		})
@@ -178,6 +178,18 @@ func stageControls(c *ui.Context, d components.Design, s *model.State, v *stageV
 				if a := s.Actions(); a != nil {
 					s.SetRepeat(a.CycleRepeat())
 				}
+			}
+			shuffle := ui.Button(c, "").Padding(8).Radius(tokens.RadiusSM).
+				Label("随机播放：" + model.ShuffleLabel(s.Shuffle())).Tooltip("随机播放：" + model.ShuffleLabel(s.Shuffle()))
+			shuffle.Children(func() {
+				color := d.P.TextSecondary
+				if s.Shuffle() {
+					color = d.P.Accent
+				}
+				ui.Icon(c, components.IconShuffle).FontSize(tokens.IconNormal).TextColor(color)
+			})
+			if shuffle.Clicked() {
+				s.ToggleShuffle()
 			}
 			prev := ui.Button(c, "").Padding(10).Radius(tokens.RadiusSM).Label("上一首").Tooltip("上一首")
 			prev.Children(func() {

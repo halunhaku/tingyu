@@ -133,6 +133,19 @@ func Transport(c *ui.Context, d Design, s *model.State) {
 						s.SetRepeat(a.CycleRepeat())
 					}
 				}
+				shuffle := ui.Button(c, "").Padding(6).Radius(tokens.RadiusSM).
+					Label("随机播放：" + model.ShuffleLabel(s.Shuffle())).
+					Tooltip("随机播放：" + model.ShuffleLabel(s.Shuffle()))
+				shuffle.Children(func() {
+					color := d.P.TextSecondary
+					if s.Shuffle() {
+						color = d.P.Accent
+					}
+					ui.Icon(c, IconShuffle).FontSize(tokens.IconCompact).TextColor(color)
+				})
+				if shuffle.Clicked() {
+					s.ToggleShuffle()
+				}
 				transportButton(c, d, IconQueue, "播放队列", func() { s.OpenPage(model.PageQueue) })
 				transportButton(c, d, IconLyrics, "歌词", func() {
 					if s.Page() == model.PageLyrics {

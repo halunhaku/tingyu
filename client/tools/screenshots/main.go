@@ -47,7 +47,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("sources: %v", err)
 	}
-	_ = lib.Close()
+	// The library stays open read-only: the pages now read their lists from
+	// SQL, so the tool holds one read-only connection and never writes it.
+	defer lib.Close()
 	if len(tracks) == 0 {
 		log.Fatal("the library has no tracks; point -data at a copy with music")
 	}
@@ -55,8 +57,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	app := shell.New(tracks, path, nil)
+	app := shell.New(lib.Queries(), lib, path, nil)
 	st := app.State()
+	warm(st)
 	st.SetSources(sources)
 	st.SetCoversDir(library.CoversDir(*dataDir))
 	// Preferences go to a scratch directory: the library copy is read-only for
@@ -103,9 +106,8 @@ func main() {
 		{"playlists", "", func() { st.OpenPage(model.PagePlaylists) }},
 		{"search", "", func() {
 			st.OpenPage(model.PageSearch)
-			st.Search().Input = demo.Artist
-			st.Search().Query = demo.Artist
-			st.Search().Recompute(st.Albums(), st.Artists(), st.AllTracks())
+			st.Search().SetQuery(demo.Artist)
+			warm(st)
 		}},
 		{"stage", "", func() { st.OpenStage() }},
 		{"queue", "", func() { st.OpenPage(model.PageQueue) }},
@@ -119,7 +121,7 @@ func main() {
 		}},
 		{"sources", "", func() { st.OpenPage(model.PageSources) }},
 		{"onboarding", "", func() {
-			onboard := shell.New(nil, path, nil)
+			onboard := shell.New(nil, nil, path, nil)
 			onboard.State().ConfigureDataDir(settingsDir, true)
 			render(*outDir, "onboarding", "light", onboard)
 			render(*outDir, "onboarding", "dark", onboard)
@@ -134,6 +136,21 @@ func main() {
 		render(*outDir, shot.name, "dark", app)
 	}
 	fmt.Printf("screenshots written to %s\n", *outDir)
+}
+
+// warm ticks the model until its lists have their rows. The lists are read
+// from SQL on a worker goroutine, so a renderer that drew one frame would
+// photograph the loading state instead of the library.
+func warm(st *model.State) {
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		st.Tick(time.Now())
+		if st.Library().Loaded() > 0 && st.Albums().Items() != nil && st.Artists().Items() != nil &&
+			st.Counts().Tracks > 0 {
+			return
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
 }
 
 func render(outDir, page, theme string, app *shell.Model) {

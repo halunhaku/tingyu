@@ -10,7 +10,11 @@ import (
 
 // AlbumGrid renders album cards in an adaptive grid (as many 150-wide columns
 // as fit). A card's cover opens the album; its play button plays the album.
-func AlbumGrid(c *ui.Context, d components.Design, s *model.State, albums []model.Album) {
+// The grid pages like every other list: near its last loaded card it asks the
+// kernel for the next page (GridView builds only the cards in view, so the
+// last visible card is the trigger).
+func AlbumGrid(c *ui.Context, d components.Design, s *model.State, list *model.AlbumList) {
+	albums := list.Items()
 	grid := s.AlbumsList()
 	selected, _ := s.Transient("albumGridSelected").(*int)
 	if selected == nil {
@@ -19,11 +23,24 @@ func AlbumGrid(c *ui.Context, d components.Design, s *model.State, albums []mode
 		s.SetTransient("albumGridSelected", selected)
 	}
 	grid.Selected = selected
-	grid.Key = func(i int) any { return albums[i].Key }
-	grid.Label = func(i int) string { return albums[i].Name }
+	grid.Key = func(i int) any {
+		if i < 0 || i >= len(albums) {
+			return i
+		}
+		return albums[i].Key
+	}
+	grid.Label = func(i int) string {
+		if i < 0 || i >= len(albums) {
+			return ""
+		}
+		return albums[i].Name
+	}
 	ui.GridView(c, grid, len(albums), 150, 238, func(i int) {
 		if i < 0 || i >= len(albums) {
 			return
+		}
+		if i >= len(albums)-4 {
+			list.RequestMore()
 		}
 		album := albums[i]
 		card := ui.Column(c).Gap(tokens.Space8).OnClick(func() { s.OpenAlbum(album) })
@@ -41,7 +58,7 @@ func AlbumGrid(c *ui.Context, d components.Design, s *model.State, albums []mode
 					ui.Icon(c, components.IconPlay).FontSize(tokens.IconCompact).TextColor(d.P.TextSecondary)
 				})
 				if play.Clicked() {
-					PlayAll(s, album.Tracks)
+					PlayAll(s, s.AlbumTracks(album))
 				}
 			})
 		})
@@ -50,41 +67,48 @@ func AlbumGrid(c *ui.Context, d components.Design, s *model.State, albums []mode
 
 // Albums is the album browser.
 func Albums(c *ui.Context, d components.Design, s *model.State) {
-	albums := s.Albums()
-	Page(c, d, s, "专辑", model.FormatCount(len(albums), "张"), nil, nil, func() {
+	list := s.Albums()
+	Page(c, d, s, "专辑", albumSummary(list), nil, nil, func() {
 		if s.LoadErr() != nil {
 			components.ErrorState(c, d, "无法打开曲库", s.LoadErr().Error(), s.DBPath())
 			return
 		}
-		if len(albums) == 0 {
+		if list.Total() == 0 {
 			components.Empty(c, d, components.IconMusic, "还没有专辑",
 				"扫描一个音乐目录后，曲目会按「艺术家 + 专辑」自动归并。", func() {
 					AddDirectoryButton(c, d, s)
 				})
 			return
 		}
-		AlbumGrid(c, d, s, albums)
+		AlbumGrid(c, d, s, list)
 	})
+}
+
+func albumSummary(list *model.AlbumList) string {
+	if list.Total() <= 0 {
+		return ""
+	}
+	return model.FormatCount(list.Total(), "张")
 }
 
 // AlbumDetail is one album: cover, metadata and its tracks. A click on a row
 // plays the album from that track.
 func AlbumDetail(c *ui.Context, d components.Design, s *model.State) {
-	album := s.AlbumDetail()
+	detail := s.AlbumDetail()
 	back := s.Back
-	if album == nil {
+	if detail == nil {
 		Page(c, d, s, "专辑", "", back, nil, func() {
 			components.Empty(c, d, components.IconMusic, "没有可显示的专辑", "回到专辑列表重新选择。", nil)
 		})
 		return
 	}
+	album := detail.Album
+	tracks := detail.Tracks
 	actions := func() {
 		if b := d.Button(c, "播放"); b.Clicked() {
-			PlayAll(s, album.Tracks)
+			PlayAll(s, tracks)
 		}
-		if b := d.Button(c, "加入歌单"); b.Clicked() {
-			s.AskKernel("歌单条目写入（playlist_items）")
-		}
+		components.AddToPlaylistButton(c, d, s, tracks)
 	}
 	years := ""
 	if album.Year > 0 {
@@ -106,16 +130,16 @@ func AlbumDetail(c *ui.Context, d components.Design, s *model.State) {
 				})
 			})
 		})
-		if len(album.Tracks) == 0 {
+		if len(tracks) == 0 {
 			components.Empty(c, d, components.IconMusic, "没有可播放的曲目", "这张专辑的曲目不在曲库中。", nil)
 			return
 		}
 		list := s.DetailList()
 		list.Selected = nil
-		ui.List(c, list, len(album.Tracks), func(row int) {
-			track := album.Tracks[row]
+		ui.List(c, list, len(tracks), func(row int) {
+			track := tracks[row]
 			components.TrackRow(c, d, s, track, s.Player().Track != nil && s.Player().Track.ID == track.ID, func() {
-				PlayFrom(s, album.Tracks, row)
+				PlayFrom(s, tracks, row)
 			})
 		}).Grow(1)
 	})

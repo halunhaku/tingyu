@@ -13,6 +13,9 @@ type TableOptions struct {
 	State      *model.State
 	List       *model.TrackList
 	ShowSource bool
+	// PlaylistID, when set, makes the rows a playlist's: their menu offers
+	// 移出歌单 and the two reorder steps, and the list is in saved order.
+	PlaylistID string
 }
 
 // TrackTable is the shared track list: a fixed header whose labels sort, and a
@@ -66,7 +69,7 @@ func TrackTable(c *ui.Context, d Design, opts TableOptions) {
 				playFrom(state, list, row)
 			})
 			rowElement.ContextMenu(func(m *ui.Menu) {
-				rowMenu(m, state, rowTrack)
+				rowMenu(m, state, rowTrack, opts, row)
 			})
 			rowElement.Children(func() {
 				// Leading glyph: the current track's state, a play hint for
@@ -92,7 +95,7 @@ func TrackTable(c *ui.Context, d Design, opts TableOptions) {
 					d.Text(c, tokens.NumericS, model.FormatDuration(rowTrack.Duration)).TextColor(d.P.TextTertiary)
 				})
 				favoriteCell(c, d, state, rowTrack)
-				moreCell(c, d, state, rowTrack)
+				moreCell(c, d, state, rowTrack, opts, row)
 			})
 		}).Grow(1)
 		if table.Submitted() {
@@ -147,19 +150,18 @@ func cellText(c *ui.Context, d Design, text string, width float32, color ui.Colo
 	})
 }
 
+// playFrom plays the list from a row. The rows come from the query, not from
+// the pages loaded so far: a click on row 3 of page 1 must still queue the
+// whole list (the Flutter page's 「播放全部先补齐查询结果」).
 func playFrom(state *model.State, list *model.TrackList, row int) {
-	all := list.All()
+	all := state.AllOf(list)
+	if len(all) == 0 {
+		return
+	}
 	if row < 0 || row >= len(all) {
-		if len(all) == 0 {
-			return
-		}
 		row = 0
 	}
-	if actions := state.Actions(); actions != nil {
-		_ = actions.PlayTracks(all, row)
-		rotated := append(append([]library.Track{}, all[row:]...), all[:row]...)
-		state.SetQueue(rotated, 0)
-	}
+	state.Play(all, row)
 }
 
 func favoriteCell(c *ui.Context, d Design, state *model.State, track library.Track) {
@@ -177,38 +179,47 @@ func favoriteCell(c *ui.Context, d Design, state *model.State, track library.Tra
 		ui.Icon(c, icon).FontSize(tokens.IconCompact).TextColor(color)
 	})
 	if button.Clicked() {
-		state.AskKernel("收藏写入（tracks.is_favorite）")
+		state.ToggleFavorite(track)
 	}
 }
 
-func moreCell(c *ui.Context, d Design, state *model.State, track library.Track) {
+func moreCell(c *ui.Context, d Design, state *model.State, track library.Track, opts TableOptions, row int) {
 	button := ui.Button(c, "").Width(28).Height(28).Padding(2).Radius(tokens.RadiusXS).
 		Label("更多操作").Tooltip("更多").Background(ui.Transparent).Border(0, ui.Transparent)
 	button.Children(func() {
 		ui.Icon(c, IconMore).FontSize(tokens.IconCompact).TextColor(d.P.TextSecondary)
 	})
-	button.Menu(func(m *ui.Menu) { rowMenu(m, state, track) })
+	button.Menu(func(m *ui.Menu) { rowMenu(m, state, track, opts, row) })
 }
 
-func rowMenu(m *ui.Menu, state *model.State, track library.Track) {
+func rowMenu(m *ui.Menu, state *model.State, track library.Track, opts TableOptions, row int) {
 	if m.Item("播放").Chosen() {
-		if actions := state.Actions(); actions != nil {
-			_ = actions.PlayTracks([]library.Track{track}, 0)
-			state.SetQueue([]library.Track{track}, 0)
-		}
+		state.Play([]library.Track{track}, 0)
 	}
 	label := "收藏"
 	if track.IsFavorite {
 		label = "取消收藏"
 	}
 	if m.Item(label).Chosen() {
-		state.AskKernel("收藏写入（tracks.is_favorite）")
+		state.ToggleFavorite(track)
 	}
-	if m.Item("添加到播放列表…").Chosen() {
-		state.AskKernel("歌单条目写入（playlist_items）")
+	addToPlaylistItem(m, state, []library.Track{track})
+	if opts.PlaylistID != "" {
+		m.Separator()
+		if m.Item("移出歌单").Chosen() {
+			state.RemoveFromPlaylist(row)
+		}
+		up := m.Item("上移").Disabled(row <= 0)
+		if up.Chosen() {
+			state.MovePlaylistItem(row, row-1)
+		}
+		down := m.Item("下移").Disabled(row >= opts.List.Total()-1)
+		if down.Chosen() {
+			state.MovePlaylistItem(row, row+1)
+		}
 	}
 	if m.Item("匹配元数据…").Chosen() {
-		state.AskKernel("元数据匹配与写回（M5）")
+		state.AskKernel("元数据匹配与写回")
 	}
 	m.Separator()
 	reveal := m.Item("在访达中显示")
@@ -220,6 +231,45 @@ func rowMenu(m *ui.Menu, state *model.State, track library.Track) {
 			actions.RevealInFinder(track)
 		}
 	}
+}
+
+// addToPlaylistItem is the 「添加到播放列表」 submenu, shared by the row menu and
+// the album/stage headers: the playlists come from the library, and choosing
+// one appends the tracks through the app's write path.
+func addToPlaylistItem(m *ui.Menu, state *model.State, tracks []library.Track) {
+	playlists := state.Playlists()
+	if len(playlists) == 0 {
+		m.Item("添加到播放列表…").Disabled(true)
+		return
+	}
+	m.Submenu("添加到播放列表", func(sub *ui.Menu) {
+		for _, playlist := range playlists {
+			playlist := playlist
+			item := sub.Item(playlist.Name)
+			if item.Chosen() {
+				state.AddToPlaylist(playlist.ID, tracks)
+			}
+		}
+	})
+}
+
+// AddToPlaylistButton is the album/stage 「加入歌单」 control.
+func AddToPlaylistButton(c *ui.Context, d Design, state *model.State, tracks []library.Track) {
+	playlists := state.Playlists()
+	if len(playlists) == 0 {
+		if b := d.Button(c, "加入歌单"); b.Clicked() {
+			state.SetNotice("还没有歌单：先在「歌单」页新建一个，再把曲目加进去")
+		}
+		return
+	}
+	ui.MenuButton(c, "加入歌单", func(m *ui.Menu) {
+		for _, playlist := range playlists {
+			playlist := playlist
+			if m.Item(playlist.Name).Chosen() {
+				state.AddToPlaylist(playlist.ID, tracks)
+			}
+		}
+	}).Radius(tokens.RadiusSM).FontSize(13)
 }
 
 // TrackRow is the lighter row of the queue, album/artist details and search
