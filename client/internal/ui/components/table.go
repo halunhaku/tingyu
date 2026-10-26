@@ -34,6 +34,9 @@ func TrackTable(c *ui.Context, d Design, opts TableOptions) {
 		header := ui.Row(c).FillWidth().Height(32).PaddingX(tokens.Space8).AlignItems(ui.Center)
 		header.Children(func() {
 			ui.Box(c).Width(tokens.IconCompact + tokens.Space8)
+			// M5's cover column (the token was reserved in M4): cover then
+			// title, as the Flutter table lays it out.
+			ui.Box(c).Width(tokens.TableCoverColumn + tokens.Space10)
 			sortHeader(c, d, list, model.SortTitle, "曲名", 0, true)
 			sortHeader(c, d, list, model.SortArtist, "艺术家", 160, false)
 			sortHeader(c, d, list, model.SortAlbum, "专辑", 200, false)
@@ -79,6 +82,7 @@ func TrackTable(c *ui.Context, d Design, opts TableOptions) {
 				} else {
 					ui.Icon(c, IconPlay).FontSize(tokens.IconCompact).TextColor(d.P.TextTertiary)
 				}
+				tableCoverCell(c, d, state, rowTrack)
 				title := ui.Column(c).Gap(1).Grow(1).PaddingX(tokens.Space8)
 				title.Children(func() {
 					text := d.Text(c, tokens.BodyM, rowTrack.Title).TextColor(d.P.TextPrimary).SingleLine()
@@ -103,6 +107,19 @@ func TrackTable(c *ui.Context, d Design, opts TableOptions) {
 		}
 	})
 	list.MaybeRequestMore()
+}
+
+// tableCoverCell is the table's cover column: the cover when the track has
+// one, otherwise the reserved space (an empty block per row would read as a
+// wall of placeholders in a ten-thousand-row library).
+func tableCoverCell(c *ui.Context, d Design, state *model.State, track library.Track) {
+	if bitmap := state.CoverBitmap(track.CoverArtPath); bitmap != nil {
+		ui.Image(c, bitmap).Size(tokens.TableCoverColumn, tokens.TableCoverColumn).
+			Fit(ui.Cover).Radius(tokens.RadiusXS)
+	} else {
+		ui.Box(c).Width(tokens.TableCoverColumn).Height(tokens.TableCoverColumn)
+	}
+	ui.Box(c).Width(tokens.Space10)
 }
 
 func sortHeader(c *ui.Context, d Design, list *model.TrackList, field model.SortField, label string, width float32, grow bool) {
@@ -219,7 +236,7 @@ func rowMenu(m *ui.Menu, state *model.State, track library.Track, opts TableOpti
 		}
 	}
 	if m.Item("匹配元数据…").Chosen() {
-		state.AskKernel("元数据匹配与写回")
+		state.OpenMatch(track)
 	}
 	m.Separator()
 	reveal := m.Item("在访达中显示")

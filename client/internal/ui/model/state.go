@@ -15,6 +15,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/halunhaku/tingyu/client/internal/library"
+	"github.com/halunhaku/tingyu/client/internal/metadata"
 	"github.com/halunhaku/tingyu/client/internal/player"
 )
 
@@ -159,7 +160,8 @@ type StageState struct {
 // State is everything a frame reads. The app mutates it on the UI thread (via
 // Window.Update); background workers never touch it.
 type State struct {
-	actions Actions
+	actions         Actions
+	metadataActions MetadataActions
 
 	backend Backend
 	live    Live
@@ -240,7 +242,17 @@ type State struct {
 
 	lyrics    lyricsCache
 	covers    CoverCache
+	palettes  paletteCache
 	transient map[string]any
+
+	// M5: the enrichment panel, the AI fallback settings and the match dialog
+	// (see enrichment.go).
+	enrichment EnrichmentView
+	match      MatchState
+	ai         metadata.AISettings
+	aiError    string
+	lyricsMode int
+	logf       func(format string, args ...any)
 }
 
 // New builds the state from the library's read side.
@@ -289,6 +301,10 @@ func (s *State) lists() []*TrackList {
 // SetActions installs the callbacks.
 func (s *State) SetActions(a Actions) { s.actions = a }
 
+// SetLogf installs a logger for the choices the model makes that the app's log
+// should show (a palette that fell back to the neutral gradient, for example).
+func (s *State) SetLogf(logf func(format string, args ...any)) { s.logf = logf }
+
 // Actions returns the installed callbacks (nil in tests that need none).
 func (s *State) Actions() Actions { return s.actions }
 
@@ -317,6 +333,7 @@ func (s *State) ConfigureDataDir(dataDir string, writable bool) {
 func (s *State) SetCoversDir(dir string) {
 	s.coversDir = dir
 	s.covers.SetDir(dir)
+	s.setPaletteDir(dir)
 }
 
 // SetSources replaces the source list.
@@ -800,14 +817,6 @@ func (s *State) Notice() string { return s.notice }
 
 // DismissNotice clears the notice.
 func (s *State) DismissNotice() { s.notice = "" }
-
-// AskKernel reports a capability this milestone still does not have (metadata
-// matching and lyrics fetching belong to M5). Nothing the M4 record listed —
-// favourites, playlists, source deletion, shuffle, paging — uses it any more;
-// the placeholder stays for the two M5 features that are still out of scope.
-func (s *State) AskKernel(feature string) {
-	s.notice = "需内核支持：" + feature + "，属于后续里程碑（M5）。"
-}
 
 // SetNotice shows an informational notice.
 func (s *State) SetNotice(message string) { s.notice = message }

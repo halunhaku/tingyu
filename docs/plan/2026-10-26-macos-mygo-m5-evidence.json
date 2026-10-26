@@ -1,0 +1,265 @@
+{
+  "startedAt": "2026-10-26T11:34:54.060302+08:00",
+  "finishedAt": "2026-10-26T11:35:17.538378+08:00",
+  "host": {
+    "os": "darwin",
+    "arch": "arm64",
+    "goVersion": "go1.27.3"
+  },
+  "sourceDataDir": "/Users/halunhaku/Library/Application Support/com.halunhaku.tingyu",
+  "workDir": "/Users/halunhaku/.tds/workspaces/01a17610-6ba0-749f-b157-e9308a702989/client/build/m5-accept/final4/data",
+  "outDir": "build/m5-accept/final4",
+  "checks": [
+    {
+      "id": "m5.production-read-only",
+      "name": "生产库只读打开（sha256 与 user_version 前后一致）",
+      "pass": true,
+      "note": "开始时记录；结束时复查",
+      "data": {
+        "path": "/Users/halunhaku/Library/Application Support/com.halunhaku.tingyu/library.sqlite",
+        "sha256": "310526fdbac4e7dd9615c4d124bb28049146f87f4bce00629ed8f10b4581fb73",
+        "user_version": 2
+      }
+    },
+    {
+      "id": "m5.copy",
+      "name": "验收在曲库副本上进行",
+      "pass": true,
+      "note": "生产目录只读；副本含 library.sqlite 与 covers/",
+      "data": {
+        "copy": "/Users/halunhaku/.tds/workspaces/01a17610-6ba0-749f-b157-e9308a702989/client/build/m5-accept/final4/data/library.sqlite",
+        "covers": "/Users/halunhaku/.tds/workspaces/01a17610-6ba0-749f-b157-e9308a702989/client/build/m5-accept/final4/data/covers"
+      }
+    },
+    {
+      "id": "m5.schema-version",
+      "name": "user_version 保持 2（只加可空列/索引）",
+      "pass": true,
+      "data": {
+        "user_version": 2
+      }
+    },
+    {
+      "id": "m5.enrich",
+      "name": "20 首无标签曲目补全：标题/封面/歌词落库",
+      "pass": true,
+      "note": "处理 20，变更 20；标题 20、封面 20、歌词 20；与原始标题一致 20",
+      "data": {
+        "attempted": 20,
+        "changed": 20,
+        "elapsedMs": 22210,
+        "exactTitleMatches": 20,
+        "failed": 0,
+        "offline": 0,
+        "requests": 48,
+        "skipped": 0,
+        "withCover": 20,
+        "withLyrics": 20,
+        "withTitle": 20
+      }
+    },
+    {
+      "id": "m5.ui-refresh",
+      "name": "补全后列表与舞台立即刷新（同一进程，不重启）",
+      "pass": true,
+      "note": "补全前列表显示无标签标题=true；补全后列表显示新标题=true；舞台显示新标题=true；revision 0→20",
+      "data": {
+        "afterShowsNewTitle": true,
+        "beforeShowsDemotedTitle": true,
+        "matchDialogCandidates": 6,
+        "newTitle": "一路向北",
+        "oldTitle": "01. 周杰伦-一路向北-J III MP3 Player",
+        "revisionAfter": 20,
+        "revisionBefore": 0,
+        "screenshots": [
+          "ui-before-library.png",
+          "ui-after-library.png",
+          "ui-after-stage.png",
+          "ui-after-stage-dark.png",
+          "ui-after-stage-words.png",
+          "ui-settings-metadata.png",
+          "ui-match-dialog.png"
+        ],
+        "stageShowsNewTitle": true
+      }
+    },
+    {
+      "id": "m5.palette",
+      "name": "同一封面在深浅两套主题下的舞台背景色 + 失败回退",
+      "pass": true,
+      "note": "深色 #1D1615→#0F1417（对比 16.2:1），浅色 #E9DEDA→#DAE6E9（对比 13.7:1）；灰封面回退中性渐变=true",
+      "data": {
+        "cover": "69d759041827d648.jpg",
+        "dark": [
+          "#1D1615",
+          "#0F1417"
+        ],
+        "darkContrast": 16.24164751421778,
+        "grayFallback": true,
+        "grayPaletteOK": false,
+        "grayScreenshot": "gray-cover.png",
+        "light": [
+          "#E9DEDA",
+          "#DAE6E9"
+        ],
+        "lightContrast": 13.684226344545731,
+        "neutralDark": [
+          "#0C0C0F",
+          "#141418"
+        ],
+        "neutralLight": [
+          "#F7F7F9",
+          "#F1F1F4"
+        ]
+      }
+    },
+    {
+      "id": "m5.cover-cache",
+      "name": "封面缓存命中率与内容寻址落盘",
+      "pass": true,
+      "note": "下载 6、命中 19（命中率 76%）、写入文件 6、复用文件 0；热命中 5 次均未发新请求=true",
+      "data": {
+        "bytes": 853059,
+        "downloaded": 6,
+        "hitRate": 0.76,
+        "httpRequests": 50,
+        "reused": 19,
+        "secondFetchWithoutRequest": true,
+        "storeReused": 0,
+        "storeSaved": 6,
+        "warmHits": 5
+      }
+    },
+    {
+      "id": "m5.orphan-covers",
+      "name": "封面孤儿回收（共享保留、无引用清理）",
+      "pass": true,
+      "note": "预清理历史孤儿 22 个；删除来源报告 2 个候选封面；本轮清理 1 个；共享封面保留=true；独占封面已删=true",
+      "data": {
+        "baselineOrphans": 22,
+        "candidates": 2,
+        "referencedAfter": 164,
+        "removed": 1,
+        "sharedCover": "0fab22ef41b9a19d.jpg",
+        "sharedKept": true,
+        "uniqueCover": "0416d33a5fbe544b.jpg",
+        "uniqueRemoved": true
+      }
+    },
+    {
+      "id": "m5.offline",
+      "name": "断网时静默跳过、不弹错、不伪造数据",
+      "pass": true,
+      "note": "离线 3、失败 0；封面/歌词均未写入=true；UI 错误条为空=true；本地文件名清理照常（设计行为）",
+      "data": {
+        "after": [
+          {
+            "id": "src-1789263929408853::quark://ad739ad4239b427c9588b2295e0a6956",
+            "title": "将军",
+            "artist": "周杰伦",
+            "album": "七里香",
+            "cover": "",
+            "hasLyrics": false,
+            "lyricsLen": 0
+          },
+          {
+            "id": "src-1789263929408853::quark://f42c3289684b4c808c4d274323bcb908",
+            "title": "我的地盘",
+            "artist": "周杰伦",
+            "album": "七里香",
+            "cover": "",
+            "hasLyrics": false,
+            "lyricsLen": 0
+          },
+          {
+            "id": "src-1789263929408853::quark://68474b3438ea4fb7bfc56a69173f7251",
+            "title": "搁浅",
+            "artist": "周杰伦",
+            "album": "七里香",
+            "cover": "",
+            "hasLyrics": false,
+            "lyricsLen": 0
+          }
+        ],
+        "attempted": 3,
+        "before": [
+          {
+            "id": "src-1789263929408853::quark://ad739ad4239b427c9588b2295e0a6956",
+            "title": "01. 周杰伦-将军-七里香",
+            "artist": "未知艺术家",
+            "album": "未知专辑",
+            "cover": "",
+            "hasLyrics": false,
+            "lyricsLen": 0
+          },
+          {
+            "id": "src-1789263929408853::quark://f42c3289684b4c808c4d274323bcb908",
+            "title": "02. 周杰伦-我的地盘-七里香",
+            "artist": "未知艺术家",
+            "album": "未知专辑",
+            "cover": "",
+            "hasLyrics": false,
+            "lyricsLen": 0
+          },
+          {
+            "id": "src-1789263929408853::quark://68474b3438ea4fb7bfc56a69173f7251",
+            "title": "03. 周杰伦-搁浅-七里香",
+            "artist": "未知艺术家",
+            "album": "未知专辑",
+            "cover": "",
+            "hasLyrics": false,
+            "lyricsLen": 0
+          }
+        ],
+        "changed": 3,
+        "demoted": 3,
+        "failed": 0,
+        "noNetworkFields": true,
+        "offline": 3,
+        "offlineMode": "simulated (transport error)",
+        "skipped": 0,
+        "trackIDs": [
+          "src-1789263929408853::quark://ad739ad4239b427c9588b2295e0a6956",
+          "src-1789263929408853::quark://f42c3289684b4c808c4d274323bcb908",
+          "src-1789263929408853::quark://68474b3438ea4fb7bfc56a69173f7251"
+        ],
+        "uiError": ""
+      }
+    },
+    {
+      "id": "m5.manual-match",
+      "name": "人工匹配改写后重启仍在",
+      "pass": true,
+      "note": "写回后关闭连接并重开：标题=\"人工匹配标题\" 艺术家=\"人工匹配艺术家\" 专辑=\"人工匹配专辑\" 封面=true 歌词=true",
+      "data": {
+        "album": "人工匹配专辑",
+        "artist": "人工匹配艺术家",
+        "cover": "005fb9292781e623.jpg",
+        "coversDir": "/Users/halunhaku/.tds/workspaces/01a17610-6ba0-749f-b157-e9308a702989/client/build/m5-accept/final4/data/covers",
+        "persisted": true,
+        "title": "人工匹配标题",
+        "trackID": "src-1789263929408853::quark://7e0df3367bec471596b88a34e0bec420"
+      }
+    },
+    {
+      "id": "m5.production-unchanged",
+      "name": "生产库 sha256 前后一致",
+      "pass": true,
+      "note": "sha256 310526fdbac4 → 310526fdbac4",
+      "data": {
+        "after": "310526fdbac4e7dd9615c4d124bb28049146f87f4bce00629ed8f10b4581fb73",
+        "before": "310526fdbac4e7dd9615c4d124bb28049146f87f4bce00629ed8f10b4581fb73",
+        "userVersionAfter": 2,
+        "userVersionBefore": 2
+      }
+    },
+    {
+      "id": "m5.copy-schema-version",
+      "name": "副本 user_version 仍为 2",
+      "pass": true,
+      "data": {
+        "user_version": 2
+      }
+    }
+  ]
+}

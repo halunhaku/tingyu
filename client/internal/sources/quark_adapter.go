@@ -11,6 +11,7 @@ package sources
 import (
 	"context"
 	"fmt"
+	"github.com/halunhaku/tingyu/client/internal/titleparse"
 	"strings"
 
 	"github.com/halunhaku/tingyu/client/internal/library"
@@ -184,7 +185,7 @@ func (q *QuarkSource) Scan(ctx context.Context, progress Progress) (ScanResult, 
 			if !supportedExtension(item.Name) {
 				continue
 			}
-			parsed := ParseFilename(item.Name[:dot])
+			parsed := titleparse.ParseFilename(item.Name[:dot])
 			album := parsed.Album
 			if album == UnknownAlbum {
 				album = QuarkAlbum

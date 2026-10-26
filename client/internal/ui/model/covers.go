@@ -9,9 +9,10 @@ import (
 )
 
 // CoverCache keeps decoded cover bitmaps in memory, bounded (a library of ten
-// thousand tracks shares a few hundred covers). M5 owns the real image
-// pipeline (HTTP cache, downsampling, palette); this is the read-only local
-// path M4 needs, and it is deliberately small.
+// thousand tracks shares a few hundred covers). The M5 pieces — the HTTP fetch,
+// the content-addressed store and the palette — live in internal/images; this
+// is the read-only decode path the tables and the stage draw from, keyed by the
+// content-addressed file name, so a new cover is a new entry.
 type CoverCache struct {
 	mu      sync.Mutex
 	dir     string

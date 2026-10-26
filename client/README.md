@@ -1,8 +1,8 @@
 # client/：听屿 macOS 客户端（MyGo）
 
-迁移方案 **M1 + M2 + M3 + M4 + 内核数据能力 + M6** 的实现：M1 是选目录扫描入库、进程内 libmpv 播放、系统媒体会话（Now Playing / 媒体键）、关窗续播；M2 是内核生产化（9 格式矩阵、远端 Range/鉴权、gapless、循环三态、失败快照、倍速/音量、200 首队列）；M3 是远端来源（WebDAV 全链路、夸克扫码登录/目录/直链与过期刷新、同步进度与取消、Keychain 凭据）；M4 是「声档」设计令牌、全部页面、舞台/队列/歌词与命令面板；内核数据能力补上 M4 留下的五个缺口——**收藏写入、歌单读写、来源删除、随机播放、SQL 分页与聚合**；M6 是分发与质量——**内到外签名、DMG、公证流水线、只跑 macOS 的 Go CI、四类契约测试与键盘可达性**。**不做元数据补全与封面取色**（M5）；不改 `app/`。
+迁移方案 **M1 + M2 + M3 + M4 + 内核数据能力 + M5 + M6** 的实现：M1 是选目录扫描入库、进程内 libmpv 播放、系统媒体会话（Now Playing / 媒体键）、关窗续播；M2 是内核生产化（9 格式矩阵、远端 Range/鉴权、gapless、循环三态、失败快照、倍速/音量、200 首队列）；M3 是远端来源（WebDAV 全链路、夸克扫码登录/目录/直链与过期刷新、同步进度与取消、Keychain 凭据）；M4 是「声档」设计令牌、全部页面、舞台/队列/歌词与命令面板；内核数据能力补上 M4 留下的五个缺口——**收藏写入、歌单读写、来源删除、随机播放、SQL 分页与聚合**；M5 是**元数据与图片**——四源补全（QQ 音乐 / 网易云 / iTunes / LRCLIB）+ 可选 AI 兜底、人工匹配、封面内容寻址缓存与孤儿回收、封面取色接到舞台、歌词逐行/逐字两种渲染；M6 是分发与质量——**内到外签名、DMG、公证流水线、只跑 macOS 的 Go CI、四类契约测试与键盘可达性**。不改 `app/`。
 
-验收记录与逐条证据：[M1 记录](../docs/plan/2026-10-25-macos-mygo-m1-record.md)、[M2 记录](../docs/plan/2026-10-25-macos-mygo-m2-record.md)、[M3 记录](../docs/plan/2026-10-25-macos-mygo-m3-record.md)、[M4 记录](../docs/plan/2026-10-25-macos-mygo-m4-record.md)、[内核数据能力记录](../docs/plan/2026-10-26-macos-mygo-kernel-data-record.md)、[M6 记录](../docs/plan/2026-10-26-macos-mygo-m6-record.md)。
+验收记录与逐条证据：[M1 记录](../docs/plan/2026-10-25-macos-mygo-m1-record.md)、[M2 记录](../docs/plan/2026-10-25-macos-mygo-m2-record.md)、[M3 记录](../docs/plan/2026-10-25-macos-mygo-m3-record.md)、[M4 记录](../docs/plan/2026-10-25-macos-mygo-m4-record.md)、[内核数据能力记录](../docs/plan/2026-10-26-macos-mygo-kernel-data-record.md)、[M5 记录](../docs/plan/2026-10-26-macos-mygo-m5-record.md)、[M6 记录](../docs/plan/2026-10-26-macos-mygo-m6-record.md)。
 
 ```
 client/
@@ -10,24 +10,30 @@ client/
 ├── mygo.json                    应用名、bundle id、版本、最低 macOS、出包目录
 ├── resources/icon.png           1024×1024 图标
 ├── internal/
-│   ├── library/                 SQLite：schema 补差、分页查询与聚合、收藏/歌单/来源删除、扫描合并、播放历史、revision
+│   ├── library/                 SQLite：schema 补差、分页查询与聚合、收藏/歌单/来源删除、扫描合并、播放历史、补全写回、revision
 │   ├── scan/                    目录遍历 + 9 格式元数据 + 内容寻址封面
+│   ├── images/                  M5 图片管线：内容寻址封面库、HTTP 抓取与命中统计、解码/缩放、封面取色
+│   ├── metadata/                M5 抓取层：QQ 音乐 / 网易云 / iTunes / LRCLIB、OpenCC、AI 兜底、人工候选
+│   ├── enrich/                  M5 编排：在途去重、会话配额、封面落盘、人工匹配、孤儿清理
+│   ├── titleparse/              文件名智能解析（来源层与补全共用）
 │   ├── mpv/                     purego libmpv 绑定与播放内核（失败分类、日志信号）
 │   ├── player/                  播放控制器（预取/世代/循环/历史/换队列契约）
 │   ├── ui/
 │   │   ├── tokens/              「声档」令牌：深浅色、字号、间距、圆角、动效
-│   │   ├── model/               视图状态：SQL 分页/排序/过滤、专辑/艺术家/歌单列表、搜索、LRC、设置
-│   │   ├── components/          封面、曲目列表、传输条、舞台/歌词/队列、命令面板
+│   │   ├── model/               视图状态：SQL 分页/排序/过滤、专辑/艺术家/歌单列表、搜索、LRC（逐行/逐字）、取色缓存、补全面板、匹配弹层、设置
+│   │   ├── components/          封面、曲目列表（含封面列）、传输条、舞台/歌词/队列、命令面板、人工匹配弹层
 │   │   └── pages/               曲库、收藏、专辑、艺术家、歌单、搜索、舞台、队列、歌词、设置、来源、引导
 │   ├── shell/                   外壳：侧栏、页面调度、快捷键、装配 Model
 │   ├── app/                     装配：窗口、应用菜单、扫描编排、退出
 │   ├── sources/                 M3 来源层：WebDAV、夸克（Cookie/扫码/直链）、Keychain 凭据、同步编排、直链刷新
 │   ├── sourcemock/              M3 验收用本地协议模拟服务（WebDAV / 夸克，可注入 401/403/503/畸形响应）
 │   ├── sourceaccept/            M3 验收 harness（120 首 WebDAV / 扫码 / 直链刷新 / 取消 / Keychain）
+│   ├── m5accept/                M5 验收 harness（20 首无标签补全 / 离线 / 封面缓存 / 取色 / 人工匹配 / 截图）
 │   ├── rangesrv/                M2 验收用 HTTP 服务：强制 Range、校验 Authorization、可切换 401/403/断网
 │   └── accept/                  M2 验收 harness（9 格式 / 远端 / gapless / 队列 / 循环 / 倍速音量）
 ├── cmd/accept/                  M2 验收 harness 入口（不随产品发布）
 ├── cmd/sourceaccept/            M3 验收 harness 入口（不随产品发布）
+├── cmd/m5accept/                M5 验收 harness 入口（不随产品发布）
 ├── tools/screenshots/           M4 截图：同一 View 经 ui.Render 渲染各页深/浅
 ├── scripts/
 │   ├── bundle.sh                编译 + 内到外签名 libmpv/FFmpeg frameworks + 组装 .app（DMG/公证可选）
@@ -37,6 +43,7 @@ client/
 │   ├── gen-m2-media.sh          ffmpeg 生成 M2 验收媒体（9 格式/gapless/200 首/远端）
 │   ├── run-m2-accept.sh         构建并运行 M2 验收 harness，输出 evidence
 │   ├── run-m3-accept.sh         构建并运行 M3 验收 harness，输出 evidence
+│   ├── run-m5-accept.sh         M5 质量门（gofmt/vet/test/-race）+ 验收 harness
 │   └── measure-scroll.sh        M4 10,000 行滚动帧时间与原始采样
 └── README.md
 ```
@@ -183,6 +190,8 @@ go test ./... && go test -race ./...
 
 内核数据能力新增：SQL 过滤/排序/分页与 10,000 行页查询耗时、专辑/艺术家聚合、`EXPLAIN QUERY PLAN` 的索引断言、歌单全链路（建/加/改名/排序/移出/级联删除）与位置压紧、收藏写入与重开连接后的持久化、删除来源的计数与封面孤儿回收、随机播放的顺序/还原/与循环共存；`internal/shell` 的端到端用例直接点击按钮、用**独立的 SQLite 连接**读回数据作为证据（收藏与取消、歌单全链路、来源删除、随机播放）。
 
+M5 新增：四个抓取源的响应解析与占位词过滤、LRCLIB/网易云歌词兜底、OpenCC 逐字转换、AI 回复清洗与错误分类、离线静默语义（`Offline` 与"本地文件名清理"独立）、补全编排的在途请求去重/会话配额/封面失败不阻塞其他字段、`library` 补全写回的最小写入与 revision/revision-row 断言、人工匹配重开连接后仍在、`images` 的内容寻址/孤儿保留共享封面/取色灰兜底与深浅对比度/命中率与失败记忆、歌词 `SpreadWords` 的文本还原/单调时间轴/`WordProgress`、`shell` 的设置页元数据面板与匹配弹层渲染/点击。
+
 ## M4 界面
 
 - **令牌**：`internal/ui/tokens` 与 `app/lib/design/tokens` 同源（颜色、13 档字号、4pt 间距、圆角、动效时长）；深/浅两套由 `settings.json` 的 `themeMode` 决定，密度（舒适/紧凑）影响行高、页边距与侧栏宽度。
@@ -193,9 +202,20 @@ go test ./... && go test -race ./...
 - **命令面板**：⌘K；独立查询与 250 ms 防抖；歌曲/专辑/艺术家 + 快捷入口；↑↓/Enter/Esc。
 - **快捷键**：⌘K、⌘F、⌘,、⌘1–4、⌘⇧P、⌘L、⌘U、Space、⌘←/→、⌘⇧←/→（±10 s）、⌘↑/↓（音量）；应用菜单含「听屿/播放/前往」。
 
+## M5 元数据与图片
+
+- **四个真实抓取源**：QQ 音乐（主元数据 + 封面）、网易云（歌词/封面兜底）、iTunes Search（封面最后兜底）、LRCLIB（歌词主来源）。四个都无需账号；接口形状与 Flutter 版 `sources/scraper/*` 一致，繁体歌词经 OpenCC 逐字转简体（同一份 `TSCharacters.txt` 表）。
+- **AI 兜底（可选）**：OpenAI 兼容 `/chat/completions`；四源都认不出文件名时清洗标题/艺术家/专辑并重试一次。密钥只存系统钥匙串（账户 `tingyu_ai_settings`，与 Flutter 版同名），不写 `settings.json`、不进日志（只打 `****后四位`）；未配置时整段静默跳过。
+- **补全编排**：同一首曲目的自动/播放/单曲触发共用一次在途请求（`internal/enrich` 的 in-flight map）；自动补全每会话最多 60 首；扫描完成与启动各触发一次自动 pass（`TINGYU_ENRICH_AUTO=0` 可关）；封面下载失败只记日志，其余字段照常落库。
+- **人工匹配**：曲目右键「匹配元数据…」或舞台上的同名按钮打开弹层：候选（QQ + 网易云，去重）可点击「采用」填入，标题/艺术家/专辑可手改，应用后走同一条 `ApplyEnrichment` 写回并立即刷新列表与舞台；重开进程后仍在。
+- **封面缓存**：与 Flutter 版 `CoverStore` 逐字节一致的 FNV-1a 内容寻址命名（`internal/scan/cover.go` 是唯一实现），远程封面下载后落盘、相同内容不重复写；删除来源/曲目后按 `ReferencedCovers` 清理孤儿，共享封面保留。设置页给出命中率、写入/命中/清理计数。
+- **封面取色**：`internal/images/palette.go` 直译 `app/lib/features/player/stage_palette.dart` 的规则（24 px 缩略图、12 个色相桶、饱和度/亮度门限、灰封面回退、深浅两套饱和度/亮度钳制、35% canvas 压平、正文 ≥7:1 对比度），LRU 64、键为「文件名 + mtime + 主题」。舞台的 160° 渐变改用主/次色；取色关闭、无封面、灰封面或解码失败时回退 M4 的中性令牌渐变（外观不变）。
+- **歌词**：LRCLIB（带时间轴，优先）→ 网易云兜底；解析后把行时长按字宽分摊到每个汉字/拉丁词（`SpreadWords`），所以行级 LRC 也能逐字着色。歌词组件提供「逐行 / 逐字」两种渲染，逐字高亮是播放位置的纯函数（seek 前后画面一致）。
+- **立即刷新**：补全写回走 `library.ApplyEnrichment`，每次写入都递增全局与行级 revision；列表/舞台在下一帧按 revision 重读，不需要重启（验收里同一进程前后截图对比）。
+
 ### 只读与写入边界
 
-未设置 `TINGYU_DATA_DIR` 时客户端只读：扫描、收藏、歌单、来源删除全部被拒绝并给出提示，既不写生产库也不伪造成功。M4 记录里「需内核支持」的五项（收藏写入、歌单读写、来源删除、随机播放、SQL 分页）在本阶段全部接通；仍显示「需内核支持」的只剩 M5 的元数据匹配与歌词抓取。
+未设置 `TINGYU_DATA_DIR` 时客户端只读：扫描、收藏、歌单、来源删除、补全写回、人工匹配、封面清理全部被拒绝并给出提示，既不写生产库也不伪造成功。M4 记录里「需内核支持」的五项（收藏写入、歌单读写、来源删除、随机播放、SQL 分页）在内核数据能力阶段全部接通；M5 的元数据匹配与歌词抓取在本阶段接通。
 
 ### 性能与截图
 
@@ -208,4 +228,4 @@ CGO_ENABLED=0 go run ./tools/screenshots -data /tmp/tingyu-copy -out ../docs/scr
 
 ## 本阶段不做
 
-元数据匹配与歌词抓取的写回、封面取色（M5）、**真实的公证通过**（流水线与本地可验证部分已就绪，缺 Apple Developer 凭据，见 [M6 记录](../docs/plan/2026-10-26-macos-mygo-m6-record.md) §7）、Intel 实机验证、读屏无障碍专项（M6 后）。写操作只有确认后的破坏性动作（删除歌单、删除来源）走二次确认弹窗，其余即时生效。
+歌词翻译、艺术家头像、动图 WebP 封面（只取静态帧，动图返回解码失败并回退占位）、**真实的公证通过**（流水线与本地可验证部分已就绪，缺 Apple Developer 凭据，见 [M6 记录](../docs/plan/2026-10-26-macos-mygo-m6-record.md) §7）、Intel 实机验证、读屏无障碍专项（M6 后）。写操作只有确认后的破坏性动作（删除歌单、删除来源）走二次确认弹窗，其余即时生效。

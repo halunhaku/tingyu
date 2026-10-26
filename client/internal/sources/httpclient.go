@@ -21,6 +21,11 @@ import (
 	"time"
 )
 
+// NewHTTPClient is the HTTP client the M5 metadata pipeline shares with the
+// source adapters: the same system-proxy-aware transport, connection reuse and
+// overall budget (plan §3.5).
+func NewHTTPClient(timeout time.Duration) *http.Client { return newHTTPClient(timeout) }
+
 // newHTTPClient builds a client with the given overall request budget. The
 // per-attempt deadline comes from each caller's context; Timeout is the
 // belt-and-braces cap so a stalled body read cannot hang a sync forever.

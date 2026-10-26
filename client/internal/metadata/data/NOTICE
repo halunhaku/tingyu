@@ -1,0 +1,13 @@
+OpenCC — TSCharacters.txt
+==========================
+
+`TSCharacters.txt` is the traditional→simplified character table from
+Open Chinese Convert (OpenCC): https://github.com/ByVoid/OpenCC
+
+License: Apache-2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+
+The file is copied unchanged from the Flutter client's
+`app/assets/opencc/TSCharacters.txt`, so both clients convert lyrics the same
+way (plan §2.4 #33). `internal/metadata/opencc.go` embeds it; only the first
+candidate of each line is used, matching
+`app/lib/sources/scraper/chinese_converter.dart`.
