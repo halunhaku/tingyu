@@ -30,6 +30,7 @@ import (
 	"github.com/halunhaku/tingyu/client/internal/player"
 	"github.com/halunhaku/tingyu/client/internal/scan"
 	"github.com/halunhaku/tingyu/client/internal/shell"
+	"github.com/halunhaku/tingyu/client/internal/sources"
 )
 
 type application struct {
@@ -50,6 +51,21 @@ type application struct {
 
 	session sessionPublisher
 	awake   atomic.Bool
+
+	// M3 source layer: credentials, adapters, sync and direct-link refresh.
+	creds     *sources.Credentials
+	sourceMgr *sources.Manager
+	syncer    *sources.Syncer
+	recoverer *sources.Recoverer
+
+	sourceLoginMu     sync.Mutex
+	sourceLoginCancel context.CancelFunc
+	sourceLoginSeq    atomic.Uint64
+	sourceLoginActive uint64
+	sourceSyncMu      sync.Mutex
+	sourceSyncCancel  context.CancelFunc
+	sourceSyncSeq     atomic.Uint64
+	sourceSyncActive  uint64
 
 	scanning   atomic.Bool
 	scanCancel atomic.Bool
@@ -291,12 +307,14 @@ func (a *application) prepare() error {
 		a.model.SetCoversDir(a.covers)
 	}
 
+	a.initSources()
 	a.engine, err = a.newEngine()
 	if err != nil {
 		a.logf("playback: %v", err)
 		a.model.SetError("播放内核不可用：" + err.Error())
 	} else if a.lib != nil {
-		a.control = player.New(a.engine, localResolver, a.lib)
+		a.control = player.New(a.engine, a.resolveTrack, a.lib)
+		a.recoverer = sources.NewRecoverer(a.sourceMgr, a.control, a.logf)
 		a.control.SetListener(a.onUpdate)
 		a.model.SetPlayer(a.control.Snapshot())
 		switch strings.ToLower(strings.TrimSpace(os.Getenv("TINGYU_REPEAT"))) {
@@ -327,23 +345,6 @@ func (a *application) newEngine() (*mpv.Player, error) {
 		return nil, err
 	}
 	return mpv.NewPlayer(lib, mpv.Config{AudioClientName: "听屿", Debug: a.logf})
-}
-
-// localResolver is the M1 resolver: a library track is a local file.
-func localResolver(track library.Track) (player.Item, error) {
-	if track.FilePath == "" {
-		return player.Item{}, errors.New("曲目没有文件路径")
-	}
-	return player.Item{
-		ID:       track.ID,
-		TrackID:  track.ID,
-		URI:      track.FilePath,
-		Title:    track.Title,
-		Artist:   track.Artist,
-		Album:    track.Album,
-		Duration: track.Duration,
-		ArtPath:  "",
-	}, nil
 }
 
 // --- window ---------------------------------------------------------
@@ -496,9 +497,13 @@ func (a *application) Queue() []library.Track {
 	return a.control.Queue()
 }
 
-// SyncSource re-scans a source's local folder through the same scan path as
-// "add directory" (the kernel has the scan; only the button was missing).
+// SyncSource syncs one source: a local folder through the scanner, a remote
+// source through the M3 source layer (progress, cancel and re-login included).
 func (a *application) SyncSource(source library.Source) {
+	if source.Kind != "local" {
+		go a.syncRemote(source)
+		return
+	}
 	if strings.TrimSpace(source.LocalFolderPath) == "" {
 		a.setStatus("来源 " + source.Name + " 没有本地目录，无法同步")
 		return
@@ -506,8 +511,7 @@ func (a *application) SyncSource(source library.Source) {
 	go a.scanFolder(source.LocalFolderPath)
 }
 
-// SyncAllSources re-scans every local source in turn. Remote sources need M3,
-// so they are skipped rather than attempted and failed.
+// SyncAllSources syncs every source in turn: local folders, then remote ones.
 func (a *application) SyncAllSources() {
 	if a.lib == nil || !a.lib.Writable() {
 		a.setStatus("只读模式：设置 TINGYU_DATA_DIR 指向曲库副本后才能同步")
@@ -520,10 +524,13 @@ func (a *application) SyncAllSources() {
 			return
 		}
 		for _, source := range sources {
-			if source.Kind != "local" || strings.TrimSpace(source.LocalFolderPath) == "" {
+			if source.Kind == "local" {
+				if strings.TrimSpace(source.LocalFolderPath) != "" {
+					a.scanFolder(source.LocalFolderPath)
+				}
 				continue
 			}
-			a.scanFolder(source.LocalFolderPath)
+			a.syncRemote(source)
 		}
 	}()
 }

@@ -35,7 +35,10 @@ func ScanPanel(c *ui.Context, d components.Design, scan model.ScanState) {
 		if scan.Running {
 			ui.Row(c).Gap(tokens.Space8).AlignItems(ui.Center).Children(func() {
 				ui.Spinner(c)
-				if scan.Total > 0 {
+				if scan.SourceName != "" {
+					d.Textf(c, tokens.BodyS, "正在同步「%s」· 已发现 %d 首", scan.SourceName, scan.Done).
+						TextColor(d.P.TextPrimary)
+				} else if scan.Total > 0 {
 					d.Textf(c, tokens.BodyS, "正在扫描 %d/%d", scan.Done, scan.Total).TextColor(d.P.TextPrimary)
 				} else {
 					d.Text(c, tokens.BodyS, "正在扫描…").TextColor(d.P.TextPrimary)

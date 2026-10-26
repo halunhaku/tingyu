@@ -7,7 +7,11 @@ package mpv
 // (The spike lost half an hour to a misread event id; the layout is the next
 // easiest thing to break.)
 
-import "unsafe"
+import (
+	"strings"
+	"testing"
+	"unsafe"
+)
 
 var (
 	// mpv_event: int32, int32, uint64, void* = 24 bytes; Data at 16.
@@ -50,3 +54,32 @@ var (
 	_ [unsafe.Offsetof(cEventLogMessage{}.LogLevel) - 24]byte
 	_ [24 - unsafe.Offsetof(cEventLogMessage{}.LogLevel)]byte
 )
+
+func TestHeaderLogNamesDoNotLeakCredentials(t *testing.T) {
+	header := "Authorization: Basic dXNlcjpwYXNz,Cookie: __pus=secret-session,User-Agent: something"
+	names := headerFieldNames(header)
+	for _, want := range []string{"Authorization", "Cookie", "User-Agent"} {
+		if !strings.Contains(names, want) {
+			t.Errorf("header names %q missing %q", names, want)
+		}
+	}
+	for _, secret := range []string{"Basic", "dXNlcjpwYXNz", "__pus", "secret-session"} {
+		if strings.Contains(names, secret) {
+			t.Errorf("header names %q leaked %q", names, secret)
+		}
+	}
+}
+
+func TestRedactedDirectLinksKeepTheHostAndDropTheSignature(t *testing.T) {
+	raw := "http://cdn.example.com/download/file-1?token=link-1&expires=99"
+	redacted := redactURIs(raw)
+	if strings.Contains(redacted, "link-1") || strings.Contains(redacted, "expires") {
+		t.Fatalf("redacted URL still carries the signature: %q", redacted)
+	}
+	if !strings.HasPrefix(redacted, "http://cdn.example.com/download/file-1") {
+		t.Fatalf("redacted URL lost the path: %q", redacted)
+	}
+	if got := redactURIs("/music/local.flac"); got != "/music/local.flac" {
+		t.Fatalf("a plain path changed: %q", got)
+	}
+}

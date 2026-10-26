@@ -1,8 +1,8 @@
 # client/：听屿 macOS 客户端（MyGo）
 
-迁移方案 **M1 + M2 + M4** 的实现：M1 是选目录扫描入库、进程内 libmpv 播放、系统媒体会话（Now Playing / 媒体键）、关窗续播；M2 是内核生产化（9 格式矩阵、远端 Range/鉴权、gapless、循环三态、失败快照、倍速/音量、200 首队列）；M4 是「声档」设计令牌、全部页面、舞台/队列/歌词与命令面板。**不实现远端来源**（WebDAV/夸克，M3）、**不做元数据补全与封面取色**（M5）；M4 只在界面与装配层，**不碰 `app/`、不碰内核包**。
+迁移方案 **M1 + M2 + M3 + M4** 的实现：M1 是选目录扫描入库、进程内 libmpv 播放、系统媒体会话（Now Playing / 媒体键）、关窗续播；M2 是内核生产化（9 格式矩阵、远端 Range/鉴权、gapless、循环三态、失败快照、倍速/音量、200 首队列）；M3 是远端来源（WebDAV 全链路、夸克扫码登录/目录/直链与过期刷新、同步进度与取消、Keychain 凭据）；M4 是「声档」设计令牌、全部页面、舞台/队列/歌词与命令面板。**不做元数据补全与封面取色**（M5）；M3 的界面为最小可用，**不碰 `app/`、不碰内核包**。
 
-验收记录与逐条证据：[M1 记录](../docs/plan/2026-10-25-macos-mygo-m1-record.md)、[M2 记录](../docs/plan/2026-10-25-macos-mygo-m2-record.md)。
+验收记录与逐条证据：[M1 记录](../docs/plan/2026-10-25-macos-mygo-m1-record.md)、[M2 记录](../docs/plan/2026-10-25-macos-mygo-m2-record.md)、[M3 记录](../docs/plan/2026-10-25-macos-mygo-m3-record.md)。
 
 ```
 client/
@@ -23,15 +23,20 @@ client/
 │   │   └── pages/               曲库、收藏、专辑、艺术家、歌单、搜索、舞台、队列、歌词、设置、来源、引导
 │   ├── shell/                   外壳：侧栏、页面调度、快捷键、装配 Model
 │   ├── app/                     装配：窗口、应用菜单、扫描编排、退出
+│   ├── sources/                 M3 来源层：WebDAV、夸克（Cookie/扫码/直链）、Keychain 凭据、同步编排、直链刷新
+│   ├── sourcemock/              M3 验收用本地协议模拟服务（WebDAV / 夸克，可注入 401/403/503/畸形响应）
+│   ├── sourceaccept/            M3 验收 harness（120 首 WebDAV / 扫码 / 直链刷新 / 取消 / Keychain）
 │   ├── rangesrv/                M2 验收用 HTTP 服务：强制 Range、校验 Authorization、可切换 401/403/断网
 │   └── accept/                  M2 验收 harness（9 格式 / 远端 / gapless / 队列 / 循环 / 倍速音量）
 ├── cmd/accept/                  M2 验收 harness 入口（不随产品发布）
+├── cmd/sourceaccept/            M3 验收 harness 入口（不随产品发布）
 ├── tools/screenshots/           M4 截图：同一 View 经 ui.Render 渲染各页深/浅
 ├── scripts/
 │   ├── bundle.sh                编译 + 拷贝并签名 libmpv/FFmpeg frameworks + 组装 .app
 │   ├── measure-coldstart.sh     在库副本上测冷启动（进程启动 → 首帧）
 │   ├── gen-m2-media.sh          ffmpeg 生成 M2 验收媒体（9 格式/gapless/200 首/远端）
 │   ├── run-m2-accept.sh         构建并运行 M2 验收 harness，输出 evidence
+│   ├── run-m3-accept.sh         构建并运行 M3 验收 harness，输出 evidence
 │   └── measure-scroll.sh        M4 10,000 行滚动帧时间与原始采样
 └── README.md
 ```
@@ -66,9 +71,11 @@ TINGYU_DATA_DIR=/tmp/tingyu-copy /tmp/tingyu
 - `library.sqlite`：`TINGYU_DATA_DIR` 指向的目录，否则 `~/Library/Application Support/com.halunhaku.tingyu`。
 - **未设置 `TINGYU_DATA_DIR` 时客户端只读**：扫描与播放历史都被拒绝，界面提示。这保证开发构建永远不写生产库（方案 §8.1 第 2 条）。
 - 开发/验收：`cp library.sqlite /tmp/tingyu-copy/`，封面目录 `covers/` 一并复制（可选）。
-- 本阶段只有两处写入：
+- 本阶段只有三处写入：
   1. 扫描合并（`library.MergeScan`）：`sourceId + filePathOrUrl` 对齐，只覆盖文件事实，只有权威扫描才删旧曲；
-  2. 播放历史/次数（`recordPlay`）与缺失时长回填（`backfillDuration`）。
+  2. 播放历史/次数（`recordPlay`）与缺失时长回填（`backfillDuration`）；
+  3. 来源行（`library.UpsertSource`，M3 新增的 additive 入口，只写 `music_sources`；`UpsertLocalSource` 未改）。远端来源的 URL/账号/目录 fid 必须有地方存，M3 记录 §9 已把它列给数据层待接管。
+- 凭据（WebDAV 密码、夸克 Cookie）只走系统钥匙串（`mygo.Secrets`，purego 调 Security.framework），服务名 `com.halunhaku.tingyu.sources`，账号名沿用 Flutter 版（`webdav_password_<id>` / `quark_cookie_<id>`）；没有明文回退。
 - `PRAGMA user_version` 固定 2；迁移只建缺失表/索引、只加可空列。
 - 封面仍是内容寻址（FNV-1a，`.png/.jpg`），二进制不入库。
 
@@ -82,6 +89,20 @@ TINGYU_DATA_DIR=/tmp/tingyu-copy /tmp/tingyu
 - 失败只进快照（不抛异常，不静默）：`Failure` 带 `Kind`（network/unauthorized/not-found/decode）、`Message`（中文可执行提示）、`Detail`（引擎原文）与 HTTP `Status`。分类依据是 FFmpeg 在 mpv 日志里打的 `HTTP error 401` 等行（mpv 自己的错误只有 "Failed to open"）。恢复后（重新出声）才撤下；失败后 `Play()` 会重新 `playlist-play-index`，所以「网络回来了点播放」能继续。
 - 每曲头经 `on_load` 钩子下发 `http-header-fields`；切换到无头的曲目会**清空**该属性，避免上一首的 `Authorization` 泄漏给下一个 URL。
 - `Close` 先等在途的预取 goroutine 结束再销毁 mpv core（否则预取会把结果 append 到已销毁的内核）。
+
+## M3 来源（WebDAV / 夸克）
+
+- **WebDAV**：`PROPFIND Depth:1` 广度优先，目录间隔 120 ms，幂等请求退避重试（429/503/5xx）；401/403/429/503 与坚果云 `BlockedTemporarily` 的用户文案与 Flutter 版**逐字一致**；根目录 403 视为凭据/路径问题（给"重新登录"），子目录 403 只跳过该目录并计入 `skipped`（整个快照因此不权威）。
+- **夸克**：扫码登录（申请 token → 轮询四态 → `service_ticket` 换 Cookie，要求 `__pus`）、Cookie 容器（解析/去重/`Set-Cookie` 回写钥匙串）、目录翻页（缺页或结构异常 = 未取全）、直链（fid 缓存 5400 s）与播放头。**协议按 Flutter 版解析代码复刻，未在真实账号上验证**（见 M3 记录 §8）。
+- **同步**：进度可见、可取消；只有权威快照（未取消、未截断、无跳过）才删旧曲；状态文案与 Flutter 版相同（`已同步 / 已取消 / 部分同步`）。取消后写库仍会完成（写库阶段用独立上下文），因此"取消前 120 首、取消后 120 首"有数据库计数可查。
+- **播放**：远端曲目仍是一个 URI + 按曲目的头（WebDAV Basic、夸克 Cookie/UA/Referer），Go 不中转音频字节。夸克直链过期时 `sources.Recoverer` 使缓存失效并重新走 `PlayTracks`（因此 mpv 收到的是**不同 URI**，规避同 URI 复用 demuxer）；每首 30 s 冷却，避免失效登录变成重试循环。
+- **重新登录**：鉴权失败会写入来源行并在来源卡片显示 `重新登录`，不会静默空列表。
+- **凭据**：Keychain 单条上限 2560 B，夸克 Cookie 超限时按 `<key>#N` 分片存；`credentials-keychain` 验收会读回、用 `security find-generic-password` 查属性、并扫描数据目录确认无明文。日志侧同样不落凭据：播放器的调试行只打印头**字段名**（`mpv: per-track headers [Authorization] …`），URL 的查询串与 userinfo 经 `redactURIs` 变成 `<redacted>`。
+- 界面为**最小可用**：来源页的 WebDAV 表单、夸克扫码/粘贴 Cookie、进度条与取消、来源卡片重登录入口。网页内嵌登录（WebView）与来源删除不在本阶段。
+
+```bash
+./scripts/run-m3-accept.sh     # 10 个 check：WebDAV 120 首 + 远端播放/seek + 扫码 + 直链刷新 + 取消 + Keychain
+```
 
 ## M2 验收 harness
 
@@ -124,7 +145,7 @@ CGO_ENABLED=0 go build ./... && CGO_ENABLED=0 go vet ./...
 go test ./... && go test -race ./...
 ```
 
-覆盖：只读拒绝、schema 补差、扫描合并语义、revision、播放历史/时长回填、目录遍历、9 格式解析、`mpv_event` 布局、控制器队列/循环/完成/预取世代/并发追加顺序/关闭时等待预取、扫描进度与双击播放的界面断言；M2 新增失败分类（HTTP 状态、断网、解码、本地缺失）、未知时长 ≠ loading、buffered 钳制、Range/鉴权测试服务的 401/403/chunked/断网语义；M4 新增分页闸门、刷新保页、搜索防抖、LRC、专辑/艺术家分组、命令面板、舞台展开/收起、歌词高亮/seek、设置落盘与逐页交互。
+覆盖：只读拒绝、schema 补差、扫描合并语义、revision、播放历史/时长回填、目录遍历、9 格式解析、`mpv_event` 布局、控制器队列/循环/完成/预取世代/并发追加顺序/关闭时等待预取、扫描进度与双击播放的界面断言；M2 新增失败分类（HTTP 状态、断网、解码、本地缺失）、未知时长 ≠ loading、buffered 钳制、Range/鉴权测试服务的 401/403/chunked/断网语义；M4 新增分页闸门、刷新保页、搜索防抖、LRC、专辑/艺术家分组、命令面板、舞台展开/收起、歌词高亮/seek、设置落盘与逐页交互；M3 新增 WebDAV 解析/文案/取消、夸克分页与不完整目录、扫码四态、直链刷新与冷却、取消不删曲、凭据分片与 Keychain、来源表单与重新登录入口。
 
 ## M4 界面
 
@@ -150,4 +171,4 @@ CGO_ENABLED=0 go run ./tools/screenshots -data /tmp/tingyu-copy -out ../docs/scr
 
 ## 本阶段不做
 
-远端来源（WebDAV/夸克，M3）、收藏/歌单/元数据的写路径（需内核）、封面取色与元数据补全（M5）、签名公证与 DMG（M6）、Intel 实机验证、读屏无障碍专项（M6 后）。
+夸克网页内嵌登录与真实账号验证、来源删除、收藏/歌单/元数据的写路径（需内核）、封面取色与元数据补全（M5）、签名公证与 DMG（M6）、Intel 实机验证、读屏无障碍专项（M6 后）。
