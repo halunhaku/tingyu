@@ -68,10 +68,20 @@ func TestShuffleOffRestoresTheSequentialOrder(t *testing.T) {
 	// Nothing has been handed to the engine beyond the first entry (the
 	// prefetch may have appended a couple); turning shuffle off restores the
 	// tail in the list's own order and leaves the played prefix alone.
+	//
+	// The prefetch advances resolvedNext on its own goroutine. Take the
+	// resolve gate first: it waits for any resolve in flight and stops the
+	// next one, so the prefix measured here is exactly the boundary SetShuffle
+	// will use — reading it while the queue is still moving made this test
+	// fail under -race for a reason that has nothing to do with the order.
+	<-c.resolveGate
 	c.mu.Lock()
 	prefix := c.resolvedNext
 	c.mu.Unlock()
-	if c.SetShuffle(false) || c.Shuffle() {
+	settled := c.SetShuffle(false)
+	// Let the prefetch go on against the restored queue.
+	c.resolveGate <- struct{}{}
+	if settled || c.Shuffle() {
 		t.Fatal("shuffle was not turned off")
 	}
 	restored := idsOf(c.Queue())

@@ -43,7 +43,7 @@ func AlbumGrid(c *ui.Context, d components.Design, s *model.State, list *model.A
 			list.RequestMore()
 		}
 		album := albums[i]
-		card := ui.Column(c).Gap(tokens.Space8).OnClick(func() { s.OpenAlbum(album) })
+		card := ui.Column(c).Gap(tokens.Space8).Focusable().OnClick(func() { s.OpenAlbum(album) })
 		card.Children(func() {
 			components.CoverFill(c, d, s, album.Cover, tokens.RadiusLG)
 			ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space4).Children(func() {
@@ -135,13 +135,17 @@ func AlbumDetail(c *ui.Context, d components.Design, s *model.State) {
 			return
 		}
 		list := s.DetailList()
-		list.Selected = nil
-		ui.List(c, list, len(tracks), func(row int) {
+		table := ui.List(c, list, len(tracks), func(row int) {
 			track := tracks[row]
 			components.TrackRow(c, d, s, track, s.Player().Track != nil && s.Player().Track.ID == track.ID, func() {
 				PlayFrom(s, tracks, row)
 			})
 		}).Grow(1)
+		if table.Submitted() {
+			if row := *list.Selected; row >= 0 && row < len(tracks) {
+				PlayFrom(s, tracks, row)
+			}
+		}
 	})
 }
 

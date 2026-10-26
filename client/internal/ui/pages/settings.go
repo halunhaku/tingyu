@@ -27,7 +27,7 @@ func Settings(c *ui.Context, d components.Design, s *model.State) {
 				for i, label := range settingsSections {
 					i, label := i, label
 					row := ui.Row(c).FillWidth().Padding(tokens.Space12, tokens.Space8).
-						Radius(tokens.RadiusSM)
+						Radius(tokens.RadiusSM).Focusable()
 					if i == s.SettingsSection() {
 						row.Background(d.P.Selected)
 					} else if row.Hovered() {

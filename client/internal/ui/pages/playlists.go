@@ -72,7 +72,7 @@ func Playlists(c *ui.Context, d components.Design, s *model.State) {
 				for _, playlist := range playlists {
 					playlist := playlist
 					row := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(tokens.Space12).
-						Padding(tokens.Space10, tokens.Space8).Radius(tokens.RadiusSM)
+						Padding(tokens.Space10, tokens.Space8).Radius(tokens.RadiusSM).Focusable()
 					if row.Hovered() {
 						row.Background(d.P.Hover)
 					}

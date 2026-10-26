@@ -1,8 +1,8 @@
 # client/：听屿 macOS 客户端（MyGo）
 
-迁移方案 **M1 + M2 + M3 + M4 + 内核数据能力** 的实现：M1 是选目录扫描入库、进程内 libmpv 播放、系统媒体会话（Now Playing / 媒体键）、关窗续播；M2 是内核生产化（9 格式矩阵、远端 Range/鉴权、gapless、循环三态、失败快照、倍速/音量、200 首队列）；M3 是远端来源（WebDAV 全链路、夸克扫码登录/目录/直链与过期刷新、同步进度与取消、Keychain 凭据）；M4 是「声档」设计令牌、全部页面、舞台/队列/歌词与命令面板；内核数据能力补上 M4 留下的五个缺口——**收藏写入、歌单读写、来源删除、随机播放、SQL 分页与聚合**。**不做元数据补全与封面取色**（M5）；不改 `app/`。
+迁移方案 **M1 + M2 + M3 + M4 + 内核数据能力 + M6** 的实现：M1 是选目录扫描入库、进程内 libmpv 播放、系统媒体会话（Now Playing / 媒体键）、关窗续播；M2 是内核生产化（9 格式矩阵、远端 Range/鉴权、gapless、循环三态、失败快照、倍速/音量、200 首队列）；M3 是远端来源（WebDAV 全链路、夸克扫码登录/目录/直链与过期刷新、同步进度与取消、Keychain 凭据）；M4 是「声档」设计令牌、全部页面、舞台/队列/歌词与命令面板；内核数据能力补上 M4 留下的五个缺口——**收藏写入、歌单读写、来源删除、随机播放、SQL 分页与聚合**；M6 是分发与质量——**内到外签名、DMG、公证流水线、只跑 macOS 的 Go CI、四类契约测试与键盘可达性**。**不做元数据补全与封面取色**（M5）；不改 `app/`。
 
-验收记录与逐条证据：[M1 记录](../docs/plan/2026-10-25-macos-mygo-m1-record.md)、[M2 记录](../docs/plan/2026-10-25-macos-mygo-m2-record.md)、[M3 记录](../docs/plan/2026-10-25-macos-mygo-m3-record.md)、[M4 记录](../docs/plan/2026-10-25-macos-mygo-m4-record.md)、[内核数据能力记录](../docs/plan/2026-10-26-macos-mygo-kernel-data-record.md)。
+验收记录与逐条证据：[M1 记录](../docs/plan/2026-10-25-macos-mygo-m1-record.md)、[M2 记录](../docs/plan/2026-10-25-macos-mygo-m2-record.md)、[M3 记录](../docs/plan/2026-10-25-macos-mygo-m3-record.md)、[M4 记录](../docs/plan/2026-10-25-macos-mygo-m4-record.md)、[内核数据能力记录](../docs/plan/2026-10-26-macos-mygo-kernel-data-record.md)、[M6 记录](../docs/plan/2026-10-26-macos-mygo-m6-record.md)。
 
 ```
 client/
@@ -32,7 +32,9 @@ client/
 ├── cmd/sourceaccept/            M3 验收 harness 入口（不随产品发布）
 ├── tools/screenshots/           M4 截图：同一 View 经 ui.Render 渲染各页深/浅
 ├── scripts/
-│   ├── bundle.sh                编译 + 拷贝并签名 libmpv/FFmpeg frameworks + 组装 .app
+│   ├── bundle.sh                编译 + 内到外签名 libmpv/FFmpeg frameworks + 组装 .app（DMG/公证可选）
+│   ├── verify-bundle.sh         校验签名/spctl/票据/DMG 挂载/干净 HOME 首启
+│   ├── fetch-frameworks.sh      下载固定版本（v0.6.0 + sha256）的 mpv/FFmpeg xcframeworks
 │   ├── measure-coldstart.sh     在库副本上测冷启动（进程启动 → 首帧）
 │   ├── gen-m2-media.sh          ffmpeg 生成 M2 验收媒体（9 格式/gapless/200 首/远端）
 │   ├── run-m2-accept.sh         构建并运行 M2 验收 harness，输出 evidence
@@ -48,14 +50,36 @@ cd client
 ./scripts/bundle.sh                 # build/darwin-arm64/听屿.app
 PLATFORM=darwin/universal ./scripts/bundle.sh
 FRAMEWORK_SRC=/path/to/Frameworks ./scripts/bundle.sh
+FRAMEWORK_SRC=$(./scripts/fetch-frameworks.sh) ./scripts/bundle.sh   # 干净机器/CI：没有 Flutter pub 缓存时
 ```
 
 脚本做的事：
 
-1. `CGO_ENABLED=0 go tool mygo build -platform … -skip-dmg`；
-2. 从 `FRAMEWORK_SRC`（默认 pub 缓存里最新的 `media_kit_libs_macos_audio-*/macos/Frameworks`）复制 `Mpv/Av*/Sw*/Mbed*` 10 个 framework 到 `Contents/Frameworks`，逐个 `codesign -f -s -`；
-3. 给主程序加 `LC_RPATH=@executable_path/../Frameworks`，重新签名；
-4. 校验 Info.plist、图标、SQLite dylib、libmpv、每个 framework 与 app 签名。
+1. `CGO_ENABLED=0 go tool mygo build -platform … -skip-dmg`（有真身份时同时传 `-sign`，让 MyGo 先签 `Contents/Resources`）；
+2. 从 `FRAMEWORK_SRC`（默认 pub 缓存里最新的 `media_kit_libs_macos_audio-*/macos/Frameworks`）复制 `Mpv/Av*/Sw*/Mbed*` 10 个 framework 到 `Contents/Frameworks`；
+3. **从内到外**签名：每个 framework 的 Mach-O 二进制 → 每个 `.framework` 包 → 主可执行文件 → `.app`。真身份带 `--options runtime --timestamp`，并**不用 `--deep`**（它会覆盖刚做好的内层签名）；
+4. 给主程序加 `LC_RPATH=@executable_path/../Frameworks`，重新签名；
+5. 校验 Info.plist、图标、SQLite dylib、libmpv、每个 framework 与 app 签名。
+
+### 发布产物（DMG / 签名 / 公证）
+
+```bash
+# 开发：ad-hoc，只够本机跑；Gatekeeper 会拒绝，脚本会明说
+./scripts/bundle.sh
+
+# 发布：Developer ID 签名 + 签名 DMG + 公证 + 票据装订 + spctl
+SIGN_IDENTITY="Developer ID Application: … (TEAMID)" \
+NOTARY_PROFILE=notary DMG=1 ./scripts/bundle.sh
+
+# 校验（--require-notarized 让未公证的构建判失败）
+./scripts/verify-bundle.sh build/darwin-arm64/听屿.app --launch
+./scripts/verify-bundle.sh build/darwin-arm64/听屿-0.1.0.dmg --require-notarized
+```
+
+- `NOTARY_PROFILE` 是用 `xcrun notarytool store-credentials notary --keychain <keychain>` 存进钥匙串的档案名；凭据**不进仓库、不进日志**。
+- 公证顺序：签名 app → 造 DMG → 签 DMG → `notarytool submit --wait` → `stapler staple` DMG **和** app（更新装的是裸 app）→ `stapler validate` → `spctl -a -vv --type execute`。
+- 没有真身份时脚本拒绝公证（不会伪造通过）；ad-hoc 构建会显式打印「not distributable」。
+- `verify-bundle.sh --quarantine` 会把副本标记成下载件再启动，模拟首次打开：未公证的构建会被 Gatekeeper 拦下，这正是需要凭据的原因。
 
 > 必须用 `RTLD_LAZY`：audio-only 的 `Mpv.framework` 缺 libass 符号；framework 未签名时 arm64 上 `dlopen` 报 `missing code signature`。`DYLD_FRAMEWORK_PATH` 对已签名二进制无效（spike §6.3/§6.4）。
 
@@ -132,6 +156,14 @@ harness 直接驱动生产的 `internal/mpv` + `internal/player`（与应用同�
 | `TINGYU_POPUP_TRAY_MS` | 到时弹出菜单栏菜单 |
 | `TINGYU_AUTO_QUIT_MS` | 到时 `App.Quit()`（与 Cmd+Q 同一路径） |
 
+## CI
+
+`.github/workflows/macos.yml`（只跑 macOS）：`gofmt -l` → `go vet` → `go test -race` → `fetch-frameworks.sh`（固定版本 + sha256） → `bundle.sh`（universal + DMG）→ `verify-bundle.sh`。有 Apple 凭据（`MACOS_CERTIFICATE` 等 6 个仓库 Secrets）时导入临时钥匙串并签名 + 公证，缺凭据时如实降级为 ad-hoc 并在校验步骤说明，不假装公证过。Flutter 的 `flutter.yml` 保留到 M7。
+
+## 键盘
+
+Tab 依次到达侧栏导航、侧栏来源/歌单、曲库表格、传输条按钮、页面卡片与列表行；方向键在表格/列表/命令面板内移动；Enter 激活（播当前行、打开导航、切换循环）；Esc 关闭命令面板与舞台。契约与实测见 `internal/shell/keyboard_test.go` 与 [M6 记录](../docs/plan/2026-10-26-macos-mygo-m6-record.md)。
+
 ## 冷启动
 
 ```bash
@@ -177,4 +209,4 @@ CGO_ENABLED=0 go run ./tools/screenshots -data /tmp/tingyu-copy -out ../docs/scr
 
 ## 本阶段不做
 
-元数据匹配与歌词抓取的写回、封面取色（M5）、签名公证与 DMG（M6）、Intel 实机验证、读屏无障碍专项（M6 后）。写操作只有确认后的破坏性动作（删除歌单、删除来源）走二次确认弹窗，其余即时生效。
+元数据匹配与歌词抓取的写回、封面取色（M5）、**真实的公证通过**（流水线与本地可验证部分已就绪，缺 Apple Developer 凭据，见 [M6 记录](../docs/plan/2026-10-26-macos-mygo-m6-record.md) §7）、Intel 实机验证、读屏无障碍专项（M6 后）。写操作只有确认后的破坏性动作（删除歌单、删除来源）走二次确认弹窗，其余即时生效。

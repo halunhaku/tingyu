@@ -257,7 +257,7 @@ func stageQueue(c *ui.Context, d components.Design, s *model.State, limit int) {
 				current := i == index
 				components.TrackRow(c, d, s, track, current, func() {
 					PlayFrom(s, queue, row)
-				})
+				}).Focusable()
 				count++
 			}
 		})
