@@ -103,7 +103,7 @@ func (a *application) AddWebDAVSource(values model.SourceFormValues) {
 
 func (a *application) addWebDAVSource(values model.SourceFormValues) {
 	if a.lib == nil || !a.lib.Writable() || a.sourceMgr == nil {
-		a.setFormMessage("只读模式：设置 TINGYU_DATA_DIR 指向曲库副本后才能添加来源")
+		a.setFormMessage("只读模式：本次以 TINGYU_READ_ONLY=1 打开，不能添加来源；去掉该变量后重试")
 		return
 	}
 	root := strings.TrimSpace(values.URL)
@@ -170,7 +170,7 @@ func (a *application) AddQuarkSource(values model.SourceFormValues) {
 
 func (a *application) addQuarkSource(values model.SourceFormValues, cookie string) {
 	if a.lib == nil || !a.lib.Writable() || a.sourceMgr == nil {
-		a.setFormMessage("只读模式：设置 TINGYU_DATA_DIR 指向曲库副本后才能添加来源")
+		a.setFormMessage("只读模式：本次以 TINGYU_READ_ONLY=1 打开，不能添加来源；去掉该变量后重试")
 		return
 	}
 	if cookie == "" {
@@ -236,7 +236,7 @@ func (a *application) LoginQuark(values model.SourceFormValues) {
 
 func (a *application) loginQuark(values model.SourceFormValues) {
 	if a.lib == nil || !a.lib.Writable() || a.sourceMgr == nil {
-		a.setFormMessage("只读模式：设置 TINGYU_DATA_DIR 指向曲库副本后才能登录")
+		a.setFormMessage("只读模式：本次以 TINGYU_READ_ONLY=1 打开，不能登录来源；去掉该变量后重试")
 		return
 	}
 	a.cancelSourceLogin()

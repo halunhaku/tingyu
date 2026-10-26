@@ -1,3 +1,0 @@
-# Windows engine builds pin exact patch hashes. Keep their bytes stable when
-# the repository is checked out on Windows.
-tools/engine-patches/*.patch text eol=lf

@@ -3,10 +3,12 @@
 // Package app assembles the M1 client: one library connection, one in-process
 // libmpv, one playback controller, one window and one menu bar item.
 //
-// The production library is opened read-write only when TINGYU_DATA_DIR is
-// set. Without it the client stays read-only, so a development build can never
-// write the user's real library (plan §8.1 rule 2): M1's only writes are the
-// scan merge and the play history, and both require the copy.
+// Since the M7 switch the client opens the real library read-write: the data
+// directory is ~/Library/Application Support/com.halunhaku.tingyu unless
+// TINGYU_DATA_DIR points somewhere else (a copy, for development and
+// acceptance runs). TINGYU_READ_ONLY=1 opens that library without writing it,
+// which is how a library can be inspected without touching it (plan §8.1
+// rule 2 remains available as the explicit opt-in, not the default).
 package app
 
 import (
@@ -224,13 +226,15 @@ func (a *application) prepare() error {
 		a.covers = library.CoversDir(dataDir)
 		a.path = library.Path(dataDir)
 		a.startup.mark("data dir")
-		mode := "read-only"
-		lib, openErr := library.Open(ctx, a.path)
-		if os.Getenv("TINGYU_DATA_DIR") != "" {
-			mode = "read-write"
-			lib, openErr = library.OpenWritable(ctx, a.path)
-		} else {
-			a.logf("library: TINGYU_DATA_DIR is unset; staying read-only so the production library is never written")
+		// M7 switch: the selected data directory (the real one unless
+		// TINGYU_DATA_DIR overrides it) is opened read-write. TINGYU_READ_ONLY=1
+		// is the explicit opt-in for inspecting a library without writing it.
+		mode := "read-write"
+		lib, openErr := library.OpenWritable(ctx, a.path)
+		if library.ReadOnly() {
+			mode = "read-only (TINGYU_READ_ONLY)"
+			lib, openErr = library.Open(ctx, a.path)
+			a.logf("library: TINGYU_READ_ONLY is set; opening %s without writing it", a.path)
 		}
 		if openErr != nil {
 			loadErr = openErr
@@ -384,7 +388,7 @@ func (a *application) write(what string, fn func(ctx context.Context) error) boo
 		return false
 	}
 	if !a.lib.Writable() {
-		a.setStatus("只读模式：设置 TINGYU_DATA_DIR 指向曲库副本后才能" + what + "（生产库绝不被写）")
+		a.setStatus("只读模式：本次以 TINGYU_READ_ONLY=1 打开，不能" + what + "；去掉该变量后重试")
 		return false
 	}
 	go func() {
@@ -637,7 +641,7 @@ func (a *application) SyncSource(source library.Source) {
 // SyncAllSources syncs every source in turn: local folders, then remote ones.
 func (a *application) SyncAllSources() {
 	if a.lib == nil || !a.lib.Writable() {
-		a.setStatus("只读模式：设置 TINGYU_DATA_DIR 指向曲库副本后才能同步")
+		a.setStatus("只读模式：本次以 TINGYU_READ_ONLY=1 打开，不能同步；去掉该变量后重试")
 		return
 	}
 	go func() {
@@ -783,7 +787,7 @@ func (a *application) ChooseDirectory() {
 
 func (a *application) chooseDirectory() {
 	if a.lib == nil || !a.lib.Writable() {
-		a.setStatus("只读模式：设置 TINGYU_DATA_DIR 指向曲库副本后才能扫描入库（生产库绝不被写）")
+		a.setStatus("只读模式：本次以 TINGYU_READ_ONLY=1 打开，不能扫描入库；去掉该变量后重试")
 		return
 	}
 	paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{
@@ -807,7 +811,7 @@ func (a *application) chooseDirectory() {
 func (a *application) scanFolder(folder string) {
 	defer a.markScanDone()
 	if a.lib == nil || !a.lib.Writable() {
-		a.setStatus("只读模式：设置 TINGYU_DATA_DIR 指向曲库副本后才能扫描入库")
+		a.setStatus("只读模式：本次以 TINGYU_READ_ONLY=1 打开，不能扫描入库；去掉该变量后重试")
 		return
 	}
 	if a.scanning.Swap(true) {

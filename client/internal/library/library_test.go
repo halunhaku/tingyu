@@ -99,6 +99,24 @@ func TestWriteIsRejectedByTheReadOnlyConnection(t *testing.T) {
 	}
 }
 
+// TestReadOnlyIsAnExplicitOptIn locks the M7 switch: the client writes the
+// selected library by default (the real one unless TINGYU_DATA_DIR overrides
+// it), and only TINGYU_READ_ONLY turns the connection read-only.
+func TestReadOnlyIsAnExplicitOptIn(t *testing.T) {
+	for _, value := range []string{"", "0", "false", "no", "off"} {
+		t.Setenv("TINGYU_READ_ONLY", value)
+		if ReadOnly() {
+			t.Fatalf("ReadOnly() = true with TINGYU_READ_ONLY=%q", value)
+		}
+	}
+	for _, value := range []string{"1", "true", "yes", "on", " TRUE "} {
+		t.Setenv("TINGYU_READ_ONLY", value)
+		if !ReadOnly() {
+			t.Fatalf("ReadOnly() = false with TINGYU_READ_ONLY=%q", value)
+		}
+	}
+}
+
 func TestTracksOrdersForDisplay(t *testing.T) {
 	path := newFixture(t, SchemaVersion, []fixtureTrack{
 		{id: "3", title: "B", artist: "周杰伦", album: "太阳之子", duration: 229, track: 2, disc: 1},

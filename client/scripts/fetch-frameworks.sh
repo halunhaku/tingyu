@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
 # Downloads the pinned LGPL mpv 0.36 + FFmpeg xcframeworks that bundle.sh copies
-# into Contents/Frameworks: the same artifact the Flutter client's
-# media_kit_libs_macos_audio 1.1.4 fetches in its pod Makefile (version and
-# checksum are copied from that Makefile, so both clients play through the same
-# binaries).
+# into Contents/Frameworks. The version and checksum are pinned here, so every
+# build — a person's, CI's, a release's — plays through the same binaries; the
+# provenance of that build is in the spike record §1.2.
 #
 #   ./scripts/fetch-frameworks.sh                 # → build/frameworks
 #   DEST=/tmp/frameworks ./scripts/fetch-frameworks.sh
 #   FRAMEWORK_SRC=$(./scripts/fetch-frameworks.sh) ./scripts/bundle.sh
 #
 # It prints the directory on stdout (progress on stderr), so it composes with
-# bundle.sh, and does nothing when the frameworks are already there. A clean
-# machine and CI have no Flutter pub cache, which is why this exists: bundle.sh
-# alone looks in ~/.pub-cache.
+# bundle.sh, and does nothing when the frameworks are already there. bundle.sh
+# falls back to build/frameworks, so the usual order is: fetch once, then
+# bundle as often as needed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

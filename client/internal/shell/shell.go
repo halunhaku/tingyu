@@ -142,7 +142,7 @@ func (m *Model) SetError(message string) { m.state.SetError(message) }
 // SetCoversDir is where content-addressed cover files live.
 func (m *Model) SetCoversDir(dir string) { m.state.SetCoversDir(dir) }
 
-// ConfigureDataDir loads settings.json and records the read-only rule.
+// ConfigureDataDir loads settings.json and records whether writes are allowed.
 func (m *Model) ConfigureDataDir(dataDir string, writable bool) {
 	m.state.ConfigureDataDir(dataDir, writable)
 }

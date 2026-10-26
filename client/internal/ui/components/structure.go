@@ -199,7 +199,7 @@ func ErrorState(c *ui.Context, d Design, title, message, path string) {
 		if path != "" {
 			d.Text(c, tokens.BodyS, path).TextColor(d.P.TextTertiary).SingleLine().MaxWidth(620)
 		}
-		ui.Text(c, "不创建、不迁移、不修复数据库；请检查 TINGYU_DATA_DIR 指向的副本").FontSize(11).
+		ui.Text(c, "不创建、不迁移、不修复数据库；请检查数据目录（可用 TINGYU_DATA_DIR 指向副本）").FontSize(11).
 			TextColor(d.P.TextTertiary).TextAlign(ui.Center)
 	})
 }

@@ -2,7 +2,7 @@
 ## 项目状态与入口
 
 - **维护状态**：候选主线 · 保留项目，按实际使用需求投入。
-- **项目入口**：现役代码位于 `app/`，当前为 2.0.0 预览阶段；运行与安装说明见下方文档。
+- **项目入口**：现役代码位于 `client/`（Go + MyGo，macOS 单端），版本 0.1.0；构建、运行与数据目录见 [`client/README.md`](client/README.md)。
 - **项目导航**：[全部项目与维护安排](https://github.com/halunhaku)。
 
 <!-- project-status:end -->
@@ -10,17 +10,17 @@
 # 听屿 (TINGYU)
 
 > **连接本地文件夹、WebDAV 私人云与夸克网盘的 macOS 音乐播放器。**
-> 现只维护 **macOS 单端**：Windows / Linux / Android / iOS 的 Flutter 代码与构建流水线已删除；界面沿袭 Apple Music 的红粉强调色、磨砂材质与流体播放舞台。
+> 现为 **macOS 单端**：唯一客户端是 Go + MyGo 重写的 `client/`——进程内 libmpv、系统媒体会话、SQLite 曲库；界面沿袭 Apple Music 的红粉强调色、磨砂材质与流体播放舞台（「声档」设计令牌）。
 
 > [!NOTE]
-> 现役实现是 **`app/`（Flutter，仅 macOS）**；上一版 SwiftUI 实现整体归到 **`legacy-swift/`**（`Sources/`、`Tingyu.xcodeproj/`、`project.yml`），**冻结不再演进**，只作移植参考。
-> `docs/` 下的迁移方案、审计与报告是历史档案，保留原文，不再随平台收缩改写。
+> M7 收尾（2026-10-26）删除了 Flutter 客户端（`app/`，252 个文件）与残留的 Windows/Linux 工具链，删除前的完整快照在 tag **`archive/flutter-macos`**（找回命令见[下文](#数据目录备份与找回)）。
+> 更早的 SwiftUI 实现冻结在 `legacy-swift/`，只作移植参考。`docs/` 是历史档案（迁移方案、M0–M7 记录、审计与调研），保留原文。
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Flutter-3.47-02569B?logo=flutter" alt="Flutter" />
-  <img src="https://img.shields.io/badge/Dart-3.13-0175C2?logo=dart" alt="Dart" />
+  <img src="https://img.shields.io/badge/Go-1.27-00ADD8?logo=go" alt="Go" />
+  <img src="https://img.shields.io/badge/UI-MyGo-6C5CE7" alt="MyGo" />
   <img src="https://img.shields.io/badge/Platform-macOS-blue" alt="Platform" />
-  <img src="https://img.shields.io/badge/Storage-drift%20(SQLite)-green" alt="drift" />
+  <img src="https://img.shields.io/badge/Storage-SQLite-green" alt="SQLite" />
   <img src="https://img.shields.io/badge/Accent-%23FA243C-red" alt="Apple Music Red" />
 </p>
 
@@ -32,66 +32,57 @@
 侧栏（曲库 / 最近添加 / 艺术家 / 专辑 / 收藏 + 来源 + 播放列表）、带封面的曲目列表与底部悬浮播放条：
 
 <p align="center">
-  <img src="docs/screenshots/flutter-library.png" width="900" alt="听屿 曲库主界面" />
+  <img src="docs/screenshots/m4-library-dark.png" width="900" alt="听屿 曲库主界面" />
 </p>
 
 ### 全屏「正在播放」与待播清单
 随封面取色的流体渐变舞台、超细进度条与传送器，右侧是实时待播队列：
 
 <p align="center">
-  <img src="docs/screenshots/flutter-now-playing.png" width="900" alt="全屏正在播放与待播清单" />
+  <img src="docs/screenshots/m4-stage-dark.png" width="900" alt="全屏正在播放与待播清单" />
 </p>
 
 ### 来源管理
 夸克网盘 / WebDAV / 本地目录三类来源的同步状态、重新登录与添加入口：
 
 <p align="center">
-  <img src="docs/screenshots/flutter-sources.png" width="900" alt="来源管理" />
+  <img src="docs/screenshots/m4-sources-dark.png" width="900" alt="来源管理" />
 </p>
 
-### 窄窗布局
-窗口收窄到 compact 宽度时，来源改成一来源一卡片：标题、状态、操作分行摆放，删除收进右上角菜单（整张卡片可点进详情）：
-
-<p align="center">
-  <img src="docs/screenshots/mobile-sources-after.png" width="360" alt="窄窗来源管理" />
-</p>
-
-> `main-window.png` 与 `now-playing-fullscreen.png` 是上一版 SwiftUI 实现的截图，保留在同目录作对照。
+> 截图来自 `client/tools/screenshots`（同一个 `View` 经 `ui.Render` 以 1200×760 @2× 渲染）。`docs/screenshots/` 里还留着更早的 Flutter 版与 SwiftUI 版截图，作为历史对照。
 
 ---
 
 ## 特性亮点
 
-### 1. 播放内核：libmpv 单引擎
-- 用 `media_kit`（libmpv）：统一解码、gapless、缓冲可控、任意 URL + 自定义请求头。引擎由 `playback/engine_factory.dart` 注入，界面只认 `PlaybackEngine` 接口。
-- **系统媒体会话**由 `audio_service` 一套 `AudioHandler` 接通 macOS Now Playing 与媒体键。
-- 待播队列（列表内点击即插播）、时间轴歌词（自动滚动 + 当前行高亮 + 一键抓取）、迷你播放条与全屏「正在播放」舞台。
-- 加载失败不再静默：失败写进播放快照并在界面提示（`PlaybackFailure`）。
-- 循环/随机是真的下发给引擎的（`LoopMode.one` / `PlaylistMode.single`），不是只在界面上换图标；
-  播完停止后再按播放键会从头重放，不会卡在"点了没反应"。
-- 界面不会跟着进度条一起重画：进度 tick 只重建进度条本身（详见 §31.3）。
+### 1. 播放内核：进程内 libmpv 单引擎
+- `purego` 直接 `dlopen` libmpv（无 cgo，`CGO_ENABLED=0` 可构建）：统一解码、gapless、任意 URL + 每曲自定义请求头；9 格式矩阵与 Range/seek 逐项验收。
+- 系统媒体会话由 MyGo 的 `NowPlaying` 接通 macOS Now Playing 与媒体键；关窗继续播，`Cmd+Q` 干净退出。
+- 队列懒解析 + 预取 2 + 世代号；循环三态与随机播放真的下发给内核/控制器；失败进快照并给出中文可执行提示，恢复后撤下。
+- 加载失败不再静默：网络 / 鉴权 / 不存在 / 解码四类分类，带 HTTP 状态与引擎原文。
 
 ### 2. 三种音乐来源，原生直连
-- **本地文件夹**：macOS 直接读文件系统路径，系统目录选择器授权后扫描入库。
+- **本地文件夹**：系统目录选择器授权后扫描入库，大小与修改时间未变则跳过解析。
 - **WebDAV**：群晖 / 坚果云 / Nextcloud 等标准 WebDAV，PROPFIND 解析目录，带鉴权头取流。
-- **夸克网盘**：应用内官方网页登录 / 扫码登录 / Cookie 导入，目录挑选后动态换取 CDN 直链播放。
+- **夸克网盘**：应用内扫码 / Cookie 导入，目录挑选后动态换取 CDN 直链；直链过期自动刷新一次（换新 URI 重新装载）；Cookie 失效给「重新登录」而不是静默失败。
+- 扫描合并以 `sourceId + filePathOrUrl` 对齐；只有权威扫描才移除旧曲，取消 / 截断 / 跳过都保留旧曲目及其收藏、歌单引用。
 
-### 3. 多源元数据刮削
-- 文件名清洗（`SmartTitleParser`）识别 `歌手 - 歌名`，剥离音轨号、前导点、`[HQ]`、`(Live)` 等噪音；
-- QQ 音乐 / 网易云 / iTunes / LRCLIB 多源降级抓取封面与歌词；繁简转换用内置 OpenCC 字表；封面与歌手写真落盘缓存；
-- 单曲可「重新匹配」，在多候选中人工挑一个覆盖。
+### 3. 多源元数据刮削与图片
+- QQ 音乐 / 网易云 / iTunes / LRCLIB 四源降级抓取封面与歌词，繁简转换用 OpenCC 字表；可选 AI 兜底。
+- 单曲「匹配元数据…」可在候选中人工挑一个覆盖，写回后列表与舞台立即刷新（无需重启）。
+- 封面内容寻址落盘（FNV-1a，同图只存一份），删除来源/曲目后回收孤儿、共享封面保留；舞台按封面取主/次色，灰封面或取色失败回退中性令牌渐变。
+- 歌词支持逐行与逐字两种渲染，逐字高亮是播放位置的纯函数。
 
 ### 4. 数据与凭据
-- 曲库落在 drift(SQLite)：`tracks` / `music_sources` / `playlists`；扫描按 `filePathOrUrl` 合并（整轮一个 batch），分别统计新增 / 更新 / 移除；只有完整扫描会移除未见曲目，取消、截断、跳过条目、目录层级超限、响应无法解析都会让本次扫描**不具权威性**，从而保留旧曲目及其收藏、歌单引用；
-- 封面按内容哈希落盘（同一张专辑封面只存一份），完整同步后自动回收不再被引用的旧图；
-- 时长从解码器回填：夸克/WebDAV 的目录接口不报时长，播过一次之后界面就是真实时长；
-- 本地目录重复同步近似空转：大小与修改时间都没变的文件跳过标签解析与封面写盘；
-- 夸克 Cookie、WebDAV 密码等凭据进 macOS Keychain（开发构建无签名时回退为仅本人可读的本地文件）；
-- 旧版曲库可用 `tools/legacy-export/` 一次性导出后导入。
+- 曲库是 drift 时代的 SQLite（`tracks` / `music_sources` / `playlists` / `playlist_items`），`PRAGMA user_version` 冻结为 **2**；迁移只建缺失表/索引、只加可空列。
+- 自 M7 起客户端默认读写真实曲库；`TINGYU_DATA_DIR` 指向副本、`TINGYU_READ_ONLY=1` 只读打开，是开发与验收用的两个开关。
+- 夸克 Cookie、WebDAV 密码等凭据只进 macOS Keychain（`mygo.Secrets`，服务名 `com.halunhaku.tingyu.sources`）；没有明文回退，日志不落凭据与直链签名。
+- 切换前自动备份 `library.sqlite`、`covers/`、`settings.json`（存在才复制）到 `.../backups/<timestamp>/`。
 
-### 5. 与上一版 SwiftUI 实现的差异
-- **已对齐**：曲库 / 最近添加 / 收藏、专辑与艺术家浏览、播放列表、播放条与全屏舞台、歌词、队列、来源管理与同步、人工匹配、设置页、AI 智能识别与洗库（`AIService` / `AIMetadataParser` / `AISettingsPage`）。
-- **尚未迁移**：macOS 原生三件套（WidgetKit 小组件、App Intents / Siri、AirPlay 路由选择器）——见 `docs/crossplatform-migration.md` §18 的 M6。
+### 5. 分发与质量
+- 内到外签名（framework 二进制 → framework → 可执行文件 → `.app`，绝不用 `--deep`），DMG 可选，公证 + 票据装订 + `spctl` 全流程；没有 Developer ID 凭据时如实降级为 ad-hoc 并明说。
+- 只跑 macOS 的 CI：`gofmt -l` → `go vet` → `go test -race` → 打包 → `verify-bundle.sh`。
+- 契约测试覆盖队列/循环三态/合并（取消不误删）/直链错误；键盘 100% 可达（Tab / 方向键 / 回车 / Esc）。
 
 ---
 
@@ -99,25 +90,23 @@
 
 ```text
 .
-├─ app/                                        # 现役 Flutter 工作区
-│  ├─ lib/
-│  │  ├─ main.dart                             # 入口：装配、AudioHandler、调试入口
-│  │  ├─ app/                                  # router · theme · providers · playback_controller · track_resolver · source_adapters
-│  │  ├─ data/                                 # db/(schema + database + drift 生成) · models/ · repositories/
-│  │  │                                        #   cover_store · secure_store · legacy_import · enrichment_service
-│  │  ├─ sources/                              # local/(扫描器) · webdav/ · quark/ · scraper/
-│  │  ├─ playback/                             # playback_engine · engine_factory · media_kit_engine
-│  │  │                                        #   playback_item · playback_snapshot · tingyu_audio_handler
-│  │  └─ features/                             # library · albums · artists · playlists · player · sources · settings · shell · shared
-│  ├─ macos/                                   # 唯一保留的平台工程（Runner + Podfile）
-│  ├─ assets/                                  # 应用图标 · OpenCC 字表
-│  └─ test/                                    # flutter_test 测试（解析器 / 数据层 / 播放队列 / 来源）
-├─ docs/                                       # 历史档案（审计 / 迁移方案 / UI 走查证据），保留原文
+├─ client/                                    # 唯一客户端：Go + MyGo，macOS
+│  ├─ main.go · mygo.json                     # 进程入口 · 应用名/bundle id/版本/最低系统
+│  ├─ internal/                               # library · scan · mpv · player · sources · metadata
+│  │                                          #   · enrich · images · ui(tokens/model/components/pages)
+│  │                                          #   · shell · app · 各里程碑验收 harness
+│  ├─ cmd/                                    # accept / sourceaccept / m5accept / scrubprobe（不随包发布）
+│  ├─ tools/screenshots/                      # 同一 View 渲染各页深/浅截图
+│  └─ scripts/                                # bundle.sh · verify-bundle.sh · fetch-frameworks.sh
+│                                             #   · 冷启动/滚动/各里程碑验收脚本
+├─ docs/                                      # 历史档案：迁移方案、M0–M7 记录、审计、调研、截图
+│  ├─ plan/                                   #   含 2026-10-26-macos-mygo-m7-record.md
+│  ├─ research/                               #   MyGo 可行性、音频生态、云音乐参考
 │  └─ screenshots/
-├─ tools/legacy-export/                        # 旧版 SwiftUI 曲库的一次性导出工具
-├─ legacy-swift/                               # 上一版 SwiftUI 实现：Sources/ · Tingyu.xcodeproj/ · project.yml，冻结保留
-├─ .github/workflows/flutter.yml               # analyze + test（含 drift 生成代码校验）+ macOS 构建
-└─ .github/workflows/macos.yml                 # Go 客户端（client/）：gofmt + vet + test -race + 构建/DMG（有凭据时公证）
+├─ spike/                                     # S1/S2 音频链路与媒体会话验证小样（Go，非产品代码）
+├─ tools/legacy-export/                       # 旧版 SwiftUI 曲库的一次性导出工具（历史用途）
+├─ legacy-swift/                              # 上一版 SwiftUI 实现，冻结保留
+└─ .github/workflows/macos.yml                # 唯一的 CI（Go 客户端，只跑 macOS）
 ```
 
 ---
@@ -125,56 +114,76 @@
 ## 开发与构建
 
 ### 环境
-- **Flutter 3.47+**（开发机：3.47.2 / Dart 3.13.2）
-- **macOS**：Xcode（CocoaPods 由 Flutter 自动驱动）
+- **Go 1.27+**（`client/go.mod` 固定 1.27.3），`CGO_ENABLED=0`
+- **macOS 12+**，Xcode Command Line Tools（`codesign` / `otool` / `hdiutil`）
+- MyGo 通过 `go tool mygo` 使用，无需单独安装
 
 ### 常用命令
 ```bash
-cd app
+cd client
 
-flutter pub get
+./scripts/fetch-frameworks.sh              # 首次/CI：按钉住版本 + sha256 下载 mpv/FFmpeg frameworks → build/frameworks
+./scripts/bundle.sh                        # → build/darwin-arm64/听屿.app（ad-hoc）
+DMG=1 ./scripts/bundle.sh                  # 同时出 DMG
+SIGN_IDENTITY="Developer ID Application: … (TEAMID)" NOTARY_PROFILE=notary DMG=1 ./scripts/bundle.sh
 
-# 跑起来
-flutter run -d macos
+CGO_ENABLED=0 go build ./...
+CGO_ENABLED=0 go vet ./...
+go test ./... && go test -race ./...
+gofmt -l .                                 # 必须无输出
 
-flutter analyze
-flutter test
-
-# 打包
-flutter build macos --release        # → build/macos/Build/Products/Release
-
-# 改了 data/db/schema.dart 之后必须重新生成（CI 会校验生成代码是否同步）
-dart run build_runner build
+./scripts/verify-bundle.sh build/darwin-arm64/听屿.app --launch
 ```
 
-视觉基线（不替代人工走查）：`cd app && flutter test --run-skipped -t golden`
-校验核心页面基准图；改版后确认版式是有意变的，用 `--update-goldens` 重新生成并 review 差异。
+发布、公证、DMG 与校验的细节见 [`client/README.md`](client/README.md)。
 
-### 调试入口（`main.dart` 读取的环境变量）
-| 变量 | 作用 |
+---
+
+## 数据目录、备份与找回
+
+真实数据目录（与旧 Flutter 版同一个 bundle id 的同一个目录）：
+
+```text
+~/Library/Application Support/com.halunhaku.tingyu/
+├── library.sqlite      # 曲库（user_version = 2）
+├── covers/             # 内容寻址封面
+├── settings.json       # 外观偏好（不存在时客户端用默认值，不报错）
+└── backups/<timestamp>/library.sqlite · covers/ · settings.json
+```
+
+- **备份**：M7 切换前已备份到 `backups/20261026-115008/`，`library.sqlite` 的 sha256 与源文件一致（`310526fd…1fb73`），备份目录里另存 `SHA256SUMS`（库与全部封面）与 `SQL-before.txt` / `SQL-interim.txt` / `SQL-after.txt` 三份 SQL 快照、两次切换运行日志。
+- **恢复**：退出 App 后 `cp -p "backups/<timestamp>/library.sqlite" "$HOME/Library/Application Support/com.halunhaku.tingyu/library.sqlite"`，封面目录同理覆盖。
+- **只读查看**：`TINGYU_READ_ONLY=1 client/build/darwin-arm64/听屿.app/Contents/MacOS/听屿`（直接跑二进制才能带环境变量；双击 `.app` 走 LaunchServices，不继承 shell 的变量）；看另一个库副本用 `TINGYU_DATA_DIR=/path/to/copy`。
+- **Flutter 版找回**（M7 删除，252 个文件）：
+
+```bash
+git worktree add /tmp/tingyu-flutter archive/flutter-macos   # 完整工作区
+# 或只取客户端目录
+git archive --format=tar archive/flutter-macos app/ | tar -x -C /tmp
+```
+
+`archive/flutter-macos` 是本地 tag，尚未推送远端；要长期保留请在一个有写权限的克隆里执行 `git push origin archive/flutter-macos`。
+
+---
+
+## 里程碑记录
+
+迁移方案与逐条证据（`docs/` 为历史档案，保留原文）：
+
+| 阶段 | 记录 |
 |---|---|
-| `TINGYU_DEBUG_ROUTE=/sources` | 启动即打开某个页面（截图 / 排查用） |
-| `TINGYU_DEBUG_THEME=dark\|light` | 启动即覆盖主题偏好（走查深浅色用；只影响本次进程，不写回设置） |
-| `TINGYU_DEBUG_DENSITY=compact\|comfortable` | 启动即覆盖界面密度（走查紧凑密度用） |
-| `TINGYU_DEBUG_SCAN_DIR=<目录>` | 在真实进程里跑一次「扫描 → 合并入库」并打印结果 |
-| `TINGYU_DEBUG_LEGACY_JSON=<文件>` | 导入旧版导出的曲库 JSON |
-| `TINGYU_DEBUG_SOURCES=<a,b,...>` | 启动即载入队列并播放，便于脚本化验证播放链路 |
-
-### CI
-Go 客户端另有 `.github/workflows/macos.yml`（只跑 macOS）：`gofmt` + `go vet` + `go test -race` +
-构建 + DMG，有 Apple 凭据时签名与公证；构建与发布命令见 [`client/README.md`](client/README.md)，验收记录见
-[`docs/plan/2026-10-26-macos-mygo-m6-record.md`](docs/plan/2026-10-26-macos-mygo-m6-record.md)。Flutter 的
-`flutter.yml` 在 M7 切换前保留。
-
-`.github/workflows/flutter.yml`：推到 `main` 或改动 `app/**` 的 PR 在 Ubuntu 上跑
-`dart run build_runner build` 校验 drift 生成代码无漂移、`flutter analyze` 与 `flutter test`；
-随后在 macOS runner 上构建 `flutter build macos --release` 并上传产物；推 `v*` tag 时额外发 Release。
-
-> 注意 `on.push` 必须同时写 `branches` 与 `tags`：只写 `tags` 会让分支推送**完全不触发**
-> 这个 workflow（GitHub 的行为，已在 §31.8 记录踩坑经过）。
-
-> 本机跑 `flutter analyze` 时，若仓库路径含非 ASCII 字符，analysis server 的 LSP 通道会解析崩溃；
-> 用 `dart analyze` 得到同样的结论。
+| 调研与方案 | [迁移方案](docs/plan/2026-10-25-macos-mygo-migration-plan.md) · [MyGo 可行性](docs/research/2026-10-25-mygo-feasibility.md) · [音频生态](docs/research/2026-10-25-mygo-audio-in-the-wild.md) · [云音乐参考](docs/research/2026-10-26-mygo-cloudmusic-reference.md) |
+| 先做的验证小样 | [spike 记录](docs/plan/2026-10-25-macos-mygo-spike-record.md) |
+| M0 骨架与只读数据 | [M0 记录](docs/plan/2026-10-25-macos-mygo-m0-record.md) |
+| M1 主线（本地库 + 播放 + 媒体键） | [M1 记录](docs/plan/2026-10-25-macos-mygo-m1-record.md) |
+| M2 内核生产化 | [M2 记录](docs/plan/2026-10-25-macos-mygo-m2-record.md) |
+| M3 来源 | [M3 记录](docs/plan/2026-10-25-macos-mygo-m3-record.md) |
+| M4 界面 | [M4 记录](docs/plan/2026-10-25-macos-mygo-m4-record.md) |
+| 内核数据能力 | [记录](docs/plan/2026-10-26-macos-mygo-kernel-data-record.md) |
+| M5 元数据与图片 | [M5 记录](docs/plan/2026-10-26-macos-mygo-m5-record.md) |
+| Now Playing 升级 | [记录](docs/plan/2026-10-26-macos-mygo-nowplaying-upgrade-record.md) |
+| M6 分发与质量 | [M6 记录](docs/plan/2026-10-26-macos-mygo-m6-record.md) |
+| M7 切换与收尾 | [M7 记录](docs/plan/2026-10-26-macos-mygo-m7-record.md) |
 
 ---
 
@@ -182,11 +191,14 @@ Go 客户端另有 `.github/workflows/macos.yml`（只跑 macOS）：`gofmt` + `
 
 | 平台 | 状态 |
 |---|---|
-| **macOS 12+** | ✅ 唯一支持平台：播放与系统媒体会话、曲库 / 专辑 / 艺术家 / 播放列表、全屏舞台与歌词、来源管理均已实机核验（本文截图即本机实拍）；`flutter build macos --debug` 产物可启动 |
+| **macOS 12+** | ✅ 唯一支持平台：构建、签名、DMG、真实曲库切换与播放均实机核验（M6/M7 记录） |
+| Windows / Linux / Android / iOS | 无客户端；Flutter 双端代码已在 M7 删除（可在 tag `archive/flutter-macos` 找回） |
 
-里程碑进度：**M0–M5 已完成**；M6（macOS 原生增强：WidgetKit / App Intents / AirPlay）未开始。
-2026-09-26 做过一轮全面优化（数据丢失修复、播放正确性与重建风暴、封面去重 91%、索引迁移、来源重试），
-结论与"明确未做"的清单见 [`docs/crossplatform-migration.md`](docs/crossplatform-migration.md) §31（历史档案，其中跨平台口径已不适用于当前 macOS 单端）。
+## CI
+
+`.github/workflows/macos.yml` 是仓库唯一的 workflow（只跑 macOS）：`gofmt -l` → `go vet` → `go test -race` →
+`fetch-frameworks.sh` → `bundle.sh`（universal + DMG）→ `verify-bundle.sh`。有 Apple 凭据（6 个仓库 Secrets）时签名 +
+公证，缺凭据时如实降级为 ad-hoc 并说明，不假装公证过。
 
 ---
 

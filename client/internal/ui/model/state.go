@@ -309,9 +309,9 @@ func (s *State) SetLogf(logf func(format string, args ...any)) { s.logf = logf }
 func (s *State) Actions() Actions { return s.actions }
 
 // ConfigureDataDir records where settings.json lives and loads it. Writable is
-// false in a development build that did not point TINGYU_DATA_DIR at a copy,
-// and then settings only live for the process: the production directory is
-// never written (plan §8.1 rule 2).
+// false when the client opened the library read-only (TINGYU_READ_ONLY=1), and
+// then settings only live for the process: that directory is never written
+// (plan §8.1 rule 2).
 func (s *State) ConfigureDataDir(dataDir string, writable bool) {
 	s.dataDir = dataDir
 	s.writable = writable
@@ -499,7 +499,7 @@ func (s *State) SetSettings(next Settings) {
 		return
 	}
 	if !s.writable {
-		s.settingsErr = "只读模式：外观偏好仅在本次运行生效（设置 TINGYU_DATA_DIR 后可保存）"
+		s.settingsErr = "只读模式：外观偏好仅在本次运行生效（去掉 TINGYU_READ_ONLY 后可保存）"
 		return
 	}
 	if err := SaveSettings(s.settingsPath, next); err != nil {

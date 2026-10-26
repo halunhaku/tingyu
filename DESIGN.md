@@ -1,8 +1,10 @@
 # Tingyu Design System (Phase 3)
 
+> **2026-10-26 M7 现状说明**：本文写于 Flutter 客户端（`app/`）时期，是该客户端的「声档」设计契约。`app/` 已在 M7 删除（可从 tag `archive/flutter-macos` 找回），因此文中的 `lib/**`、`app/lib/**`、`test/*.dart`、`flutter test` 与 `tools/windows-*.ps1` 都是历史路径，不再是可执行的构建或测试入口；现行实现是 Go + MyGo 的 `client/`，令牌与配色按同一套设计实现（`client/internal/ui/tokens`），迁移记录见 `docs/plan/2026-10-26-macos-mygo-m7-record.md`。本文作为设计语言的历史依据保留。
+
 > 2026-10-18 分页迁移说明：用户已批准 [声档P2 v0.1](docs/ui-redesign/02-design-system.md)（批准记录 `docs/ui-redesign/decision-c.json`）。本轮仅全屏播放与直接关联控件采用新规范；其他页面继续遵循下文。舞台通过现有TyTheme/TyColors的局部作用域接入声档令牌，不替换业务架构或提前改变全局页面。Golden基准仍须单独明确批准后更新。
 
-> 适用版本:Tingyu 3.0(`app/`)。
+> 适用版本:Tingyu 3.0(`app/`, Flutter 客户端，M7 已删除)。
 > 本文是**实现契约**:Phase 4/5 的任何 UI 代码必须只用本文定义的 token 与组件,不得出现魔法常量、硬编码颜色、平台分支布局。
 > 上游依据:`docs/UI_UX_AUDIT.md`(问题编号)、`docs/UX_REDESIGN.md`(结构决策)。
 > 本文件中所有对比度数值都是用实际十六进制值计算的(见每个色板的「实测」列),不是估计。
