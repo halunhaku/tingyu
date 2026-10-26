@@ -48,9 +48,9 @@ func AlbumGrid(c *ui.Context, d components.Design, s *model.State, list *model.A
 			components.CoverFill(c, d, s, album.Cover, tokens.RadiusLG)
 			ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space4).Children(func() {
 				ui.Column(c).Gap(2).Grow(1).Children(func() {
-					d.Text(c, tokens.BodyM, album.Name).TextColor(d.P.TextPrimary).SingleLine()
+					d.Text(c, tokens.Body, album.Name).TextColor(d.P.TextPrimary).SingleLine()
 					meta := album.Artist + " · " + model.FormatCount(album.TrackCount(), "首")
-					d.Text(c, tokens.BodyS, meta).TextColor(d.P.TextSecondary).SingleLine()
+					d.Text(c, tokens.Small, meta).TextColor(d.P.TextSecondary).SingleLine()
 				})
 				play := ui.Button(c, "").Padding(4).Radius(tokens.RadiusXS).
 					Label("播放专辑 " + album.Name).Tooltip("播放专辑")
@@ -119,8 +119,8 @@ func AlbumDetail(c *ui.Context, d components.Design, s *model.State) {
 		ui.Row(c).Gap(tokens.Space20).AlignItems(ui.End).Height(168).Children(func() {
 			components.Cover(c, d, s, album.Cover, 160, tokens.RadiusLG)
 			ui.Column(c).Gap(tokens.Space6).Grow(1).Children(func() {
-				d.Text(c, tokens.TitleM, album.Artist).TextColor(d.P.TextPrimary)
-				d.Text(c, tokens.BodyS, subtitle).TextColor(d.P.TextSecondary)
+				d.Text(c, tokens.H3, album.Artist).TextColor(d.P.TextPrimary)
+				d.Text(c, tokens.Small, subtitle).TextColor(d.P.TextSecondary)
 				ui.Row(c).Gap(tokens.Space8).Children(func() {
 					if b := d.Button(c, "在艺人中查看"); b.Clicked() {
 						if artist := s.ArtistByName(album.Artist); artist != nil {

@@ -64,8 +64,8 @@ func Artists(c *ui.Context, d components.Design, s *model.State) {
 			row.Children(func() {
 				components.Cover(c, d, s, artist.Cover, 44, 22)
 				ui.Column(c).Gap(2).Grow(1).Children(func() {
-					d.Text(c, tokens.BodyM, artist.Name).TextColor(d.P.TextPrimary).SingleLine()
-					d.Textf(c, tokens.BodyS, "%d 首 · %d 张专辑 · %s",
+					d.Text(c, tokens.Body, artist.Name).TextColor(d.P.TextPrimary).SingleLine()
+					d.Textf(c, tokens.Small, "%d 首 · %d 张专辑 · %s",
 						artist.Count, artist.Albums, model.FormatTotal(artist.Duration)).
 						TextColor(d.P.TextSecondary).SingleLine()
 				})
@@ -118,9 +118,9 @@ func ArtistDetail(c *ui.Context, d components.Design, s *model.State) {
 		ui.Row(c).Gap(tokens.Space16).AlignItems(ui.Center).Children(func() {
 			components.Cover(c, d, s, artist.Cover, 88, 44)
 			ui.Column(c).Gap(tokens.Space4).Children(func() {
-				d.Textf(c, tokens.BodyM, "%d 张专辑 · %d 首", artist.Albums, artist.Count).
+				d.Textf(c, tokens.Body, "%d 张专辑 · %d 首", artist.Albums, artist.Count).
 					TextColor(d.P.TextPrimary)
-				d.Text(c, tokens.BodyS, model.FormatTotal(artist.Duration)).TextColor(d.P.TextSecondary)
+				d.Text(c, tokens.Small, model.FormatTotal(artist.Duration)).TextColor(d.P.TextSecondary)
 			})
 		})
 		albums := detail.Albums.Items()
@@ -133,7 +133,7 @@ func ArtistDetail(c *ui.Context, d components.Design, s *model.State) {
 						card := ui.Column(c).Gap(tokens.Space4).Focusable().OnClick(func() { s.OpenAlbum(album) })
 						card.Children(func() {
 							components.CoverFill(c, d, s, album.Cover, tokens.RadiusMD)
-							d.Text(c, tokens.BodyS, album.Name).TextColor(d.P.TextPrimary).SingleLine()
+							d.Text(c, tokens.Small, album.Name).TextColor(d.P.TextPrimary).SingleLine()
 						})
 					})
 				}

@@ -11,14 +11,16 @@ import (
 
 // Page is the common frame of every page: page padding, header and notice.
 func Page(c *ui.Context, d components.Design, s *model.State, title, subtitle string, back func(), actions func(), body func()) {
-	ui.Column(c).Grow(1).FillHeight().Padding(d.PagePadding(), tokens.Space16).
+	width, _ := c.Size()
+	ui.Column(c).Width(width-d.SidebarWidth()).FillHeight().
+		Padding(tokens.Space16, d.PagePadding()).
 		Gap(tokens.Space10).Background(d.P.Canvas).Children(func() {
 		components.Header(c, d, title, subtitle, back, actions)
 		components.Notice(c, d, s.Notice(), s.DismissNotice)
 		if s.Error() != "" {
 			ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space6).Children(func() {
 				ui.Icon(c, components.IconInfo).FontSize(tokens.IconCompact).TextColor(d.P.Danger)
-				d.Text(c, tokens.BodyS, s.Error()).TextColor(d.P.Danger).Wrap()
+				d.Text(c, tokens.Small, s.Error()).TextColor(d.P.Danger).Wrap()
 			})
 		}
 		body()
@@ -36,14 +38,14 @@ func ScanPanel(c *ui.Context, d components.Design, scan model.ScanState) {
 			ui.Row(c).Gap(tokens.Space8).AlignItems(ui.Center).Children(func() {
 				ui.Spinner(c)
 				if scan.SourceName != "" {
-					d.Textf(c, tokens.BodyS, "正在同步「%s」· 已发现 %d 首", scan.SourceName, scan.Done).
+					d.Textf(c, tokens.Small, "正在同步「%s」· 已发现 %d 首", scan.SourceName, scan.Done).
 						TextColor(d.P.TextPrimary)
 				} else if scan.Total > 0 {
-					d.Textf(c, tokens.BodyS, "正在扫描 %d/%d", scan.Done, scan.Total).TextColor(d.P.TextPrimary)
+					d.Textf(c, tokens.Small, "正在扫描 %d/%d", scan.Done, scan.Total).TextColor(d.P.TextPrimary)
 				} else {
-					d.Text(c, tokens.BodyS, "正在扫描…").TextColor(d.P.TextPrimary)
+					d.Text(c, tokens.Small, "正在扫描…").TextColor(d.P.TextPrimary)
 				}
-				d.Text(c, tokens.BodyS, scan.Path).TextColor(d.P.TextTertiary).SingleLine().Grow(1)
+				d.Text(c, tokens.Small, scan.Path).TextColor(d.P.TextTertiary).SingleLine().Grow(1)
 			})
 			if scan.Total > 0 {
 				components.ProgressBar(c, d, float64(scan.Done)/float64(scan.Total))
@@ -55,7 +57,7 @@ func ScanPanel(c *ui.Context, d components.Design, scan model.ScanState) {
 			text, color = scan.Error, d.P.Danger
 		}
 		if text != "" {
-			d.Text(c, tokens.BodyS, text).TextColor(color).Wrap()
+			d.Text(c, tokens.Small, text).TextColor(color).Wrap()
 		}
 	})
 }

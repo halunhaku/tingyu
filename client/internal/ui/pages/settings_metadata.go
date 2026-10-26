@@ -62,13 +62,13 @@ func metadataSettings(c *ui.Context, d components.Design, s *model.State) {
 		Radius(tokens.RadiusLG).Background(d.P.SurfaceRaised).Border(1, d.P.Border)
 	card.Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space8).Children(func() {
-			d.Text(c, tokens.BodyM, "补全").TextColor(d.P.TextPrimary)
+			d.Text(c, tokens.Body, "补全").TextColor(d.P.TextPrimary)
 			ui.Spacer(c)
 			if view.Running {
 				ui.Spinner(c)
-				d.Textf(c, tokens.LabelS, "%d / %d", view.Done, view.Total).TextColor(d.P.TextSecondary)
+				d.Textf(c, tokens.Overline, "%d / %d", view.Done, view.Total).TextColor(d.P.TextSecondary)
 			} else {
-				d.Textf(c, tokens.LabelS, "待补全 %d 首", view.Targets).TextColor(d.P.TextTertiary)
+				d.Textf(c, tokens.Overline, "待补全 %d 首", view.Targets).TextColor(d.P.TextTertiary)
 			}
 		})
 		progress := "尚无补全记录。点「补全全部」会依次处理缺标签、缺封面或缺歌词的曲目。"
@@ -79,7 +79,7 @@ func metadataSettings(c *ui.Context, d components.Design, s *model.State) {
 		} else if view.Done > 0 {
 			progress = fmt.Sprintf("上一轮处理 %d 首，变更 %d 首。", view.Done, view.Changed)
 		}
-		d.Text(c, tokens.BodyS, progress).TextColor(d.P.TextSecondary).Wrap()
+		d.Text(c, tokens.Small, progress).TextColor(d.P.TextSecondary).Wrap()
 		ui.Row(c).Gap(tokens.Space8).Wrap().Children(func() {
 			if view.Running {
 				if b := d.Button(c, "取消补全"); b.Clicked() {
@@ -100,8 +100,8 @@ func metadataSettings(c *ui.Context, d components.Design, s *model.State) {
 		ui.Row(c).Gap(tokens.Space16).Wrap().Children(func() {
 			stat := func(label, value string) {
 				ui.Column(c).Gap(2).Children(func() {
-					d.Text(c, tokens.LabelS, label).TextColor(d.P.TextTertiary)
-					d.Text(c, tokens.BodyM, value).TextColor(d.P.TextPrimary)
+					d.Text(c, tokens.Overline, label).TextColor(d.P.TextTertiary)
+					d.Text(c, tokens.Body, value).TextColor(d.P.TextPrimary)
 				})
 			}
 			stat("变更 / 无变化", fmt.Sprintf("%d / %d", view.Changed, view.Skipped))
@@ -112,7 +112,7 @@ func metadataSettings(c *ui.Context, d components.Design, s *model.State) {
 			stat("会话配额", fmt.Sprintf("%d / %d", view.Used, view.Quota))
 		})
 		if view.Stopped == "quota" {
-			d.Text(c, tokens.BodyS, "本轮到达每会话 60 首的自动上限；再点一次「补全全部」继续。").
+			d.Text(c, tokens.Small, "本轮到达每会话 60 首的自动上限；再点一次「补全全部」继续。").
 				TextColor(d.P.Warning).Wrap()
 		}
 	})
@@ -120,15 +120,15 @@ func metadataSettings(c *ui.Context, d components.Design, s *model.State) {
 	cache := ui.Column(c).FillWidth().Gap(tokens.Space8).Padding(tokens.Space16).
 		Radius(tokens.RadiusLG).Background(d.P.SurfaceRaised).Border(1, d.P.Border)
 	cache.Children(func() {
-		d.Text(c, tokens.BodyM, "封面缓存").TextColor(d.P.TextPrimary)
-		d.Text(c, tokens.BodyS,
+		d.Text(c, tokens.Body, "封面缓存").TextColor(d.P.TextPrimary)
+		d.Text(c, tokens.Small,
 			"内容寻址落盘（与 Flutter 版 CoverStore 同一 FNV-1a 命名），二进制不入库；删除来源或曲目后清理无引用封面，共享封面保留。").
 			TextColor(d.P.TextSecondary).Wrap()
 		ui.Row(c).Gap(tokens.Space16).Wrap().Children(func() {
 			stat := func(label, value string) {
 				ui.Column(c).Gap(2).Children(func() {
-					d.Text(c, tokens.LabelS, label).TextColor(d.P.TextTertiary)
-					d.Text(c, tokens.BodyM, value).TextColor(d.P.TextPrimary)
+					d.Text(c, tokens.Overline, label).TextColor(d.P.TextTertiary)
+					d.Text(c, tokens.Body, value).TextColor(d.P.TextPrimary)
 				})
 			}
 			stat("命中率", fmt.Sprintf("%.0f%%", view.HitRate*100))
@@ -144,14 +144,14 @@ func metadataSettings(c *ui.Context, d components.Design, s *model.State) {
 		Radius(tokens.RadiusLG).Background(d.P.SurfaceRaised).Border(1, d.P.Border)
 	ai.Children(func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space8).Children(func() {
-			d.Text(c, tokens.BodyM, "AI 兜底（可选）").TextColor(d.P.TextPrimary)
+			d.Text(c, tokens.Body, "AI 兜底（可选）").TextColor(d.P.TextPrimary)
 			ui.Spacer(c)
 			enabled := form.Enabled
 			if sw := ui.Switch(c, &enabled); sw.Changed() {
 				form.Enabled = enabled
 			}
 		})
-		d.Text(c, tokens.BodyS,
+		d.Text(c, tokens.Small,
 			"当四个源都认不出文件名时，用 OpenAI 兼容接口清洗标题/艺术家/专辑后重试一次。未启用或没有密钥时整段静默跳过，不弹错。").
 			TextColor(d.P.TextSecondary).Wrap()
 		if s.AIError() != "" {
@@ -160,22 +160,22 @@ func metadataSettings(c *ui.Context, d components.Design, s *model.State) {
 		providerRow(c, d, s, form)
 		ui.Row(c).Gap(tokens.Space8).Children(func() {
 			ui.Column(c).Grow(1).Gap(4).Children(func() {
-				d.Text(c, tokens.LabelS, "接口地址（OpenAI 兼容）").TextColor(d.P.TextTertiary)
+				d.Text(c, tokens.Overline, "接口地址（OpenAI 兼容）").TextColor(d.P.TextTertiary)
 				ui.TextInput(c, &form.BaseURL).Placeholder("https://api.deepseek.com/v1").
 					Label("接口地址").FillWidth()
 			})
 			ui.Column(c).Width(220).Gap(4).Children(func() {
-				d.Text(c, tokens.LabelS, "模型").TextColor(d.P.TextTertiary)
+				d.Text(c, tokens.Overline, "模型").TextColor(d.P.TextTertiary)
 				ui.TextInput(c, &form.Model).Placeholder("deepseek-chat").Label("模型").FillWidth()
 			})
 		})
 		ui.Column(c).Gap(4).Children(func() {
-			d.Text(c, tokens.LabelS, "API 密钥（保存进系统钥匙串，不写 settings.json、不进日志）").
+			d.Text(c, tokens.Overline, "API 密钥（保存进系统钥匙串，不写 settings.json、不进日志）").
 				TextColor(d.P.TextTertiary)
 			ui.TextInput(c, &form.APIKey).Placeholder("sk-…").Label("API 密钥").FillWidth()
 		})
 		ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space8).Children(func() {
-			d.Text(c, tokens.LabelS, "需要用户提供的凭据：仅 AI 兜底的 API Key（可选）；QQ 音乐 / 网易云 / iTunes / LRCLIB 均无需账号。").
+			d.Text(c, tokens.Overline, "需要用户提供的凭据：仅 AI 兜底的 API Key（可选）；QQ 音乐 / 网易云 / iTunes / LRCLIB 均无需账号。").
 				TextColor(d.P.TextTertiary).Wrap()
 			ui.Spacer(c)
 			if b := d.Button(c, "保存 AI 配置"); b.Clicked() {
@@ -196,13 +196,13 @@ func metadataSettings(c *ui.Context, d components.Design, s *model.State) {
 func providerRow(c *ui.Context, d components.Design, s *model.State, form *aiForm) {
 	preset := model.AIPreset(form.Preset)
 	ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space8).Children(func() {
-		d.Text(c, tokens.LabelS, "服务商").TextColor(d.P.TextTertiary)
+		d.Text(c, tokens.Overline, "服务商").TextColor(d.P.TextTertiary)
 		next := model.NextAIPreset(form.Preset)
 		if b := d.Button(c, preset.DisplayName+" ›"); b.Clicked() {
 			form.Preset = next.Name
 			form.BaseURL = next.BaseURL
 			form.Model = next.Model
 		}
-		d.Textf(c, tokens.LabelS, "%d 个预设", len(metadata.AIPresets)).TextColor(d.P.TextTertiary)
+		d.Textf(c, tokens.Overline, "%d 个预设", len(metadata.AIPresets)).TextColor(d.P.TextTertiary)
 	})
 }

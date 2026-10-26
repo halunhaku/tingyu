@@ -57,7 +57,7 @@ func Stage(c *ui.Context, d components.Design, s *model.State) {
 				s.CloseStage()
 			}
 			if track != nil {
-				d.Text(c, tokens.BodyS, model.StatusText(update)).TextColor(d.P.TextSecondary)
+				d.Text(c, tokens.Small, model.StatusText(update)).TextColor(d.P.TextSecondary)
 			}
 			ui.Spacer(c)
 			if track != nil {
@@ -105,9 +105,9 @@ func Stage(c *ui.Context, d components.Design, s *model.State) {
 				cover := components.Cover(c, d, s, track.CoverArtPath, coverSize, tokens.RadiusXL)
 				cover.Transition(ui.ElementTransition{Match: components.CoverMatch{ID: track.ID}, Duration: tokens.DurationStage})
 				ui.Column(c).Gap(tokens.Space6).AlignItems(ui.Center).Children(func() {
-					title := d.Text(c, tokens.DisplayM, track.Title).TextColor(d.P.TextPrimary)
+					title := d.Text(c, tokens.H1, track.Title).TextColor(d.P.TextPrimary)
 					title.TextAlign(ui.Center)
-					artist := d.Text(c, tokens.BodyL, track.Artist).TextColor(d.P.TextSecondary)
+					artist := d.Text(c, tokens.Body, track.Artist).TextColor(d.P.TextSecondary)
 					artist.TextAlign(ui.Center)
 					artist.Cursor(ui.CursorPointer)
 					artist.OnClick(func() {
@@ -116,7 +116,7 @@ func Stage(c *ui.Context, d components.Design, s *model.State) {
 						}
 					})
 					if update.Failure != nil {
-						d.Text(c, tokens.BodyS, "播放失败："+update.Failure.Message).TextColor(d.P.Danger)
+						d.Text(c, tokens.Small, "播放失败："+update.Failure.Message).TextColor(d.P.Danger)
 						if b := d.Button(c, "重试此曲"); b.Clicked() {
 							PlayAll(s, []library.Track{*track})
 						}
@@ -160,7 +160,7 @@ func stageControls(c *ui.Context, d components.Design, s *model.State, v *stageV
 			if !v.pressed {
 				v.seek = position.Seconds()
 			}
-			d.Text(c, tokens.NumericS, model.FormatDuration(position)).TextColor(d.P.TextTertiary)
+			d.Text(c, tokens.Num, model.FormatDuration(position)).TextColor(d.P.TextTertiary)
 			slider := ui.Slider(c, &v.seek, 0, end).Grow(1).Label("播放进度")
 			if slider.Pressed() {
 				v.pressed = true
@@ -176,7 +176,7 @@ func stageControls(c *ui.Context, d components.Design, s *model.State, v *stageV
 			if v.pressed && !slider.Pressed() {
 				v.pressed = false
 			}
-			d.Text(c, tokens.NumericS, model.FormatDuration(duration)).TextColor(d.P.TextTertiary)
+			d.Text(c, tokens.Num, model.FormatDuration(duration)).TextColor(d.P.TextTertiary)
 		})
 		ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space20).AlignSelf(ui.Center).Children(func() {
 			repeat := ui.Button(c, "").Padding(8).Radius(tokens.RadiusSM).

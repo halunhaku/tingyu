@@ -16,8 +16,8 @@ func Onboarding(c *ui.Context, d components.Design, s *model.State) {
 	ui.Column(c).Fill().Gradient(d.P.Canvas, d.P.SurfaceSunken, 160).
 		Justify(ui.Center).AlignItems(ui.Center).Padding(tokens.Space32).Children(func() {
 		ui.Column(c).Width(760).Gap(tokens.Space20).AlignItems(ui.Center).Children(func() {
-			d.Text(c, tokens.DisplayM, "听屿").TextColor(d.P.TextPrimary)
-			d.Text(c, tokens.LabelS, "TINGYU · 声档").TextColor(d.P.Accent).LetterSpacing(2)
+			d.Text(c, tokens.H1, "听屿").TextColor(d.P.TextPrimary)
+			d.Text(c, tokens.Overline, "TINGYU · 声档").TextColor(d.P.Accent).LetterSpacing(2)
 			ui.Text(c, "一个只属于本地与你自己来源的音乐库。先接入一个目录，扫描完成后曲库、专辑、艺术家与播放都会就绪。").
 				FontSize(15).LineHeight(1.7).TextColor(d.P.TextSecondary).TextAlign(ui.Center).MaxWidth(560).Wrap()
 			ui.Row(c).Gap(tokens.Space12).AlignItems(ui.Stretch).Children(func() {
@@ -44,7 +44,7 @@ func Onboarding(c *ui.Context, d components.Design, s *model.State) {
 					s.OpenPage(model.PageLibrary)
 				}
 			})
-			d.Text(c, tokens.LabelS, "提示：正式版直接读写真实曲库；开发/验收可用 TINGYU_DATA_DIR 指向副本，TINGYU_READ_ONLY=1 只读打开。").
+			d.Text(c, tokens.Overline, "提示：正式版直接读写真实曲库；开发/验收可用 TINGYU_DATA_DIR 指向副本，TINGYU_READ_ONLY=1 只读打开。").
 				TextColor(d.P.TextTertiary)
 		})
 	})
@@ -58,13 +58,13 @@ func onboardingCard(c *ui.Context, d components.Design, icon *ui.SVG, title, tex
 			ui.Box(c).Size(32, 32).Radius(tokens.RadiusSM).Background(d.P.SurfaceSunken).Center().Children(func() {
 				ui.Icon(c, icon).FontSize(tokens.IconCompact).TextColor(d.P.TextSecondary)
 			})
-			d.Text(c, tokens.BodyM, title).TextColor(d.P.TextPrimary)
+			d.Text(c, tokens.Body, title).TextColor(d.P.TextPrimary)
 			ui.Spacer(c)
 			if tag != "" {
 				d.Tag(c, tag)
 			}
 		})
-		d.Text(c, tokens.BodyS, text).TextColor(d.P.TextSecondary).Wrap()
+		d.Text(c, tokens.Small, text).TextColor(d.P.TextSecondary).Wrap()
 		if enabled && action != nil {
 			if b := d.Button(c, "选择目录…"); b.Clicked() {
 				action()

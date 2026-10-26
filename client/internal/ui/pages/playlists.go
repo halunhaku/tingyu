@@ -82,8 +82,8 @@ func Playlists(c *ui.Context, d components.Design, s *model.State) {
 							ui.Icon(c, components.IconQueue).FontSize(tokens.IconCompact).TextColor(d.P.TextSecondary)
 						})
 						ui.Column(c).Gap(2).Grow(1).Children(func() {
-							d.Text(c, tokens.BodyM, playlist.Name).TextColor(d.P.TextPrimary).SingleLine()
-							d.Textf(c, tokens.BodyS, "%d 首", playlist.TrackCount).TextColor(d.P.TextSecondary)
+							d.Text(c, tokens.Body, playlist.Name).TextColor(d.P.TextPrimary).SingleLine()
+							d.Textf(c, tokens.Small, "%d 首", playlist.TrackCount).TextColor(d.P.TextSecondary)
 						})
 						menu := ui.Button(c, "").Width(28).Height(28).Padding(2).Radius(tokens.RadiusXS).
 							Label("歌单操作").Tooltip("歌单操作")
@@ -117,7 +117,7 @@ func playlistNameField(c *ui.Context, d components.Design, s *model.State, confi
 	}
 	ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space8).Padding(tokens.Space12, tokens.Space10).
 		Radius(tokens.RadiusMD).Background(d.P.SurfaceRaised).Border(1, d.P.Border).Children(func() {
-		d.Text(c, tokens.BodyS, s.PlaylistEditTitle()).TextColor(d.P.TextSecondary)
+		d.Text(c, tokens.Small, s.PlaylistEditTitle()).TextColor(d.P.TextSecondary)
 		input := ui.TextInput(c, value).Placeholder("歌单名称").Label(s.PlaylistEditTitle()).Grow(1).AutoFocus()
 		input.OnTextKey(func(k ui.TextKey) bool {
 			switch {
@@ -190,7 +190,7 @@ func PlaylistDetail(c *ui.Context, d components.Design, s *model.State) {
 			List:       list,
 			PlaylistID: playlist.ID,
 		})
-		components.Pager(c, d, list)
+		components.Pager(c, d, list, "")
 	})
 }
 

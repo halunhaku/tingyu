@@ -116,7 +116,7 @@ func lyricsModeRow(c *ui.Context, d Design, s *model.State, lyrics model.Lyrics)
 		return
 	}
 	ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space8).Children(func() {
-		d.Text(c, tokens.LabelS, "歌词显示").TextColor(d.P.TextTertiary)
+		d.Text(c, tokens.Overline, "歌词显示").TextColor(d.P.TextTertiary)
 		ui.Spacer(c)
 		mode := s.LyricsMode()
 		segment := ui.Segmented(c, &mode, "逐行", "逐字").Radius(tokens.RadiusSM).FontSize(11)
