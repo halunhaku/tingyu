@@ -80,26 +80,28 @@ func Notice(c *ui.Context, d Design, message string, dismiss func()) {
 	})
 }
 
-// Pager is the library's pagination footer: the true total, one page per
-// explicit click (the accessibility path; the scroll gate also exists), and the
-// list's sort order on the right. The development footnote the M4 page carried
-// (the database path and the SQL sentence) is gone (§10-7).
+// Pager is the library's pagination footer: one count rule, and one page per
+// explicit click (the accessibility path; the scroll gate also exists). While
+// rows are still coming the footer shows the progress and the button; once
+// every row is loaded it is the single sentence "已全部加载 · 共 N 首" with the
+// list's sort order on the right (§4.3, §10-7). The development footnote the
+// M4 page carried (the database path and the SQL sentence) is gone.
 func Pager(c *ui.Context, d Design, list *model.TrackList, hint string) {
 	total := list.Total()
+	if total == 0 {
+		return
+	}
 	loaded := list.Loaded()
 	ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space10).PaddingY(tokens.Space8).Children(func() {
-		if total == 0 {
-			return
-		}
-		d.Textf(c, tokens.Num, "已显示 %d / 共 %d 首", loaded, total).TextColor(d.P.TextSecondary)
 		if list.Done() {
 			d.Textf(c, tokens.Num, "已全部加载 · 共 %d 首", total).TextColor(d.P.TextTertiary)
-			ui.Spacer(c)
 			if hint != "" {
+				ui.Spacer(c)
 				d.Text(c, tokens.Num, hint).TextColor(d.P.TextTertiary)
 			}
 			return
 		}
+		d.Textf(c, tokens.Num, "已显示 %d / 共 %d 首", loaded, total).TextColor(d.P.TextSecondary)
 		if list.Loading() {
 			ui.Spinner(c)
 			d.Text(c, tokens.Small, "正在加载…").TextColor(d.P.TextSecondary)
@@ -110,18 +112,19 @@ func Pager(c *ui.Context, d Design, list *model.TrackList, hint string) {
 }
 
 // LoadMore is the footer of a list that is not a TrackList (albums, artists,
-// playlists): the loaded and true counts, and one page per click. The scroll
-// gates live with the lists themselves.
+// playlists): the same one rule as Pager — the progress while more items come,
+// the single "已全部加载 · 共 N 项" once they are all here — and one page per
+// click. The scroll gates live with the lists themselves.
 func LoadMore(c *ui.Context, d Design, loaded, total int, done, loading bool, more func()) {
 	if total == 0 {
 		return
 	}
 	ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space10).PaddingY(tokens.Space8).Children(func() {
-		d.Textf(c, tokens.Num, "已显示 %d / 共 %d 项", loaded, total).TextColor(d.P.TextSecondary)
 		if done || loaded >= total {
 			d.Textf(c, tokens.Num, "已全部加载 · 共 %d 项", total).TextColor(d.P.TextTertiary)
 			return
 		}
+		d.Textf(c, tokens.Num, "已显示 %d / 共 %d 项", loaded, total).TextColor(d.P.TextSecondary)
 		if loading {
 			ui.Spinner(c)
 			d.Text(c, tokens.Small, "正在加载…").TextColor(d.P.TextSecondary)
@@ -193,11 +196,13 @@ func shimmer(c *ui.Context, d Design, bar ui.Element, key int) {
 	})
 }
 
-// Stat is a label + value pair for settings and summaries.
+// Stat is the statistics rhythm of §4.3: the 11/600 label over its tabular
+// value. 来源's bottom row and the settings counts use the same pair, so the
+// numbers read the same wherever they appear.
 func Stat(c *ui.Context, d Design, label string, value any) {
-	ui.Column(c).Gap(2).Children(func() {
-		tokens.Tabular(d.Textf(c, tokens.H3, "%v", value)).TextColor(d.P.TextPrimary)
-		d.Text(c, tokens.Small, label).TextColor(d.P.TextSecondary)
+	ui.Column(c).Gap(tokens.Space4).Children(func() {
+		d.Text(c, tokens.Overline, label).TextColor(d.P.TextTertiary)
+		tokens.Tabular(d.Textf(c, tokens.H3, "%v", value)).TextColor(d.P.TextSecondary)
 	})
 }
 

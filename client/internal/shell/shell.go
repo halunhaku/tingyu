@@ -262,8 +262,10 @@ func sidebar(c *ui.Context, d components.Design, s *model.State) {
 		ui.Box(c).Height(tokens.Space16)
 		ui.Scroll(c).Grow(1).Children(func() {
 			ui.Column(c).Gap(0).Children(func() {
-				// 资料库: the six destinations. The group's count is the library's
-				// own, on the row that opens it (the stills' reading of §10-1).
+				// 资料库: §10-1's three groups, each with its 11/600 label. The
+				// group's own counts sit on the rows that open them (曲库 201,
+				// 收藏 N), so the label carries none of its own.
+				groupLabel(c, d, "资料库", 0)
 				navItem(c, d, s, components.IconLibrary, "曲库", model.PageLibrary, s.Counts().Tracks)
 				navItem(c, d, s, components.IconHeart, "收藏", model.PageFavorites, s.Favorites().Total())
 				navItem(c, d, s, components.IconAlbum, "专辑", model.PageAlbums, 0)
@@ -348,10 +350,7 @@ func sidebar(c *ui.Context, d components.Design, s *model.State) {
 		ui.Box(c).Height(1).FillWidth().Background(d.P.Border)
 		ui.Box(c).Height(tokens.Space10)
 		navItem(c, d, s, components.IconSettings, "设置", model.PageSettings, 0)
-		ui.Box(c).Height(tokens.Space6)
-		ui.Row(c).PaddingX(tokens.Space10).Children(func() {
-			tokens.Tabular(d.Text(c, tokens.NumSm, model.Version)).TextColor(d.P.TextTertiary)
-		})
+		ui.Box(c).Height(tokens.Space12)
 	})
 }
 

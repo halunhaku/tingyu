@@ -66,7 +66,7 @@ func TestSettingsMetadataSectionRendersAndActs(t *testing.T) {
 	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
 	frame(tt)
 	for _, want := range []string{
-		"元数据与封面", "补全全部", "清理无引用封面", "封面缓存",
+		"补全缺的信息", "补全全部", "清理无引用封面", "封面缓存",
 		"AI 兜底（可选）", "保存 AI 配置", "需要用户提供的凭据",
 	} {
 		if !tt.HasText(want) {

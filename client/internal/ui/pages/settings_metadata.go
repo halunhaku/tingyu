@@ -51,8 +51,8 @@ func aiFormOf(s *model.State) *aiForm {
 
 func metadataSettings(c *ui.Context, d components.Design, s *model.State) {
 	view := s.Enrichment()
-	components.SectionTitle(c, d, "元数据与封面",
-		"四源补全（QQ 音乐、网易云、iTunes、LRCLIB）+ 可选 AI 兜底；密钥只进系统钥匙串，未配置的来源静默跳过。")
+	components.SectionTitle(c, d, "补全缺的信息",
+		"从 QQ 音乐、网易云、iTunes 与 LRCLIB 找标题、艺术家、专辑、封面和歌词；都认不出时可以让 AI 再试一次。密钥只存系统钥匙串，未配置时整段跳过。")
 
 	if !s.MetadataReady() {
 		components.Notice(c, d, "本次构建未接入元数据补全：仅可用于查看已入库的元数据。", nil)
@@ -122,7 +122,7 @@ func metadataSettings(c *ui.Context, d components.Design, s *model.State) {
 	cache.Children(func() {
 		d.Text(c, tokens.Body, "封面缓存").TextColor(d.P.TextPrimary)
 		d.Text(c, tokens.Small,
-			"内容寻址落盘（与 Flutter 版 CoverStore 同一 FNV-1a 命名），二进制不入库；删除来源或曲目后清理无引用封面，共享封面保留。").
+			"封面按内容命名落盘，二进制不入库；删除来源或曲目后可以清理没有引用的封面，共享的封面会保留。").
 			TextColor(d.P.TextSecondary).Wrap()
 		ui.Row(c).Gap(tokens.Space16).Wrap().Children(func() {
 			stat := func(label, value string) {

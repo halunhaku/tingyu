@@ -68,6 +68,14 @@ const (
 	TableSource   float32 = 130
 	// StageCoverMax is the stage cover of §4.3 (raised from M4's 360 to 392).
 	StageCoverMax float32 = 392
+	// StageTopBar is the stage's top row (§4.3: 顶部 60).
+	StageTopBar float32 = 60
+	// StagePadding is the stage content's horizontal inset (§4.3): the 392
+	// cover + 72 gap + the lyrics column, 76 on each side at 1200 wide.
+	StagePadding float32 = 76
+	// StageContentGap is the gap between the stage's cover column and its
+	// lyrics column (§4.3).
+	StageContentGap float32 = 72
 	// CoverShelf is the "最近添加" cover card (§4.3).
 	CoverShelf float32 = 104
 	// ToolbarControl is the height of every control in a page's toolbar (§10-8).
@@ -90,10 +98,17 @@ const (
 	SourcePanelHeight float32 = 420
 	SourceQR          float32 = 168
 
-	// SettingsNavWidth is the settings page's second column, which direction A
-	// replaces with horizontal tabs in a later batch; the token stays until
-	// then.
-	SettingsNavWidth float32 = 208
+	// SettingsContent is the settings page's content column (§10-12: 620),
+	// beside the about card; direction A's horizontal tabs replace the second
+	// navigation column the first batch still carried.
+	SettingsContent float32 = 620
+	// AboutCardMax caps the about card in settings, so the pair stays a reading
+	// column on a very wide window.
+	AboutCardMax float32 = 280
+	// SourceCardMax is the source card's width (§4.3: 最大 620) and
+	// SourceInfoWidth its right-hand information column (288).
+	SourceCardMax   float32 = 620
+	SourceInfoWidth float32 = 288
 
 	CompactPagePad   float32 = 24
 	CompactSidebar   float32 = 208
@@ -116,7 +131,22 @@ const (
 	// SidebarAmbientWash leaves 30% of the current cover showing behind the
 	// sidebar (§10-1: 30% 封面氛围).
 	SidebarAmbientWash float32 = 0.7
+	// StageAmbientWash is the stage's own atmosphere (§4.3): a 28 px thumbnail
+	// stretched over the window and washed 86%, so it is light, not a picture.
+	StageAmbientWash float32 = 0.86
 )
+
+// StageAtmosphere is how far the cover's two colours are mixed toward the
+// canvas on the stage (§10-9: 向 Canvas 混合 50%). The extraction already
+// flattens them 35% toward the canvas, so the page mixes the rest of the way.
+const StageAtmosphere float32 = 0.5
+
+// Mix blends a toward b by t (0..1) in sRGB — the same arithmetic the design
+// stills used, so a colour token and a page can agree on "half strength".
+func Mix(a, b ui.Color, t float32) ui.Color {
+	m := func(x, y uint8) uint8 { return uint8(float32(x)*(1-t) + float32(y)*t) }
+	return ui.RGBA(m(a.R, b.R), m(a.G, b.G), m(a.B, b.B), float32(a.A)/255)
+}
 
 // Motion durations (DESIGN.md §7.1 and §4.5).
 const (

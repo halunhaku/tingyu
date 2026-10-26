@@ -190,7 +190,7 @@ func TestFavoriteButtonsWriteAndUndo(t *testing.T) {
 		t.Fatal(err)
 	}
 	frame(tt)
-	if !tt.HasText("已显示 1 / 共 1 首") {
+	if !tt.HasText("已全部加载 · 共 1 首") {
 		t.Fatalf("the favourites page does not show the favourite; texts %q", tt.Texts())
 	}
 	// And the same button takes it back.
@@ -403,8 +403,14 @@ func TestSourceDeleteRemovesTracksAndOrphanCovers(t *testing.T) {
 	if !tt.HasText("A 别的来源") {
 		t.Fatalf("sources page missing the second source; texts %q", tt.Texts())
 	}
-	if err := tt.Click("删除来源"); err != nil {
-		t.Fatalf("删除来源: %v", err)
+	// The delete lives in the card's ••• menu (§4.3's action row), so the
+	// entry is opened first; the confirmation is still the only thing that
+	// writes.
+	if err := tt.Click("来源操作"); err != nil {
+		t.Fatalf("来源操作: %v", err)
+	}
+	if err := tt.ChooseMenuItem("删除来源…"); err != nil {
+		t.Fatalf("删除来源…: %v (menu %v)", err, tt.Menu())
 	}
 	tt.Frame()
 	if err := tt.Click("确认删除"); err != nil {
