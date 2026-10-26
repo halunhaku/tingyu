@@ -66,6 +66,11 @@ func (a *application) applyUpdate(update player.Update) {
 	a.logLatency(update)
 	a.updateTray(update)
 	a.publishSession(update)
+	// M3: an expired Quark direct link is refreshed once and replayed, instead
+	// of leaving the user with a dead failure state.
+	if a.recoverer != nil {
+		a.recoverer.Handle(update)
+	}
 }
 
 // logLatency reports click-to-sound. The clock starts in PlayTracks (the same
