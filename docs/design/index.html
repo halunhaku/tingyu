@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>听屿 · 三个 UI 方向 · 渲染对照</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f4f4f1; --panel: #fcfcfa; --ink: #17171a; --muted: #6a6a71; --line: #e1e1da;
+    --accent: #b01b2e; --b: #c92b54; --c: #8a5307;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0e0e10; --panel:#161618; --ink:#f3f3f5; --muted:#7c7c85; --line:#2b2b31;
+            --accent:#f26d7e; --b:#ff6e8a; --c:#e3b56b; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.6 -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif; }
+  header { padding: 48px 40px 24px; max-width: 1500px; margin: 0 auto; }
+  header h1 { margin: 0 0 6px; font-size: 34px; letter-spacing: -0.9px; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; }
+  header a { color: var(--accent); }
+  nav { display: flex; gap: 24px; padding: 0 40px 24px; max-width: 1500px; margin: 0 auto;
+        font-size: 13px; }
+  nav a { color: var(--muted); text-decoration: none; border-bottom: 2px solid transparent;
+          padding-bottom: 6px; }
+  nav a:hover { color: var(--ink); border-color: var(--accent); }
+  main { max-width: 1500px; margin: 0 auto; padding: 0 40px 64px; }
+  section { padding: 28px 0 8px; border-top: 1px solid var(--line); }
+  section h2 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.3px; }
+  section h2 span { color: var(--muted); font-weight: 400; font-size: 14px; margin-left: 10px; }
+  section p { margin: 0 0 20px; color: var(--muted); font-size: 13px; max-width: 900px; }
+  .board { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 24px; }
+  figure { margin: 0; }
+  figure img { width: 100%; height: auto; display: block; border-radius: 10px;
+               border: 1px solid var(--line); background: var(--panel); }
+  figcaption { font-size: 12px; color: var(--muted); margin-top: 8px; letter-spacing: 0.1px; }
+  .a h2 { border-left: 3px solid var(--accent); padding-left: 10px; }
+  .b h2 { border-left: 3px solid var(--b); padding-left: 10px; }
+  .c h2 { border-left: 3px solid var(--c); padding-left: 10px; }
+  footer { max-width: 1500px; margin: 0 auto; padding: 0 40px 64px; color: var(--muted); font-size: 12px; }
+  @media (max-width: 820px) { .board { grid-template-columns: 1fr; } header, nav, main, footer { padding-left: 20px; padding-right: 20px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>听屿 · 三个 UI 方向</h1>
+  <p>24 张离屏渲染：<code>ui.Render(1200×760 @2×)</code>，数据来自真实曲库的只读副本（201 首 · 47 张专辑）。
+     完整规格与推荐见 <a href="./2026-10-26-ui-redesign-directions.md">设计方向文档</a>，
+     令牌数值见 <a href="./2026-10-26-ui-redesign-tokens.json">tokens.json</a>。</p>
+</header>
+<nav>
+  <a href="#a">A · 声档 1.5「静室」</a>
+  <a href="#b">B · 舞台「潮汐」</a>
+  <a href="#c">C · 控制台「灰阶」</a>
+</nav>
+<main>
+  <section class="a" id="a">
+    <h2>A · 声档 1.5「静室」<span>保留现有 IA，重做令牌/外壳/表格/材质</span></h2>
+    <p>安静、专注。236 侧栏 + 44 行表格 + 88 传输条；朱红只在播放态与主按钮出现。</p>
+    <div class="board">
+      <figure><img src="../screenshots/design/a/library-light.png" alt="A 曲库 浅色"><figcaption>曲库 · 浅色</figcaption></figure>
+      <figure><img src="../screenshots/design/a/library-dark.png" alt="A 曲库 深色"><figcaption>曲库 · 深色</figcaption></figure>
+      <figure><img src="../screenshots/design/a/stage-light.png" alt="A 舞台 浅色"><figcaption>舞台 · 浅色（封面取色混 50%）</figcaption></figure>
+      <figure><img src="../screenshots/design/a/stage-dark.png" alt="A 舞台 深色"><figcaption>舞台 · 深色</figcaption></figure>
+      <figure><img src="../screenshots/design/a/sources-light.png" alt="A 来源 浅色"><figcaption>来源 · 浅色（真实"部分同步"状态）</figcaption></figure>
+      <figure><img src="../screenshots/design/a/sources-dark.png" alt="A 来源 深色"><figcaption>来源 · 深色</figcaption></figure>
+      <figure><img src="../screenshots/design/a/settings-light.png" alt="A 设置 浅色"><figcaption>设置 · 浅色（横向分区，取消第二列导航）</figcaption></figure>
+      <figure><img src="../screenshots/design/a/settings-dark.png" alt="A 设置 深色"><figcaption>设置 · 深色</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="b" id="b">
+    <h2>B · 舞台「潮汐」<span>封面领衔，玻璃顶栏，浮动传输条</span></h2>
+    <p>鲜活、有舞台感。去掉常驻侧栏；曲库是 5 列封面网格；舞台全幅取色 + 逐字歌词。</p>
+    <div class="board">
+      <figure><img src="../screenshots/design/b/library-light.png" alt="B 曲库 浅色"><figcaption>曲库 · 浅色（第三行滚入浮动条下方）</figcaption></figure>
+      <figure><img src="../screenshots/design/b/library-dark.png" alt="B 曲库 深色"><figcaption>曲库 · 深色</figcaption></figure>
+      <figure><img src="../screenshots/design/b/stage-light.png" alt="B 舞台 浅色"><figcaption>舞台 · 浅色（逐字分两段着色）</figcaption></figure>
+      <figure><img src="../screenshots/design/b/stage-dark.png" alt="B 舞台 深色"><figcaption>舞台 · 深色（Canvas 面纱 0.42）</figcaption></figure>
+      <figure><img src="../screenshots/design/b/sources-light.png" alt="B 来源 浅色"><figcaption>来源 · 浅色</figcaption></figure>
+      <figure><img src="../screenshots/design/b/sources-dark.png" alt="B 来源 深色"><figcaption>来源 · 深色</figcaption></figure>
+      <figure><img src="../screenshots/design/b/settings-light.png" alt="B 设置 浅色"><figcaption>设置 · 浅色</figcaption></figure>
+      <figure><img src="../screenshots/design/b/settings-dark.png" alt="B 设置 深色"><figcaption>设置 · 深色</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="c" id="c">
+    <h2>C · 控制台「灰阶」<span>36 px 表格，右侧检查器，等宽数字</span></h2>
+    <p>精密、克制。工具栏 + 16 行表格 + 检查器 + 56 px 传输条；技术信息只在检查器与数据设置里出现。</p>
+    <div class="board">
+      <figure><img src="../screenshots/design/c/library-light.png" alt="C 曲库 浅色"><figcaption>曲库 · 浅色（播放行左侧 2 px 琥珀边）</figcaption></figure>
+      <figure><img src="../screenshots/design/c/library-dark.png" alt="C 曲库 深色"><figcaption>曲库 · 深色</figcaption></figure>
+      <figure><img src="../screenshots/design/c/stage-light.png" alt="C 舞台 浅色"><figcaption>舞台 · 浅色（封面 / 歌词 / 队列三栏）</figcaption></figure>
+      <figure><img src="../screenshots/design/c/stage-dark.png" alt="C 舞台 深色"><figcaption>舞台 · 深色</figcaption></figure>
+      <figure><img src="../screenshots/design/c/sources-light.png" alt="C 来源 浅色"><figcaption>来源 · 浅色（真实同步详情在页脚）</figcaption></figure>
+      <figure><img src="../screenshots/design/c/sources-dark.png" alt="C 来源 深色"><figcaption>来源 · 深色</figcaption></figure>
+      <figure><img src="../screenshots/design/c/settings-light.png" alt="C 设置 浅色"><figcaption>设置 · 浅色（数据分区，库路径与缓存）</figcaption></figure>
+      <figure><img src="../screenshots/design/c/settings-dark.png" alt="C 设置 深色"><figcaption>设置 · 深色</figcaption></figure>
+    </div>
+  </section>
+</main>
+<footer>
+  这些图由 <code>client/tools/designpreview</code> 生成，不修改 <code>client/</code> 行为代码；
+  曲库以只读方式打开，不写库、不启动播放。渲染命令见设计文档 §12。
+</footer>
+</body>
+</html>
