@@ -110,7 +110,7 @@ gofmt -l .
 | 客户端、构建与数据目录 | [client/README.md](client/README.md) |
 | 当前设计与界面实现 | [设计方向](docs/design/2026-10-26-ui-redesign-directions.md) · [UI 实现计划](docs/UI_IMPLEMENTATION_PLAN.md) |
 | 架构与迁移记录 | [macOS 客户端迁移方案](docs/plan/2026-10-25-macos-mygo-migration-plan.md) · [阶段记录](docs/plan/) |
-| 历史实现 | `legacy-swift/` 为冻结的 SwiftUI 参考；`docs/` 保留历史设计和迁移资料。 |
+| 历史资料 | `docs/` 保留历史设计、迁移与验收记录。 |
 
 <!-- project-status:start -->
 

@@ -1,5 +1,7 @@
 # 听屿 跨平台迁移方案 v1（Flutter）
 
+> 历史记录：旧 Swift 客户端及其一次性导出工具已从当前工作树清理；下文相关路径描述的是当时的状态。
+
 > 目录变更：旧版 SwiftUI 实现（原根目录的 `Sources/`、`Tingyu.xcodeproj/`、`project.yml`）已于 2026-09-14
 > 整体移入 `legacy-swift/`；下文出现的 `Sources/...` 等旧路径，一律按 `legacy-swift/Sources/...` 理解
 > （正文保留当时的写法，不改历史记录）。
