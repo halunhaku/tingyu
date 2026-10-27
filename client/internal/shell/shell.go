@@ -239,8 +239,20 @@ func Ambient(c *ui.Context, d components.Design, s *model.State, p *ui.Painter, 
 	if bitmap == nil {
 		return
 	}
-	p.Image(bitmap, ui.Rect{X: -200, Y: -280, W: 980, H: 980}, ui.Cover)
+	// Keep the atmosphere under the sidebar's full height. The cover used to
+	// stop at a fixed 980 DIP box, leaving the bottom of the clear glass over
+	// the bare black canvas on taller windows.
+	p.Image(bitmap, ambientCoverRect(r), ui.Cover)
 	p.Fill(r, d.P.Canvas.Alpha(tokens.SidebarAmbientWash), 0)
+}
+
+func ambientCoverRect(r ui.Rect) ui.Rect {
+	return ui.Rect{
+		X: r.X - 200,
+		Y: r.Y - 280,
+		W: max(980, r.W+400),
+		H: max(980, r.H+320),
+	}
 }
 
 // sidebar is the navigation column of §10-1/§10-2: 236 wide on Clear glass with
@@ -285,13 +297,12 @@ func sidebar(c *ui.Context, d components.Design, s *model.State) {
 						row.OnClick(onClick)
 					}
 					row.Children(func() {
-						ui.Icon(c, components.IconFolder).FontSize(tokens.IconInline).
+						ui.Icon(c, components.SourceIcon(detail)).FontSize(tokens.IconInline).
 							TextColor(d.P.TextTertiary)
 						d.Text(c, tokens.Small, label).TextColor(d.P.TextSecondary).Grow(1).SingleLine()
 						if count > 0 {
 							tokens.Tabular(d.Textf(c, tokens.NumSm, "%d", count)).TextColor(d.P.TextTertiary)
 						}
-						_ = detail
 					})
 				}
 				if len(s.Sources()) == 0 {
@@ -354,17 +365,11 @@ func sidebar(c *ui.Context, d components.Design, s *model.State) {
 	})
 }
 
-// brand is the sidebar's head: the accent tile, the app's name and the design's
-// name under it.
+// brand is the sidebar header: the app icon and name.
 func brand(c *ui.Context, d components.Design) {
 	ui.Row(c).Height(tokens.SidebarItem).Gap(tokens.Space10).AlignItems(ui.Center).Children(func() {
-		ui.Box(c).Size(30, 30).Radius(tokens.RadiusSM).Background(d.P.Accent).Center().Children(func() {
-			ui.Icon(c, components.IconMusic).FontSize(tokens.IconCompact).TextColor(d.P.OnAccent)
-		})
-		ui.Column(c).Gap(1).Children(func() {
-			d.Text(c, tokens.H3, "听屿").TextColor(d.P.TextPrimary)
-			d.Text(c, tokens.Overline, "声档 1.5").TextColor(d.P.TextTertiary)
-		})
+		components.AppMark(c, d, 30, tokens.IconCompact)
+		d.Text(c, tokens.H3, "听屿").TextColor(d.P.TextPrimary)
 	})
 }
 
@@ -389,6 +394,16 @@ func navItem(c *ui.Context, d components.Design, s *model.State, icon *ui.SVG, l
 		Gap(tokens.Space10).Radius(tokens.RadiusSM).AlignItems(ui.Center).Focusable()
 	if active {
 		row.Background(tokens.Blend(d.P.Canvas, d.P.AccentSoft))
+		// Paint the bar instead of laying it out: the icon must stay on the
+		// same x as the group label and the source/playlist rows.
+		row.DrawOver(func(p *ui.Painter, r ui.Rect) {
+			p.Fill(ui.Rect{
+				X: r.X + tokens.Space4,
+				Y: r.Y + (r.H-16)/2,
+				W: 2,
+				H: 16,
+			}, d.P.Accent, 1)
+		})
 	} else if row.Hovered() {
 		row.Background(tokens.Blend(d.P.Canvas, d.P.Hover))
 	}
@@ -397,12 +412,6 @@ func navItem(c *ui.Context, d components.Design, s *model.State, icon *ui.SVG, l
 		color := d.P.TextSecondary
 		if active {
 			color = d.P.Accent
-		}
-		// The 2 px bar keeps its place in every row, so the labels do not shift
-		// when the current page changes.
-		bar := ui.Box(c).Width(2).Height(16).Radius(1)
-		if active {
-			bar.Background(d.P.Accent)
 		}
 		ui.Icon(c, icon).FontSize(tokens.IconCompact).TextColor(color)
 		d.Text(c, tokens.Body, label).TextColor(color).Grow(1)

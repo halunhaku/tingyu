@@ -70,12 +70,14 @@ func Library(c *ui.Context, d components.Design, s *model.State) {
 			components.Skeleton(c, d, 6, d.RowHeight())
 			return
 		}
-		RecentShelf(c, d, s)
-		ui.Box(c).Height(tokens.Space20)
 		components.TrackTable(c, d, components.TableOptions{
 			State:      s,
 			List:       list,
 			ShowSource: s.HasMultipleSources(),
+			Lead: func() {
+				RecentShelf(c, d, s)
+				ui.Box(c).Height(tokens.Space20)
+			},
 		})
 		components.Pager(c, d, list, "按"+list.Sort().String()+"排序")
 	})

@@ -163,89 +163,68 @@ func (a *application) addWebDAVSource(values model.SourceFormValues) {
 	a.syncRemote(source)
 }
 
-// AddQuarkSource validates a pasted Cookie and creates or updates the row.
+// AddQuarkSource authenticates without persisting or synchronizing yet.
 func (a *application) AddQuarkSource(values model.SourceFormValues) {
-	go a.addQuarkSource(values, strings.TrimSpace(values.Cookie))
+	a.cancelSourceLogin()
+	a.quarkFormUpdate(values, func(f *model.SourceForm) {
+		f.Busy = true
+		f.Message = ""
+		go a.prepareQuarkSelection(values, values.Cookie)
+	})
 }
 
-func (a *application) addQuarkSource(values model.SourceFormValues, cookie string) {
+func (a *application) prepareQuarkSelection(values model.SourceFormValues, cookie string) {
 	if a.lib == nil || !a.lib.Writable() || a.sourceMgr == nil {
-		a.setFormMessage("只读模式：本次以 TINGYU_READ_ONLY=1 打开，不能添加来源；去掉该变量后重试")
-		return
-	}
-	if cookie == "" {
-		a.setFormMessage(sources.QuarkCookieFormatError)
+		a.quarkMessage(values, "当前不能添加来源，请使用可写曲库重试")
 		return
 	}
 	session := sources.NewQuarkSession(sources.ParseQuarkCookie(cookie))
 	if session.IsEmpty() {
-		a.setFormMessage(sources.QuarkCookieFormatError)
+		a.quarkMessage(values, sources.QuarkCookieFormatError)
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	check := a.sourceMgr.QuarkClient().ValidateSession(ctx, session)
-	switch check.State {
-	case sources.QuarkSessionExpired:
-		a.setFormMessage(sources.QuarkSessionExpiredMessage)
-		return
-	case sources.QuarkSessionUnavailable:
+	if check.State != sources.QuarkSessionValid {
 		message := sources.QuarkAuthUnavailableMessage
-		if check.Message != "" {
-			message += "：" + check.Message
+		if check.State == sources.QuarkSessionExpired {
+			message = sources.QuarkSessionExpiredMessage
 		}
-		a.setFormMessage(message)
+		a.quarkMessage(values, message)
 		return
 	}
-	name := strings.TrimSpace(values.Name)
-	if name == "" {
-		name = "夸克网盘"
-	}
-	id := strings.TrimSpace(values.Editing)
-	if id == "" {
-		id = newSourceID()
-	}
-	source := library.Source{
-		ID:               id,
-		Name:             name,
-		Kind:             sources.KindQuark,
-		QuarkFolderFID:   "0",
-		QuarkAccountName: check.Nickname,
-		SyncStatus:       "未同步",
-	}
-	if err := a.creds.SetQuarkCookie(id, session.Header()); err != nil {
-		a.setFormMessage("保存登录凭据到钥匙串失败：" + err.Error())
-		return
-	}
-	if err := a.lib.UpsertSource(context.Background(), source); err != nil {
-		a.setFormMessage("保存来源失败：" + err.Error())
-		return
-	}
-	a.sourceMgr.Invalidate(id)
-	a.logf("sources: saved quark source %s (cookie %d bytes, %d cookies)", name, len(session.Header()), len(session.Jar().Names()))
-	a.reloadSources()
-	a.closeForm()
-	a.syncRemote(source)
+	a.quarkFormUpdate(values, func(f *model.SourceForm) {
+		f.Cookie = session.Header()
+		f.AccountName = check.Nickname
+		f.Choosing = true
+		f.QR = nil
+		go a.loadQuarkFolders(f.RequestFolders())
+	})
 }
 
 // LoginQuark starts the QR flow: fetch a code, render it, poll until the phone
-// confirms, then store the Cookie through the same path as a pasted one.
+// confirms, then open the same folder picker as a pasted Cookie.
 func (a *application) LoginQuark(values model.SourceFormValues) {
-	go a.loginQuark(values)
+	a.quarkFormUpdate(values, func(f *model.SourceForm) {
+		if a.lib == nil || !a.lib.Writable() || a.sourceMgr == nil {
+			f.Message = "只读模式：不能登录来源"
+			return
+		}
+		a.cancelSourceLogin()
+		ctx, cancel := context.WithCancel(context.Background())
+		a.sourceLoginMu.Lock()
+		seq := a.sourceLoginSeq.Add(1)
+		a.sourceLoginCancel = cancel
+		a.sourceLoginActive = seq
+		a.sourceLoginMu.Unlock()
+		f.Busy = true
+		f.Message = ""
+		go a.loginQuark(ctx, cancel, seq, values)
+	})
 }
 
-func (a *application) loginQuark(values model.SourceFormValues) {
-	if a.lib == nil || !a.lib.Writable() || a.sourceMgr == nil {
-		a.setFormMessage("只读模式：本次以 TINGYU_READ_ONLY=1 打开，不能登录来源；去掉该变量后重试")
-		return
-	}
-	a.cancelSourceLogin()
-	ctx, cancel := context.WithCancel(context.Background())
-	a.sourceLoginMu.Lock()
-	a.sourceLoginCancel = cancel
-	a.sourceLoginActive = a.sourceLoginSeq.Add(1)
-	a.sourceLoginMu.Unlock()
-	seq := a.sourceLoginSeq.Add(1)
+func (a *application) loginQuark(ctx context.Context, cancel context.CancelFunc, seq uint64, values model.SourceFormValues) {
 	defer func() {
 		a.sourceLoginMu.Lock()
 		if a.sourceLoginActive == seq {
@@ -256,25 +235,27 @@ func (a *application) loginQuark(values model.SourceFormValues) {
 		cancel()
 	}()
 
-	a.setFormBusy(true, "正在申请二维码…")
+	a.quarkFormUpdate(values, func(f *model.SourceForm) { f.Busy = true; f.Message = "正在申请二维码…" })
 	session, err := a.sourceMgr.QRLogin().Start(ctx)
 	if err != nil {
-		a.setFormBusy(false, "申请二维码失败："+err.Error())
+		if ctx.Err() != nil {
+			return
+		}
+		a.quarkMessage(values, "申请二维码失败："+err.Error())
 		return
 	}
-	if !a.showQR(session.QRContent) {
-		a.setFormBusy(false, "无法绘制二维码")
+	if !a.showQR(values, session.QRContent) {
+		a.quarkMessage(values, "无法绘制二维码")
 		return
 	}
 	a.logf("sources: quark QR requested")
 	deadline := time.Now().Add(3 * time.Minute)
 	for {
 		if ctx.Err() != nil {
-			a.setFormMessage("已停止扫码登录")
 			return
 		}
 		if time.Now().After(deadline) {
-			a.setFormMessage("二维码已过期，请刷新")
+			a.quarkMessage(values, "二维码已过期，请刷新")
 			return
 		}
 		select {
@@ -284,22 +265,27 @@ func (a *application) loginQuark(values model.SourceFormValues) {
 		}
 		poll, pollErr := a.sourceMgr.QRLogin().Poll(ctx, session)
 		if pollErr != nil {
-			a.setFormMessage("查询扫码状态失败：" + pollErr.Error())
+			if ctx.Err() != nil {
+				return
+			}
+			a.quarkMessage(values, "查询扫码状态失败："+pollErr.Error())
+			return
+		}
+		if ctx.Err() != nil {
 			return
 		}
 		switch poll.Phase {
 		case sources.QuarkQRWaiting:
-			a.updateQRPhase(poll.Message)
+			a.updateQRPhase(values, poll.Message)
 		case sources.QuarkQRExpired:
-			a.setFormMessage(poll.Message)
+			a.quarkMessage(values, poll.Message)
 			return
 		case sources.QuarkQRFailed:
-			a.setFormMessage(poll.Message)
+			a.quarkMessage(values, poll.Message)
 			return
 		case sources.QuarkQRScanned:
 			a.logf("sources: quark QR confirmed, exchanging login for a cookie")
-			a.setFormBusy(false, "")
-			a.addQuarkSource(values, poll.Cookie)
+			go a.prepareQuarkSelection(values, poll.Cookie)
 			return
 		}
 	}
@@ -307,8 +293,15 @@ func (a *application) loginQuark(values model.SourceFormValues) {
 
 // CancelSourceLogin stops a QR flow in progress.
 func (a *application) CancelSourceLogin() {
+	values := a.model.SourceForm().Values()
 	a.cancelSourceLogin()
-	a.setFormMessage("已停止扫码登录")
+	a.quarkFormUpdate(values, func(f *model.SourceForm) {
+		if !f.Choosing {
+			a.model.State().InvalidateSourceFormRequest()
+			f.Busy = false
+			f.Message = "已停止扫码登录"
+		}
+	})
 }
 
 func (a *application) cancelSourceLogin() {
@@ -345,7 +338,10 @@ func (a *application) syncRemote(source library.Source) {
 		return
 	}
 	defer a.scanning.Store(false)
+	a.runRemoteSync(source)
+}
 
+func (a *application) runRemoteSync(source library.Source) {
 	ctx, cancel := context.WithCancel(context.Background())
 	seq := a.sourceSyncSeq.Add(1)
 	a.sourceSyncMu.Lock()
@@ -426,7 +422,7 @@ func (a *application) closeForm() {
 }
 
 // showQR renders the QR content into the form.
-func (a *application) showQR(content string) bool {
+func (a *application) showQR(values model.SourceFormValues, content string) bool {
 	png, err := qrcode.Encode(content, qrcode.Medium, 512)
 	if err != nil {
 		a.logf("sources: qr encode: %v", err)
@@ -438,12 +434,12 @@ func (a *application) showQR(content string) bool {
 		return false
 	}
 	bitmap := ui.NewBitmap(decoded)
-	a.updateWindow(func() { a.model.SetSourceQR(bitmap, "请用手机夸克 App 扫码") })
+	a.quarkFormUpdate(values, func(f *model.SourceForm) { f.QR = bitmap; f.QRPhase = "请用手机夸克 App 扫码" })
 	return true
 }
 
-func (a *application) updateQRPhase(phase string) {
-	a.updateWindow(func() { a.model.SetSourceQR(a.model.SourceForm().QR, phase) })
+func (a *application) updateQRPhase(values model.SourceFormValues, phase string) {
+	a.quarkFormUpdate(values, func(f *model.SourceForm) { f.QRPhase = phase })
 }
 
 func sourceID(editing string) string {

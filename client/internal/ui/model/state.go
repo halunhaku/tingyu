@@ -181,8 +181,9 @@ type State struct {
 	status  string
 	failure string
 
-	sourceForm   SourceForm
-	sourceErrors map[string]string
+	sourceForm      SourceForm
+	sourceFormEpoch uint64
+	sourceErrors    map[string]string
 
 	player   player.Update
 	volume   float64
@@ -211,10 +212,9 @@ type State struct {
 	playlistDetail *PlaylistDetail
 	playlistEdit   *playlistEdit
 
-	search       SearchState
-	palette      PaletteState
-	sidebarQuery string
-	searchFocus  bool
+	search      SearchState
+	palette     PaletteState
+	searchFocus bool
 
 	page            string
 	back            []string
@@ -397,9 +397,8 @@ func (s *State) SetPlayer(update player.Update) {
 	}
 	s.repeat = update.Repeat
 	s.shuffle = update.Shuffle
-	if update.Snapshot.Volume > 0 {
-		s.volume = update.Snapshot.Volume
-	}
+	// Every engine snapshot carries volume; zero is a valid mute value.
+	s.SetVolume(update.Snapshot.Volume)
 	s.queueIdx = update.Index
 }
 
@@ -633,12 +632,10 @@ func (s *State) reloadDetails() {
 func (s *State) Page() string { return s.page }
 
 // SidebarQuery is the sidebar search text.
-func (s *State) SidebarQuery() string { return s.sidebarQuery }
+func (s *State) SidebarQuery() string { return s.search.Input }
 
-// SetSidebarQuery forwards the sidebar field to the search page and opens it,
-// as the Flutter shell does (app_shell.dart :321-334).
+// SetSidebarQuery edits the shared search input and opens the search page.
 func (s *State) SetSidebarQuery(query string) {
-	s.sidebarQuery = query
 	s.search.Input = query
 	s.search.OnInput(s.now)
 	if query != "" {

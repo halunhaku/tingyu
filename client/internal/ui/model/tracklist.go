@@ -113,7 +113,11 @@ type TrackList struct {
 	rowRev     func(id string) uint64
 	table      ui.ListState
 	selected   int
-	builtBase  string
+	// rowOffset and rowSelected map the table's track rows into a larger list
+	// that also holds the page's shelf, column header and footer.
+	rowOffset   int
+	rowSelected int
+	builtBase   string
 }
 
 // SetRowRevision installs the per-row revision source used by row keys.
@@ -158,6 +162,7 @@ func (t *TrackList) reset() {
 	t.builtBase = ""
 	t.request = ""
 	t.selected = -1
+	t.rowSelected = -1
 }
 
 // Query is the list's text filter (the library page's field and the search
@@ -352,8 +357,10 @@ func (t *TrackList) bind() {
 		return
 	}
 	t.table.Key = func(row int) any {
+		index := row
+		row -= t.rowOffset
 		if row < 0 || row >= len(t.rows) {
-			return row
+			return index
 		}
 		rev := uint64(0)
 		if t.rowRev != nil {
@@ -367,6 +374,7 @@ func (t *TrackList) bind() {
 		return RowKey{ID: t.rows[row].ID, Rev: rev}
 	}
 	t.table.Label = func(row int) string {
+		row -= t.rowOffset
 		if row < 0 || row >= len(t.rows) {
 			return ""
 		}
@@ -435,14 +443,53 @@ func (t *TrackList) RequestRowsUpTo(rows int) {
 func (t *TrackList) Selected() int { return t.selected }
 
 // SetSelected sets the table's chosen row.
-func (t *TrackList) SetSelected(row int) { t.selected = row }
+func (t *TrackList) SetSelected(row int) {
+	t.selected = row
+	if row < 0 {
+		t.rowSelected = -1
+		return
+	}
+	t.rowSelected = t.rowOffset + row
+}
 
 // Table is the list state pages bind to ui.Table.
 func (t *TrackList) Table() *ui.ListState { return &t.table }
 
 // BindTable binds the list's chosen row to the model and returns the state.
 func (t *TrackList) BindTable() *ui.ListState {
+	t.rowOffset = 0
 	t.table.Selected = &t.selected
+	return &t.table
+}
+
+// BindTableRows binds a table whose track rows start after offset chrome rows
+// in one larger list. The UI selection includes the chrome; the model keeps
+// the selected track index.
+func (t *TrackList) BindTableRows(offset, tracks int) *ui.ListState {
+	if t.rowOffset != offset {
+		t.rowOffset = offset
+		if t.selected >= 0 {
+			t.rowSelected = offset + t.selected
+		} else {
+			t.rowSelected = -1
+		}
+	}
+	if t.rowSelected >= 0 {
+		switch {
+		case t.rowSelected < offset:
+			t.rowSelected = offset
+		case tracks == 0:
+			t.rowSelected = -1
+		case t.rowSelected >= offset+tracks:
+			t.rowSelected = offset + tracks - 1
+		}
+	}
+	if t.rowSelected < 0 {
+		t.selected = -1
+	} else {
+		t.selected = t.rowSelected - offset
+	}
+	t.table.Selected = &t.rowSelected
 	return &t.table
 }
 
@@ -471,10 +518,28 @@ func (t *TrackList) SetSource(sourceID string) {
 // MaybeRequestMore is the scroll gate: near the end of the loaded rows, ask
 // for the next page. Call it after the table was built (Visible needs it).
 func (t *TrackList) MaybeRequestMore() {
+	t.MaybeRequestMoreAt(0)
+}
+
+// MaybeRequestMoreAt is MaybeRequestMore for a table whose rows start after
+// offset chrome rows in a larger list.
+func (t *TrackList) MaybeRequestMoreAt(offset int) {
+	if len(t.rows) == 0 {
+		return
+	}
 	first, last := t.table.Visible()
 	if first < 0 || last < 0 {
 		return
 	}
+	if first < offset {
+		first = offset
+	}
+	if last < offset {
+		return
+	}
+	last = min(last, offset+len(t.rows)-1)
+	first -= offset
+	last -= offset
 	if last >= len(t.rows)-8 || t.table.AtEnd() {
 		// Ask for the window the reader reached plus two pages ahead: at the
 		// edge of the loaded rows a fast scroll needs a running start, or it

@@ -19,7 +19,6 @@ func Search(c *ui.Context, d components.Design, s *model.State) {
 		if search.Query != "" {
 			if b := d.Button(c, "清除"); b.Clicked() {
 				search.SetQuery("")
-				s.SetSidebarQuery("")
 			}
 		}
 	}
@@ -52,7 +51,6 @@ func Search(c *ui.Context, d components.Design, s *model.State) {
 				"换一个关键词，或清除搜索。", func() {
 					if b := d.Button(c, "清除搜索"); b.Clicked() {
 						search.SetQuery("")
-						s.SetSidebarQuery("")
 					}
 				})
 			return

@@ -12,7 +12,8 @@ import (
 // Page is the common frame of every page: page padding, header and notice.
 func Page(c *ui.Context, d components.Design, s *model.State, title, subtitle string, back func(), actions func(), body func()) {
 	width, _ := c.Size()
-	ui.Column(c).Width(width-d.SidebarWidth()).FillHeight().
+	// The transport is a sibling: this page owns only the remaining height.
+	ui.Column(c).Width(width-d.SidebarWidth()).Grow(1).MinHeight(0).Clip().
 		Padding(tokens.Space16, d.PagePadding()).
 		Gap(tokens.Space10).Background(d.P.Canvas).Children(func() {
 		components.Header(c, d, title, subtitle, back, actions)

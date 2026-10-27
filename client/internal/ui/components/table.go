@@ -13,6 +13,10 @@ type TableOptions struct {
 	State      *model.State
 	List       *model.TrackList
 	ShowSource bool
+	// Lead turns the table into one scrolling list: it builds the content
+	// above the column header, which then scrolls with the rows instead of
+	// staying fixed.
+	Lead func()
 	// PlaylistID, when set, makes the rows a playlist's: their menu offers
 	// 移出歌单 and the two reorder steps, and the list is in saved order.
 	PlaylistID string
@@ -85,9 +89,19 @@ func TrackTable(c *ui.Context, d Design, opts TableOptions) {
 	items := list.Items()
 	width := tableWidth(c, d)
 	cols := tableColumnsFor(width, opts.ShowSource)
-	ui.Column(c).Width(width).Grow(1).Gap(0).Children(func() {
-		header := ui.Row(c).FillWidth().Height(tokens.TableHeaderHeight).AlignItems(ui.Center)
-		header.Children(func() {
+	pageScroll := opts.Lead != nil
+	leadRows := 0
+	if opts.Lead != nil {
+		leadRows = 1
+	}
+	headerRow := pageScroll
+	trackOffset := leadRows
+	if headerRow {
+		trackOffset++
+	}
+	header := func() {
+		row := ui.Row(c).FillWidth().Height(tokens.TableHeaderHeight).AlignItems(ui.Center)
+		row.Children(func() {
 			ui.Box(c).Width(cols.index)
 			ui.Box(c).Width(cols.cover)
 			sortHeader(c, d, list, model.SortTitle, "曲名", cols.title, true)
@@ -104,85 +118,122 @@ func TrackTable(c *ui.Context, d Design, opts TableOptions) {
 			sortHeader(c, d, list, model.SortDuration, "时长", cols.duration, false)
 			headerLabel(c, d, "", cols.favorite)
 		})
+	}
+	// The rows draw their focus ring at paint time, when this list element
+	// holds its state.
+	var tableEl ui.Element
+	trackRow := func(row int) {
+		if row < 0 || row >= len(items) {
+			return
+		}
+		rowTrack := items[row]
+		current := state.Player().Track != nil && state.Player().Track.ID == rowTrack.ID
+		selected := list.Selected() == row
+		rowElement := ui.Row(c).FillWidth().Height(d.RowHeight()).
+			AlignItems(ui.Center).PaddingX(tokens.Space2).Radius(tokens.RadiusSM)
+		// Three states (§4.4/§10-5): hover is 5% ink, the chosen row is the
+		// raised surface with a border, and the playing row is the accent
+		// tint with an accent title and the little equalizer. The page behind
+		// is opaque, so the translucent tokens are blended once here.
+		switch {
+		case selected:
+			rowElement.Background(d.P.SurfaceRaised).Border(1, d.P.Border)
+		case current:
+			rowElement.Background(tokens.Blend(d.P.Canvas, d.P.AccentSoft))
+		case rowElement.Hovered():
+			rowElement.Background(tokens.Blend(d.P.Canvas, d.P.Hover))
+		}
+		// The keyboard's cursor also shows a 2 px accent ring (§4.4/§11).
+		// The ring is drawn at paint time, when the row's state exists: a
+		// row built during layout cannot ask whether the focus is within it.
+		if selected {
+			rowElement.DrawOver(func(p *ui.Painter, r ui.Rect) {
+				if !tableEl.FocusVisible() {
+					return
+				}
+				p.FocusRing(ui.Rect{X: r.X + 2, Y: r.Y + 2, W: r.W - 4, H: r.H - 4},
+					[4]float32{tokens.RadiusXS, tokens.RadiusXS, tokens.RadiusXS, tokens.RadiusXS})
+			})
+		}
+		rowElement.OnClick(func() {
+			list.SetSelected(row)
+			playFrom(state, list, row)
+		})
+		rowElement.ContextMenu(func(m *ui.Menu) {
+			rowMenu(m, state, rowTrack, opts, row)
+		})
+		rowElement.Children(func() {
+			// Leading glyph: the current track's equalizer, a play hint for
+			// the others. It is not a button; the row itself plays.
+			lead := ui.Box(c).Width(cols.index).Center()
+			lead.Children(func() {
+				if current {
+					NowPlayingBars(c, d, state.Player().Snapshot.Playing)
+				} else {
+					ui.Icon(c, IconPlay).FontSize(11).TextColor(d.P.TextTertiary)
+				}
+			})
+			ui.Box(c).Width(cols.cover).Children(func() {
+				tableCoverCell(c, d, state, rowTrack)
+			})
+			title := ui.Row(c).Width(cols.title).PaddingX(tokens.Space4).AlignItems(ui.Center)
+			title.Children(func() {
+				text := d.Text(c, tokens.Body, rowTrack.Title).TextColor(d.P.TextPrimary).SingleLine()
+				if current {
+					text.TextColor(d.P.Accent)
+				}
+			})
+			if cols.artist > 0 {
+				cellText(c, d, rowTrack.Artist, cols.artist, d.P.TextSecondary)
+			}
+			if cols.album > 0 {
+				cellText(c, d, rowTrack.Album, cols.album, d.P.TextTertiary)
+			}
+			ui.Spacer(c)
+			if opts.ShowSource && cols.source > 0 {
+				cellText(c, d, state.SourceName(rowTrack.SourceID), cols.source, d.P.TextTertiary)
+			}
+			ui.Row(c).Width(cols.duration).Justify(ui.End).Children(func() {
+				d.Text(c, tokens.Num, model.FormatDuration(rowTrack.Duration)).TextColor(d.P.TextTertiary)
+			})
+			favoriteCell(c, d, state, rowTrack, cols.favorite)
+		})
+	}
+
+	ui.Column(c).Width(width).Grow(1).Gap(0).Children(func() {
+		if !pageScroll {
+			header()
+		}
 		// tableEl is the list itself, which the rows ask for the keyboard focus:
 		// at paint time, when the row's ring is due, the list holds its state.
-		var tableEl ui.Element
-		table := ui.List(c, list.BindTable(), len(items), func(row int) {
-			if row < 0 || row >= len(items) {
-				return
+		rowCount := len(items)
+		var tableState *ui.ListState
+		if pageScroll {
+			tableState = list.BindTableRows(trackOffset, len(items))
+			rowCount += leadRows
+			if headerRow {
+				rowCount++
 			}
-			rowTrack := items[row]
-			current := state.Player().Track != nil && state.Player().Track.ID == rowTrack.ID
-			selected := list.Selected() == row
-			rowElement := ui.Row(c).FillWidth().Height(d.RowHeight()).
-				AlignItems(ui.Center).PaddingX(tokens.Space2).Radius(tokens.RadiusSM)
-			// Three states (§4.4/§10-5): hover is 5% ink, the chosen row is the
-			// raised surface with a border, and the playing row is the accent
-			// tint with an accent title and the little equalizer. The page behind
-			// is opaque, so the translucent tokens are blended once here.
-			switch {
-			case selected:
-				rowElement.Background(d.P.SurfaceRaised).Border(1, d.P.Border)
-			case current:
-				rowElement.Background(tokens.Blend(d.P.Canvas, d.P.AccentSoft))
-			case rowElement.Hovered():
-				rowElement.Background(tokens.Blend(d.P.Canvas, d.P.Hover))
+		} else {
+			tableState = list.BindTable()
+		}
+		table := ui.List(c, tableState, rowCount, func(row int) {
+			if pageScroll {
+				switch {
+				case opts.Lead != nil && row == 0:
+					ui.Column(c).FillWidth().Children(opts.Lead)
+					return
+				case headerRow && row == leadRows:
+					header()
+					return
+				case row >= trackOffset && row < trackOffset+len(items):
+					trackRow(row - trackOffset)
+					return
+				default:
+					return
+				}
 			}
-			// The keyboard's cursor also shows a 2 px accent ring (§4.4, §11).
-			// The ring is drawn at paint time, when the row's state exists: a
-			// row built during layout cannot ask whether the focus is within it.
-			if selected {
-				rowElement.DrawOver(func(p *ui.Painter, r ui.Rect) {
-					if !tableEl.FocusVisible() {
-						return
-					}
-					p.FocusRing(ui.Rect{X: r.X + 2, Y: r.Y + 2, W: r.W - 4, H: r.H - 4},
-						[4]float32{tokens.RadiusXS, tokens.RadiusXS, tokens.RadiusXS, tokens.RadiusXS})
-				})
-			}
-			rowElement.OnClick(func() {
-				list.SetSelected(row)
-				playFrom(state, list, row)
-			})
-			rowElement.ContextMenu(func(m *ui.Menu) {
-				rowMenu(m, state, rowTrack, opts, row)
-			})
-			rowElement.Children(func() {
-				// Leading glyph: the current track's equalizer, a play hint for
-				// the others. It is not a button; the row itself plays.
-				lead := ui.Box(c).Width(cols.index).Center()
-				lead.Children(func() {
-					if current {
-						NowPlayingBars(c, d, state.Player().Snapshot.Playing)
-					} else {
-						ui.Icon(c, IconPlay).FontSize(11).TextColor(d.P.TextTertiary)
-					}
-				})
-				ui.Box(c).Width(cols.cover).Children(func() {
-					tableCoverCell(c, d, state, rowTrack)
-				})
-				title := ui.Row(c).Width(cols.title).PaddingX(tokens.Space4).AlignItems(ui.Center)
-				title.Children(func() {
-					text := d.Text(c, tokens.Body, rowTrack.Title).TextColor(d.P.TextPrimary).SingleLine()
-					if current {
-						text.TextColor(d.P.Accent)
-					}
-				})
-				if cols.artist > 0 {
-					cellText(c, d, rowTrack.Artist, cols.artist, d.P.TextSecondary)
-				}
-				if cols.album > 0 {
-					cellText(c, d, rowTrack.Album, cols.album, d.P.TextTertiary)
-				}
-				ui.Spacer(c)
-				if opts.ShowSource && cols.source > 0 {
-					cellText(c, d, state.SourceName(rowTrack.SourceID), cols.source, d.P.TextTertiary)
-				}
-				ui.Row(c).Width(cols.duration).Justify(ui.End).Children(func() {
-					d.Text(c, tokens.Num, model.FormatDuration(rowTrack.Duration)).TextColor(d.P.TextTertiary)
-				})
-				favoriteCell(c, d, state, rowTrack, cols.favorite)
-			})
+			trackRow(row)
 		}).Grow(1)
 		// The ring belongs to the row the keys are on, not around the whole table.
 		table.FocusRing(false)
@@ -191,7 +242,7 @@ func TrackTable(c *ui.Context, d Design, opts TableOptions) {
 			playFrom(state, list, list.Selected())
 		}
 	})
-	list.MaybeRequestMore()
+	list.MaybeRequestMoreAt(trackOffset)
 }
 
 // tableCoverCell is the table's cover: 30 DIP in a 44 DIP column, radius 4
@@ -286,6 +337,17 @@ func favoriteCell(c *ui.Context, d Design, state *model.State, track library.Tra
 }
 
 func rowMenu(m *ui.Menu, state *model.State, track library.Track, opts TableOptions, row int) {
+	trackMenu(m, state, track, opts.PlaylistID, opts.List, row)
+}
+
+// TrackContextMenu fills the common song menu for every song row. The table
+// supplies playlist-specific actions through rowMenu; the lighter TrackRow
+// uses this shared subset.
+func TrackContextMenu(m *ui.Menu, state *model.State, track library.Track) {
+	trackMenu(m, state, track, "", nil, -1)
+}
+
+func trackMenu(m *ui.Menu, state *model.State, track library.Track, playlistID string, list *model.TrackList, row int) {
 	if m.Item("播放").Chosen() {
 		state.Play([]library.Track{track}, 0)
 	}
@@ -297,7 +359,7 @@ func rowMenu(m *ui.Menu, state *model.State, track library.Track, opts TableOpti
 		state.ToggleFavorite(track)
 	}
 	addToPlaylistItem(m, state, []library.Track{track})
-	if opts.PlaylistID != "" {
+	if playlistID != "" {
 		m.Separator()
 		if m.Item("移出歌单").Chosen() {
 			state.RemoveFromPlaylist(row)
@@ -306,7 +368,7 @@ func rowMenu(m *ui.Menu, state *model.State, track library.Track, opts TableOpti
 		if up.Chosen() {
 			state.MovePlaylistItem(row, row-1)
 		}
-		down := m.Item("下移").Disabled(row >= opts.List.Total()-1)
+		down := m.Item("下移").Disabled(row >= list.Total()-1)
 		if down.Chosen() {
 			state.MovePlaylistItem(row, row+1)
 		}
@@ -377,6 +439,9 @@ func TrackRow(c *ui.Context, d Design, s *model.State, track library.Track, curr
 		row.Background(tokens.Blend(d.P.Canvas, d.P.AccentSoft))
 	}
 	row.OnClick(onClick)
+	row.ContextMenu(func(m *ui.Menu) {
+		TrackContextMenu(m, s, track)
+	})
 	row.Children(func() {
 		CoverFor(c, d, s, track.CoverArtPath, tokens.TableCover)
 		ui.Column(c).Grow(1).Gap(2).Children(func() {

@@ -944,7 +944,7 @@ func TestSourcesPageShowsRemoteFormsAndRelogin(t *testing.T) {
 	}})
 	m.State().OpenPage(model.PageSources)
 	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
-	for _, want := range []string{"添加来源", "远程来源", "我的夸克", "立即同步", "夸克网盘（直链播放"} {
+	for _, want := range []string{"添加来源", "远程来源", "我的夸克", "立即同步", "同步目录：/（全部文件）"} {
 		if !tt.HasText(want) {
 			t.Errorf("sources page does not show %q; texts are %q", want, tt.Texts())
 		}

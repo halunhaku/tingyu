@@ -55,3 +55,36 @@ func TestSourceFormValuesSnapshot(t *testing.T) {
 		t.Fatalf("values = %+v", values)
 	}
 }
+
+func TestQuarkFolderPickerRejectsStaleRepliesAndKeepsReloginFolder(t *testing.T) {
+	s := New(nil, nil, "/tmp/library.sqlite", nil)
+	s.SetSources([]library.Source{{ID: "q", Name: "音乐", Kind: SourceKindQuark, QuarkFolderFID: "rock", QuarkFolderPath: "/音乐/摇滚"}})
+	first := s.OpenQuarkFolders("q")
+	if first.FolderFID != "rock" || first.FolderPath != "/音乐/摇滚" {
+		t.Fatalf("relogin lost folder: %+v", first)
+	}
+	f := s.SourceForm()
+	f.FolderTrail = append(f.FolderTrail, QuarkFolder{FID: "live", Name: "现场"})
+	second := f.RequestFolders()
+	if s.ApplyQuarkFolders(first, nil, "", "late error") {
+		t.Fatal("late parent reply accepted")
+	}
+	if !s.ApplyQuarkFolders(second, []QuarkFolder{}, "test-cookie", "") || !f.FolderReady {
+		t.Fatal("valid empty folder cannot be selected")
+	}
+	s.CloseSourceForm()
+	if s.SourceForm().Cookie != "" {
+		t.Fatal("closed picker retained cookie")
+	}
+	third := s.OpenQuarkFolders("q")
+	if s.ApplyQuarkFolders(second, nil, "old-cookie", "") {
+		t.Fatal("cancelled picker reply accepted")
+	}
+	if !s.ApplyQuarkFolders(third, nil, "", "network error") || s.SourceForm().FolderReady {
+		t.Fatal("failed listing enabled confirmation")
+	}
+	s.InvalidateSourceFormRequest()
+	if s.SourceForm().Token == third.Token {
+		t.Fatal("cancel did not invalidate request")
+	}
+}

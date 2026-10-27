@@ -394,6 +394,9 @@ func stageUpNext(c *ui.Context, d components.Design, s *model.State) {
 		row.OnClick(func() {
 			PlayFrom(s, queue, i)
 		})
+		row.ContextMenu(func(m *ui.Menu) {
+			components.TrackContextMenu(m, s, track)
+		})
 		row.Children(func() {
 			components.Cover(c, d, s, track.CoverArtPath, 24, tokens.RadiusXS)
 			d.Text(c, tokens.Label, track.Title).TextColor(d.P.TextSecondary).Grow(1).SingleLine()

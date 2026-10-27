@@ -1,0 +1,19 @@
+{
+  "grid": 24,
+  "strokeWidth": 1.8,
+  "sizes": [
+    16,
+    24,
+    32
+  ],
+  "variants": [
+    "a-sound-island",
+    "b-resonance",
+    "c-sound-archive"
+  ],
+  "svgCount": 112,
+  "existingAssetsReplaced": true,
+  "selectedVariant": "a-sound-island",
+  "runtimeSvgCount": 34,
+  "runtimePreview": "runtime-preview.png"
+}

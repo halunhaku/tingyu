@@ -108,15 +108,24 @@ func (d Design) SearchBox(c *ui.Context, query *string, label, hint string, auto
 func (d Design) SearchBoxWidth(c *ui.Context, query *string, label, hint string, width float32, autoFocus bool, onChange, onSubmit func(), onKey func(ui.TextKey) bool) ui.Element {
 	row := ui.Row(c).AlignItems(ui.Center).Gap(tokens.Space6).Height(tokens.ToolbarControl).
 		PaddingX(tokens.Space8).Radius(tokens.RadiusSM).Border(1, d.P.Border).
-		Background(d.P.SurfaceRaised)
+		Background(d.P.SurfaceRaised).Cursor(ui.CursorText)
 	if width > 0 {
 		row.Width(width)
 	}
+	clicked := row.Clicked()
 	row.Children(func() {
 		ui.Icon(c, IconSearch).FontSize(tokens.IconCompact).TextColor(d.P.TextTertiary)
-		input := ui.TextInput(c, query).Placeholder(hint).Label(label).Grow(1)
+		// Only the outer row owns the search field's decoration.
+		input := ui.TextInputBase(c, query).Placeholder(hint).Label(label).
+			Grow(1).MinWidth(0).FillHeight().TextColor(d.P.TextPrimary)
+		if clicked {
+			input.Focus()
+		}
 		if autoFocus {
 			input.AutoFocus()
+		}
+		if input.Focused() {
+			row.BorderColor(d.P.Accent)
 		}
 		if input.Changed() && onChange != nil {
 			onChange()

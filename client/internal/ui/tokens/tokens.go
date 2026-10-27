@@ -98,13 +98,10 @@ const (
 	SourcePanelHeight float32 = 420
 	SourceQR          float32 = 168
 
-	// SettingsContent is the settings page's content column (§10-12: 620),
-	// beside the about card; direction A's horizontal tabs replace the second
-	// navigation column the first batch still carried.
+	// SettingsContent is the settings page's content column (§10-12: 620).
+	// Direction A's horizontal tabs replace the second navigation column the
+	// first batch still carried.
 	SettingsContent float32 = 620
-	// AboutCardMax caps the about card in settings, so the pair stays a reading
-	// column on a very wide window.
-	AboutCardMax float32 = 280
 	// SourceCardMax is the source card's width (§4.3: 最大 620) and
 	// SourceInfoWidth its right-hand information column (288).
 	SourceCardMax   float32 = 620

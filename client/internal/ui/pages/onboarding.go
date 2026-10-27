@@ -8,27 +8,32 @@ import (
 	"github.com/halunhaku/tingyu/client/internal/ui/tokens"
 )
 
-// Onboarding is the first-run page, shown once per process when the library
-// has no sources and no tracks (the Flutter trigger). It offers the three
-// source kinds; only the local folder is wired in this milestone, and the
-// other two say so.
+// Onboarding introduces the three supported music sources.
 func Onboarding(c *ui.Context, d components.Design, s *model.State) {
 	ui.Column(c).Fill().Gradient(d.P.Canvas, d.P.SurfaceSunken, 160).
 		Justify(ui.Center).AlignItems(ui.Center).Padding(tokens.Space32).Children(func() {
 		ui.Column(c).Width(760).Gap(tokens.Space20).AlignItems(ui.Center).Children(func() {
 			d.Text(c, tokens.H1, "听屿").TextColor(d.P.TextPrimary)
-			d.Text(c, tokens.Overline, "TINGYU · 声档").TextColor(d.P.Accent).LetterSpacing(2)
-			ui.Text(c, "一个只属于本地与你自己来源的音乐库。先接入一个目录，扫描完成后曲库、专辑、艺术家与播放都会就绪。").
+			d.Text(c, tokens.Overline, "TINGYU").TextColor(d.P.Accent).LetterSpacing(2)
+			ui.Text(c, "连接本地文件夹或私人云盘，把喜欢的音乐收进听屿。").
 				FontSize(15).LineHeight(1.7).TextColor(d.P.TextSecondary).TextAlign(ui.Center).MaxWidth(560).Wrap()
 			ui.Row(c).Gap(tokens.Space12).AlignItems(ui.Stretch).Children(func() {
-				onboardingCard(c, d, components.IconFolder, "本地文件夹", "选择 macOS 上的音乐目录，扫描 9 种格式并入库。", "可用", true, func() {
+				onboardingCard(c, d, components.IconFolder, "本地文件夹", "选择电脑上的音乐文件夹，自动扫描并整理曲库。", "可用", true, func() {
 					s.FinishOnboarding()
 					if a := s.Actions(); a != nil {
 						a.ChooseDirectory()
 					}
 				})
-				onboardingCard(c, d, components.IconExternal, "WebDAV", "坚果云等 WebDAV 服务器，支持流式播放与鉴权头。", "M3", false, nil)
-				onboardingCard(c, d, components.IconSearch, "夸克网盘", "扫码或网页登录后列举目录与直链播放。", "M3", false, nil)
+				onboardingCard(c, d, components.IconWebDAV, "WebDAV", "连接坚果云等私人存储，直接播放云端音乐。", "可用", true, func() {
+					s.FinishOnboarding()
+					s.OpenPage(model.PageSources)
+					s.OpenSourceForm(model.SourceKindWebDAV, "")
+				})
+				onboardingCard(c, d, components.IconCloud, "夸克网盘", "登录你的账号，选择需要同步的音乐文件夹。", "可用", true, func() {
+					s.FinishOnboarding()
+					s.OpenPage(model.PageSources)
+					s.OpenSourceForm(model.SourceKindQuark, "")
+				})
 			})
 			ui.Row(c).Gap(tokens.Space10).PaddingY(tokens.Space8).Children(func() {
 				if b := d.PrimaryButton(c, "添加音乐来源"); b.Clicked() {
@@ -44,7 +49,7 @@ func Onboarding(c *ui.Context, d components.Design, s *model.State) {
 					s.OpenPage(model.PageLibrary)
 				}
 			})
-			d.Text(c, tokens.Overline, "提示：正式版直接读写真实曲库；开发/验收可用 TINGYU_DATA_DIR 指向副本，TINGYU_READ_ONLY=1 只读打开。").
+			d.Text(c, tokens.Overline, "稍后也可以在「来源」中添加或管理音乐文件夹。").
 				TextColor(d.P.TextTertiary)
 		})
 	})
@@ -66,7 +71,11 @@ func onboardingCard(c *ui.Context, d components.Design, icon *ui.SVG, title, tex
 		})
 		d.Text(c, tokens.Small, text).TextColor(d.P.TextSecondary).Wrap()
 		if enabled && action != nil {
-			if b := d.Button(c, "选择目录…"); b.Clicked() {
+			label := "添加来源…"
+			if title == "本地文件夹" {
+				label = "选择目录…"
+			}
+			if b := d.Button(c, label); b.Clicked() {
 				action()
 			}
 		}

@@ -56,6 +56,7 @@ var createStatements = []string{
 		"webdav_username" TEXT NULL,
 		"webdav_root_path" TEXT NULL,
 		"quark_folder_fid" TEXT NULL,
+		"quark_folder_path" TEXT NULL,
 		"quark_account_name" TEXT NULL,
 		"sync_status" TEXT NOT NULL DEFAULT '未同步',
 		"last_synced_at" TEXT NULL,
@@ -141,6 +142,7 @@ var nullableColumns = []struct{ table, column, kind string }{
 	{"music_sources", "webdav_username", "TEXT"},
 	{"music_sources", "webdav_root_path", "TEXT"},
 	{"music_sources", "quark_folder_fid", "TEXT"},
+	{"music_sources", "quark_folder_path", "TEXT"},
 	{"music_sources", "quark_account_name", "TEXT"},
 	{"music_sources", "last_synced_at", "TEXT"},
 }

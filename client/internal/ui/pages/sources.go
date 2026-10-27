@@ -105,7 +105,7 @@ func sourceCard(c *ui.Context, d components.Design, s *model.State, view *source
 			tile := ui.Box(c).Size(46, 46).Radius(tokens.RadiusMD).
 				Background(tokens.Blend(d.P.SurfaceRaised, d.P.AccentSoft)).Center()
 			tile.Children(func() {
-				ui.Icon(c, components.IconFolder).FontSize(22).TextColor(d.P.Accent)
+				ui.Icon(c, components.SourceIcon(source.Kind)).FontSize(22).TextColor(d.P.Accent)
 			})
 			ui.Column(c).Gap(tokens.Space2).Grow(1).Children(func() {
 				d.Text(c, tokens.H3, source.Name).TextColor(d.P.TextPrimary).SingleLine()
@@ -161,6 +161,14 @@ func sourceCard(c *ui.Context, d components.Design, s *model.State, view *source
 				ui.Icon(c, components.IconMore).FontSize(tokens.IconCompact).TextColor(d.P.TextSecondary)
 			})
 			more.Menu(func(m *ui.Menu) {
+				if source.Kind == model.SourceKindQuark {
+					if m.Item("更换文件夹…").Chosen() {
+						values := s.OpenQuarkFolders(source.ID)
+						if a := s.QuarkFolderActionsOf(); a != nil {
+							a.BrowseQuarkFolders(values)
+						}
+					}
+				}
 				if m.Item("删除来源…").Chosen() {
 					view.deleting = source
 					view.confirmOpen = true
@@ -276,7 +284,15 @@ func sourceTarget(source library.Source) string {
 	case source.Kind == model.SourceKindWebDAV && source.WebDAVURL != "":
 		return source.WebDAVURL
 	case source.Kind == model.SourceKindQuark:
-		return "夸克网盘（直链播放，登录凭据在系统钥匙串）"
+		folder := source.QuarkFolderPath
+		if folder == "" {
+			if source.QuarkFolderFID == "" || source.QuarkFolderFID == "0" {
+				folder = "/（全部文件）"
+			} else {
+				folder = "已选文件夹"
+			}
+		}
+		return "同步目录：" + folder
 	default:
 		return source.LocalFolderPath
 	}
@@ -342,6 +358,16 @@ func sourceDeleteDialog(c *ui.Context, s *model.State, v *sourcesPage) {
 func sourceForm(c *ui.Context, d components.Design, s *model.State) {
 	form := s.SourceForm()
 	if !form.Open {
+		if form.Choosing {
+			if a := s.SourceActionsOf(); a != nil {
+				a.CancelSourceLogin()
+			}
+			s.CloseSourceForm()
+		}
+		return
+	}
+	if form.Choosing {
+		quarkFolderPicker(c, d, s)
 		return
 	}
 	card := ui.Column(c).Gap(tokens.Space10).Padding(tokens.Space16, tokens.Space12).
@@ -368,6 +394,9 @@ func sourceForm(c *ui.Context, d components.Design, s *model.State) {
 					}
 				}
 				if b := d.Button(c, "取消"); b.Clicked() {
+					if a := s.SourceActionsOf(); a != nil {
+						a.CancelSourceLogin()
+					}
 					s.CloseSourceForm()
 				}
 			})
@@ -387,7 +416,7 @@ func sourceForm(c *ui.Context, d components.Design, s *model.State) {
 				if form.QR != nil {
 					label = "刷新二维码"
 				}
-				if b := d.Button(c, label); b.Clicked() {
+				if b := d.Button(c, label).Disabled(form.Busy); b.Clicked() {
 					if a := s.SourceActionsOf(); a != nil {
 						a.LoginQuark(form.Values())
 					}
@@ -398,13 +427,16 @@ func sourceForm(c *ui.Context, d components.Design, s *model.State) {
 					}
 				}
 				if b := d.Button(c, "取消"); b.Clicked() {
+					if a := s.SourceActionsOf(); a != nil {
+						a.CancelSourceLogin()
+					}
 					s.CloseSourceForm()
 				}
 			})
 			d.Text(c, tokens.Overline, "也可以把浏览器里的 Cookie 请求头粘贴到下面（明文仅显示在输入框里，保存进钥匙串）：").
 				TextColor(d.P.TextTertiary).Wrap()
 			sourceField(c, d, "Cookie", "__pus=…; __puus=…", &form.Cookie)
-			if b := d.Button(c, "用 Cookie 登录"); b.Clicked() {
+			if b := d.Button(c, "用 Cookie 登录").Disabled(form.Busy); b.Clicked() {
 				if a := s.SourceActionsOf(); a != nil {
 					a.AddQuarkSource(form.Values())
 				}

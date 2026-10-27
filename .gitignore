@@ -35,3 +35,6 @@ spike/**/spike-audio
 spike/**/spike-session
 spike/**/spike-app
 spike/evidence/**/*.wav
+
+# Local page previews rendered from a personal music library
+design/icon-proposals/cleanup-preview/

@@ -170,7 +170,7 @@ func metadataSettings(c *ui.Context, d components.Design, s *model.State) {
 			})
 		})
 		ui.Column(c).Gap(4).Children(func() {
-			d.Text(c, tokens.Overline, "API 密钥（保存进系统钥匙串，不写 settings.json、不进日志）").
+			d.Text(c, tokens.Overline, "API 密钥（安全保存在系统钥匙串）").
 				TextColor(d.P.TextTertiary)
 			ui.TextInput(c, &form.APIKey).Placeholder("sk-…").Label("API 密钥").FillWidth()
 		})

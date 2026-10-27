@@ -96,6 +96,7 @@ type Source struct {
 	WebDAVUsername   string
 	WebDAVRootPath   string
 	QuarkFolderFID   string
+	QuarkFolderPath  string
 	QuarkAccountName string
 	SyncStatus       string
 	LastSyncedAt     time.Time
@@ -356,20 +357,28 @@ func trackFromRow(value []any) (Track, error) {
 func (l *Library) Sources(ctx context.Context) ([]Source, error) {
 	// The remote columns are selected so M3 can build an adapter from a row
 	// without a second query. Their values are ignored by everything else.
-	const query = `
+	folderPath := "NULL"
+	hasPath, err := hasColumn(ctx, l.db, "music_sources", "quark_folder_path")
+	if err != nil {
+		return nil, err
+	}
+	if hasPath {
+		folderPath = "quark_folder_path"
+	}
+	query := fmt.Sprintf(`
 SELECT id, name, kind, local_folder_path,
        webdav_url, webdav_username, webdav_root_path,
        quark_folder_fid, quark_account_name,
-       sync_status, last_synced_at, track_count
-FROM music_sources ORDER BY name COLLATE NOCASE, id`
+       sync_status, last_synced_at, track_count, %s
+FROM music_sources ORDER BY name COLLATE NOCASE, id`, folderPath)
 	rows, err := l.db.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("library: query sources: %w", err)
 	}
 	out := make([]Source, 0, len(rows.Values))
 	for _, value := range rows.Values {
-		if len(value) != 12 {
-			return nil, fmt.Errorf("library: source row has %d columns, want 12", len(value))
+		if len(value) != 13 {
+			return nil, fmt.Errorf("library: source row has %d columns, want 13", len(value))
 		}
 		source := Source{
 			ID:               stringValue(value[0]),
@@ -380,6 +389,7 @@ FROM music_sources ORDER BY name COLLATE NOCASE, id`
 			WebDAVUsername:   stringValue(value[5]),
 			WebDAVRootPath:   stringValue(value[6]),
 			QuarkFolderFID:   stringValue(value[7]),
+			QuarkFolderPath:  stringValue(value[12]),
 			QuarkAccountName: stringValue(value[8]),
 			SyncStatus:       stringValue(value[9]),
 			TrackCount:       int64Value(value[11]),
@@ -418,8 +428,8 @@ func (l *Library) UpsertSource(ctx context.Context, source Source) error {
 		   (id, name, kind, local_folder_path,
 		    webdav_url, webdav_username, webdav_root_path,
 		    quark_folder_fid, quark_account_name,
-		    sync_status, last_synced_at, track_count)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		    sync_status, last_synced_at, track_count, quark_folder_path)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
 		   name = excluded.name,
 		   kind = excluded.kind,
@@ -428,6 +438,7 @@ func (l *Library) UpsertSource(ctx context.Context, source Source) error {
 		   webdav_username = excluded.webdav_username,
 		   webdav_root_path = excluded.webdav_root_path,
 		   quark_folder_fid = excluded.quark_folder_fid,
+		   quark_folder_path = excluded.quark_folder_path,
 		   quark_account_name = excluded.quark_account_name,
 		   sync_status = excluded.sync_status,
 		   last_synced_at = COALESCE(excluded.last_synced_at, music_sources.last_synced_at),
@@ -436,7 +447,7 @@ func (l *Library) UpsertSource(ctx context.Context, source Source) error {
 		nullableString(source.WebDAVURL), nullableString(source.WebDAVUsername),
 		nullableString(source.WebDAVRootPath), nullableString(source.QuarkFolderFID),
 		nullableString(source.QuarkAccountName), source.SyncStatus,
-		nullableTime(source.LastSyncedAt), source.TrackCount)
+		nullableTime(source.LastSyncedAt), source.TrackCount, nullableString(source.QuarkFolderPath))
 	if err != nil {
 		return fmt.Errorf("library: upsert source %s: %w", source.ID, err)
 	}

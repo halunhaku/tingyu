@@ -9,6 +9,17 @@ import (
 	"github.com/halunhaku/tingyu/client/internal/ui/tokens"
 )
 
+// AppMark uses the approved Sound Island brand glyph.
+func AppMark(c *ui.Context, d Design, size, iconSize float32) ui.Element {
+	radius := tokens.RadiusSM
+	if size >= 40 {
+		radius = tokens.RadiusMD
+	}
+	return ui.Box(c).Size(size, size).Radius(radius).Background(d.P.Accent).Center().Children(func() {
+		ui.Icon(c, IconBrand).FontSize(iconSize).TextColor(d.P.OnAccent)
+	})
+}
+
 // Header is a page title with an optional back button and trailing actions
 // (§10-8): the title is 28/700, the metadata 13 on its own line, and every
 // control to the right is 32 high with radius 8.
@@ -303,7 +314,7 @@ func ErrorState(c *ui.Context, d Design, title, message, path string) {
 		if path != "" {
 			d.Text(c, tokens.Num, path).TextColor(d.P.TextTertiary).SingleLine().MaxWidth(tokens.ErrorCard)
 		}
-		ui.Text(c, "不创建、不迁移、不修复数据库；请检查数据目录（可用 TINGYU_DATA_DIR 指向副本）").FontSize(11).
+		ui.Text(c, "曲库暂未更改。请检查数据文件是否存在，以及是否有访问权限。").FontSize(11).
 			TextColor(d.P.TextTertiary).TextAlign(ui.Center).MaxWidth(tokens.ErrorCard)
 	})
 }

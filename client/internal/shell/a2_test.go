@@ -36,7 +36,7 @@ func TestSidebarDropsTheDevelopmentLine(t *testing.T) {
 	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
 	frame(tt)
 	texts := strings.Join(tt.Texts(), "|")
-	for _, banned := range []string{"内核数据", "0.5.0-dev"} {
+	for _, banned := range []string{"内核数据", "0.5.0-dev", "声档", "静室"} {
 		if strings.Contains(texts, banned) {
 			t.Errorf("the sidebar still shows %q: %v", banned, tt.Texts())
 		}
@@ -87,6 +87,54 @@ func TestFooterShowsOneCountRule(t *testing.T) {
 	}
 	if strings.Contains(texts, "已显示 40 / 共 100 首") || strings.Contains(texts, "已显示 100 / 共 100 首") {
 		t.Fatalf("the footer still shows both counts; texts %q", tt.Texts())
+	}
+}
+
+// TestLibraryScrollsShelfAndRowsInOneSurface keeps the page header fixed while
+// the recent shelf, column header and rows move together in one virtual list.
+// This is the interaction the fixed table-only scroller used to miss.
+func TestLibraryScrollsShelfAndRowsInOneSurface(t *testing.T) {
+	tracks := perfTracks(80)
+	for i := range tracks {
+		tracks[i].CoverArtPath = fmt.Sprintf("/covers/%03d.jpg", i)
+	}
+	_, m := newLibrary(t, tracks)
+	tt := ui.NewTester(m.View, DefaultWidth, DefaultHeight)
+	frame(tt)
+
+	if _, ok := tt.Find("最近添加"); !ok {
+		t.Fatalf("the recent shelf is missing before scrolling; texts %q", tt.Texts())
+	}
+	moving := []string{"曲名", "长列表曲目 00000"}
+	before := map[string]ui.Rect{}
+	for _, label := range moving {
+		rect, ok := tt.Find(label)
+		if !ok {
+			t.Fatalf("%q is missing before scrolling; texts %q", label, tt.Texts())
+		}
+		before[label] = rect
+	}
+	toolbar, ok := tt.Find("添加目录…")
+	if !ok {
+		t.Fatalf("the page toolbar is missing; texts %q", tt.Texts())
+	}
+
+	tt.Scroll(700, 400, 0, 80)
+	frame(tt)
+	for _, label := range moving {
+		after, ok := tt.Find(label)
+		if !ok {
+			t.Fatalf("%q is missing after scrolling; texts %q", label, tt.Texts())
+		}
+		if after.Y >= before[label].Y-40 {
+			t.Errorf("%q moved from %v to %v; it did not scroll with the page", label, before[label].Y, after.Y)
+		}
+	}
+	if shelf, ok := tt.Find("最近添加"); ok && shelf.W > 0 {
+		t.Errorf("the recent shelf is still painted after scrolling: %v", shelf)
+	}
+	if after, _ := tt.Find("添加目录…"); after.Y != toolbar.Y {
+		t.Errorf("the page toolbar moved from %v to %v; it should stay fixed", toolbar.Y, after.Y)
 	}
 }
 
@@ -183,16 +231,24 @@ func TestSettingsTabsReachEverySectionAndResetAppearance(t *testing.T) {
 	for _, want := range []string{
 		"外观", "播放", "音乐库", "元数据", "来源", "数据", "关于",
 		"主题模式", "界面密度", "封面动态取色", "恢复默认外观",
-		"听屿 " + model.Version, "播放内核", "libmpv", "媒体会话", "系统 Now Playing",
 	} {
 		if !tt.HasText(want) {
 			t.Errorf("settings lacks %q; texts %q", want, tt.Texts())
+		}
+	}
+	for _, gone := range []string{"听屿应用图标", "听屿 " + model.Version, "播放内核", "libmpv", "媒体会话", "系统 Now Playing"} {
+		if tt.HasText(gone) {
+			t.Errorf("the about card leaked into appearance (%q); texts %q", gone, tt.Texts())
 		}
 	}
 	for _, gone := range []string{"Flutter", "settings.json", "M5", "M1/M2", "libmpv（进程内", "user_version"} {
 		if tt.HasText(gone) {
 			t.Errorf("settings still speaks development language (%q); texts %q", gone, tt.Texts())
 		}
+	}
+	appearanceContent, ok := tt.Find("设置内容")
+	if !ok {
+		t.Fatalf("the settings content area is missing; texts %q", tt.Texts())
 	}
 	// The tabs are the page's only navigation: every one of the seven opens.
 	sections := []struct {
@@ -212,6 +268,19 @@ func TestSettingsTabsReachEverySectionAndResetAppearance(t *testing.T) {
 		if !tt.HasText(section.want) {
 			t.Fatalf("the %q tab does not show %q; texts %q", section.tab, section.want, tt.Texts())
 		}
+	}
+	for _, gone := range []string{"听屿应用图标", "听屿 " + model.Version, "数据"} {
+		if !tt.HasText(gone) {
+			t.Fatalf("the about tab lacks %q; texts %q", gone, tt.Texts())
+		}
+	}
+	aboutContent, ok := tt.Find("设置内容")
+	if !ok {
+		t.Fatalf("the About content area is missing; texts %q", tt.Texts())
+	}
+	if aboutContent.X != appearanceContent.X || aboutContent.W != appearanceContent.W {
+		t.Fatalf("About content is %+v, want the same width and inset as appearance %+v",
+			aboutContent, appearanceContent)
 	}
 	if err := tt.Click("外观"); err != nil {
 		t.Fatalf("外观: %v", err)

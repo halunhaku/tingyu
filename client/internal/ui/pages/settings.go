@@ -13,10 +13,10 @@ import (
 var settingsSections = []string{"外观", "播放", "音乐库", "元数据", "来源", "数据", "关于"}
 
 // Settings is the settings page of §4.3 / §10-12: seven horizontal section tabs
-// instead of the second 208 px navigation column, one 620 wide content column
-// with grouped cards, and the "关于" card beside it. Every control the M4 page
-// had is still here; what changed is where it sits and how it reads — the copy
-// is the user's language, not the pipeline's.
+// instead of the second 208 px navigation column and one 620 wide content
+// column with grouped cards. Every control the M4 page had is still here; what
+// changed is where it sits and how it reads — the copy is the user's language,
+// not the pipeline's.
 func Settings(c *ui.Context, d components.Design, s *model.State) {
 	// No back arrow: the stills' settings page is a sidebar destination, and
 	// the rail is always on screen (§4.3). ⌘, reaches it from anywhere.
@@ -33,36 +33,11 @@ func Settings(c *ui.Context, d components.Design, s *model.State) {
 	})
 }
 
-// settingsBody lays out the content column and the about card: side by side
-// when there is room for both (§4.3: 620 + 40 + 240 at 1200), stacked below the
-// 1000 DIP floor the window can take.
+// settingsBody lays out the selected section. Every tab, including About, uses
+// the same content width so switching tabs does not move the card edges.
 func settingsBody(c *ui.Context, d components.Design, s *model.State, available float32) {
-	section := s.SettingsSection()
-	// The 关于 tab is the full about card itself: it uses the whole width
-	// instead of repeating the summary beside it.
-	if section == len(settingsSections)-1 {
-		ui.Column(c).Gap(tokens.Space20).Width(min(tokens.SettingsContent+tokens.Space40+tokens.AboutCardMax, available)).
-			Children(func() { settingsSection(c, d, s) })
-		return
-	}
-	contentWidth := min(tokens.SettingsContent, available)
-	sideBySide := available >= tokens.SettingsContent+tokens.Space40+180
-	if !sideBySide {
-		ui.Column(c).Gap(tokens.Space20).Width(contentWidth).Children(func() {
-			settingsSection(c, d, s)
-		})
-		ui.Box(c).Height(tokens.Space20)
-		ui.Column(c).Width(min(tokens.SettingsContent, available)).Children(func() {
-			aboutCard(c, d, s)
-		})
-		return
-	}
-	block := min(available, tokens.SettingsContent+tokens.Space40+tokens.AboutCardMax)
-	ui.Row(c).Width(block).Gap(tokens.Space40).AlignItems(ui.Start).Children(func() {
-		ui.Column(c).Width(tokens.SettingsContent).Gap(tokens.Space20).Children(func() {
-			settingsSection(c, d, s)
-		})
-		ui.Column(c).Grow(1).Children(func() { aboutCard(c, d, s) })
+	ui.Column(c).Gap(tokens.Space20).Width(min(tokens.SettingsContent, available)).Label("设置内容").Children(func() {
+		settingsSection(c, d, s)
 	})
 }
 
@@ -194,7 +169,7 @@ func appearanceSettings(c *ui.Context, d components.Design, s *model.State) {
 		})
 		if !s.Writable() {
 			ui.Row(c).Padding(0, tokens.Space20, tokens.Space20, tokens.Space20).Children(func() {
-				d.Text(c, tokens.Small, "只读模式：本次以 TINGYU_READ_ONLY=1 打开，偏好不落盘。").
+				d.Text(c, tokens.Small, "当前为只读模式，设置更改不会保存。").
 					TextColor(d.P.TextTertiary).Wrap()
 			})
 		}
@@ -284,21 +259,24 @@ func dataSettings(c *ui.Context, d components.Design, s *model.State) {
 	})
 }
 
-// aboutCard is the right-hand summary of §4.3: the real version, one sentence,
-// and the three facts a listener may wonder about — no Flutter build, no M5
-// pipeline, no settings.json.
+// aboutCard is the About tab's summary: the real version, one sentence, and the
+// three facts a listener may wonder about — no Flutter build, no M5 pipeline,
+// no settings.json.
 func aboutCard(c *ui.Context, d components.Design, s *model.State) {
 	counts := s.Counts()
 	ui.Column(c).FillWidth().Padding(tokens.Space20).Gap(tokens.Space12).
 		Radius(tokens.RadiusLG).Background(d.P.SurfaceRaised).Border(1, d.P.Border).Children(func() {
-		d.Text(c, tokens.Overline, "关于").TextColor(d.P.TextTertiary)
-		d.Text(c, tokens.H3, "听屿 "+model.Version).TextColor(d.P.TextPrimary)
+		ui.Row(c).Gap(tokens.Space12).AlignItems(ui.Center).Children(func() {
+			components.AppMark(c, d, 48, 24).Role(ui.RoleImage).Label("听屿应用图标")
+			ui.Column(c).Gap(tokens.Space2).Children(func() {
+				d.Text(c, tokens.Overline, "关于").TextColor(d.P.TextTertiary)
+				d.Text(c, tokens.H3, "听屿 "+model.Version).TextColor(d.P.TextPrimary)
+			})
+		})
 		d.Text(c, tokens.Small, "私人音乐库播放器，直连你的来源。").TextColor(d.P.TextSecondary).Wrap()
 		ui.Box(c).Height(tokens.Space6)
 		ui.Box(c).FillWidth().Height(1).Background(d.P.Border)
 		ui.Box(c).Height(tokens.Space4)
-		aboutRow(c, d, "播放内核", "libmpv")
-		aboutRow(c, d, "媒体会话", "系统 Now Playing")
 		aboutRow(c, d, "数据", fmt.Sprintf("%s · %s",
 			model.FormatCount(counts.Tracks, "首"), model.FormatCount(len(s.Sources()), "个来源")))
 	})
@@ -312,8 +290,7 @@ func aboutRow(c *ui.Context, d components.Design, label, value string) {
 	})
 }
 
-// aboutSettings is the 关于 tab: the same card, full width, with the facts the
-// summary cannot hold.
+// aboutSettings is the 关于 tab: the same card at the settings content width.
 func aboutSettings(c *ui.Context, d components.Design, s *model.State) {
 	aboutCard(c, d, s)
 }
