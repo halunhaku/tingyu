@@ -66,7 +66,7 @@
 2. 选择本地文件夹，或连接你的 WebDAV / 夸克网盘。
 3. 等待扫描完成，在曲库中选择一首歌开始播放。
 
-> **获取应用**：当前现役 Go 客户端请从源码构建。仓库 [Releases](https://github.com/halunhaku/tingyu/releases) 中的版本包含历史客户端，下载前请核对版本说明。
+> **获取应用**：当前尚无发布版，请从源码构建。发布后可在 [Releases](https://github.com/halunhaku/tingyu/releases) 获取。
 
 ## 从源码构建
 
