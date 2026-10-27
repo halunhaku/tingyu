@@ -54,11 +54,15 @@ name=$(plutil -extract name raw -o - mygo.json)
 identifier=$(plutil -extract identifier raw -o - mygo.json)
 version=$(plutil -extract version raw -o - mygo.json)
 minimum=$(plutil -extract macos.minimumSystemVersion raw -o - mygo.json)
-icon=$(plutil -extract icon raw -o - mygo.json 2>/dev/null || echo resources/icon.png)
+if ! icon=$(plutil -extract icon raw -o - mygo.json 2>/dev/null); then
+	icon=resources/icon.png
+fi
 
 identity=${SIGN_IDENTITY}
 if [ -z "$identity" ]; then
-	identity=$(plutil -extract macos.signingIdentity raw -o - mygo.json 2>/dev/null || echo "-")
+	if ! identity=$(plutil -extract macos.signingIdentity raw -o - mygo.json 2>/dev/null); then
+		identity=-
+	fi
 fi
 [ -n "$identity" ] || identity=-
 adHoc=0
@@ -66,7 +70,9 @@ adHoc=0
 
 entitlements=${SIGN_ENTITLEMENTS:-}
 if [ -z "$entitlements" ]; then
-	entitlements=$(plutil -extract macos.entitlements raw -o - mygo.json 2>/dev/null || true)
+	if ! entitlements=$(plutil -extract macos.entitlements raw -o - mygo.json 2>/dev/null); then
+		entitlements=""
+	fi
 fi
 [ -n "$entitlements" ] || entitlements=""
 
@@ -232,8 +238,12 @@ if [ "$NOTARY_PROFILE" != "" ]; then
 		cat "$submit" >&2
 		exit 1
 	}
-	status=$(plutil -extract status raw -o - "$submit" 2>/dev/null || echo unknown)
-	submission=$(plutil -extract id raw -o - "$submit" 2>/dev/null || echo "")
+	if ! status=$(plutil -extract status raw -o - "$submit" 2>/dev/null); then
+		status=unknown
+	fi
+	if ! submission=$(plutil -extract id raw -o - "$submit" 2>/dev/null); then
+		submission=""
+	fi
 	case "$status" in
 	Accepted) echo "bundle: notarization accepted ($submission)" ;;
 	*)
