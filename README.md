@@ -66,7 +66,7 @@
 2. 选择本地文件夹，或连接你的 WebDAV / 夸克网盘。
 3. 等待扫描完成，在曲库中选择一首歌开始播放。
 
-> **获取应用**：当前尚无发布版，请从源码构建。发布后可在 [Releases](https://github.com/halunhaku/tingyu/releases) 获取。
+> **获取应用**：从 [GitHub Releases](https://github.com/halunhaku/tingyu/releases/tag/v0.1.0) 下载 macOS 体验版。该版本未经过 Apple 公证，首次打开可能需要手动允许；也可以按下文从源码构建。
 
 ## 从源码构建
 
