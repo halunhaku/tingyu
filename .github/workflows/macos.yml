@@ -113,7 +113,6 @@ jobs:
 
       - name: Build and sign
         env:
-          FRAMEWORK_SRC: ${{ runner.temp }}/frameworks/macos/Frameworks
           SIGN_IDENTITY: ${{ env.HAS_SIGNING == 'true' && secrets.MACOS_SIGNING_IDENTITY || '-' }}
           NOTARY_PROFILE: ${{ env.HAS_SIGNING == 'true' && env.HAS_NOTARY == 'true' && 'notary' || '' }}
         run: |

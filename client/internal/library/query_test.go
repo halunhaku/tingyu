@@ -431,9 +431,8 @@ func planDetails(t *testing.T, rows sqlite.Rows) string {
 	return strings.Join(parts, " | ")
 }
 
-// TestTenThousandRowPaging stays inside the frame budget: a page query and its
-// count over ten thousand rows must be far quicker than 16.7 ms, which is what
-// lets the scroll gate ask for a page without dropping a frame.
+// TestTenThousandRowPaging checks the queries in both builds. The frame-time
+// gate runs without -race, whose instrumentation distorts timing.
 func TestTenThousandRowPaging(t *testing.T) {
 	const rows = 10000
 	tracks := make([]pageTrack, 0, rows)
@@ -489,7 +488,9 @@ func TestTenThousandRowPaging(t *testing.T) {
 	artistTook := time.Since(start)
 	t.Logf("album aggregate %v, artist aggregate %v", albumTook.Round(time.Microsecond), artistTook.Round(time.Microsecond))
 	slowest = max(slowest, albumTook, artistTook)
-	if slowest > 16*time.Millisecond {
+	if raceEnabled {
+		t.Log("frame-time gate is not meaningful under -race; queries were checked")
+	} else if slowest > 16*time.Millisecond {
 		t.Fatalf("slowest paging statement %v exceeds the 16.7 ms frame budget", slowest)
 	}
 }

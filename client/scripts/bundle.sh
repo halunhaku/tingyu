@@ -93,10 +93,8 @@ else
 	echo "bundle: $name $version ($identifier), minimum macOS $minimum, $PLATFORM, identity $identity"
 fi
 
-build=("$GO" tool mygo build -platform "$PLATFORM" -skip-dmg)
-if [ "$adHoc" = 0 ]; then
-	build+=(-sign "$identity")
-fi
+# Pass even "-" explicitly: SIGN_IDENTITY overrides mygo.json for CI as well.
+build=("$GO" tool mygo build -platform "$PLATFORM" -skip-dmg -sign "$identity")
 "${build[@]}" -o "$OUT"
 
 app="$OUT/${PLATFORM/\//-}/$name.app"
