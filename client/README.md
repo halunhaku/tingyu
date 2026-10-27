@@ -150,7 +150,7 @@ TINGYU_DATA_DIR=/tmp/tingyu-copy /tmp/tingyu
 
 harness 直接驱动生产的 `internal/mpv` + `internal/player`（与应用同一套装配，只是没有窗口），逐项写出 `report.json` 与服务端请求日志。它会真的出声（coreaudio）；gapless 相位改用 mpv 的 `ao=pcm` 把实际输出渲染成 WAV，再分析静音段与 `AO: [` 设备重建次数。
 - Now Playing / 远程命令：框架的 `mygo.NowPlaying`（`Set`/`SetPlayback`/`OnCommand`/`Clear`）；`(id,index,duration,封面)` 去重，进度 500 ms 节流；播放时用 `mygo.Power.KeepAwake` 持有 App Nap/防睡眠断言（`pmset` 里是 `PreventUserIdleSystemSleep`），退出清空。
-- 关窗继续播放；`App.OnWindowAllClosed` 保留进程，菜单栏有「显示窗口/上一首/播放暂停/下一首/退出」；`Cmd+Q` 走 `OnBeforeQuit` 清 Now Playing、关 mpv、关库。
+- 关窗继续播放；点击 Dock 图标重新打开窗口。系统「正在播放」提供播放控制；`Cmd+Q` 退出应用。
 
 ## 运行与验收辅助变量
 
@@ -163,7 +163,6 @@ harness 直接驱动生产的 `internal/mpv` + `internal/player`（与应用同�
 | `TINGYU_AUTO_PLAY_TITLE` / `TINGYU_AUTO_PLAY_INDEX` | 扫描后按标题/下标起播（与双击同一 `PlayTracks`） |
 | `TINGYU_STRESS_PLAYS` | 连点 N 首本地曲目（间隔 120 ms） |
 | `TINGYU_REPEAT` | `all` / `one` / `off` |
-| `TINGYU_POPUP_TRAY_MS` | 到时弹出菜单栏菜单 |
 | `TINGYU_AUTO_QUIT_MS` | 到时 `App.Quit()`（与 Cmd+Q 同一路径） |
 
 ## CI

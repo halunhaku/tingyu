@@ -51,7 +51,7 @@
 - 应用内 AppMark 使用品牌音符与水波；普通音乐占位继续使用 music 图标。
 - 侧栏与来源卡片按 local / webdav / quark 显示对应图标。
 - Dock 母版：`client/resources/icon.svg`；构建输入：`client/resources/icon.png`。
-- 菜单栏模板：`client/internal/app/tray.png`，32px 透明黑色模板，由 macOS 自动着色。
+- 独立菜单栏图标已移除；系统「正在播放」提供媒体控制。
 - PNG 可通过 `client/scripts/generate-icon.swift` 重建；绘制几何与已批准 SVG 对应。
 - 实际 MyGo 渲染预览：`runtime-preview.png`，包含全部 34 个图标的深浅背景与 16 / 24 / 32px。
 - 可复现预览：在 client/ 执行 `go run ./tools/iconpreview`。

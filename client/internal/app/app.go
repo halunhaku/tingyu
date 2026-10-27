@@ -52,12 +52,6 @@ type application struct {
 	winMu sync.Mutex
 	win   *mygo.Window
 
-	// tray and trayPlay are written by the main thread (initTray) and read by
-	// the update worker (updateTray); trayMu serializes them.
-	trayMu   sync.Mutex
-	tray     *mygo.Tray
-	trayPlay *mygo.MenuItem
-
 	session sessionPublisher
 	// awake is the App Nap / idle-sleep guard of the media session;
 	// awakeRelease releases it and awakeMu serializes the two sides (the
@@ -110,7 +104,7 @@ type application struct {
 	// listener must never do media-session work on the caller's thread: a
 	// double click calls PlayTracks (and therefore the listener) on the UI
 	// thread, and driving MediaPlayer from inside a UI callback deadlocked the
-	// main thread. Publishing from the window, the tray and the session also
+	// main thread. Publishing from the window and the session also
 	// all become single-threaded from here, which is what their dedup state
 	// assumes.
 	updates chan player.Update
@@ -137,8 +131,7 @@ func Main() error {
 	go a.updateLoop()
 
 	mygo.App.OnWindowAllClosed(func() {
-		// Closing the window keeps the process (and the music) alive; the menu
-		// bar item is the way back (plan §5.6).
+		// Closing the window keeps playback alive; Dock activation reopens it.
 		a.logf("window: all closed, playback continues")
 	})
 	mygo.App.OnActivate(func(hasVisibleWindows bool) {
@@ -154,7 +147,6 @@ func Main() error {
 		a.installMenu()
 		a.showWindow()
 		a.initSession()
-		a.initTray()
 		go func() {
 			// Only after the first frame: the pass reports progress into the
 			// window, and a pass before it exists would drop every report.
@@ -184,19 +176,6 @@ func Main() error {
 		if count := strings.TrimSpace(os.Getenv("TINGYU_STRESS_PLAYS")); count != "" {
 			if n, err := strconv.Atoi(count); err == nil {
 				go a.acceptanceStress(n)
-			}
-		}
-		if ms := strings.TrimSpace(os.Getenv("TINGYU_POPUP_TRAY_MS")); ms != "" {
-			if n, err := strconv.Atoi(ms); err == nil && n > 0 {
-				time.AfterFunc(time.Duration(n)*time.Millisecond, func() {
-					a.trayMu.Lock()
-					tray := a.tray
-					a.trayMu.Unlock()
-					if tray != nil {
-						a.logf("tray: pop up menu")
-						tray.PopUpMenu()
-					}
-				})
 			}
 		}
 		if ms := strings.TrimSpace(os.Getenv("TINGYU_AUTO_QUIT_MS")); ms != "" {

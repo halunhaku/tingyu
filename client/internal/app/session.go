@@ -64,7 +64,6 @@ func (a *application) applyUpdate(update player.Update) {
 	a.lastUpdateMu.Unlock()
 	a.updateWindow(func() { a.model.SetPlayer(update) })
 	a.logLatency(update)
-	a.updateTray(update)
 	a.publishSession(update)
 	// M3: an expired Quark direct link is refreshed once and replayed, instead
 	// of leaving the user with a dead failure state.
@@ -428,79 +427,6 @@ func (a *application) installMenu() {
 	a.logf("menu: application menu installed")
 }
 
-// --- menu bar -------------------------------------------------------
-
-func (a *application) initTray() {
-	show := &mygo.MenuItem{Label: "显示窗口", Click: func(*mygo.MenuItem, *mygo.Window) {
-		a.showWindow()
-	}}
-	previous := &mygo.MenuItem{Label: "上一首", Click: func(*mygo.MenuItem, *mygo.Window) {
-		_ = a.Previous()
-	}}
-	play := &mygo.MenuItem{Label: "播放", Click: func(*mygo.MenuItem, *mygo.Window) {
-		_ = a.TogglePlayPause()
-	}}
-	next := &mygo.MenuItem{Label: "下一首", Click: func(*mygo.MenuItem, *mygo.Window) {
-		_ = a.Next()
-	}}
-	quit := &mygo.MenuItem{Label: "退出听屿", Click: func(*mygo.MenuItem, *mygo.Window) {
-		a.logf("app: quit from menu bar")
-		mygo.App.Quit()
-	}}
-	menu := mygo.NewMenu([]*mygo.MenuItem{
-		show,
-		mygo.Separator(),
-		previous,
-		play,
-		next,
-		mygo.Separator(),
-		quit,
-	})
-	tray, err := mygo.NewTray(mygo.TrayOptions{
-		ID:             "tingyu",
-		Icon:           trayIcon,
-		IconIsTemplate: true,
-		Title:          "听屿",
-		ToolTip:        "听屿",
-		Menu:           menu,
-	})
-	if err != nil {
-		a.logf("tray: unavailable: %v", err)
-		return
-	}
-	a.trayMu.Lock()
-	a.trayPlay = play
-	a.tray = tray
-	a.trayMu.Unlock()
-	bounds := tray.Bounds()
-	a.logf("tray: menu bar item ready at x=%d y=%d w=%d h=%d", bounds.X, bounds.Y, bounds.Width, bounds.Height)
-	go func() {
-		time.Sleep(time.Second)
-		late := tray.Bounds()
-		a.logf("tray: bounds after 1s x=%d y=%d w=%d h=%d", late.X, late.Y, late.Width, late.Height)
-	}()
-}
-
-func (a *application) updateTray(update player.Update) {
-	a.trayMu.Lock()
-	tray, play := a.tray, a.trayPlay
-	a.trayMu.Unlock()
-	if play != nil {
-		label := "播放"
-		if update.Snapshot.Playing {
-			label = "暂停"
-		}
-		play.SetLabel(label)
-	}
-	if tray != nil {
-		tip := "听屿"
-		if update.Track != nil {
-			tip = fmt.Sprintf("听屿 · %s — %s", update.Track.Title, update.Track.Artist)
-		}
-		tray.SetToolTip(tip)
-	}
-}
-
 // --- shutdown -------------------------------------------------------
 
 func (a *application) shutdown() {
@@ -516,13 +442,6 @@ func (a *application) shutdown() {
 	}
 	if a.awake.Load() {
 		a.setKeepAwake(false)
-	}
-	a.trayMu.Lock()
-	tray := a.tray
-	a.tray = nil
-	a.trayMu.Unlock()
-	if tray != nil {
-		tray.Destroy()
 	}
 	if a.control != nil {
 		if err := a.control.Close(); err != nil {

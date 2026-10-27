@@ -1,6 +1,6 @@
 #!/usr/bin/env swift
 // Sound Island (A). Geometry mirrors resources/icon.svg and components/icons/brand.svg.
-// Run from client/: swift scripts/generate-icon.swift [icon.png] [tray.png]
+// Run from client/: swift scripts/generate-icon.swift [icon.png]
 import CoreGraphics
 import Foundation
 import ImageIO
@@ -8,7 +8,6 @@ import UniformTypeIdentifiers
 
 let args = Array(CommandLine.arguments.dropFirst())
 let iconOutput = args.first ?? "resources/icon.png"
-let trayOutput = args.count > 1 ? args[1] : "internal/app/tray.png"
 let colorSpace = CGColorSpaceCreateDeviceRGB()
 func color(_ hex: UInt32) -> CGColor {
     CGColor(colorSpace: colorSpace, components: [CGFloat((hex >> 16) & 255) / 255,
@@ -64,4 +63,3 @@ func render(size: Int, template: Bool, output: String) throws {
     guard CGImageDestinationFinalize(dst) else { fatalError("cannot write \(output)") }
 }
 try render(size: 1024, template: false, output: iconOutput)
-try render(size: 32, template: true, output: trayOutput)
