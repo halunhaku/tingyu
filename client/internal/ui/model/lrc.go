@@ -46,6 +46,10 @@ var metaTag = regexp.MustCompile(`^\[[a-zA-Z]+:[^\]]*\]`)
 // one line may carry several timestamps, fractions are 1/2/3 digits, unknown
 // tags are ignored, and text without any timestamp is shown as plain lyrics.
 func ParseLRC(text string) Lyrics {
+	// A UTF-8 BOM at the start of the document would otherwise stick to the
+	// first line and hide its timestamp or ID tag. Drop one document-leading
+	// marker; U+FEFF elsewhere is ordinary text.
+	text = strings.TrimPrefix(text, "\ufeff")
 	raw := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
 	out := Lyrics{}
 	var plain []string
